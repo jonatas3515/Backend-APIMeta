@@ -47,6 +47,7 @@ app.post('/webhook', async (req, res) => {
     console.log(`Mensagem recebida de ${from}: ${textBody}`);
 
     const aiReply = await askGemini(textBody);
+    console.log(`Resposta da IA para ${from}: ${aiReply}`);
     await sendWhatsAppMessage(from, aiReply);
   } catch (error) {
     console.error('Erro ao processar mensagem:', error);
@@ -67,6 +68,8 @@ async function askGemini(prompt) {
   });
 
   if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`Erro na API Gemini: status ${response.status} ${response.statusText}, corpo: ${errorBody}`);
     throw new Error(`Erro na API Gemini: ${response.status} ${response.statusText}`);
   }
 
@@ -92,8 +95,9 @@ async function sendWhatsAppMessage(to, text) {
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Erro ao enviar mensagem WhatsApp: ${response.status} ${error}`);
+    const errorBody = await response.text();
+    console.error(`Erro ao enviar mensagem WhatsApp: status ${response.status} ${response.statusText}, corpo: ${errorBody}`);
+    throw new Error(`Erro ao enviar mensagem WhatsApp: ${response.status} ${response.statusText} - ${errorBody}`);
   }
 
   console.log(`Resposta enviada para ${to}: ${text}`);
