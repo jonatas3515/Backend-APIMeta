@@ -1,0 +1,15 @@
+{
+  "name": "whatsapp-gemini-webhook",
+  "version": "1.0.0",
+  "description": "Webhook para integrar WhatsApp Cloud API com Google AI Studio (Gemini) na Vercel",
+  "main": "api/webhook.js",
+  "scripts": {
+    "start": "node api/webhook.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
