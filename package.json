@@ -1,13 +1,25 @@
 {
-  "name": "whatsapp-gemini-webhook",
-  "version": "1.0.0",
-  "description": "Webhook para integrar WhatsApp Cloud API com Google AI Studio (Gemini) na Vercel",
+  "name": "whatsapp-gemini-chat",
+  "version": "2.0.0",
+  "description": "Sistema completo de chat WhatsApp + Gemini + Supabase para escritório de advocacia",
   "main": "api/webhook.js",
   "scripts": {
-    "start": "node api/webhook.js"
+    "start": "node api/webhook.js",
+    "dev": "next dev",
+    "build": "next build"
   },
   "dependencies": {
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "@supabase/supabase-js": "^2.38.4",
+    "next": "^14.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.3.0",
+    "postcss": "^8.4.31",
+    "autoprefixer": "^10.4.16"
   },
   "engines": {
     "node": "24.x"
