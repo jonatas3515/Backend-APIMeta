@@ -1,4 +1,5 @@
 const express = require('express');
+const { supabase } = require('../lib/supabase');
 
 const app = express();
 app.use(express.json());
@@ -47,13 +48,118 @@ app.post('/webhook', async (req, res) => {
 
     console.log(`Mensagem recebida de ${from}: ${textBody}`);
 
-    const aiReply = await askGemini(textBody);
-    console.log(`Resposta da IA para ${from}: ${aiReply}`);
-    await sendWhatsAppMessage(from, aiReply);
+    let conversation = await getOrCreateConversation(from);
+    
+    await saveMessage(conversation.id, 'inbound', 'client', 'text', textBody);
+
+    if (conversation.mode === 'bot') {
+      const aiReply = await askGemini(textBody);
+      console.log(`Resposta da IA para ${from}: ${aiReply}`);
+      await sendWhatsAppMessage(from, aiReply);
+      await saveMessage(conversation.id, 'outbound', 'bot', 'text', aiReply);
+    } else {
+      console.log(`Modo humano ativado para ${from}. Aguardando resposta manual.`);
+    }
   } catch (error) {
     console.error('Erro ao processar mensagem:', error);
   }
 });
+
+// Rota para enviar mensagem manual (admin)
+app.post('/admin/send-message', async (req, res) => {
+  try {
+    const { conversation_id, text } = req.body;
+
+    if (!conversation_id || !text) {
+      return res.status(400).json({ error: 'conversation_id e text são obrigatórios' });
+    }
+
+    const { data: conversation, error: convError } = await supabase
+      .from('conversations')
+      .select('client_phone')
+      .eq('id', conversation_id)
+      .single();
+
+    if (convError || !conversation) {
+      return res.status(404).json({ error: 'Conversa não encontrada' });
+    }
+
+    await sendWhatsAppMessage(conversation.client_phone, text);
+    await saveMessage(conversation_id, 'outbound', 'human', 'text', text);
+
+    res.json({ success: true, message: 'Mensagem enviada com sucesso' });
+  } catch (error) {
+    console.error('Erro ao enviar mensagem:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Rota para alterar modo da conversa
+app.patch('/admin/conversation/:id/mode', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { mode } = req.body;
+
+    if (!['bot', 'human'].includes(mode)) {
+      return res.status(400).json({ error: 'Mode deve ser "bot" ou "human"' });
+    }
+
+    const { data, error } = await supabase
+      .from('conversations')
+      .update({ mode, updated_at: new Date() })
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('Erro ao alterar modo:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+async function getOrCreateConversation(clientPhone) {
+  let { data: conversation, error } = await supabase
+    .from('conversations')
+    .select()
+    .eq('client_phone', clientPhone)
+    .single();
+
+  if (error || !conversation) {
+    const { data: newConversation, error: createError } = await supabase
+      .from('conversations')
+      .insert([{ client_phone: clientPhone }])
+      .select()
+      .single();
+
+    if (createError) {
+      throw new Error(`Erro ao criar conversa: ${createError.message}`);
+    }
+
+    conversation = newConversation;
+  }
+
+  return conversation;
+}
+
+async function saveMessage(conversationId, direction, senderType, contentType, text) {
+  const { error } = await supabase
+    .from('messages')
+    .insert([{
+      conversation_id: conversationId,
+      direction,
+      sender_type: senderType,
+      content_type: contentType,
+      text
+    }]);
+
+  if (error) {
+    console.error(`Erro ao salvar mensagem: ${error.message}`);
+  }
+}
 
 async function askGemini(prompt) {
   try {
