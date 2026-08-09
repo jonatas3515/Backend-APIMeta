@@ -18,11 +18,16 @@ export default function Home() {
 
     setSupabaseReady(true);
     fetchConversations();
+
     const subscription = supabase
-      .from('conversations')
-      .on('*', (payload) => {
-        fetchConversations();
-      })
+      .channel('conversations')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'conversations' },
+        (payload) => {
+          fetchConversations();
+        }
+      )
       .subscribe();
 
     return () => {

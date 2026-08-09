@@ -12,13 +12,21 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
 
   useEffect(() => {
     fetchMessages();
+
     const subscription = supabase
-      .from('messages')
-      .on('INSERT', (payload) => {
-        if (payload.new.conversation_id === conversation.id) {
+      .channel(`messages-${conversation.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversation.id}`,
+        },
+        (payload) => {
           setMessages((prev) => [...prev, payload.new]);
         }
-      })
+      )
       .subscribe();
 
     return () => {
