@@ -4,7 +4,7 @@
   "description": "Sistema completo de chat WhatsApp + Gemini + Supabase para escritório de advocacia",
   "main": "api/webhook.js",
   "scripts": {
-    "start": "node api/webhook.js",
+    "start": "next start",
     "dev": "next dev",
     "build": "next build"
   },
