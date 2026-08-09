@@ -5,7 +5,7 @@ const GEMINI_API_KEY = process.env.GOOGLE_AI_API_KEY;
 
 const WHATSAPP_API_URL = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
 const GEMINI_API_URL_PRIMARY = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
-const GEMINI_API_URL_FALLBACK = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_API_URL_FALLBACK = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
 
 export default async function handler(req, res) {
   console.log(`[WEBHOOK] ${req.method} ${req.url}`);
@@ -100,7 +100,7 @@ async function askGemini(prompt) {
   }
 
   try {
-    console.log('[GEMINI] Tentando Gemini 1.5 Flash-Lite...');
+    console.log('[GEMINI] Tentando Gemini 3.1 Flash-Lite (fallback)...');
     const response = await fetch(GEMINI_API_URL_FALLBACK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -115,14 +115,14 @@ async function askGemini(prompt) {
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error(`[GEMINI] ❌ Erro na API Gemini 1.5: status ${response.status} ${response.statusText}`);
+      console.error(`[GEMINI] ❌ Erro na API Gemini 3.1: status ${response.status} ${response.statusText}`);
       console.error(`[GEMINI] Corpo: ${errorBody}`);
       throw new Error(`Erro na API Gemini: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    console.log('[GEMINI] ✅ Resposta do Gemini 1.5:', text?.substring(0, 100));
+    console.log('[GEMINI] ✅ Resposta do Gemini 3.1:', text?.substring(0, 100));
     return text || 'Desculpe, não consegui gerar uma resposta.';
   } catch (error) {
     console.error(`[GEMINI] ❌ Erro em ambos os modelos Gemini: ${error.message}`);
