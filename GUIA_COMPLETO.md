@@ -121,7 +121,7 @@ Você verá:
 ```
 1. Cliente envia mensagem via WhatsApp
    ↓
-2. Meta envia webhook para https://backend-apimeta.vercel.app/webhook
+2. Meta envia webhook para https://backend-apimeta.vercel.app/api/webhook
    ↓
 3. Backend extrai número do cliente (from) e texto (text.body)
    ↓
@@ -130,7 +130,7 @@ Você verá:
 5. Backend registra mensagem em Supabase (messages)
    ↓
 6. SE modo='bot':
-   - Chama Gemini 2.5 Flash-Lite (com fallback 1.5)
+   - Chama Gemini 2.5 Flash-Lite (com fallback 3.1)
    - Envia resposta via WhatsApp Cloud API
    - Registra resposta em Supabase
    
@@ -173,7 +173,7 @@ Você verá:
 
 ### Backend (Node.js/Express)
 
-- **`api/webhook.js`** — webhook do WhatsApp, integração Gemini e Supabase
+- **`pages/api/webhook.js`** — webhook do WhatsApp, integração Gemini e Supabase
 - **`lib/supabase.js`** — cliente Supabase server-side
 - **`pages/api/send-message.js`** — rota para enviar mensagem manual
 - **`pages/api/conversation/[id]/mode.js`** — rota para alterar modo

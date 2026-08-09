@@ -4,7 +4,7 @@ Este projeto é um backend serverless feito em Node.js + Express para integrar a
 
 ## Arquivos principais
 
-- `api/webhook.js` — rota `/webhook` que verifica e recebe eventos do WhatsApp.
+- `pages/api/webhook.js` — rota `/api/webhook` que verifica e recebe eventos do WhatsApp.
 - `vercel.json` — configuração de rotas da Vercel.
 - `package.json` — dependências e scripts.
 - `.env.example` — exemplo das variáveis de ambiente.
@@ -47,13 +47,13 @@ Configure todas na Vercel:
 A URL será:
 
 ```
-https://NOME-DO-PROJETO.vercel.app/webhook
+https://NOME-DO-PROJETO.vercel.app/api/webhook
 ```
 
 Exemplo:
 
 ```
-https://whatsapp-gemini-bot.vercel.app/webhook
+https://whatsapp-gemini-bot.vercel.app/api/webhook
 ```
 
 Você encontra o domínio exato em **Vercel Dashboard → seu projeto → Domains**.
@@ -63,10 +63,10 @@ Você encontra o domínio exato em **Vercel Dashboard → seu projeto → Domain
 1. Acesse [https://developers.facebook.com](https://developers.facebook.com).
 2. Vá até seu app → **WhatsApp → Configuration** (ou **API Setup**).
 3. Procure a seção **“Webhook”**.
-4. Em **“Callback URL”**, cole a URL do seu projeto Vercel seguida de `/webhook`. Exemplo:
+4. Em **“Callback URL”**, cole a URL do seu projeto Vercel seguida de `/api/webhook`. Exemplo:
 
    ```
-   https://whatsapp-gemini-bot.vercel.app/webhook
+   https://whatsapp-gemini-bot.vercel.app/api/webhook
    ```
 
 5. Em **“Verify token”**, cole o mesmo valor da variável `WEBHOOK_VERIFY_TOKEN`.
@@ -92,4 +92,4 @@ npm install
 node api/webhook.js
 ```
 
-Acesse localmente: `http://localhost:3000/webhook`
+Acesse localmente: `http://localhost:3000/api/webhook`
