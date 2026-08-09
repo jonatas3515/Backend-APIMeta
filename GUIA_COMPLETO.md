@@ -26,63 +26,42 @@ Frontend Next.js (React)
 
 ## 🚀 Passo a Passo: Configuração Completa
 
-### PASSO 1: Criar Projeto no Supabase
+### PASSO 1: Acessar Seu Projeto Supabase Existente
 
 1. Acesse [https://supabase.com](https://supabase.com)
-2. Clique em **"New Project"**
-3. Preencha:
-   - **Organization**: crie uma ou use existente
-   - **Project name**: `whatsapp-chat-advocacia`
-   - **Database password**: salve em local seguro
-   - **Region**: São Paulo (ou sua região)
-4. Clique em **"Create new project"** e aguarde 2-3 minutos
+2. Faça login
+3. Clique no seu projeto (site de advocacia)
 
-### PASSO 2: Criar Tabelas no Supabase
+⚠️ **Se você ainda não tem um projeto Supabase:**
+- Clique em **"New Project"**
+- Preencha:
+  - **Organization**: crie uma ou use existente
+  - **Project name**: `whatsapp-chat-advocacia`
+  - **Database password**: salve em local seguro
+  - **Region**: São Paulo (ou sua região)
+- Clique em **"Create new project"** e aguarde 2-3 minutos
+
+### PASSO 2: Criar Tabelas de Chat (Seguro)
+
+⚠️ **IMPORTANTE**: Este SQL **apenas adiciona** novas tabelas, sem alterar nada existente.
 
 1. No dashboard do Supabase, clique em **"SQL Editor"** (menu esquerdo)
 2. Clique em **"New Query"**
-3. Copie e cole este SQL:
+3. Abra o arquivo `supabase/migrations/002_add_chat_tables.sql`
+4. Copie **TODO** o conteúdo e cole no SQL Editor
+5. Clique em **"Run"** (ou Ctrl+Enter)
 
-```sql
--- Criar tabela conversations
-CREATE TABLE conversations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  client_phone VARCHAR(20) NOT NULL UNIQUE,
-  client_name VARCHAR(255),
-  status VARCHAR(20) DEFAULT 'open',
-  mode VARCHAR(20) DEFAULT 'bot',
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
+6. Aguarde a mensagem de sucesso (deve levar menos de 5 segundos)
+7. Verifique em **"Table Editor"** se as 3 novas tabelas aparecem:
+   - `conversations`
+   - `messages`
+   - `admin_users`
 
--- Criar tabela messages
-CREATE TABLE messages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-  direction VARCHAR(20) NOT NULL,
-  sender_type VARCHAR(20) NOT NULL,
-  content_type VARCHAR(50) DEFAULT 'text',
-  text TEXT,
-  media_url TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Criar índices
-CREATE INDEX idx_conversations_client_phone ON conversations(client_phone);
-CREATE INDEX idx_messages_conversation_id ON messages(conversation_id);
-CREATE INDEX idx_messages_created_at ON messages(created_at);
-
--- Criar tabela admin_users (opcional)
-CREATE TABLE admin_users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email VARCHAR(255) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
-4. Clique em **"Run"** (ou Ctrl+Enter)
-5. Aguarde a mensagem de sucesso
+📖 **Leia o arquivo `SETUP_SUPABASE_SEGURO.md` para:**
+- Checklist de segurança pré-execução
+- Verificação pós-execução
+- Troubleshooting
+- Detalhes de cada tabela criada
 
 ### PASSO 3: Obter Credenciais do Supabase
 
