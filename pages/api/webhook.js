@@ -9,6 +9,8 @@ const GEMINI_API_URL_FALLBACK = `https://generativelanguage.googleapis.com/v1bet
 
 export default async function handler(req, res) {
   console.log(`[WEBHOOK] ${req.method} ${req.url}`);
+  console.log(`[WEBHOOK] Full URL:`, `${req.headers['x-forwarded-proto']}://${req.headers['host']}${req.url}`);
+  console.log(`[WEBHOOK] Headers:`, JSON.stringify(req.headers, null, 2));
   console.log(`[WEBHOOK] Body:`, JSON.stringify(req.body).substring(0, 200));
 
   // GET - Verificação do webhook pela Meta
@@ -17,7 +19,11 @@ export default async function handler(req, res) {
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
-    console.log(`[WEBHOOK] GET - mode: ${mode}, token: ${token ? '***' : 'vazio'}`);
+    console.log(`[WEBHOOK] GET - mode: ${mode}, token: ${token}, challenge: ${challenge}`);
+    console.log(`[WEBHOOK] VERIFY_TOKEN configurado: ${VERIFY_TOKEN ? '✅ Sim' : '❌ Não'}`);
+    console.log(`[WEBHOOK] Token recebido: "${token}"`);
+    console.log(`[WEBHOOK] Token esperado: "${VERIFY_TOKEN}"`);
+    console.log(`[WEBHOOK] Tokens iguais? ${token === VERIFY_TOKEN}`);
 
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
       console.log('[WEBHOOK] ✅ Webhook verificado com sucesso.');
@@ -25,7 +31,15 @@ export default async function handler(req, res) {
     }
 
     console.log('[WEBHOOK] ❌ Falha na verificação do webhook.');
-    return res.status(403).json({ error: 'Falha na verificação' });
+    return res.status(403).json({ 
+      error: 'Falha na verificação',
+      debug: {
+        mode,
+        tokenRecebido: token,
+        tokenEsperado: VERIFY_TOKEN,
+        iguais: token === VERIFY_TOKEN
+      }
+    });
   }
 
   // POST - Recebe mensagens do WhatsApp
