@@ -5,11 +5,12 @@ app.use(express.json());
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
-const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID;
+const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '1289520100904873';
 const GEMINI_API_KEY = process.env.GOOGLE_AI_API_KEY;
 
 const WHATSAPP_API_URL = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_API_URL_PRIMARY = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_API_URL_FALLBACK = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
 
 // GET /webhook - verificação do webhook pela Meta
 app.get('/webhook', (req, res) => {
@@ -55,27 +56,58 @@ app.post('/webhook', async (req, res) => {
 });
 
 async function askGemini(prompt) {
-  const response = await fetch(GEMINI_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [{ text: prompt }]
-        }
-      ]
-    })
-  });
+  try {
+    console.log('Tentando Gemini 2.5 Flash-Lite...');
+    const response = await fetch(GEMINI_API_URL_PRIMARY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [{ text: prompt }]
+          }
+        ]
+      })
+    });
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    console.error(`Erro na API Gemini: status ${response.status} ${response.statusText}, corpo: ${errorBody}`);
-    throw new Error(`Erro na API Gemini: ${response.status} ${response.statusText}`);
+    if (response.ok) {
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      return text || 'Desculpe, não consegui gerar uma resposta.';
+    }
+
+    console.warn(`Gemini 2.5 falhou (${response.status}), tentando fallback 1.5 Flash-Lite...`);
+  } catch (error) {
+    console.warn(`Erro ao tentar Gemini 2.5: ${error.message}, tentando fallback...`);
   }
 
-  const data = await response.json();
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  return text || 'Desculpe, não consegui gerar uma resposta.';
+  try {
+    console.log('Tentando Gemini 1.5 Flash-Lite...');
+    const response = await fetch(GEMINI_API_URL_FALLBACK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [{ text: prompt }]
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`Erro na API Gemini 1.5: status ${response.status} ${response.statusText}, corpo: ${errorBody}`);
+      throw new Error(`Erro na API Gemini: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    return text || 'Desculpe, não consegui gerar uma resposta.';
+  } catch (error) {
+    console.error(`Erro em ambos os modelos Gemini: ${error.message}`);
+    throw error;
+  }
 }
 
 async function sendWhatsAppMessage(to, text) {
