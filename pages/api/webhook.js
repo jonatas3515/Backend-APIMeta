@@ -27,6 +27,7 @@ export default async function handler(req, res) {
 
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
       console.log('[WEBHOOK] ✅ Webhook verificado com sucesso.');
+      res.setHeader('Content-Type', 'text/plain');
       return res.status(200).send(challenge);
     }
 
