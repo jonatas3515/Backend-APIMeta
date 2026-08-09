@@ -1,9 +1,15 @@
 {
   "version": 2,
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
   "routes": [
     {
       "src": "/webhook",
       "dest": "/api/webhook"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
     }
   ]
 }
