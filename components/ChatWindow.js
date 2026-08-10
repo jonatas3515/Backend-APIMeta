@@ -124,29 +124,48 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
 
     setSending(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('conversationId', conversation.id);
+      // Converter arquivo para base64
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      
+      reader.onload = async () => {
+        try {
+          const fileBase64 = reader.result;
 
-      const uploadResponse = await axios.post('/api/upload-file', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+          const uploadResponse = await axios.post('/api/upload-file', {
+            fileBase64,
+            fileName: file.name,
+            fileType: file.type,
+            conversationId: conversation.id
+          });
 
-      const { url, fileName, fileType } = uploadResponse.data;
+          const { url, fileName, fileType } = uploadResponse.data;
 
-      // Enviar mensagem com o arquivo
-      await axios.post('/api/send-message', {
-        conversation_id: conversation.id,
-        text: `📎 ${fileName}`,
-        media_url: url,
-        media_type: fileType
-      });
+          // Enviar mensagem com o arquivo
+          await axios.post('/api/send-message', {
+            conversation_id: conversation.id,
+            text: `📎 ${fileName}`,
+            media_url: url,
+            media_type: fileType
+          });
 
-      onConversationUpdate();
+          onConversationUpdate();
+          setSending(false);
+        } catch (error) {
+          console.error('Erro ao enviar arquivo:', error);
+          alert('Erro ao enviar arquivo: ' + error.message);
+          setSending(false);
+        }
+      };
+
+      reader.onerror = () => {
+        console.error('Erro ao ler arquivo');
+        alert('Erro ao ler arquivo');
+        setSending(false);
+      };
     } catch (error) {
-      console.error('Erro ao enviar arquivo:', error);
-      alert('Erro ao enviar arquivo');
-    } finally {
+      console.error('Erro ao processar arquivo:', error);
+      alert('Erro ao processar arquivo');
       setSending(false);
     }
   };
