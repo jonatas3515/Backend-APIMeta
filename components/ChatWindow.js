@@ -173,7 +173,15 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      
+      // Usar tipo compatível com WhatsApp
+      const mimeType = MediaRecorder.isTypeSupported('audio/mp4') 
+        ? 'audio/mp4' 
+        : MediaRecorder.isTypeSupported('audio/ogg') 
+        ? 'audio/ogg' 
+        : 'audio/webm';
+      
+      const recorder = new MediaRecorder(stream, { mimeType });
       const chunks = [];
 
       recorder.ondataavailable = (e) => {
@@ -181,8 +189,9 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
       };
 
       recorder.onstop = async () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-        const audioFile = new File([audioBlob], `audio-${Date.now()}.webm`, { type: 'audio/webm' });
+        const extension = mimeType.split('/')[1];
+        const audioBlob = new Blob(chunks, { type: mimeType });
+        const audioFile = new File([audioBlob], `audio-${Date.now()}.${extension}`, { type: mimeType });
         await handleFileUpload(audioFile);
         stream.getTracks().forEach(track => track.stop());
       };
