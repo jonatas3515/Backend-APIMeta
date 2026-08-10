@@ -89,18 +89,13 @@ export default async function handler(req, res) {
 
       console.log(`[WEBHOOK] ✅ Mensagem recebida de ${from}: ${textBody}`);
 
-      // Chamar Gemini e enviar resposta de forma assíncrona (sem await para não travar)
-      askGemini(textBody)
-        .then(aiReply => {
-          console.log(`[WEBHOOK] ✅ Resposta da IA: ${aiReply}`);
-          return sendWhatsAppMessage(from, aiReply);
-        })
-        .then(() => {
-          console.log(`[WEBHOOK] ✅ Resposta enviada para ${from}`);
-        })
-        .catch(error => {
-          console.error(`[WEBHOOK] ❌ Erro ao processar resposta:`, error.message);
-        });
+      // Chamar Gemini com await (timeout de 5s)
+      const aiReply = await askGemini(textBody);
+      console.log(`[WEBHOOK] ✅ Resposta da IA: ${aiReply?.substring(0, 100)}`);
+
+      // Enviar resposta via WhatsApp
+      await sendWhatsAppMessage(from, aiReply);
+      console.log(`[WEBHOOK] ✅ Resposta enviada para ${from}`);
     } catch (error) {
       console.error('[WEBHOOK] ❌ Erro ao processar mensagem:', error.message);
       console.error('[WEBHOOK] Stack:', error.stack);
@@ -116,9 +111,9 @@ async function askGemini(prompt) {
     
     const controller = new AbortController();
     const timeout = setTimeout(() => {
-      console.error('[GEMINI] ⏱️ TIMEOUT de 8 segundos atingido!');
+      console.error('[GEMINI] ⏱️ TIMEOUT de 5 segundos atingido!');
       controller.abort();
-    }, 8000);
+    }, 5000);
     
     console.log('[GEMINI] Iniciando fetch...');
     const response = await fetch(GEMINI_API_URL_PRIMARY, {
