@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { conversation_id, text } = req.body;
+    const { conversation_id, text, media_url, media_type } = req.body;
 
     if (!conversation_id || !text) {
       return res.status(400).json({ error: 'conversation_id e text são obrigatórios' });
@@ -32,13 +32,36 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Conversa não encontrada' });
     }
 
-    await axios.post(WHATSAPP_API_URL, {
+    // Monta payload do WhatsApp
+    let whatsappPayload = {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
       to: conversation.client_phone,
       type: 'text',
-      text: { body: text },
-    }, {
+      text: { body: text }
+    };
+
+    // Se tem mídia, envia como documento/imagem/áudio
+    if (media_url) {
+      const isImage = media_type?.startsWith('image/');
+      const isAudio = media_type?.startsWith('audio/');
+      
+      if (isImage) {
+        whatsappPayload.type = 'image';
+        whatsappPayload.image = { link: media_url, caption: text };
+        delete whatsappPayload.text;
+      } else if (isAudio) {
+        whatsappPayload.type = 'audio';
+        whatsappPayload.audio = { link: media_url };
+        delete whatsappPayload.text;
+      } else {
+        whatsappPayload.type = 'document';
+        whatsappPayload.document = { link: media_url, caption: text };
+        delete whatsappPayload.text;
+      }
+    }
+
+    await axios.post(WHATSAPP_API_URL, whatsappPayload, {
       headers: {
         'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
         'Content-Type': 'application/json',
@@ -51,8 +74,10 @@ export default async function handler(req, res) {
         conversation_id,
         direction: 'outbound',
         sender_type: 'human',
-        content_type: 'text',
+        content_type: media_url ? (media_type?.startsWith('image/') ? 'image' : media_type?.startsWith('audio/') ? 'audio' : 'document') : 'text',
         text,
+        media_url: media_url || null,
+        media_type: media_type || null
       }]);
 
     if (msgError) {
