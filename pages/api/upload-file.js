@@ -10,7 +10,7 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: '10mb',
+      sizeLimit: '50mb',
     },
   },
 };

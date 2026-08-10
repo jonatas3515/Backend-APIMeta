@@ -1,4 +1,15 @@
 {
   "version": 2,
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "pages/api/**/*.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  },
+  "api": {
+    "bodyParser": {
+      "sizeLimit": "50mb"
+    }
+  }
 }
