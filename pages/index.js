@@ -37,16 +37,23 @@ export default function Home() {
 
   const fetchConversations = async () => {
     try {
+      console.log('[FRONTEND] Buscando conversas...');
       const { data, error } = await supabase
         .from('conversations')
         .select('*, messages(created_at, text)')
         .order('updated_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('[FRONTEND] Erro ao buscar conversas:', error);
+        throw error;
+      }
+      
+      console.log('[FRONTEND] Conversas encontradas:', data?.length || 0);
+      console.log('[FRONTEND] Dados:', data);
       setConversations(data || []);
       setLoading(false);
     } catch (error) {
-      console.error('Erro ao buscar conversas:', error);
+      console.error('[FRONTEND] Erro ao buscar conversas:', error);
       setLoading(false);
     }
   };
