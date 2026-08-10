@@ -45,6 +45,7 @@ export default async function handler(req, res) {
 
   // POST - Recebe mensagens do WhatsApp
   if (req.method === 'POST') {
+    console.log('[WEBHOOK] 📦 Body completo:', JSON.stringify(req.body, null, 2));
     res.status(200).json({ success: true });
 
     try {
@@ -53,6 +54,9 @@ export default async function handler(req, res) {
       const value = changes?.value;
       const messages = value?.messages;
 
+      console.log(`[WEBHOOK] Entry:`, entry ? 'existe' : 'null');
+      console.log(`[WEBHOOK] Changes:`, changes ? 'existe' : 'null');
+      console.log(`[WEBHOOK] Value:`, value ? 'existe' : 'null');
       console.log(`[WEBHOOK] Mensagens recebidas:`, messages?.length || 0);
 
       if (!messages || messages.length === 0) {
