@@ -7,6 +7,9 @@ const WHATSAPP_API_URL = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/me
 const GEMINI_API_URL_PRIMARY = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
 const GEMINI_API_URL_FALLBACK = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
 
+// Variável global para debug (temporário)
+global.lastWebhookPost = null;
+
 export default async function handler(req, res) {
   console.log(`[WEBHOOK] ${req.method} ${req.url}`);
   console.log(`[WEBHOOK] Full URL:`, `${req.headers['x-forwarded-proto']}://${req.headers['host']}${req.url}`);
@@ -45,6 +48,13 @@ export default async function handler(req, res) {
 
   // POST - Recebe mensagens do WhatsApp
   if (req.method === 'POST') {
+    // Salva para debug
+    global.lastWebhookPost = {
+      timestamp: new Date().toISOString(),
+      body: req.body,
+      headers: req.headers,
+    };
+    
     console.error('[WEBHOOK] ========== INÍCIO POST ==========');
     console.error('[WEBHOOK] 📦 Body completo:', JSON.stringify(req.body, null, 2));
     console.error('[WEBHOOK] ========== FIM BODY ==========');
