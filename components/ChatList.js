@@ -66,9 +66,23 @@ export default function ChatList({ conversations, selectedConversation, onSelect
                   {conv.mode === 'bot' ? 'Bot' : 'Humano'}
                 </span>
               </div>
-              <p className="text-xs text-gray-400 mt-2">
-                {new Date(conv.updated_at).toLocaleString('pt-BR')}
-              </p>
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-xs text-gray-400">
+                  {(() => {
+                    const now = new Date();
+                    const updated = new Date(conv.updated_at);
+                    const diffMinutes = Math.floor((now - updated) / (1000 * 60));
+                    
+                    if (diffMinutes < 1) return 'Agora';
+                    if (diffMinutes < 60) return `${diffMinutes} min atrás`;
+                    if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h atrás`;
+                    return updated.toLocaleDateString('pt-BR');
+                  })()}
+                </p>
+                {conv.status === 'open' && (
+                  <span className="w-2 h-2 bg-green-500 rounded-full" title="Conversa ativa"></span>
+                )}
+              </div>
             </div>
           ))
         )}
