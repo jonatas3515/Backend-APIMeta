@@ -131,33 +131,43 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
       let mediaUrl = null;
       let mediaType = null;
       
-      // Se tem arquivo ou áudio pendente, fazer upload DIRETO para Supabase Storage
+      // Se tem arquivo ou áudio pendente, fazer upload via URL assinada
       const fileToUpload = pendingAudio || pendingFile;
       if (fileToUpload) {
-        const timestamp = Date.now();
-        const sanitizedFileName = fileToUpload.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const filePath = `${conversation.id}/${timestamp}-${sanitizedFileName}`;
+        setUploadProgress(10);
 
-        // Upload direto para Supabase Storage (sem passar pelo Next.js)
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('chat-files')
-          .upload(filePath, fileToUpload, {
-            contentType: fileToUpload.type,
-            upsert: false
-          });
+        // 1. Buscar URL assinada do backend (service_role)
+        const { data: signedData } = await axios.post('/api/upload-file', {
+          fileName: fileToUpload.name,
+          fileType: fileToUpload.type,
+          conversationId: conversation.id
+        });
 
-        if (uploadError) {
-          console.error('Erro no upload:', uploadError);
-          throw new Error('Erro ao fazer upload do arquivo');
+        setUploadProgress(50);
+
+        // 2. Fazer upload DIRETO para a URL assinada (evita limite do Vercel e RLS)
+        const uploadResponse = await fetch(signedData.signedUrl, {
+          method: 'PUT',
+          body: fileToUpload,
+          headers: {
+            'Content-Type': fileToUpload.type || 'application/octet-stream'
+          }
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Erro no upload: ${uploadResponse.statusText}`);
         }
 
-        // Obter URL pública
+        setUploadProgress(90);
+
+        // 3. Obter URL pública
         const { data: urlData } = supabase.storage
           .from('chat-files')
-          .getPublicUrl(filePath);
+          .getPublicUrl(signedData.filePath);
 
         mediaUrl = urlData.publicUrl;
         mediaType = fileToUpload.type;
+        setUploadProgress(100);
       }
 
       // Enviar mensagem
@@ -171,6 +181,7 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
       setNewMessage('');
       setPendingFile(null);
       setPendingAudio(null);
+      setUploadProgress(0);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
