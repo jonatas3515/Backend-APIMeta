@@ -89,13 +89,18 @@ export default async function handler(req, res) {
 
       console.log(`[WEBHOOK] ✅ Mensagem recebida de ${from}: ${textBody}`);
 
-      // Chamar Gemini
-      const aiReply = await askGemini(textBody);
-      console.log(`[WEBHOOK] ✅ Resposta da IA: ${aiReply}`);
-
-      // Enviar resposta via WhatsApp
-      await sendWhatsAppMessage(from, aiReply);
-      console.log(`[WEBHOOK] ✅ Resposta enviada para ${from}`);
+      // Chamar Gemini e enviar resposta de forma assíncrona (sem await para não travar)
+      askGemini(textBody)
+        .then(aiReply => {
+          console.log(`[WEBHOOK] ✅ Resposta da IA: ${aiReply}`);
+          return sendWhatsAppMessage(from, aiReply);
+        })
+        .then(() => {
+          console.log(`[WEBHOOK] ✅ Resposta enviada para ${from}`);
+        })
+        .catch(error => {
+          console.error(`[WEBHOOK] ❌ Erro ao processar resposta:`, error.message);
+        });
     } catch (error) {
       console.error('[WEBHOOK] ❌ Erro ao processar mensagem:', error.message);
       console.error('[WEBHOOK] Stack:', error.stack);
