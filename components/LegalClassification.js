@@ -11,7 +11,16 @@ export default function LegalClassification({ conversation, onUpdate }) {
     client_status: conversation.client_status || 'lead',
     priority: conversation.priority || 'normal',
     assigned_to: conversation.assigned_to || '',
-    notes: conversation.notes || ''
+    notes: conversation.notes || '',
+    funnel_stage: conversation.funnel_stage || 'intake',
+    case_type: conversation.case_type || '',
+    municipality: conversation.municipality || '',
+    state: conversation.state || '',
+    organ: conversation.organ || '',
+    position: conversation.position || '',
+    is_public_employee: conversation.is_public_employee || false,
+    source: conversation.source || '',
+    campaign: conversation.campaign || ''
   });
 
   const legalAreas = [
@@ -42,6 +51,47 @@ export default function LegalClassification({ conversation, onUpdate }) {
     { value: 'alta', label: '🟠 Alta', color: 'orange' },
     { value: 'urgente', label: '🔴 Urgente', color: 'red' }
   ];
+
+  const funnelStages = [
+    { value: 'intake', label: '📥 Intake' },
+    { value: 'qualificacao', label: '✅ Qualificação' },
+    { value: 'proposta', label: '💰 Proposta' },
+    { value: 'contrato', label: '📝 Contrato' },
+    { value: 'andamento', label: '⚙️ Andamento' },
+    { value: 'pos_caso', label: '🏁 Pós-caso' }
+  ];
+
+  const organs = [
+    { value: 'prefeitura', label: '🏛️ Prefeitura' },
+    { value: 'camara', label: '🏛️ Câmara' },
+    { value: 'autarquia', label: '🏛️ Autarquia' },
+    { value: 'empresa_privada', label: '🏢 Empresa Privada' },
+    { value: 'outro', label: '📋 Outro' }
+  ];
+
+  const positions = [
+    { value: 'professor_municipal', label: '👨‍🏫 Professor Municipal' },
+    { value: 'agente_comunitario', label: '👥 Agente Comunitário' },
+    { value: 'servidor_efetivo', label: '👤 Servidor Efetivo' },
+    { value: 'servidor_comissionado', label: '👤 Servidor Comissionado' },
+    { value: 'empregado_privado', label: '👷 Empregado Privado' },
+    { value: 'aposentado', label: '🧓 Aposentado' },
+    { value: 'outro', label: '📋 Outro' }
+  ];
+
+  const sources = [
+    { value: 'whatsapp_organico', label: '💬 WhatsApp Orgânico' },
+    { value: 'indicacao', label: '👥 Indicação' },
+    { value: 'facebook', label: '📘 Facebook' },
+    { value: 'instagram', label: '📸 Instagram' },
+    { value: 'google', label: '🔍 Google' },
+    { value: 'campanha', label: '📢 Campanha' }
+  ];
+
+  const getFunnelLabel = (stage) => funnelStages.find(s => s.value === stage)?.label || stage;
+  const getOrganLabel = (organ) => organs.find(o => o.value === organ)?.label || organ;
+  const getPositionLabel = (position) => positions.find(p => p.value === position)?.label || position;
+  const getSourceLabel = (source) => sources.find(s => s.value === source)?.label || source;
 
   const handleSave = async () => {
     setSaving(true);
@@ -167,6 +217,46 @@ export default function LegalClassification({ conversation, onUpdate }) {
               <p className="text-xs text-gray-700 bg-gray-50 p-2 rounded">{formData.notes}</p>
             </div>
           )}
+
+          <div>
+            <p className="text-gray-500 text-xs mb-1">Etapa do Funil</p>
+            <span className="inline-block px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs font-semibold">
+              {getFunnelLabel(formData.funnel_stage)}
+            </span>
+          </div>
+
+          <div>
+            <p className="text-gray-500 text-xs mb-1">Origem</p>
+            <span className="text-xs">{getSourceLabel(formData.source) || 'Não informada'}</span>
+          </div>
+
+          {formData.municipality && (
+            <div>
+              <p className="text-gray-500 text-xs mb-1">Município/UF</p>
+              <span className="text-xs">{formData.municipality}{formData.state ? `/${formData.state}` : ''}</span>
+            </div>
+          )}
+
+          {formData.organ && (
+            <div>
+              <p className="text-gray-500 text-xs mb-1">Órgão/Cargo</p>
+              <span className="text-xs">{getOrganLabel(formData.organ)} {formData.position ? `• ${getPositionLabel(formData.position)}` : ''}</span>
+            </div>
+          )}
+
+          {formData.case_type && (
+            <div className="col-span-2">
+              <p className="text-gray-500 text-xs mb-1">Tipo do Caso</p>
+              <span className="text-xs font-medium">{formData.case_type}</span>
+            </div>
+          )}
+
+          {formData.campaign && (
+            <div>
+              <p className="text-gray-500 text-xs mb-1">Campanha</p>
+              <span className="text-xs">{formData.campaign}</span>
+            </div>
+          )}
         </div>
 
         {!conversation.archived && (
@@ -255,6 +345,130 @@ export default function LegalClassification({ conversation, onUpdate }) {
             value={formData.assigned_to}
             onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
             placeholder="Nome do advogado responsável"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div className="border-t border-gray-200 pt-3">
+          <h4 className="font-semibold text-gray-800 mb-2 text-sm">🎯 Funil de Atendimento</h4>
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Etapa do Funil</label>
+            <select
+              value={formData.funnel_stage}
+              onChange={(e) => setFormData({ ...formData, funnel_stage: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {funnelStages.map(stage => (
+                <option key={stage.value} value={stage.value}>{stage.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-200 pt-3">
+          <h4 className="font-semibold text-gray-800 mb-2 text-sm">📍 Segmentação</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Município</label>
+              <input
+                type="text"
+                value={formData.municipality}
+                onChange={(e) => setFormData({ ...formData, municipality: e.target.value })}
+                placeholder="Ex: Eunápolis"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">UF</label>
+              <input
+                type="text"
+                value={formData.state}
+                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                placeholder="Ex: BA"
+                maxLength={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Órgão</label>
+              <select
+                value={formData.organ}
+                onChange={(e) => setFormData({ ...formData, organ: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Selecione...</option>
+                {organs.map(organ => (
+                  <option key={organ.value} value={organ.value}>{organ.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Cargo</label>
+              <select
+                value={formData.position}
+                onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Selecione...</option>
+                {positions.map(position => (
+                  <option key={position.value} value={position.value}>{position.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={formData.is_public_employee}
+                onChange={(e) => setFormData({ ...formData, is_public_employee: e.target.checked })}
+                className="w-4 h-4"
+              />
+              <span className="text-sm">Servidor público</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-200 pt-3">
+          <h4 className="font-semibold text-gray-800 mb-2 text-sm">📈 Marketing</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Origem</label>
+              <select
+                value={formData.source}
+                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Selecione...</option>
+                {sources.map(source => (
+                  <option key={source.value} value={source.value}>{source.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Campanha</label>
+              <input
+                type="text"
+                value={formData.campaign}
+                onChange={(e) => setFormData({ ...formData, campaign: e.target.value })}
+                placeholder="Ex: Aposentadoria 2026"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1">Tipo do Caso</label>
+          <input
+            type="text"
+            value={formData.case_type}
+            onChange={(e) => setFormData({ ...formData, case_type: e.target.value })}
+            placeholder="Ex: Demissão sem justa causa, Adicional de insalubridade"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
