@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { detectArea, getNextQuestion, isIntakeComplete, getFlow } from '../../lib/intakeFlows';
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
@@ -163,6 +164,18 @@ export default async function handler(req, res) {
         await saveMessage(conversation.id, textBody, 'client', messageType);
       }
 
+      // ================= COLETA GUIADA DE INFORMAÇÕES =================
+      if (conversation && messageType === 'text') {
+        const intakeResult = await handleIntake(conversation, textBody);
+        if (intakeResult && intakeResult.reply) {
+          // Enviar próxima pergunta do intake
+          await saveMessage(conversation.id, intakeResult.reply, 'ai');
+          await sendWhatsAppMessage(from, intakeResult.reply);
+          console.log(`[WEBHOOK] ✅ Resposta de intake enviada para ${from}`);
+          return res.status(200).json({ success: true, intake: true });
+        }
+      }
+
       // Buscar histórico da conversa para contexto
       let conversationHistory = '';
       if (conversation && supabase) {
@@ -229,6 +242,125 @@ export default async function handler(req, res) {
       console.error('[WEBHOOK] Stack:', error.stack);
     }
   }
+}
+
+// Função para gerenciar coleta guiada de informações (intake)
+async function handleIntake(conversation, clientMessage) {
+  const msg = clientMessage.toLowerCase().trim();
+  let intakeData = conversation.intake_data || {};
+  let currentArea = conversation.legal_area;
+  let currentStep = parseInt(intakeData.current_step || -1);
+
+  // Se já está em processo de intake
+  if (currentArea && currentStep >= 0) {
+    const flow = getFlow(currentArea);
+    if (!flow) return null;
+
+    // Salvar resposta da pergunta anterior
+    const previousQuestion = flow.questions[currentStep];
+    if (previousQuestion) {
+      intakeData[previousQuestion.field] = clientMessage;
+      intakeData.answers = intakeData.answers || {};
+      intakeData.answers[previousQuestion.field] = clientMessage;
+    }
+
+    const nextStep = currentStep + 1;
+
+    if (isIntakeComplete(currentArea, nextStep)) {
+      // Intake completo - gerar resumo
+      const summary = generateIntakeSummary(currentArea, intakeData.answers || {});
+      
+      await supabase
+        .from('conversations')
+        .update({
+          intake_data: { ...intakeData, completed: true, completed_at: new Date().toISOString() },
+          case_summary: summary,
+          funnel_stage: 'qualificacao',
+          legal_area: currentArea
+        })
+        .eq('id', conversation.id);
+
+      const finalMessage = `Obrigado pelas informações! 📝\n\nResumo do seu caso:\n${summary}\n\nNossa equipe irá analisar e retornar em breve.`;
+      
+      return { reply: finalMessage, completed: true };
+    } else {
+      // Próxima pergunta
+      const nextQuestion = getNextQuestion(currentArea, nextStep);
+      intakeData.current_step = nextStep;
+      
+      await supabase
+        .from('conversations')
+        .update({
+          intake_data: intakeData,
+          legal_area: currentArea,
+          funnel_stage: 'intake'
+        })
+        .eq('id', conversation.id);
+
+      return { reply: nextQuestion.question };
+    }
+  }
+
+  // Se não está em intake, tentar detectar área
+  const detectedArea = detectArea(clientMessage);
+  
+  if (detectedArea) {
+    const flow = getFlow(detectedArea);
+    
+    // Perguntar se quer iniciar coleta guiada
+    if (msg.includes('sim') || msg.includes('quero') || msg.includes('pode ser') || msg.includes('ok')) {
+      // Iniciar intake
+      const firstQuestion = getNextQuestion(detectedArea, 0);
+      
+      await supabase
+        .from('conversations')
+        .update({
+          legal_area: detectedArea,
+          intake_data: { current_step: 0, started_at: new Date().toISOString(), answers: {} },
+          funnel_stage: 'intake'
+        })
+        .eq('id', conversation.id);
+
+      return { reply: firstQuestion.question };
+    } else {
+      // Oferecer coleta guiada
+      await supabase
+        .from('conversations')
+        .update({
+          legal_area: detectedArea,
+          intake_data: { detected_area: detectedArea, pending_start: true }
+        })
+        .eq('id', conversation.id);
+
+      return {
+        reply: `Entendi que pode ser um caso de ${flow.displayName}. Para que eu possa organizar as informações e passar tudo certinho para a equipe, posso fazer algumas perguntas rápidas? Responda "sim" para começar.`
+      };
+    }
+  }
+
+  return null;
+}
+
+// Função para gerar resumo de intake
+function generateIntakeSummary(area, answers) {
+  const flow = getFlow(area);
+  if (!flow) return 'Resumo não disponível.';
+
+  let summary = `*Área:* ${flow.displayName}\n`;
+  summary += `*Data:* ${new Date().toLocaleDateString('pt-BR')}\n\n`;
+
+  const questionLabels = {};
+  flow.questions.forEach(q => {
+    questionLabels[q.field] = q.question.replace('?', '').replace('(ex:', '(');
+  });
+
+  for (const [field, value] of Object.entries(answers)) {
+    if (value && value.trim() && questionLabels[field]) {
+      summary += `• ${questionLabels[field]}: ${value}\n`;
+    }
+  }
+
+  return summary;
 }
 
 // Função para detectar se cliente precisa de atendimento humano
