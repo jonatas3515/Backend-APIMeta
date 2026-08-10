@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabaseClient';
 import ChatList from '../components/ChatList';
 import ChatWindow from '../components/ChatWindow';
 import ClientsList from '../components/ClientsList';
+import FunnelKanban from '../components/FunnelKanban';
+import MetricsDashboard from '../components/MetricsDashboard';
 import Login from '../components/Login';
 import Setup from './setup';
 import Head from 'next/head';
@@ -134,6 +136,28 @@ export default function Home() {
             >
               👥
             </button>
+            <button
+              onClick={() => setActiveTab('funnel')}
+              className={`p-3 rounded-lg transition ${
+                activeTab === 'funnel' 
+                  ? 'bg-black text-nc-yellow' 
+                  : 'text-black hover:bg-nc-yellow-300'
+              }`}
+              title="Funil"
+            >
+              🎯
+            </button>
+            <button
+              onClick={() => setActiveTab('metrics')}
+              className={`p-3 rounded-lg transition ${
+                activeTab === 'metrics' 
+                  ? 'bg-black text-nc-yellow' 
+                  : 'text-black hover:bg-nc-yellow-300'
+              }`}
+              title="Métricas"
+            >
+              📊
+            </button>
           </div>
 
           {/* Botão de logout no final */}
@@ -164,8 +188,18 @@ export default function Home() {
               />
             )}
           </>
-        ) : (
+        ) : activeTab === 'clients' ? (
           <ClientsList />
+        ) : activeTab === 'funnel' ? (
+          <FunnelKanban
+            conversations={conversations}
+            onSelectConversation={(conv) => {
+              setSelectedConversation(conv);
+              setActiveTab('chat');
+            }}
+          />
+        ) : (
+          <MetricsDashboard conversations={conversations} />
         )}
       </div>
     </>
