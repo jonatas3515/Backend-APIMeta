@@ -1,4 +1,8 @@
+import { useState } from 'react';
+
 export default function ChatList({ conversations, selectedConversation, onSelectConversation, loading }) {
+  const [searchTerm, setSearchTerm] = useState('');
+
   if (loading) {
     return (
       <div className="w-80 bg-white border-r border-gray-200 flex items-center justify-center">
@@ -7,18 +11,33 @@ export default function ChatList({ conversations, selectedConversation, onSelect
     );
   }
 
+  const filteredConversations = conversations.filter(conv => {
+    const search = searchTerm.toLowerCase();
+    return (
+      conv.client_name?.toLowerCase().includes(search) ||
+      conv.client_phone?.includes(search)
+    );
+  });
+
   return (
     <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
       <div className="p-4 border-b border-gray-200">
-        <h1 className="text-2xl font-bold text-gray-800">Chat Advocacia</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-3">Chat Advocacia N&C</h1>
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="🔍 Pesquisar..."
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+        />
       </div>
       <div className="flex-1 overflow-y-auto">
-        {conversations.length === 0 ? (
+        {filteredConversations.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
-            Nenhuma conversa ainda
+            {searchTerm ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}
           </div>
         ) : (
-          conversations.map((conv) => (
+          filteredConversations.map((conv) => (
             <div
               key={conv.id}
               onClick={() => onSelectConversation(conv)}
