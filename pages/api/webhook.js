@@ -106,6 +106,9 @@ export default async function handler(req, res) {
 async function askGemini(prompt) {
   try {
     console.log('[GEMINI] Tentando Gemini 2.5 Flash-Lite...');
+    console.log('[GEMINI] URL:', GEMINI_API_URL_PRIMARY.substring(0, 100) + '...');
+    console.log('[GEMINI] API Key presente?', GEMINI_API_KEY ? 'Sim' : 'NÃO');
+    
     const response = await fetch(GEMINI_API_URL_PRIMARY, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -117,6 +120,8 @@ async function askGemini(prompt) {
         ]
       })
     });
+    
+    console.log('[GEMINI] Response status:', response.status);
 
     if (response.ok) {
       const data = await response.json();
