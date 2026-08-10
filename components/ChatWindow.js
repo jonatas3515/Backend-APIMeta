@@ -10,6 +10,9 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
   const [mode, setMode] = useState(conversation.mode);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showPauseMenu, setShowPauseMenu] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [audioChunks, setAudioChunks] = useState([]);
   const messagesEndRef = useRef(null);
   
   const emojis = [
@@ -113,6 +116,72 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
     } catch (error) {
       console.error('Erro ao reativar bot:', error);
       alert('Erro ao reativar bot');
+    }
+  };
+
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+
+    setSending(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('conversationId', conversation.id);
+
+      const uploadResponse = await axios.post('/api/upload-file', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      const { url, fileName, fileType } = uploadResponse.data;
+
+      // Enviar mensagem com o arquivo
+      await axios.post('/api/send-message', {
+        conversation_id: conversation.id,
+        text: `📎 ${fileName}`,
+        media_url: url,
+        media_type: fileType
+      });
+
+      onConversationUpdate();
+    } catch (error) {
+      console.error('Erro ao enviar arquivo:', error);
+      alert('Erro ao enviar arquivo');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => {
+        chunks.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        const audioFile = new File([audioBlob], `audio-${Date.now()}.webm`, { type: 'audio/webm' });
+        await handleFileUpload(audioFile);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      recorder.start();
+      setMediaRecorder(recorder);
+      setIsRecording(true);
+    } catch (error) {
+      console.error('Erro ao iniciar gravação:', error);
+      alert('Erro ao acessar microfone. Verifique as permissões.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+      setIsRecording(false);
+      setMediaRecorder(null);
     }
   };
 
@@ -239,22 +308,29 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
               <input
                 type="file"
                 className="hidden"
-                accept="image/*,application/pdf,.doc,.docx"
+                accept="image/*,application/pdf,.doc,.docx,.txt"
                 onChange={(e) => {
                   const file = e.target.files[0];
                   if (file) {
-                    alert(`Funcionalidade de envio de arquivo em desenvolvimento.\nArquivo selecionado: ${file.name}`);
+                    handleFileUpload(file);
+                    e.target.value = '';
                   }
                 }}
+                disabled={sending}
               />
             </label>
             
             <button
-              className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
-              title="Gravar áudio (em breve)"
-              onClick={() => alert('Funcionalidade de áudio em desenvolvimento')}
+              className={`px-3 py-2 rounded-lg transition ${
+                isRecording 
+                  ? 'bg-red-500 text-white animate-pulse' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              title={isRecording ? 'Parar gravação' : 'Gravar áudio'}
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={sending}
             >
-              🎤
+              {isRecording ? '⏹️' : '🎤'}
             </button>
             
             <input
