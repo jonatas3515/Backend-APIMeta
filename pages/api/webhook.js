@@ -91,13 +91,36 @@ export default async function handler(req, res) {
 
       const message = messages[0];
       const from = message.from;
-      const textBody = message.text?.body;
+      const messageType = message.type;
       const clientName = value.contacts?.[0]?.profile?.name || 'Cliente';
+      
+      let textBody = '';
+      let mediaUrl = '';
+      let mediaId = '';
+      
+      // Processa diferentes tipos de mensagem
+      if (messageType === 'text') {
+        textBody = message.text?.body || '';
+      } else if (messageType === 'image') {
+        mediaId = message.image?.id;
+        textBody = message.image?.caption || '[Imagem enviada]';
+      } else if (messageType === 'audio') {
+        mediaId = message.audio?.id;
+        textBody = '[Áudio enviado]';
+      } else if (messageType === 'video') {
+        mediaId = message.video?.id;
+        textBody = message.video?.caption || '[Vídeo enviado]';
+      } else if (messageType === 'document') {
+        mediaId = message.document?.id;
+        textBody = message.document?.caption || `[Documento: ${message.document?.filename || 'arquivo'}]`;
+      } else {
+        textBody = `[Mensagem do tipo: ${messageType}]`;
+      }
 
-      console.log(`[WEBHOOK] De: ${from}, Texto: ${textBody}, Nome: ${clientName}`);
+      console.log(`[WEBHOOK] De: ${from}, Tipo: ${messageType}, Texto: ${textBody}, Nome: ${clientName}`);
 
-      if (!from || !textBody) {
-        console.log('[WEBHOOK] ⚠️ Mensagem sem "from" ou "text.body"');
+      if (!from) {
+        console.log('[WEBHOOK] ⚠️ Mensagem sem "from"');
         return;
       }
 
@@ -106,12 +129,25 @@ export default async function handler(req, res) {
       // Buscar ou criar conversa no Supabase
       const conversation = await getOrCreateConversation(from, clientName);
       
+      // Verificar se o bot está pausado
+      if (conversation && conversation.mode === 'human') {
+        console.log(`[WEBHOOK] 🤖 Bot pausado - modo humano ativo`);
+        
+        // Salvar mensagem do cliente mesmo com bot pausado
+        if (conversation) {
+          await saveMessage(conversation.id, textBody, 'client', messageType);
+        }
+        
+        // Retorna sem responder
+        return res.status(200).json({ success: true, bot_paused: true });
+      }
+      
       // Salvar mensagem do cliente
       if (conversation) {
-        await saveMessage(conversation.id, textBody, 'client');
+        await saveMessage(conversation.id, textBody, 'client', messageType);
       }
 
-      // Buscar histórico da conversa para contexto (antes de salvar a nova mensagem)
+      // Buscar histórico da conversa para contexto
       let conversationHistory = '';
       if (conversation && supabase) {
         const { data: messages } = await supabase
@@ -129,8 +165,14 @@ export default async function handler(req, res) {
         }
       }
 
+      // Resposta da IA para mídia
+      let promptForAI = textBody;
+      if (messageType !== 'text') {
+        promptForAI = `Cliente enviou ${textBody}. Responda de forma educada que você recebeu o arquivo e que um advogado da equipe irá analisar e retornar em breve.`;
+      }
+
       // Chamar Gemini com await (timeout de 5s)
-      const aiReply = await askGemini(textBody, conversationHistory);
+      const aiReply = await askGemini(promptForAI, conversationHistory);
       console.log(`[WEBHOOK] ✅ Resposta da IA: ${aiReply?.substring(0, 100)}`);
 
       // Detectar se precisa de atendimento humano
