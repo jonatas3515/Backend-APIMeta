@@ -12,7 +12,14 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
   const [showPauseMenu, setShowPauseMenu] = useState(false);
   const messagesEndRef = useRef(null);
   
-  const emojis = ['😊', '👍', '❤️', '😂', '🙏', '👏', '✅', '❌', '⚖️', '📄', '📝', '💼'];
+  const emojis = [
+    '😊', '😃', '😄', '😁', '😆', '😅', '🤣', '�', '🙂', '🙃',
+    '😉', '�😊', '�', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙',
+    '�👍', '👎', '👌', '✌️', '🤞', '🤝', '👏', '🙌', '👐', '🤲',
+    '❤️', '🧡', '�', '💚', '💙', '�', '�', '🤍', '🤎', '💔',
+    '⚖️', '📄', '📝', '💼', '📁', '📂', '🗂️', '📋', '📊', '📈',
+    '✅', '❌', '⭐', '🎯', '💯', '🔥', '💪', '🙏', '👀', '🤔'
+  ];
 
   useEffect(() => {
     fetchMessages();
@@ -200,8 +207,8 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
       <div className="bg-white border-t border-gray-200 p-4">
         <div className="relative">
           {showEmojiPicker && (
-            <div className="absolute bottom-16 left-0 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-10">
-              <div className="grid grid-cols-6 gap-2">
+            <div className="absolute bottom-16 left-0 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-10 max-h-64 overflow-y-auto">
+              <div className="grid grid-cols-10 gap-1">
                 {emojis.map((emoji, idx) => (
                   <button
                     key={idx}
@@ -209,7 +216,7 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
                       setNewMessage(newMessage + emoji);
                       setShowEmojiPicker(false);
                     }}
-                    className="text-2xl hover:bg-gray-100 p-2 rounded"
+                    className="text-xl hover:bg-gray-100 p-1 rounded"
                   >
                     {emoji}
                   </button>
@@ -218,7 +225,7 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
             </div>
           )}
           
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <button
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
@@ -226,6 +233,30 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
             >
               😊
             </button>
+            
+            <label className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition cursor-pointer" title="Enviar arquivo">
+              📎
+              <input
+                type="file"
+                className="hidden"
+                accept="image/*,application/pdf,.doc,.docx"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    alert(`Funcionalidade de envio de arquivo em desenvolvimento.\nArquivo selecionado: ${file.name}`);
+                  }
+                }}
+              />
+            </label>
+            
+            <button
+              className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+              title="Gravar áudio (em breve)"
+              onClick={() => alert('Funcionalidade de áudio em desenvolvimento')}
+            >
+              🎤
+            </button>
+            
             <input
               type="text"
               value={newMessage}
