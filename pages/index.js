@@ -108,7 +108,7 @@ export default function Home() {
       
       <div className="flex h-screen bg-gray-100">
         {/* Sidebar com logo e navegação */}
-        <div className="w-20 bg-gradient-to-b from-yellow-400 to-yellow-500 flex flex-col items-center py-6 space-y-6 border-r-4 border-black">
+        <div className="w-20 bg-gradient-to-b from-nc-yellow to-nc-yellow-500 flex flex-col items-center py-6 space-y-6 border-r-4 border-black">
           <img src="/Logo transparente.png" alt="N&C Logo" className="w-12 h-12 object-contain" />
           
           <div className="flex flex-col space-y-4 mt-8">
@@ -116,8 +116,8 @@ export default function Home() {
               onClick={() => setActiveTab('chat')}
               className={`p-3 rounded-lg transition ${
                 activeTab === 'chat' 
-                  ? 'bg-black text-yellow-400' 
-                  : 'text-black hover:bg-yellow-300'
+                  ? 'bg-black text-nc-yellow' 
+                  : 'text-black hover:bg-nc-yellow-300'
               }`}
               title="Chat"
             >
@@ -127,8 +127,8 @@ export default function Home() {
               onClick={() => setActiveTab('clients')}
               className={`p-3 rounded-lg transition ${
                 activeTab === 'clients' 
-                  ? 'bg-black text-yellow-400' 
-                  : 'text-black hover:bg-yellow-300'
+                  ? 'bg-black text-nc-yellow' 
+                  : 'text-black hover:bg-nc-yellow-300'
               }`}
               title="Clientes"
             >
