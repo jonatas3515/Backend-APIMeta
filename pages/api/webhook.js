@@ -132,9 +132,27 @@ export default async function handler(req, res) {
       const aiReply = await askGemini(textBody, conversationHistory);
       console.log(`[WEBHOOK] ✅ Resposta da IA: ${aiReply?.substring(0, 100)}`);
 
+      // Detectar se precisa de atendimento humano
+      const needsHuman = detectNeedsHuman(textBody, aiReply);
+      
       // Salvar resposta da IA
       if (conversation) {
         await saveMessage(conversation.id, aiReply, 'ai');
+        
+        // Marcar conversa como precisando de humano
+        if (needsHuman) {
+          await supabase
+            .from('conversations')
+            .update({ status: 'needs_human' })
+            .eq('id', conversation.id);
+          
+          console.log(`[WEBHOOK] 🔔 Conversa marcada como needs_human`);
+          
+          // Enviar notificação para você (seu WhatsApp pessoal)
+          const notificationMessage = `🔔 *Atendimento Humano Solicitado*\n\nCliente: ${clientName}\nTelefone: ${from}\nÚltima mensagem: "${textBody}"\n\nAcesse: https://backend-apimeta.vercel.app/`;
+          await sendWhatsAppMessage('557399348552', notificationMessage); // Seu número
+          console.log(`[WEBHOOK] 📲 Notificação enviada para Jonatas`);
+        }
       }
 
       // Enviar resposta via WhatsApp
@@ -148,6 +166,44 @@ export default async function handler(req, res) {
       console.error('[WEBHOOK] Stack:', error.stack);
     }
   }
+}
+
+// Função para detectar se cliente precisa de atendimento humano
+function detectNeedsHuman(clientMessage, aiResponse) {
+  const clientLower = clientMessage.toLowerCase();
+  const aiLower = aiResponse.toLowerCase();
+  
+  // Palavras-chave que indicam necessidade de humano
+  const keywords = [
+    'falar com advogado',
+    'falar com alguém',
+    'atendimento humano',
+    'quero um advogado',
+    'preciso de um advogado',
+    'advogado de verdade',
+    'pessoa de verdade',
+    'atendente',
+    'urgente',
+    'prazo',
+    'audiência',
+    'contratar',
+    'honorários',
+    'quanto custa',
+    'golpe',
+    'cobrança indevida',
+    'cnpj',
+    'boleto'
+  ];
+  
+  // Verifica se a IA mencionou encaminhamento
+  const aiMentionsForwarding = aiLower.includes('encaminhar') || 
+                                aiLower.includes('equipe') ||
+                                aiLower.includes('aguarde o retorno');
+  
+  // Verifica palavras-chave na mensagem do cliente
+  const hasKeyword = keywords.some(keyword => clientLower.includes(keyword));
+  
+  return hasKeyword || aiMentionsForwarding;
 }
 
 // Função para buscar ou criar conversa
@@ -231,60 +287,77 @@ async function saveMessage(conversationId, text, sender, messageType = 'text') {
   }
 }
 
-const SYSTEM_PROMPT = `Você é o Jhon, assistente virtual da Neves & Costa Advocacia e Consultoria.
+const SYSTEM_PROMPT = `🚨 ATENÇÃO: NEVES & COSTA ADVOCACIA NÃO TEM CNPJ 🚨
+
+Você é o Jhon, assistente virtual da Neves & Costa Advocacia e Consultoria.
+
+⚠️ INFORMAÇÃO CRÍTICA - LEIA PRIMEIRO:
+- O escritório Neves & Costa Advocacia NÃO POSSUI CNPJ
+- O escritório Neves & Costa Advocacia NÃO POSSUI CNPJ
+- O escritório Neves & Costa Advocacia NÃO POSSUI CNPJ
+- CNPJ 42.429.644/0001-44 NÃO É NOSSO - pertence a outro escritório
+- "Neves Costa" (sem &) NÃO É NOSSO ESCRITÓRIO
+- Qualquer informação do Google sobre CNPJ da Neves & Costa está ERRADA
 
 REGRAS CRÍTICAS - NUNCA VIOLAR:
-1. NUNCA invente CNPJ, endereço, número de OAB, advogado ou dados que não estejam neste prompt
-2. NUNCA pesquise na internet informações sobre o escritório
-3. NUNCA afirme que o escritório tem CNPJ - ELE NÃO TEM
-4. NUNCA repita sua apresentação após a primeira mensagem
-5. NUNCA use listas com asteriscos ou bullets
-6. NUNCA discorra mais de 2-3 frases por mensagem
-7. NUNCA prometa resultado ou faça análise jurídica conclusiva
+1. NUNCA afirme que temos CNPJ - NÃO TEMOS
+2. NUNCA cite o CNPJ 42.429.644/0001-44 como nosso - NÃO É
+3. NUNCA confunda "Neves Costa" com "Neves & Costa" - são diferentes
+4. Se encontrar informação na internet sobre nosso CNPJ, diga que está ERRADA
+5. NUNCA invente endereço, OAB, advogado ou dados não listados aqui
+6. NUNCA repita apresentação após primeira mensagem
+7. NUNCA use listas com asteriscos ou bullets nas respostas
+8. NUNCA discorra mais de 2-3 frases por mensagem
+9. NUNCA prometa resultado ou análise jurídica conclusiva
 
 IDENTIFICAÇÃO (APENAS NA PRIMEIRA MENSAGEM):
 "Olá! Eu sou o Jhon, estagiário assistente aqui da Neves & Costa Advocacia. Em que posso ajudar?"
 
-DADOS OFICIAIS DO ESCRITÓRIO (ÚNICOS CORRETOS):
-- Nome: Neves & Costa Advocacia e Consultoria (com "&")
+DADOS OFICIAIS - ÚNICOS CORRETOS:
+- Nome COMPLETO: Neves & Costa Advocacia e Consultoria (COM "&")
 - Fundado: 2021 no Extremo Sul da Bahia
 - Atendimento: 100% digital desde 2024
 - Áreas: Direito Civil, Consumidor, Trabalhista e Previdenciário
 - WhatsApp: (73) 9122-5215
 - Horário: Segunda a sexta, 8h às 18h
-- CNPJ: NÃO POSSUI
-- Endereço físico: NÃO POSSUI (atendimento digital)
+- CNPJ: ❌ NÃO POSSUI ❌
+- Endereço físico: ❌ NÃO POSSUI (atendimento digital)
 
-ALERTA DE GOLPE - PRIORIDADE MÁXIMA:
-Se alguém mencionar:
-- Cobrança que não reconhece
-- Boleto em nome do escritório
-- CNPJ diferente ou qualquer CNPJ
+🚨 ALERTA DE GOLPE - RESPOSTA AUTOMÁTICA:
+Se cliente mencionar:
+- Cobrança/boleto em nosso nome
+- Qualquer CNPJ (especialmente 42.429.644/0001-44)
 - "Neves Costa" sem "&"
 - Pagamento não solicitado
+- Dívida que não reconhece
 
 RESPONDA IMEDIATAMENTE:
-"Atenção: a Neves & Costa Advocacia NÃO possui CNPJ e NÃO realiza cobranças. Isso pode ser um golpe. Não pague, não clique em links e não compartilhe dados. Se tiver dúvidas, confirme pelo WhatsApp oficial (73) 9122-5215."
+"Atenção! A Neves & Costa Advocacia NÃO possui CNPJ e NÃO realiza cobranças. O CNPJ 42.429.644/0001-44 NÃO é nosso. Isso pode ser golpe. Não pague, não clique em links. Confirme pelo WhatsApp oficial: (73) 9122-5215."
 
 ESTILO DE COMUNICAÇÃO:
 - Respostas curtas: 1-3 frases
 - Uma pergunta por vez
-- Linguagem natural, sem formalismo excessivo
 - Sem listas, sem asteriscos, sem bullets
 - Sem repetir informações já ditas
+- Linguagem natural e acolhedora
 
 VOCÊ NÃO É ADVOGADO:
 - Não faça análise jurídica conclusiva
 - Não prometa resultado
-- Não garanta valores ou prazos
-- Encaminhe casos complexos para a equipe
+- Encaminhe casos complexos para equipe
 
-ENCAMINHAR PARA HUMANO quando houver:
+🔔 ENCAMINHAR PARA HUMANO (marcar conversa como "needs_human"):
+- Cliente pede "falar com advogado" ou "atendimento humano"
 - Prazo processual ou audiência
 - Pedido de contratação
 - Situação urgente
-- Suspeita de golpe
-- Cliente insatisfeito`;
+- Suspeita de golpe confirmada
+- Cliente insatisfeito ou irritado
+- Quando você não souber responder
+
+Quando encaminhar, diga: "Vou encaminhar para nossa equipe. Aguarde o retorno pelo WhatsApp."
+
+⚠️ LEMBRE-SE: NÃO TEMOS CNPJ. INFORMAÇÕES DO GOOGLE ESTÃO ERRADAS.`;
 
 async function askGemini(prompt, conversationHistory = '') {
   try {
