@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import ChatList from '../components/ChatList';
 import ChatWindow from '../components/ChatWindow';
 import ClientsList from '../components/ClientsList';
+import Login from '../components/Login';
 import Setup from './setup';
 import Head from 'next/head';
 
@@ -12,15 +13,26 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [supabaseReady, setSupabaseReady] = useState(false);
   const [activeTab, setActiveTab] = useState('chat');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
+    // Verificar autenticação
+    const token = localStorage.getItem('chat_auth_token');
+    if (token) {
+      setIsAuthenticated(true);
+    }
+    setCheckingAuth(false);
+
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       setLoading(false);
       return;
     }
 
     setSupabaseReady(true);
-    fetchConversations();
+    if (token) {
+      fetchConversations();
+    }
 
     const subscription = supabase
       .channel('conversations')
@@ -61,6 +73,28 @@ export default function Home() {
     }
   };
 
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+    fetchConversations();
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('chat_auth_token');
+    setIsAuthenticated(false);
+  };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <p className="text-gray-500">Carregando...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   if (!supabaseReady) {
     return <Setup />;
   }
@@ -74,7 +108,7 @@ export default function Home() {
       
       <div className="flex h-screen bg-gray-100">
         {/* Sidebar com logo e navegação */}
-        <div className="w-20 bg-gradient-to-b from-blue-900 to-blue-700 flex flex-col items-center py-6 space-y-6">
+        <div className="w-20 bg-gradient-to-b from-yellow-400 to-yellow-500 flex flex-col items-center py-6 space-y-6 border-r-4 border-black">
           <img src="/Logo transparente.png" alt="N&C Logo" className="w-12 h-12 object-contain" />
           
           <div className="flex flex-col space-y-4 mt-8">
@@ -82,8 +116,8 @@ export default function Home() {
               onClick={() => setActiveTab('chat')}
               className={`p-3 rounded-lg transition ${
                 activeTab === 'chat' 
-                  ? 'bg-white text-blue-900' 
-                  : 'text-white hover:bg-blue-800'
+                  ? 'bg-black text-yellow-400' 
+                  : 'text-black hover:bg-yellow-300'
               }`}
               title="Chat"
             >
@@ -93,12 +127,23 @@ export default function Home() {
               onClick={() => setActiveTab('clients')}
               className={`p-3 rounded-lg transition ${
                 activeTab === 'clients' 
-                  ? 'bg-white text-blue-900' 
-                  : 'text-white hover:bg-blue-800'
+                  ? 'bg-black text-yellow-400' 
+                  : 'text-black hover:bg-yellow-300'
               }`}
               title="Clientes"
             >
               👥
+            </button>
+          </div>
+
+          {/* Botão de logout no final */}
+          <div className="mt-auto">
+            <button
+              onClick={handleLogout}
+              className="p-3 rounded-lg transition text-black hover:bg-red-500 hover:text-white"
+              title="Sair"
+            >
+              🚪
             </button>
           </div>
         </div>
