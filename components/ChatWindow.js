@@ -15,6 +15,8 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
   const [audioChunks, setAudioChunks] = useState([]);
   const [pendingFile, setPendingFile] = useState(null);
   const [pendingAudio, setPendingAudio] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [searchTerm, setSearchTerm] = useState('');
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   
@@ -127,32 +129,33 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
       let mediaUrl = null;
       let mediaType = null;
       
-      // Se tem arquivo ou áudio pendente, fazer upload primeiro
+      // Se tem arquivo ou áudio pendente, fazer upload DIRETO para Supabase Storage
       const fileToUpload = pendingAudio || pendingFile;
       if (fileToUpload) {
-        const reader = new FileReader();
-        reader.readAsDataURL(fileToUpload);
-        
-        await new Promise((resolve, reject) => {
-          reader.onload = async () => {
-            try {
-              const fileBase64 = reader.result;
-              const uploadResponse = await axios.post('/api/upload-file', {
-                fileBase64,
-                fileName: fileToUpload.name,
-                fileType: fileToUpload.type,
-                conversationId: conversation.id
-              });
-              
-              mediaUrl = uploadResponse.data.url;
-              mediaType = uploadResponse.data.fileType;
-              resolve();
-            } catch (error) {
-              reject(error);
-            }
-          };
-          reader.onerror = reject;
-        });
+        const timestamp = Date.now();
+        const sanitizedFileName = fileToUpload.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const filePath = `${conversation.id}/${timestamp}-${sanitizedFileName}`;
+
+        // Upload direto para Supabase Storage (sem passar pelo Next.js)
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('chat-files')
+          .upload(filePath, fileToUpload, {
+            contentType: fileToUpload.type,
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Erro no upload:', uploadError);
+          throw new Error('Erro ao fazer upload do arquivo');
+        }
+
+        // Obter URL pública
+        const { data: urlData } = supabase.storage
+          .from('chat-files')
+          .getPublicUrl(filePath);
+
+        mediaUrl = urlData.publicUrl;
+        mediaType = fileToUpload.type;
       }
 
       // Enviar mensagem
@@ -282,13 +285,14 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
 
   return (
     <div className="flex-1 flex flex-col bg-gray-50">
-      <div className="bg-white border-b border-gray-200 p-4 flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">
-            {conversation.client_name || conversation.client_phone}
-          </h2>
-          <p className="text-sm text-gray-500">{conversation.client_phone}</p>
-        </div>
+      <div className="bg-white border-b border-gray-200 p-4">
+        <div className="flex justify-between items-center mb-3">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">
+              {conversation.client_name || conversation.client_phone}
+            </h2>
+            <p className="text-sm text-gray-500">{conversation.client_phone}</p>
+          </div>
         <div className="relative flex gap-2">
           <div className={`px-3 py-1 rounded-full text-sm font-semibold ${
             mode === 'bot'
@@ -325,10 +329,24 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
             </div>
           )}
         </div>
+        </div>
+        
+        {/* Busca de mensagens */}
+        <div className="mt-3">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="🔍 Buscar mensagens..."
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
+        {messages
+          .filter(msg => !searchTerm || msg.text?.toLowerCase().includes(searchTerm.toLowerCase()))
+          .map((msg) => (
           <div
             key={msg.id}
             className={`flex ${
