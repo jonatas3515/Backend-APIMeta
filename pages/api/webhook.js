@@ -48,6 +48,11 @@ export default async function handler(req, res) {
 
   // POST - Recebe mensagens do WhatsApp
   if (req.method === 'POST') {
+    // Desabilita timeout do socket para permitir processamento mais longo
+    if (res.socket) {
+      res.socket.setTimeout(0);
+    }
+    
     // Salva para debug
     global.lastWebhookPost = {
       timestamp: new Date().toISOString(),
@@ -58,7 +63,6 @@ export default async function handler(req, res) {
     console.error('[WEBHOOK] ========== INÍCIO POST ==========');
     console.error('[WEBHOOK] 📦 Body completo:', JSON.stringify(req.body, null, 2));
     console.error('[WEBHOOK] ========== FIM BODY ==========');
-    res.status(200).json({ success: true });
 
     try {
       const entry = req.body.entry?.[0];
@@ -96,12 +100,30 @@ export default async function handler(req, res) {
       // Enviar resposta via WhatsApp
       await sendWhatsAppMessage(from, aiReply);
       console.log(`[WEBHOOK] ✅ Resposta enviada para ${from}`);
+      
+      // Retorna sucesso após processar tudo
+      res.status(200).json({ success: true });
     } catch (error) {
       console.error('[WEBHOOK] ❌ Erro ao processar mensagem:', error.message);
       console.error('[WEBHOOK] Stack:', error.stack);
     }
   }
 }
+
+const SYSTEM_PROMPT = `Você é o Jhon, assistente virtual e estagiário assistente da Neves & Costa Advocacia e Consultoria. Você atende pelo WhatsApp com linguagem humana, educada, clara, acolhedora e objetiva.
+
+IMPORTANTE: Você presta apoio inicial, coleta informações para triagem e explica os serviços do escritório. Você NÃO é advogado, não substitui a análise de um advogado e não deve apresentar conclusão jurídica definitiva, prometer resultado ou criar vínculo profissional sem autorização da equipe.
+
+Sobre o escritório:
+- Fundado em 2021 no Extremo Sul da Bahia
+- Atendimento 100% digital desde 2024
+- Áreas: Direito Civil, Consumidor, Trabalhista e Previdenciário
+- WhatsApp: (73) 9122-5215
+- Horário: Segunda a sexta, 8h às 18h
+
+Primeira mensagem: "Olá! Eu sou o Jhon, estagiário assistente aqui da Neves & Costa Advocacia. Em que posso ajudar?"
+
+Sempre que necessário, informe que as respostas são preliminares e que a orientação jurídica depende da análise individual por um advogado.`;
 
 async function askGemini(prompt) {
   try {
@@ -120,6 +142,9 @@ async function askGemini(prompt) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: SYSTEM_PROMPT }]
+        },
         contents: [
           {
             parts: [{ text: prompt }]
