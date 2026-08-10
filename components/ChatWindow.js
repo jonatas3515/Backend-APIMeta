@@ -277,7 +277,7 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
             }`}
           >
             <div
-              className={`max-w-xs px-4 py-2 rounded-lg ${
+              className={`max-w-md px-4 py-2 rounded-lg ${
                 msg.direction === 'inbound'
                   ? 'bg-gray-200 text-gray-900'
                   : msg.sender_type === 'bot'
@@ -285,10 +285,53 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
                   : 'bg-green-100 text-green-900'
               }`}
             >
+              {/* Renderizar mídia se existir */}
+              {msg.media_url && (
+                <div className="mb-2">
+                  {msg.media_type?.startsWith('image/') ? (
+                    <img 
+                      src={msg.media_url} 
+                      alt="Imagem" 
+                      className="max-w-full rounded cursor-pointer hover:opacity-90"
+                      onClick={() => window.open(msg.media_url, '_blank')}
+                    />
+                  ) : msg.media_type?.startsWith('audio/') ? (
+                    <audio controls className="w-full">
+                      <source src={msg.media_url} type={msg.media_type} />
+                      Seu navegador não suporta áudio.
+                    </audio>
+                  ) : (
+                    <a 
+                      href={msg.media_url} 
+                      download 
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-blue-600 hover:underline"
+                    >
+                      📎 {msg.text || 'Baixar arquivo'}
+                    </a>
+                  )}
+                </div>
+              )}
+              
               <p className="text-sm">{msg.text}</p>
-              <p className="text-xs mt-1 opacity-70">
-                {new Date(msg.created_at).toLocaleTimeString('pt-BR')}
-              </p>
+              
+              <div className="flex items-center justify-between mt-1">
+                <p className="text-xs opacity-70">
+                  {new Date(msg.created_at).toLocaleTimeString('pt-BR')}
+                </p>
+                {msg.media_url && (
+                  <a 
+                    href={msg.media_url} 
+                    download 
+                    className="text-xs text-blue-600 hover:underline ml-2"
+                    title="Baixar"
+                  >
+                    ⬇️
+                  </a>
+                )}
+              </div>
+              
               {msg.sender_type === 'bot' && (
                 <p className="text-xs font-semibold mt-1">🤖 Bot</p>
               )}
