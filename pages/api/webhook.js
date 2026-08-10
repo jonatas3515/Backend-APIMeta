@@ -110,8 +110,12 @@ async function askGemini(prompt) {
     console.log('[GEMINI] API Key presente?', GEMINI_API_KEY ? 'Sim' : 'NÃO');
     
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000); // 8 segundos
+    const timeout = setTimeout(() => {
+      console.error('[GEMINI] ⏱️ TIMEOUT de 8 segundos atingido!');
+      controller.abort();
+    }, 8000);
     
+    console.log('[GEMINI] Iniciando fetch...');
     const response = await fetch(GEMINI_API_URL_PRIMARY, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -126,7 +130,7 @@ async function askGemini(prompt) {
     });
     
     clearTimeout(timeout);
-    console.log('[GEMINI] Response status:', response.status);
+    console.log('[GEMINI] Fetch completou! Response status:', response.status);
 
     if (response.ok) {
       const data = await response.json();
