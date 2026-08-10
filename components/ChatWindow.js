@@ -19,12 +19,59 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
   const fileInputRef = useRef(null);
   
   const emojis = [
-    '😊', '😃', '😄', '😁', '😆', '😅', '🤣', '�', '🙂', '🙃',
-    '😉', '�😊', '�', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙',
-    '�👍', '👎', '👌', '✌️', '🤞', '🤝', '👏', '🙌', '👐', '🤲',
-    '❤️', '🧡', '�', '💚', '💙', '�', '�', '🤍', '🤎', '💔',
+    // Smileys e pessoas
+    '�', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃',
+    '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '😚', '😙',
+    '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔',
+    '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥',
+    '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮',
+    '🤧', '🥵', '🥶', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐',
+    
+    // Gestos e mãos
+    '👍', '👎', '👌', '✌️', '🤞', '🤝', '👏', '🙌', '👐', '🤲',
+    '🙏', '✍️', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃',
+    '👋', '🤚', '🖐️', '✋', '🖖', '👊', '✊', '🤛', '🤜', '🤟',
+    
+    // Corações e símbolos
+    '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔',
+    '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️',
+    
+    // Advocacia e trabalho
     '⚖️', '📄', '📝', '💼', '📁', '📂', '🗂️', '📋', '📊', '📈',
-    '✅', '❌', '⭐', '🎯', '💯', '🔥', '💪', '🙏', '👀', '🤔'
+    '📉', '🗓️', '📆', '📅', '🗒️', '📇', '📌', '📍', '✂️', '🖊️',
+    
+    // Outros úteis
+    '✅', '❌', '⭐', '🎯', '💯', '🔥', '�', '💬', '💭', '🗨️',
+    '📢', '📣', '🔔', '🔕', '📞', '📱', '💻', '⌨️', '🖱️', '🖨️',
+    '📧', '📩', '📨', '✉️', '📮', '📪', '📫', '📬', '📭', '🏛️',
+    
+    // Animais
+    '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯',
+    '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🦆',
+    
+    // Comida
+    '🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍑', '🍒', '🍍',
+    '🥥', '🥝', '🍅', '🥑', '🍆', '🥔', '🥕', '🌽', '🌶️', '🥒',
+    '☕', '🍵', '🧃', '🥤', '🍺', '🍻', '🥂', '🍷', '🥃', '🍹',
+    
+    // Atividades
+    '⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱',
+    '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🥅', '⛳', '🏹', '🎣',
+    
+    // Viagens
+    '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐',
+    '🚚', '🚛', '🚜', '🛴', '🚲', '🛵', '🏍️', '🛺', '🚨', '🚔',
+    '✈️', '🛫', '🛬', '🚁', '🛩️', '🚀', '🛸', '🚂', '🚆', '🚇',
+    
+    // Objetos
+    '⌚', '📱', '💻', '⌨️', '🖱️', '🖨️', '📷', '📹', '🎥', '📞',
+    '☎️', '📟', '📠', '📺', '📻', '🎙️', '🎚️', '🎛️', '🧭', '⏰',
+    '⏱️', '⏲️', '⏳', '⌛', '📡', '🔋', '🔌', '💡', '🔦', '🕯️',
+    
+    // Símbolos
+    '💰', '💴', '💵', '💶', '💷', '💸', '💳', '🧾', '💎', '⚖️',
+    '🔨', '⚒️', '🛠️', '⛏️', '🔧', '🔩', '⚙️', '🗜️', '⚗️', '🔬',
+    '🔭', '📏', '�', '🧮', '🧲', '🧪', '🧫', '🧬', '�', '�'
   ];
 
   useEffect(() => {
@@ -359,8 +406,8 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
       <div className="bg-white border-t border-gray-200 p-4">
         <div className="relative">
           {showEmojiPicker && (
-            <div className="absolute bottom-16 left-0 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-10 max-h-64 overflow-y-auto">
-              <div className="grid grid-cols-10 gap-1">
+            <div className="absolute bottom-16 left-0 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-10 max-h-80 overflow-y-auto w-96">
+              <div className="grid grid-cols-8 gap-1">
                 {emojis.map((emoji, idx) => (
                   <button
                     key={idx}
@@ -368,7 +415,8 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
                       setNewMessage(newMessage + emoji);
                       setShowEmojiPicker(false);
                     }}
-                    className="text-xl hover:bg-gray-100 p-1 rounded"
+                    className="text-2xl hover:bg-gray-100 p-2 rounded transition"
+                    title={emoji}
                   >
                     {emoji}
                   </button>
