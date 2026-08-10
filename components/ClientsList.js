@@ -56,7 +56,7 @@ export default function ClientsList() {
   return (
     <div className="flex-1 flex flex-col bg-white">
       {/* Header */}
-      <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black p-6 border-b-4 border-black">
+      <div className="bg-gradient-to-r from-nc-yellow to-nc-yellow-500 text-black p-6 border-b-4 border-black">
         <h1 className="text-2xl font-bold mb-4">📋 Lista de Clientes</h1>
         
         {/* Barra de pesquisa */}
