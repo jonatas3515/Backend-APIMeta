@@ -393,20 +393,34 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
               
               <p className="text-sm">{msg.text}</p>
               
-              <div className="flex items-center justify-between mt-1">
+              <div className="flex items-center justify-between mt-1 gap-2">
                 <p className="text-xs opacity-70">
                   {new Date(msg.created_at).toLocaleTimeString('pt-BR')}
                 </p>
-                {msg.media_url && (
-                  <a 
-                    href={msg.media_url} 
-                    download 
-                    className="text-xs text-blue-600 hover:underline ml-2"
-                    title="Baixar"
-                  >
-                    ⬇️
-                  </a>
-                )}
+                <div className="flex gap-1">
+                  {msg.text && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(msg.text);
+                        alert('Mensagem copiada!');
+                      }}
+                      className="text-xs text-gray-600 hover:text-gray-900"
+                      title="Copiar mensagem"
+                    >
+                      📋
+                    </button>
+                  )}
+                  {msg.media_url && (
+                    <a 
+                      href={msg.media_url} 
+                      download 
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                      title="Baixar"
+                    >
+                      ⬇️
+                    </a>
+                  )}
+                </div>
               </div>
               
               {msg.sender_type === 'bot' && (
@@ -511,13 +525,20 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
                 e.target.style.height = e.target.scrollHeight + 'px';
               }}
             />
-            <button
-              onClick={handleSendMessage}
-              disabled={sending || (!newMessage.trim() && !pendingFile && !pendingAudio)}
-              className="px-6 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 disabled:bg-gray-300 transition"
-            >
-              {sending ? 'Enviando...' : 'Enviar'}
-            </button>
+            <div className="flex flex-col gap-1">
+              <button
+                onClick={handleSendMessage}
+                disabled={sending || (!newMessage.trim() && !pendingFile && !pendingAudio)}
+                className="px-6 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 disabled:bg-gray-300 transition"
+              >
+                {sending ? 'Enviando...' : 'Enviar'}
+              </button>
+              {newMessage && (
+                <span className="text-xs text-gray-500 text-center">
+                  {newMessage.length} caracteres
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
