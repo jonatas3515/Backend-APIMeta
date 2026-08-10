@@ -13,7 +13,10 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunks, setAudioChunks] = useState([]);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [pendingAudio, setPendingAudio] = useState(null);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
   
   const emojis = [
     '😊', '😃', '😄', '😁', '😆', '😅', '🤣', '�', '🙂', '🙃',
@@ -70,17 +73,57 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() && !pendingFile && !pendingAudio) return;
 
     setSending(true);
     try {
+      let mediaUrl = null;
+      let mediaType = null;
+      
+      // Se tem arquivo ou áudio pendente, fazer upload primeiro
+      const fileToUpload = pendingAudio || pendingFile;
+      if (fileToUpload) {
+        const reader = new FileReader();
+        reader.readAsDataURL(fileToUpload);
+        
+        await new Promise((resolve, reject) => {
+          reader.onload = async () => {
+            try {
+              const fileBase64 = reader.result;
+              const uploadResponse = await axios.post('/api/upload-file', {
+                fileBase64,
+                fileName: fileToUpload.name,
+                fileType: fileToUpload.type,
+                conversationId: conversation.id
+              });
+              
+              mediaUrl = uploadResponse.data.url;
+              mediaType = uploadResponse.data.fileType;
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
+          };
+          reader.onerror = reject;
+        });
+      }
+
+      // Enviar mensagem
       await axios.post('/api/send-message', {
         conversation_id: conversation.id,
         text: newMessage,
+        media_url: mediaUrl,
+        media_type: mediaType
       });
 
       setNewMessage('');
+      setPendingFile(null);
+      setPendingAudio(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       onConversationUpdate();
+      fetchMessages(); // Atualiza mensagens imediatamente
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
       alert('Erro ao enviar mensagem');
@@ -119,54 +162,20 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
     }
   };
 
-  const handleFileUpload = async (file) => {
-    if (!file) return;
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setPendingFile(file);
+      setNewMessage(`📎 ${file.name}`);
+    }
+  };
 
-    setSending(true);
-    try {
-      // Converter arquivo para base64
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      
-      reader.onload = async () => {
-        try {
-          const fileBase64 = reader.result;
-
-          const uploadResponse = await axios.post('/api/upload-file', {
-            fileBase64,
-            fileName: file.name,
-            fileType: file.type,
-            conversationId: conversation.id
-          });
-
-          const { url, fileName, fileType } = uploadResponse.data;
-
-          // Enviar mensagem com o arquivo
-          await axios.post('/api/send-message', {
-            conversation_id: conversation.id,
-            text: `📎 ${fileName}`,
-            media_url: url,
-            media_type: fileType
-          });
-
-          onConversationUpdate();
-          setSending(false);
-        } catch (error) {
-          console.error('Erro ao enviar arquivo:', error);
-          alert('Erro ao enviar arquivo: ' + error.message);
-          setSending(false);
-        }
-      };
-
-      reader.onerror = () => {
-        console.error('Erro ao ler arquivo');
-        alert('Erro ao ler arquivo');
-        setSending(false);
-      };
-    } catch (error) {
-      console.error('Erro ao processar arquivo:', error);
-      alert('Erro ao processar arquivo');
-      setSending(false);
+  const removePendingFile = () => {
+    setPendingFile(null);
+    setPendingAudio(null);
+    setNewMessage('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -192,7 +201,10 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
         const extension = mimeType.split('/')[1];
         const audioBlob = new Blob(chunks, { type: mimeType });
         const audioFile = new File([audioBlob], `audio-${Date.now()}.${extension}`, { type: mimeType });
-        await handleFileUpload(audioFile);
+        
+        // Não envia automaticamente, apenas adiciona ao input
+        setPendingAudio(audioFile);
+        setNewMessage(`🎤 Áudio gravado`);
         stream.getTracks().forEach(track => track.stop());
       };
 
@@ -365,7 +377,23 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
             </div>
           )}
           
-          <div className="flex gap-2 items-center">
+          {/* Preview de arquivo pendente */}
+          {(pendingFile || pendingAudio) && (
+            <div className="mb-2 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg p-2">
+              <span className="text-sm text-blue-900">
+                {pendingAudio ? '🎤 Áudio gravado' : `📎 ${pendingFile?.name}`}
+              </span>
+              <button
+                onClick={removePendingFile}
+                className="text-red-600 hover:text-red-800 font-bold"
+                title="Remover"
+              >
+                ❌
+              </button>
+            </div>
+          )}
+
+          <div className="flex gap-2 items-end">
             <button
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
@@ -377,17 +405,11 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
             <label className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition cursor-pointer" title="Enviar arquivo">
               📎
               <input
+                ref={fileInputRef}
                 type="file"
                 className="hidden"
-                accept="image/*,application/pdf,.doc,.docx,.txt"
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    handleFileUpload(file);
-                    e.target.value = '';
-                  }
-                }}
-                disabled={sending}
+                accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.txt,.mp3,.mp4,.mpeg,.3gp,.webm,.ogg"
+                onChange={handleFileSelect}
               />
             </label>
             
@@ -404,18 +426,28 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
               {isRecording ? '⏹️' : '🎤'}
             </button>
             
-            <input
-              type="text"
+            <textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder="Digite sua resposta..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              placeholder="Digite sua resposta... (Shift+Enter para quebrar linha)"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[42px] max-h-32"
+              rows="1"
               disabled={sending}
+              style={{ height: 'auto' }}
+              onInput={(e) => {
+                e.target.style.height = 'auto';
+                e.target.style.height = e.target.scrollHeight + 'px';
+              }}
             />
             <button
               onClick={handleSendMessage}
-              disabled={sending || !newMessage.trim()}
+              disabled={sending || (!newMessage.trim() && !pendingFile && !pendingAudio)}
               className="px-6 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 disabled:bg-gray-300 transition"
             >
               {sending ? 'Enviando...' : 'Enviar'}
