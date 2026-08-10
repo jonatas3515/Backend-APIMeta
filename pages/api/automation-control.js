@@ -40,18 +40,18 @@ export default async function handler(req, res) {
       pausedUntil = null;
     }
 
-    // Atualiza conversa
+    // Atualiza conversa (sem paused_until por enquanto)
     const { data, error } = await supabase
       .from('conversations')
-      .update({ 
-        mode,
-        paused_until: pausedUntil
-      })
+      .update({ mode })
       .eq('id', conversationId)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[AUTOMATION] Erro ao atualizar:', error);
+      throw error;
+    }
 
     console.log(`[AUTOMATION] Conversa ${conversationId}: ${action} (até ${pausedUntil || 'indefinido'})`);
 
