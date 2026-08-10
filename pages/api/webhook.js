@@ -129,17 +129,33 @@ export default async function handler(req, res) {
       // Buscar ou criar conversa no Supabase
       const conversation = await getOrCreateConversation(from, clientName);
       
-      // Verificar se o bot está pausado
+      // Verificar se o bot está pausado e se deve reativar automaticamente
       if (conversation && conversation.mode === 'human') {
-        console.log(`[WEBHOOK] 🤖 Bot pausado - modo humano ativo`);
+        // Verificar se passou 30 minutos desde a última atualização
+        const lastUpdate = new Date(conversation.updated_at);
+        const now = new Date();
+        const diffMinutes = (now - lastUpdate) / (1000 * 60);
         
-        // Salvar mensagem do cliente mesmo com bot pausado
-        if (conversation) {
-          await saveMessage(conversation.id, textBody, 'client', messageType);
+        if (diffMinutes >= 30) {
+          // Reativar bot automaticamente após 30 minutos
+          console.log(`[WEBHOOK] ⏰ 30 minutos passaram - reativando bot automaticamente`);
+          await supabase
+            .from('conversations')
+            .update({ mode: 'bot' })
+            .eq('id', conversation.id);
+          
+          conversation.mode = 'bot'; // Atualiza localmente para continuar processamento
+        } else {
+          console.log(`[WEBHOOK] 🤖 Bot pausado - modo humano ativo (${Math.round(diffMinutes)} min)`);
+          
+          // Salvar mensagem do cliente mesmo com bot pausado
+          if (conversation) {
+            await saveMessage(conversation.id, textBody, 'client', messageType);
+          }
+          
+          // Retorna sem responder
+          return res.status(200).json({ success: true, bot_paused: true });
         }
-        
-        // Retorna sem responder
-        return res.status(200).json({ success: true, bot_paused: true });
       }
       
       // Salvar mensagem do cliente
