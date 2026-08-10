@@ -143,15 +143,19 @@ export default async function handler(req, res) {
         if (needsHuman) {
           await supabase
             .from('conversations')
-            .update({ status: 'needs_human' })
+            .update({ mode: 'human' })
             .eq('id', conversation.id);
           
-          console.log(`[WEBHOOK] 🔔 Conversa marcada como needs_human`);
+          console.log(`[WEBHOOK] 🔔 Conversa marcada como mode=human`);
           
           // Enviar notificação para você (seu WhatsApp pessoal)
-          const notificationMessage = `🔔 *Atendimento Humano Solicitado*\n\nCliente: ${clientName}\nTelefone: ${from}\nÚltima mensagem: "${textBody}"\n\nAcesse: https://backend-apimeta.vercel.app/`;
-          await sendWhatsAppMessage('557399348552', notificationMessage); // Seu número
-          console.log(`[WEBHOOK] 📲 Notificação enviada para Jonatas`);
+          try {
+            const notificationMessage = `🔔 *Atendimento Humano Solicitado*\n\nCliente: ${clientName}\nTelefone: ${from}\nÚltima mensagem: "${textBody}"\n\nAcesse: https://backend-apimeta.vercel.app/`;
+            await sendWhatsAppMessage('557399348552', notificationMessage);
+            console.log(`[WEBHOOK] 📲 Notificação enviada para Jonatas (557399348552)`);
+          } catch (notifError) {
+            console.error(`[WEBHOOK] ❌ Erro ao enviar notificação:`, notifError);
+          }
         }
       }
 
@@ -218,7 +222,7 @@ async function getOrCreateConversation(phoneNumber, clientName) {
     const { data: existing, error: searchError } = await supabase
       .from('conversations')
       .select('*')
-      .eq('phone_number', phoneNumber)
+      .eq('client_phone', phoneNumber)
       .single();
 
     if (existing) {
@@ -230,11 +234,10 @@ async function getOrCreateConversation(phoneNumber, clientName) {
     const { data: newConv, error: createError } = await supabase
       .from('conversations')
       .insert({
-        phone_number: phoneNumber,
+        client_phone: phoneNumber,
         client_name: clientName || 'Cliente',
-        status: 'active',
-        last_message: '',
-        updated_at: new Date().toISOString()
+        status: 'open',
+        mode: 'bot'
       })
       .select()
       .single();
@@ -256,28 +259,23 @@ async function saveMessage(conversationId, text, sender, messageType = 'text') {
   }
 
   try {
+    // Mapeia sender para sender_type e direction
+    const senderType = sender === 'client' ? 'client' : 'bot';
+    const direction = sender === 'client' ? 'inbound' : 'outbound';
+    
     const { data, error } = await supabase
       .from('messages')
       .insert({
         conversation_id: conversationId,
         text,
-        sender,
-        message_type: messageType,
-        created_at: new Date().toISOString()
+        sender_type: senderType,
+        direction: direction,
+        content_type: messageType
       })
       .select()
       .single();
 
     if (error) throw error;
-
-    // Atualiza última mensagem da conversa
-    await supabase
-      .from('conversations')
-      .update({
-        last_message: text.substring(0, 100),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', conversationId);
 
     console.log(`[SUPABASE] Mensagem salva: ${data.id}`);
     return data;
@@ -323,7 +321,7 @@ DADOS OFICIAIS - ÚNICOS CORRETOS:
 - CNPJ: ❌ NÃO POSSUI ❌
 - Endereço físico: ❌ NÃO POSSUI (atendimento digital)
 
-🚨 ALERTA DE GOLPE - RESPOSTA AUTOMÁTICA:
+🚨 ALERTA - CONFUSÃO COM OUTRO ESCRITÓRIO:
 Se cliente mencionar:
 - Cobrança/boleto em nosso nome
 - Qualquer CNPJ (especialmente 42.429.644/0001-44)
@@ -332,7 +330,7 @@ Se cliente mencionar:
 - Dívida que não reconhece
 
 RESPONDA IMEDIATAMENTE:
-"Atenção! A Neves & Costa Advocacia NÃO possui CNPJ e NÃO realiza cobranças. O CNPJ 42.429.644/0001-44 NÃO é nosso. Isso pode ser golpe. Não pague, não clique em links. Confirme pelo WhatsApp oficial: (73) 9122-5215."
+"Atenção! A Neves & Costa Advocacia (com &) NÃO possui CNPJ. O CNPJ que você mencionou não é nosso. Pode ser de outro escritório ou de uma cobrança bancária (Bradesco, Santander, etc.). Para verificar pendências com bancos, entre em contato direto com a instituição. Nosso WhatsApp oficial: (73) 9122-5215."
 
 ESTILO DE COMUNICAÇÃO:
 - Respostas curtas: 1-3 frases
