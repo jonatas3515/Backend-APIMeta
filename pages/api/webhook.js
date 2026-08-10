@@ -111,20 +111,21 @@ export default async function handler(req, res) {
         await saveMessage(conversation.id, textBody, 'client');
       }
 
-      // Buscar histórico da conversa para contexto
+      // Buscar histórico da conversa para contexto (antes de salvar a nova mensagem)
       let conversationHistory = '';
       if (conversation && supabase) {
         const { data: messages } = await supabase
           .from('messages')
-          .select('text, sender')
+          .select('text, sender_type')
           .eq('conversation_id', conversation.id)
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: true })
           .limit(10);
         
         if (messages && messages.length > 0) {
-          conversationHistory = messages.reverse().map(m => 
-            `${m.sender === 'client' ? 'Cliente' : 'Jhon'}: ${m.text}`
+          conversationHistory = messages.map(m => 
+            `${m.sender_type === 'client' ? 'Cliente' : 'Jhon'}: ${m.text}`
           ).join('\n');
+          console.log(`[WEBHOOK] 📜 Histórico com ${messages.length} mensagens`);
         }
       }
 
@@ -181,22 +182,18 @@ function detectNeedsHuman(clientMessage, aiResponse) {
   const keywords = [
     'falar com advogado',
     'falar com alguém',
+    'falar com humano',
     'atendimento humano',
     'quero um advogado',
     'preciso de um advogado',
     'advogado de verdade',
     'pessoa de verdade',
     'atendente',
-    'urgente',
-    'prazo',
+    'prazo processual',
     'audiência',
     'contratar',
     'honorários',
-    'quanto custa',
-    'golpe',
-    'cobrança indevida',
-    'cnpj',
-    'boleto'
+    'quanto custa'
   ];
   
   // Verifica se a IA mencionou encaminhamento
