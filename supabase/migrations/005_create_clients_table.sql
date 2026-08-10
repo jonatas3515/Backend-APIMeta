@@ -1,8 +1,8 @@
 -- ============================================================================
--- MIGRATION: Criar tabela de clientes
+-- MIGRATION: Criar tabela de clientes DO CHAT (prefixo chat_ para evitar conflitos)
 -- ============================================================================
 
-CREATE TABLE IF NOT EXISTS clients (
+CREATE TABLE IF NOT EXISTS chat_clients (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
   phone VARCHAR(20) NOT NULL UNIQUE,
@@ -15,12 +15,12 @@ CREATE TABLE IF NOT EXISTS clients (
 );
 
 -- Índices para busca rápida
-CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(name);
-CREATE INDEX IF NOT EXISTS idx_clients_phone ON clients(phone);
-CREATE INDEX IF NOT EXISTS idx_clients_first_contact ON clients(first_contact_date DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_clients_name ON chat_clients(name);
+CREATE INDEX IF NOT EXISTS idx_chat_clients_phone ON chat_clients(phone);
+CREATE INDEX IF NOT EXISTS idx_chat_clients_first_contact ON chat_clients(first_contact_date DESC);
 
 -- Trigger para atualizar updated_at
-CREATE OR REPLACE FUNCTION update_clients_updated_at()
+CREATE OR REPLACE FUNCTION update_chat_clients_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = NOW();
@@ -28,16 +28,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_update_clients_updated_at
-  BEFORE UPDATE ON clients
+CREATE TRIGGER trigger_update_chat_clients_updated_at
+  BEFORE UPDATE ON chat_clients
   FOR EACH ROW
-  EXECUTE FUNCTION update_clients_updated_at();
+  EXECUTE FUNCTION update_chat_clients_updated_at();
 
 -- Função para sincronizar clientes com conversations
-CREATE OR REPLACE FUNCTION sync_client_from_conversation()
+CREATE OR REPLACE FUNCTION sync_chat_client_from_conversation()
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO clients (name, phone, first_contact_date, last_contact_date)
+  INSERT INTO chat_clients (name, phone, first_contact_date, last_contact_date)
   VALUES (NEW.client_name, NEW.client_phone, NEW.created_at, NEW.updated_at)
   ON CONFLICT (phone) 
   DO UPDATE SET 
@@ -48,10 +48,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trigger_sync_client_from_conversation
+CREATE TRIGGER trigger_sync_chat_client_from_conversation
   AFTER INSERT OR UPDATE ON conversations
   FOR EACH ROW
-  EXECUTE FUNCTION sync_client_from_conversation();
+  EXECUTE FUNCTION sync_chat_client_from_conversation();
 
 -- ============================================================================
 -- FIM DA MIGRATION
