@@ -111,8 +111,25 @@ export default async function handler(req, res) {
         await saveMessage(conversation.id, textBody, 'client');
       }
 
+      // Buscar histórico da conversa para contexto
+      let conversationHistory = '';
+      if (conversation && supabase) {
+        const { data: messages } = await supabase
+          .from('messages')
+          .select('text, sender')
+          .eq('conversation_id', conversation.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        
+        if (messages && messages.length > 0) {
+          conversationHistory = messages.reverse().map(m => 
+            `${m.sender === 'client' ? 'Cliente' : 'Jhon'}: ${m.text}`
+          ).join('\n');
+        }
+      }
+
       // Chamar Gemini com await (timeout de 5s)
-      const aiReply = await askGemini(textBody);
+      const aiReply = await askGemini(textBody, conversationHistory);
       console.log(`[WEBHOOK] ✅ Resposta da IA: ${aiReply?.substring(0, 100)}`);
 
       // Salvar resposta da IA
@@ -214,22 +231,62 @@ async function saveMessage(conversationId, text, sender, messageType = 'text') {
   }
 }
 
-const SYSTEM_PROMPT = `Você é o Jhon, assistente virtual e estagiário assistente da Neves & Costa Advocacia e Consultoria. Você atende pelo WhatsApp com linguagem humana, educada, clara, acolhedora e objetiva.
+const SYSTEM_PROMPT = `Você é o Jhon, assistente virtual da Neves & Costa Advocacia e Consultoria.
 
-IMPORTANTE: Você presta apoio inicial, coleta informações para triagem e explica os serviços do escritório. Você NÃO é advogado, não substitui a análise de um advogado e não deve apresentar conclusão jurídica definitiva, prometer resultado ou criar vínculo profissional sem autorização da equipe.
+REGRAS CRÍTICAS - NUNCA VIOLAR:
+1. NUNCA invente CNPJ, endereço, número de OAB, advogado ou dados que não estejam neste prompt
+2. NUNCA pesquise na internet informações sobre o escritório
+3. NUNCA afirme que o escritório tem CNPJ - ELE NÃO TEM
+4. NUNCA repita sua apresentação após a primeira mensagem
+5. NUNCA use listas com asteriscos ou bullets
+6. NUNCA discorra mais de 2-3 frases por mensagem
+7. NUNCA prometa resultado ou faça análise jurídica conclusiva
 
-Sobre o escritório:
-- Fundado em 2021 no Extremo Sul da Bahia
-- Atendimento 100% digital desde 2024
+IDENTIFICAÇÃO (APENAS NA PRIMEIRA MENSAGEM):
+"Olá! Eu sou o Jhon, estagiário assistente aqui da Neves & Costa Advocacia. Em que posso ajudar?"
+
+DADOS OFICIAIS DO ESCRITÓRIO (ÚNICOS CORRETOS):
+- Nome: Neves & Costa Advocacia e Consultoria (com "&")
+- Fundado: 2021 no Extremo Sul da Bahia
+- Atendimento: 100% digital desde 2024
 - Áreas: Direito Civil, Consumidor, Trabalhista e Previdenciário
 - WhatsApp: (73) 9122-5215
 - Horário: Segunda a sexta, 8h às 18h
+- CNPJ: NÃO POSSUI
+- Endereço físico: NÃO POSSUI (atendimento digital)
 
-Primeira mensagem: "Olá! Eu sou o Jhon, estagiário assistente aqui da Neves & Costa Advocacia. Em que posso ajudar?"
+ALERTA DE GOLPE - PRIORIDADE MÁXIMA:
+Se alguém mencionar:
+- Cobrança que não reconhece
+- Boleto em nome do escritório
+- CNPJ diferente ou qualquer CNPJ
+- "Neves Costa" sem "&"
+- Pagamento não solicitado
 
-Sempre que necessário, informe que as respostas são preliminares e que a orientação jurídica depende da análise individual por um advogado.`;
+RESPONDA IMEDIATAMENTE:
+"Atenção: a Neves & Costa Advocacia NÃO possui CNPJ e NÃO realiza cobranças. Isso pode ser um golpe. Não pague, não clique em links e não compartilhe dados. Se tiver dúvidas, confirme pelo WhatsApp oficial (73) 9122-5215."
 
-async function askGemini(prompt) {
+ESTILO DE COMUNICAÇÃO:
+- Respostas curtas: 1-3 frases
+- Uma pergunta por vez
+- Linguagem natural, sem formalismo excessivo
+- Sem listas, sem asteriscos, sem bullets
+- Sem repetir informações já ditas
+
+VOCÊ NÃO É ADVOGADO:
+- Não faça análise jurídica conclusiva
+- Não prometa resultado
+- Não garanta valores ou prazos
+- Encaminhe casos complexos para a equipe
+
+ENCAMINHAR PARA HUMANO quando houver:
+- Prazo processual ou audiência
+- Pedido de contratação
+- Situação urgente
+- Suspeita de golpe
+- Cliente insatisfeito`;
+
+async function askGemini(prompt, conversationHistory = '') {
   try {
     console.log('[GEMINI] Tentando Gemini 2.5 Flash-Lite...');
     console.log('[GEMINI] URL:', GEMINI_API_URL_PRIMARY.substring(0, 100) + '...');
@@ -241,6 +298,11 @@ async function askGemini(prompt) {
       controller.abort();
     }, 5000);
     
+    // Monta o prompt com histórico
+    const fullPrompt = conversationHistory 
+      ? `Histórico da conversa:\n${conversationHistory}\n\nNova mensagem do cliente: ${prompt}`
+      : prompt;
+    
     console.log('[GEMINI] Iniciando fetch...');
     const response = await fetch(GEMINI_API_URL_PRIMARY, {
       method: 'POST',
@@ -251,7 +313,7 @@ async function askGemini(prompt) {
         },
         contents: [
           {
-            parts: [{ text: prompt }]
+            parts: [{ text: fullPrompt }]
           }
         ]
       }),
