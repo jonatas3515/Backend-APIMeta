@@ -1,11 +1,20 @@
+import { createClient } from '@supabase/supabase-js';
+
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '1289520100904873';
 const GEMINI_API_KEY = process.env.GOOGLE_AI_API_KEY;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const WHATSAPP_API_URL = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
 const GEMINI_API_URL_PRIMARY = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
 const GEMINI_API_URL_FALLBACK = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+
+// Cliente Supabase com service role key para bypass RLS
+const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY 
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+  : null;
 
 // Variável global para debug (temporário)
 global.lastWebhookPost = null;
@@ -83,8 +92,9 @@ export default async function handler(req, res) {
       const message = messages[0];
       const from = message.from;
       const textBody = message.text?.body;
+      const clientName = value.contacts?.[0]?.profile?.name || 'Cliente';
 
-      console.log(`[WEBHOOK] De: ${from}, Texto: ${textBody}`);
+      console.log(`[WEBHOOK] De: ${from}, Texto: ${textBody}, Nome: ${clientName}`);
 
       if (!from || !textBody) {
         console.log('[WEBHOOK] ⚠️ Mensagem sem "from" ou "text.body"');
@@ -93,9 +103,22 @@ export default async function handler(req, res) {
 
       console.log(`[WEBHOOK] ✅ Mensagem recebida de ${from}: ${textBody}`);
 
+      // Buscar ou criar conversa no Supabase
+      const conversation = await getOrCreateConversation(from, clientName);
+      
+      // Salvar mensagem do cliente
+      if (conversation) {
+        await saveMessage(conversation.id, textBody, 'client');
+      }
+
       // Chamar Gemini com await (timeout de 5s)
       const aiReply = await askGemini(textBody);
       console.log(`[WEBHOOK] ✅ Resposta da IA: ${aiReply?.substring(0, 100)}`);
+
+      // Salvar resposta da IA
+      if (conversation) {
+        await saveMessage(conversation.id, aiReply, 'ai');
+      }
 
       // Enviar resposta via WhatsApp
       await sendWhatsAppMessage(from, aiReply);
@@ -107,6 +130,87 @@ export default async function handler(req, res) {
       console.error('[WEBHOOK] ❌ Erro ao processar mensagem:', error.message);
       console.error('[WEBHOOK] Stack:', error.stack);
     }
+  }
+}
+
+// Função para buscar ou criar conversa
+async function getOrCreateConversation(phoneNumber, clientName) {
+  if (!supabase) {
+    console.warn('[SUPABASE] Cliente não configurado');
+    return null;
+  }
+
+  try {
+    // Busca conversa existente
+    const { data: existing, error: searchError } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('phone_number', phoneNumber)
+      .single();
+
+    if (existing) {
+      console.log(`[SUPABASE] Conversa encontrada: ${existing.id}`);
+      return existing;
+    }
+
+    // Cria nova conversa
+    const { data: newConv, error: createError } = await supabase
+      .from('conversations')
+      .insert({
+        phone_number: phoneNumber,
+        client_name: clientName || 'Cliente',
+        status: 'active',
+        last_message: '',
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (createError) throw createError;
+    console.log(`[SUPABASE] Nova conversa criada: ${newConv.id}`);
+    return newConv;
+  } catch (error) {
+    console.error('[SUPABASE] Erro ao buscar/criar conversa:', error);
+    return null;
+  }
+}
+
+// Função para salvar mensagem
+async function saveMessage(conversationId, text, sender, messageType = 'text') {
+  if (!supabase || !conversationId) {
+    console.warn('[SUPABASE] Cliente não configurado ou conversa inválida');
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        text,
+        sender,
+        message_type: messageType,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Atualiza última mensagem da conversa
+    await supabase
+      .from('conversations')
+      .update({
+        last_message: text.substring(0, 100),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', conversationId);
+
+    console.log(`[SUPABASE] Mensagem salva: ${data.id}`);
+    return data;
+  } catch (error) {
+    console.error('[SUPABASE] Erro ao salvar mensagem:', error);
+    return null;
   }
 }
 
