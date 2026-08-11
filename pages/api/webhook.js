@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { detectArea, getNextQuestion, isIntakeComplete, getFlow } from '../../lib/intakeFlows';
+import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
@@ -159,9 +160,56 @@ export default async function handler(req, res) {
         }
       }
       
+      // ================= PROCESSAMENTO DE MÍDIA =================
+      let mediaSummary = '';
+      let publicUrl = '';
+      
+      if (mediaId && (messageType === 'audio' || messageType === 'image' || messageType === 'document' || messageType === 'video')) {
+        try {
+          const mediaBuffer = await downloadWhatsAppMedia(mediaId);
+          
+          if (mediaBuffer && mediaBuffer.buffer) {
+            // Fazer upload da mídia para o Supabase Storage
+            const fileName = `chat-files/${from}/${Date.now()}_${mediaId}.${getFileExtension(mediaBuffer.mimeType, messageType)}`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('chat-files')
+              .upload(fileName, mediaBuffer.buffer, {
+                contentType: mediaBuffer.mimeType,
+                upsert: false
+              });
+
+            if (uploadError) {
+              console.error('[WEBHOOK] Erro upload mídia:', uploadError);
+            } else {
+              const { data: publicUrlData } = await supabase.storage
+                .from('chat-files')
+                .getPublicUrl(fileName);
+              publicUrl = publicUrlData?.publicUrl || '';
+              console.log(`[WEBHOOK] ✅ Mídia salva: ${publicUrl}`);
+
+              if (messageType === 'audio' || messageType === 'video') {
+                mediaSummary = await transcribeAudio(publicUrl);
+                if (mediaSummary) {
+                  textBody = `[Áudio transcrito]: ${mediaSummary}`;
+                  console.log(`[WEBHOOK] 🎤 Transcrição: ${mediaSummary?.substring(0, 80)}`);
+                }
+              } else if (messageType === 'image' || messageType === 'document') {
+                mediaSummary = await summarizeMedia(publicUrl, mediaBuffer.mimeType);
+                if (mediaSummary) {
+                  textBody = `${textBody}\n\n[Resumo automático]: ${mediaSummary}`;
+                  console.log(`[WEBHOOK] 📄 Resumo: ${mediaSummary?.substring(0, 80)}`);
+                }
+              }
+            }
+          }
+        } catch (mediaError) {
+          console.error('[WEBHOOK] ❌ Erro ao processar mídia:', mediaError.message);
+        }
+      }
+
       // Salvar mensagem do cliente
       if (conversation) {
-        await saveMessage(conversation.id, textBody, 'client', messageType);
+        await saveMessage(conversation.id, textBody, 'client', messageType, publicUrl, mediaSummary);
       }
 
       // ================= COLETA GUIADA DE INFORMAÇÕES =================
@@ -439,7 +487,7 @@ async function getOrCreateConversation(phoneNumber, clientName) {
 }
 
 // Função para salvar mensagem
-async function saveMessage(conversationId, text, sender, messageType = 'text') {
+async function saveMessage(conversationId, text, sender, messageType = 'text', mediaUrl = '', mediaSummary = '') {
   if (!supabase || !conversationId) {
     console.warn('[SUPABASE] Cliente não configurado ou conversa inválida');
     return null;
@@ -450,15 +498,20 @@ async function saveMessage(conversationId, text, sender, messageType = 'text') {
     const senderType = sender === 'client' ? 'client' : 'bot';
     const direction = sender === 'client' ? 'inbound' : 'outbound';
     
+    const insertData = {
+      conversation_id: conversationId,
+      text,
+      sender_type: senderType,
+      direction: direction,
+      content_type: messageType
+    };
+
+    if (mediaUrl) insertData.media_url = mediaUrl;
+    if (mediaSummary) insertData.media_summary = mediaSummary;
+
     const { data, error } = await supabase
       .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        text,
-        sender_type: senderType,
-        direction: direction,
-        content_type: messageType
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -664,4 +717,68 @@ async function sendWhatsAppMessage(to, text) {
     console.error(`[WHATSAPP] ❌ Erro ao enviar mensagem: ${error.message}`);
     throw error;
   }
+}
+
+// Função para baixar mídia do WhatsApp
+async function downloadWhatsAppMedia(mediaId) {
+  try {
+    // 1. Obter URL assinada da mídia
+    const metaResponse = await fetch(`https://graph.facebook.com/v20.0/${mediaId}`, {
+      headers: {
+        'Authorization': `Bearer ${WHATSAPP_TOKEN}`
+      }
+    });
+
+    if (!metaResponse.ok) {
+      const errorBody = await metaResponse.text();
+      throw new Error(`Erro ao obter URL da mídia: ${metaResponse.status} - ${errorBody}`);
+    }
+
+    const metaData = await metaResponse.json();
+    const mediaUrl = metaData.url;
+    const mimeType = metaData.mime_type || 'application/octet-stream';
+
+    // 2. Baixar conteúdo real da mídia
+    const fileResponse = await fetch(mediaUrl, {
+      headers: {
+        'Authorization': `Bearer ${WHATSAPP_TOKEN}`
+      }
+    });
+
+    if (!fileResponse.ok) {
+      throw new Error(`Erro ao baixar mídia: ${fileResponse.status}`);
+    }
+
+    const arrayBuffer = await fileResponse.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    console.log(`[MEDIA] Mídia baixada: ${mediaId}, tipo: ${mimeType}, tamanho: ${buffer.length} bytes`);
+    return { buffer, mimeType };
+  } catch (error) {
+    console.error('[MEDIA] Erro ao baixar mídia do WhatsApp:', error.message);
+    return null;
+  }
+}
+
+// Função para obter extensão do arquivo
+function getFileExtension(mimeType, messageType) {
+  const extensionMap = {
+    'audio/ogg': 'ogg',
+    'audio/mpeg': 'mp3',
+    'audio/wav': 'wav',
+    'audio/mp4': 'm4a',
+    'video/mp4': 'mp4',
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'application/pdf': 'pdf',
+    'application/msword': 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx'
+  };
+
+  return extensionMap[mimeType] || 
+    (messageType === 'audio' ? 'ogg' :
+     messageType === 'video' ? 'mp4' :
+     messageType === 'image' ? 'jpg' :
+     messageType === 'document' ? 'pdf' : 'bin');
 }
