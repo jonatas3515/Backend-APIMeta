@@ -42,6 +42,7 @@ export default async function handler(req, res) {
     };
 
     // Se tem mídia, envia como documento/imagem/áudio
+    let contentType = 'text';
     if (media_url) {
       const isImage = media_type?.startsWith('image/');
       const isAudio = media_type?.startsWith('audio/');
@@ -50,18 +51,38 @@ export default async function handler(req, res) {
         whatsappPayload.type = 'image';
         whatsappPayload.image = { link: media_url, caption: text };
         delete whatsappPayload.text;
+        contentType = 'image';
       } else if (isAudio) {
-        whatsappPayload.type = 'audio';
-        whatsappPayload.audio = { link: media_url };
-        delete whatsappPayload.text;
+        // Meta aceita audio/ogg, audio/mp4, audio/mpeg, audio/aac, audio/amr
+        // audio/webm pode ser rejeitado, então enviamos como documento se for webm
+        if (media_type === 'audio/webm') {
+          console.log('[SEND-MESSAGE] Áudio webm detectado, enviando como documento para compatibilidade');
+          whatsappPayload.type = 'document';
+          whatsappPayload.document = { 
+            link: media_url, 
+            caption: text,
+            filename: `audio-${Date.now()}.webm`
+          };
+          delete whatsappPayload.text;
+          contentType = 'document';
+        } else {
+          whatsappPayload.type = 'audio';
+          whatsappPayload.audio = { link: media_url };
+          delete whatsappPayload.text;
+          contentType = 'audio';
+        }
       } else {
         whatsappPayload.type = 'document';
         whatsappPayload.document = { link: media_url, caption: text };
         delete whatsappPayload.text;
+        contentType = 'document';
       }
     }
 
-    await axios.post(WHATSAPP_API_URL, whatsappPayload, {
+    console.log('[SEND-MESSAGE] Payload:', JSON.stringify(whatsappPayload, null, 2));
+    console.log('[SEND-MESSAGE] URL da mídia:', media_url, '| Tipo:', media_type);
+
+    const waResponse = await axios.post(WHATSAPP_API_URL, whatsappPayload, {
       headers: {
         'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
         'Content-Type': 'application/json',
@@ -74,7 +95,7 @@ export default async function handler(req, res) {
         conversation_id,
         direction: 'outbound',
         sender_type: 'human',
-        content_type: media_url ? (media_type?.startsWith('image/') ? 'image' : media_type?.startsWith('audio/') ? 'audio' : 'document') : 'text',
+        content_type: contentType,
         text,
         media_url: media_url || null,
         media_type: media_type || null

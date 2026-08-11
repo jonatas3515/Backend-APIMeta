@@ -188,7 +188,7 @@ export default async function handler(req, res) {
               console.log(`[WEBHOOK] ✅ Mídia salva: ${publicUrl}`);
 
               if (messageType === 'audio' || messageType === 'video') {
-                mediaSummary = await transcribeAudio(publicUrl);
+                mediaSummary = await transcribeAudio(publicUrl, mediaBuffer.mimeType);
                 if (mediaSummary) {
                   textBody = `[Áudio transcrito]: ${mediaSummary}`;
                   console.log(`[WEBHOOK] 🎤 Transcrição: ${mediaSummary?.substring(0, 80)}`);
@@ -245,7 +245,11 @@ export default async function handler(req, res) {
       // Resposta da IA para mídia
       let promptForAI = textBody;
       if (messageType !== 'text') {
-        promptForAI = `Cliente enviou ${textBody}. Responda de forma educada que você recebeu o arquivo e que um advogado da equipe irá analisar e retornar em breve.`;
+        if (mediaSummary) {
+          promptForAI = `O cliente enviou ${messageType} com o seguinte conteúdo: ${textBody}. Analise e responda de forma breve, objetiva e educada.`;
+        } else {
+          promptForAI = `Cliente enviou ${messageType}. Você não conseguiu ler/ouvir o conteúdo. Responda: "Recebido! Para agilizar, consegue me contar por texto o que é o arquivo?" NUNCA mencione equipe, advogado ou retorno.`;
+        }
       }
 
       // Chamar Gemini com await (timeout de 5s)
@@ -434,10 +438,11 @@ function detectNeedsHuman(clientMessage, aiResponse) {
     'quanto custa'
   ];
   
-  // Verifica se a IA mencionou encaminhamento
-  const aiMentionsForwarding = aiLower.includes('encaminhar') || 
-                                aiLower.includes('equipe') ||
-                                aiLower.includes('aguarde o retorno');
+  // Verifica se a IA mencionou encaminhamento (desconsidera respostas automáticas de mídia)
+  const aiMentionsForwarding = !clientLower.includes('[áudio enviado]') &&
+                                (aiLower.includes('encaminhar') || 
+                                 aiLower.includes('equipe') ||
+                                 aiLower.includes('aguarde o retorno'));
   
   // Verifica palavras-chave na mensagem do cliente
   const hasKeyword = keywords.some(keyword => clientLower.includes(keyword));
