@@ -23,6 +23,7 @@ export default function Home() {
   const [newName, setNewName] = useState('');
   const [newMessage, setNewMessage] = useState('');
   const [startingConversation, setStartingConversation] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
     // Verificar autenticação
@@ -89,6 +90,37 @@ export default function Home() {
   const handleLogout = () => {
     localStorage.removeItem('chat_auth_token');
     setIsAuthenticated(false);
+  };
+
+  const handleDeleteConversation = async (conv) => {
+    if (!confirm('Tem certeza que deseja excluir esta conversa? Isso apagará todo o histórico.')) {
+      return;
+    }
+
+    setDeletingId(conv.id);
+    try {
+      // Deleta mensagens primeiro (CASCADE faz isso, mas por segurança)
+      await supabase
+        .from('messages')
+        .delete()
+        .eq('conversation_id', conv.id);
+
+      // Deleta a conversa
+      await supabase
+        .from('conversations')
+        .delete()
+        .eq('id', conv.id);
+
+      setConversations(conversations.filter(c => c.id !== conv.id));
+      if (selectedConversation?.id === conv.id) {
+        setSelectedConversation(null);
+      }
+    } catch (error) {
+      console.error('Erro ao excluir conversa:', error);
+      alert('Erro ao excluir conversa');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleStartConversation = async (e) => {
@@ -258,6 +290,8 @@ export default function Home() {
               }}
               loading={loading}
               onNewConversation={() => setShowNewConvModal(true)}
+              onDeleteConversation={handleDeleteConversation}
+              deletingId={deletingId}
             />
             {selectedConversation && (
               <ChatWindow
