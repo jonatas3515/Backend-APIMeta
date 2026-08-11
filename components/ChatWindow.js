@@ -9,8 +9,11 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
   const [showClassification, setShowClassification] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
   const [showDocuments, setShowDocuments] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [internalNotes, setInternalNotes] = useState(conversation.internal_notes || '');
+  const [savingNotes, setSavingNotes] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [mode, setMode] = useState(conversation.mode);
@@ -229,6 +232,22 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
     }
   };
 
+  const saveNotes = async () => {
+    setSavingNotes(true);
+    try {
+      await supabase
+        .from('conversations')
+        .update({ internal_notes: internalNotes })
+        .eq('id', conversation.id);
+      onConversationUpdate();
+    } catch (error) {
+      console.error('Erro ao salvar notas:', error);
+      alert('Erro ao salvar notas');
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -339,6 +358,16 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
             📄 Documentos
           </button>
           
+          <button
+            onClick={() => setShowNotes(!showNotes)}
+            className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+              showNotes ? 'bg-orange-200 text-orange-900' : 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+            }`}
+            title="Notas Internas"
+          >
+            📝 Notas
+          </button>
+          
           <div className={`px-3 py-1 rounded-full text-sm font-semibold ${
             mode === 'bot'
               ? 'bg-green-100 text-green-800'
@@ -409,6 +438,27 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
       {showDocuments && (
         <div className="bg-gray-100 border-b border-gray-200 p-4">
           <DocumentGenerator conversation={conversation} />
+        </div>
+      )}
+
+      {/* Painel de Notas Internas */}
+      {showNotes && (
+        <div className="bg-orange-50 border-b border-orange-200 p-4">
+          <h3 className="text-sm font-bold text-orange-900 mb-2">📝 Notas Internas</h3>
+          <textarea
+            value={internalNotes}
+            onChange={(e) => setInternalNotes(e.target.value)}
+            placeholder="Anotações internas sobre o cliente/caso..."
+            className="w-full px-3 py-2 border border-orange-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+            rows="4"
+          />
+          <button
+            onClick={saveNotes}
+            disabled={savingNotes}
+            className="mt-2 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700 disabled:opacity-50"
+          >
+            {savingNotes ? 'Salvando...' : 'Salvar notas'}
+          </button>
         </div>
       )}
 

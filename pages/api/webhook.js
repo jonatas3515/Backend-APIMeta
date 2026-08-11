@@ -233,18 +233,25 @@ export default async function handler(req, res) {
       // Buscar histórico da conversa para contexto
       let conversationHistory = '';
       if (conversation && supabase) {
+        // Pega mensagens das últimas 24h ou até 50 mensagens (o que for maior)
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const { data: messages } = await supabase
           .from('messages')
-          .select('text, sender_type')
+          .select('text, sender_type, created_at')
           .eq('conversation_id', conversation.id)
-          .order('created_at', { ascending: true })
-          .limit(10);
+          .or(`created_at.gte.${oneDayAgo}, and()`)  // mensagens das últimas 24h
+          .order('created_at', { ascending: true });
         
-        if (messages && messages.length > 0) {
-          conversationHistory = messages.map(m => 
-            `${m.sender_type === 'client' ? 'Cliente' : 'Jhon'}: ${m.text}`
-          ).join('\n');
-          console.log(`[WEBHOOK] 📜 Histórico com ${messages.length} mensagens`);
+        // Limita a 50 mensagens mais recentes se houver muitas
+        const recentMessages = messages?.slice(-50) || [];
+        
+        if (recentMessages.length > 0) {
+          conversationHistory = recentMessages.map(m => {
+            const role = m.sender_type === 'client' ? 'Cliente' : 'Jhon';
+            const time = new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            return `[${time}] ${role}: ${m.text}`;
+          }).join('\n');
+          console.log(`[WEBHOOK] 📜 Histórico com ${recentMessages.length} mensagens`);
         }
       }
 
@@ -258,8 +265,8 @@ export default async function handler(req, res) {
         }
       }
 
-      // Chamar Gemini com await (timeout de 5s)
-      const aiReply = await askGemini(promptForAI, conversationHistory);
+      // Chamar Gemini com await (timeout de 15s)
+      const aiReply = await askGemini(promptForAI, conversationHistory, conversation);
       console.log(`[WEBHOOK] ✅ Resposta da IA: ${aiReply?.substring(0, 100)}`);
 
       // Detectar se precisa de atendimento humano
@@ -441,7 +448,22 @@ function detectNeedsHuman(clientMessage, aiResponse) {
     'audiência',
     'contratar',
     'honorários',
-    'quanto custa'
+    'quanto custa',
+    'recurso',
+    'prazo',
+    'demissão',
+    'licitação',
+    'dispensado',
+    'justa causa',
+    'trabalhista',
+    'indenização',
+    'processo',
+    'ajuizar',
+    'entrar com ação',
+    'me liga',
+    'liga pra mim',
+    'me ligue',
+    'urgente'
   ];
   
   // Verifica se a IA mencionou encaminhamento (desconsidera respostas automáticas de mídia)
@@ -612,22 +634,44 @@ NÃO mencione "pelo WhatsApp" ou o número de telefone.
 
 ⚠️ LEMBRE-SE: NÃO TEMOS CNPJ. INFORMAÇÕES DO GOOGLE ESTÃO ERRADAS.`;
 
-async function askGemini(prompt, conversationHistory = '') {
+async function askGemini(prompt, conversationHistory = '', conversation = null) {
   try {
     console.log('[GEMINI] Tentando Gemini 2.5 Flash-Lite...');
-    console.log('[GEMINI] URL:', GEMINI_API_URL_PRIMARY.substring(0, 100) + '...');
     console.log('[GEMINI] API Key presente?', GEMINI_API_KEY ? 'Sim' : 'NÃO');
+    
+    // Monta o prompt com contexto completo da conversa
+    let contextParts = [];
+    
+    if (conversation) {
+      if (conversation.legal_area) {
+        contextParts.push(`ÁREA DO CASO: ${conversation.legal_area}`);
+      }
+      if (conversation.case_summary) {
+        contextParts.push(`RESUMO DO CASO: ${conversation.case_summary}`);
+      }
+      if (conversation.intake_data?.answers) {
+        const answers = Object.entries(conversation.intake_data.answers)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join('; ');
+        contextParts.push(`INFORMAÇÕES COLETADAS: ${answers}`);
+      }
+    }
+    
+    const contextBlock = contextParts.length > 0 
+      ? `CONTEXTO ATUAL DO ATENDIMENTO:\n${contextParts.join('\n')}\n\n` 
+      : '';
+    
+    const historyBlock = conversationHistory 
+      ? `HISTÓRICO DAS ÚLTIMAS 24H (MAIS RECENTES POR ÚLTIMO):\n${conversationHistory}\n\n` 
+      : '';
+    
+    const fullPrompt = `${contextBlock}${historyBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nResponda como Jhon, considerando TODO o contexto acima. NUNCA repita saudação de apresentação. Responda apenas ao que foi perguntado.`;
     
     const controller = new AbortController();
     const timeout = setTimeout(() => {
-      console.error('[GEMINI] ⏱️ TIMEOUT de 5 segundos atingido!');
+      console.error('[GEMINI] ⏱️ TIMEOUT de 12 segundos atingido!');
       controller.abort();
-    }, 5000);
-    
-    // Monta o prompt com histórico
-    const fullPrompt = conversationHistory 
-      ? `Histórico da conversa:\n${conversationHistory}\n\nNova mensagem do cliente: ${prompt}`
-      : prompt;
+    }, 12000);
     
     console.log('[GEMINI] Iniciando fetch...');
     const response = await fetch(GEMINI_API_URL_PRIMARY, {
@@ -663,13 +707,21 @@ async function askGemini(prompt, conversationHistory = '') {
 
   try {
     console.log('[GEMINI] Tentando Gemini 3.1 Flash-Lite (fallback)...');
+    // Fallback recebe o mesmo fullPrompt para manter contexto
+    const fullPrompt = conversationHistory 
+      ? `HISTÓRICO DA CONVERSA:\n${conversationHistory}\n\nNOVA MENSAGEM DO CLIENTE: ${prompt}`
+      : prompt;
+    
     const response = await fetch(GEMINI_API_URL_FALLBACK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: SYSTEM_PROMPT }]
+        },
         contents: [
           {
-            parts: [{ text: prompt }]
+            parts: [{ text: fullPrompt }]
           }
         ]
       })
