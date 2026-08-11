@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
+import { askGemini } from '../../lib/ai';
+import { sendWhatsAppMessage } from '../../lib/whatsapp';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -112,6 +114,15 @@ export default async function handler(req, res) {
       } else {
         console.log(`[MEDIA_PROCESS] Mensagem ${id} processada: status=${status}`);
         results.push({ id, content_type, status });
+
+        // Se áudio/vídeo foi transcrito com sucesso, responde o cliente
+        if ((content_type === 'audio' || content_type === 'video') && transcript && status === 'processed') {
+          try {
+            await replyToClient(message, transcript, summary);
+          } catch (replyError) {
+            console.error(`[MEDIA_PROCESS] Erro ao responder cliente da mensagem ${id}:`, replyError.message);
+          }
+        }
       }
     }
 
@@ -141,6 +152,78 @@ function getMimeFromUrl(url) {
     webp: 'image/webp'
   };
   return map[ext] || null;
+}
+
+// Responde o cliente automaticamente com base na transcrição do áudio/vídeo
+async function replyToClient(message, transcript, summary) {
+  if (!supabase) return;
+
+  try {
+    const { data: conversation, error: convError } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('id', message.conversation_id)
+      .single();
+
+    if (convError || !conversation) {
+      console.warn('[MEDIA_PROCESS] Conversa não encontrada para resposta automática');
+      return;
+    }
+
+    if (conversation.mode === 'human') {
+      console.log('[MEDIA_PROCESS] Conversa em modo humano, não respondendo automaticamente');
+      return;
+    }
+
+    const clientPhone = conversation.client_phone;
+    if (!clientPhone) {
+      console.warn('[MEDIA_PROCESS] Telefone do cliente não encontrado');
+      return;
+    }
+
+    // Busca histórico recente para contexto
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: messages } = await supabase
+      .from('messages')
+      .select('text, sender_type, created_at')
+      .eq('conversation_id', conversation.id)
+      .gte('created_at', oneDayAgo)
+      .order('created_at', { ascending: true });
+
+    const conversationHistory = messages?.slice(-50).map(m => {
+      const role = m.sender_type === 'client' ? 'Cliente' : 'Jhon';
+      const time = new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      return `[${time}] ${role}: ${m.text}`;
+    }).join('\n') || '';
+
+    const prompt = `O cliente enviou um áudio com a seguinte transcrição:\n\n"${transcript}"\n\n${summary ? `Resumo do áudio: ${summary}\n\n` : ''}Responda de forma breve, objetiva e educada como se estivesse respondendo diretamente ao cliente. NUNCA mencione que é uma transcrição, apenas responda ao conteúdo.`;
+
+    console.log(`[MEDIA_PROCESS] Gerando resposta automática para conversa ${conversation.id}`);
+    const aiReply = await askGemini(prompt, conversationHistory, conversation);
+
+    // Salva resposta no banco
+    const insertData = {
+      conversation_id: conversation.id,
+      text: aiReply,
+      sender_type: 'bot',
+      direction: 'outbound',
+      content_type: 'text'
+    };
+
+    const { error: saveError } = await supabase
+      .from('messages')
+      .insert(insertData);
+
+    if (saveError) {
+      console.error('[MEDIA_PROCESS] Erro ao salvar resposta automática:', saveError);
+    }
+
+    // Envia resposta via WhatsApp
+    console.log(`[MEDIA_PROCESS] Enviando resposta automática para ${clientPhone}`);
+    await sendWhatsAppMessage(clientPhone, aiReply);
+  } catch (error) {
+    console.error('[MEDIA_PROCESS] Erro na resposta automática:', error.message);
+  }
 }
 
 // Gera um resumo jurídico curto a partir da transcrição
