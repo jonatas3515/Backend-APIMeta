@@ -258,9 +258,18 @@ export default async function handler(req, res) {
 
       // Resposta da IA para mídia
       let promptForAI = textBody;
+      let isMediaAudio = messageType === 'audio' || messageType === 'video';
+      
       if (messageType !== 'text') {
-        if (messageType === 'audio' || messageType === 'video') {
-          promptForAI = `Cliente enviou um ${messageType}. Diga: "Recebido! Assim que o áudio for processado, eu resumo para você. Enquanto isso, se for urgente, pode mandar por texto também." NUNCA mencione equipe, advogado ou retorno.`;
+        if (isMediaAudio) {
+          // Se for áudio/vídeo, tenta transcrever de forma assíncrona (sem bloquear resposta)
+          if (publicUrl) {
+            // Inicia transcrição em background (não aguarda)
+            transcribeAudioAsync(conversation.id, publicUrl, messageType).catch(err => {
+              console.error('[WEBHOOK] Erro ao transcrever áudio em background:', err.message);
+            });
+          }
+          promptForAI = `Cliente enviou um ${messageType}. Diga: "Recebido! Estou analisando o áudio agora..." NUNCA mencione equipe, advogado ou retorno.`;
         } else if (textBody && !textBody.includes('processando transcrição')) {
           promptForAI = `O cliente enviou ${messageType} com a seguinte legenda/descrição: ${textBody}. Responda de forma breve, objetiva e educada.`;
         } else {
@@ -941,6 +950,84 @@ async function sendWhatsAppMessage(to, text) {
   } catch (error) {
     console.error(`[WHATSAPP] ❌ Erro ao enviar mensagem: ${error.message}`);
     throw error;
+  }
+}
+
+// Transcrição assíncrona de áudio (não bloqueia resposta do webhook)
+async function transcribeAudioAsync(conversationId, mediaUrl, mediaType) {
+  try {
+    console.log(`[WEBHOOK] Iniciando transcrição assíncrona para conversa ${conversationId}`);
+    
+    const mimeType = mediaType === 'audio' ? 'audio/ogg' : 'video/mp4';
+    const transcript = await transcribeAudio(mediaUrl, mimeType);
+    
+    if (!transcript) {
+      console.log('[WEBHOOK] Transcrição retornou vazia');
+      return;
+    }
+
+    console.log(`[WEBHOOK] ✅ Áudio transcrito: ${transcript.substring(0, 100)}`);
+
+    // Busca a conversa e histórico para gerar resposta
+    const { data: conversation, error: convError } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('id', conversationId)
+      .single();
+
+    if (convError || !conversation) {
+      console.error('[WEBHOOK] Conversa não encontrada para resposta de áudio');
+      return;
+    }
+
+    if (conversation.mode === 'human') {
+      console.log('[WEBHOOK] Conversa em modo humano, não respondendo automaticamente');
+      return;
+    }
+
+    // Busca histórico recente
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: messages } = await supabase
+      .from('messages')
+      .select('text, sender_type, created_at')
+      .eq('conversation_id', conversationId)
+      .gte('created_at', oneDayAgo)
+      .order('created_at', { ascending: true });
+
+    const conversationHistory = messages?.slice(-50).map(m => {
+      const role = m.sender_type === 'client' ? 'Cliente' : 'Jhon';
+      const time = new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      return `[${time}] ${role}: ${m.text}`;
+    }).join('\n') || '';
+
+    const prompt = `O cliente enviou um áudio com a seguinte transcrição:\n\n"${transcript}"\n\nResponda de forma breve, objetiva e educada como se estivesse respondendo diretamente ao cliente. NUNCA mencione que é uma transcrição.`;
+
+    console.log('[WEBHOOK] Gerando resposta automática para áudio');
+    const { askGemini } = await import('../../lib/ai.js');
+    const aiReply = await askGemini(prompt, conversationHistory, conversation);
+
+    // Salva resposta no banco
+    const { error: saveError } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        text: aiReply,
+        sender_type: 'bot',
+        direction: 'outbound',
+        content_type: 'text'
+      });
+
+    if (saveError) {
+      console.error('[WEBHOOK] Erro ao salvar resposta de áudio:', saveError);
+      return;
+    }
+
+    // Envia resposta via WhatsApp
+    const { sendWhatsAppMessage } = await import('../../lib/whatsapp.js');
+    await sendWhatsAppMessage(conversation.client_phone, aiReply);
+    console.log(`[WEBHOOK] ✅ Resposta automática enviada para áudio`);
+  } catch (error) {
+    console.error('[WEBHOOK] Erro na transcrição assíncrona:', error.message);
   }
 }
 
