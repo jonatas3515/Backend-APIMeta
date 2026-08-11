@@ -2,9 +2,13 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import axios from 'axios';
 import LegalClassification from './LegalClassification';
+import RemindersPanel from './RemindersPanel';
+import DocumentGenerator from './DocumentGenerator';
 
 export default function ChatWindow({ conversation, onConversationUpdate }) {
   const [showClassification, setShowClassification] = useState(false);
+  const [showReminders, setShowReminders] = useState(false);
+  const [showDocuments, setShowDocuments] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -315,6 +319,26 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
             📋 Classificar
           </button>
           
+          <button
+            onClick={() => setShowReminders(!showReminders)}
+            className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+              showReminders ? 'bg-purple-200 text-purple-900' : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
+            }`}
+            title="Lembretes"
+          >
+            ⏰ Lembretes
+          </button>
+          
+          <button
+            onClick={() => setShowDocuments(!showDocuments)}
+            className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+              showDocuments ? 'bg-green-200 text-green-900' : 'bg-green-100 text-green-800 hover:bg-green-200'
+            }`}
+            title="Gerar Documento"
+          >
+            📄 Documentos
+          </button>
+          
           <div className={`px-3 py-1 rounded-full text-sm font-semibold ${
             mode === 'bot'
               ? 'bg-green-100 text-green-800'
@@ -371,6 +395,20 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
             conversation={conversation} 
             onUpdate={onConversationUpdate}
           />
+        </div>
+      )}
+
+      {/* Painel de Lembretes */}
+      {showReminders && (
+        <div className="bg-gray-100 border-b border-gray-200 p-4">
+          <RemindersPanel conversation={conversation} />
+        </div>
+      )}
+
+      {/* Painel de Documentos */}
+      {showDocuments && (
+        <div className="bg-gray-100 border-b border-gray-200 p-4">
+          <DocumentGenerator conversation={conversation} />
         </div>
       )}
 
