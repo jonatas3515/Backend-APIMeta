@@ -6,7 +6,7 @@ const FILTERS = [
   { key: 'archived', label: 'Arquivados' }
 ];
 
-export default function ChatList({ conversations, selectedConversation, onSelectConversation, loading, onNewConversation }) {
+export default function ChatList({ conversations, selectedConversation, onSelectConversation, loading, onNewConversation, onDeleteConversation, deletingId }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
 
@@ -119,6 +119,17 @@ export default function ChatList({ conversations, selectedConversation, onSelect
                 {conv.status === 'open' && (
                   <span className="w-2 h-2 bg-green-500 rounded-full" title="Conversa ativa"></span>
                 )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteConversation(conv);
+                  }}
+                  disabled={deletingId === conv.id}
+                  className="ml-2 text-red-500 hover:text-red-700 text-xs"
+                  title="Excluir conversa"
+                >
+                  {deletingId === conv.id ? '...' : '🗑️'}
+                </button>
               </div>
             </div>
           ))

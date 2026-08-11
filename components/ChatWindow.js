@@ -14,6 +14,8 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
   const [newMessage, setNewMessage] = useState('');
   const [internalNotes, setInternalNotes] = useState(conversation.internal_notes || '');
   const [savingNotes, setSavingNotes] = useState(false);
+  const [confidential, setConfidential] = useState(conversation.confidential || false);
+  const [savingConfidential, setSavingConfidential] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [mode, setMode] = useState(conversation.mode);
@@ -232,6 +234,24 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
     }
   };
 
+  const toggleConfidential = async () => {
+    const newValue = !confidential;
+    setSavingConfidential(true);
+    try {
+      await supabase
+        .from('conversations')
+        .update({ confidential: newValue })
+        .eq('id', conversation.id);
+      setConfidential(newValue);
+      onConversationUpdate();
+    } catch (error) {
+      console.error('Erro ao alterar sigilo:', error);
+      alert('Erro ao alterar sigilo');
+    } finally {
+      setSavingConfidential(false);
+    }
+  };
+
   const saveNotes = async () => {
     setSavingNotes(true);
     try {
@@ -366,6 +386,19 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
             title="Notas Internas"
           >
             📝 Notas
+          </button>
+          
+          <button
+            onClick={toggleConfidential}
+            disabled={savingConfidential}
+            className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+              confidential
+                ? 'bg-red-200 text-red-900'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+            title={confidential ? 'Conversa sigilosa' : 'Marcar como sigilosa'}
+          >
+            {confidential ? '🔒 Sigiloso' : '🔓 Sigiloso'}
           </button>
           
           <div className={`px-3 py-1 rounded-full text-sm font-semibold ${

@@ -316,6 +316,23 @@ async function handleIntake(conversation, clientMessage) {
   let currentArea = conversation.legal_area;
   let currentStep = parseInt(intakeData.current_step || -1);
 
+  // Se o cliente confirmou início de um intake pendente
+  const wantsStart = msg.includes('sim') || msg.includes('quero') || msg.includes('pode ser') || msg.includes('ok') || msg.includes('vamos');
+  if (currentArea && intakeData.pending_start && wantsStart) {
+    const firstQuestion = getNextQuestion(currentArea, 0);
+    
+    await supabase
+      .from('conversations')
+      .update({
+        legal_area: currentArea,
+        intake_data: { current_step: 0, started_at: new Date().toISOString(), answers: {} },
+        funnel_stage: 'intake'
+      })
+      .eq('id', conversation.id);
+
+    return { reply: firstQuestion.question };
+  }
+
   // Se já está em processo de intake
   if (currentArea && currentStep >= 0) {
     const flow = getFlow(currentArea);
@@ -616,8 +633,22 @@ ESTILO DE COMUNICAÇÃO:
 
 VOCÊ NÃO É ADVOGADO:
 - Não faça análise jurídica conclusiva
-- Não prometa resultado
+- NUNCA prometa resultado ou vitória em processo
+- NUNCA diga "vai conseguir", "você tem direito a X" ou "isso é ilegal" de forma definitiva
+- SEMPRE sugerir análise formal com um advogado da equipe antes de qualquer conclusão
 - Encaminhe casos complexos para equipe
+
+SEGURANÇA E ÉTICA PROFISSIONAL (LGPD):
+- NUNCA peça senhas, dados bancários completos ou informações sensíveis desnecessárias pelo WhatsApp
+- NUNCA compartilhe dados de um cliente com terceiros
+- NUNCA confirme identidade ou detalhes de caso sem cautela
+- Se o cliente revelar assédio, violência, corrupção ou delação, responda com discrição e sigilo
+- Siga o princípio do mínimo necessário: peça apenas informações estritamente relevantes
+
+TOM DE RESPOSTA:
+- NUNCA soar definitivo, autoritário ou como se a resposta fosse decisão final
+- Use expressões como "Pode ser que...", "Um advogado precisa confirmar...", "A análise formal vai esclarecer..."
+- Evite afirmações absolutas sobre direito, valores ou resultados
 
 🔔 ENCAMINHAR PARA HUMANO (marcar conversa como "needs_human"):
 - Cliente pede "falar com advogado" ou "atendimento humano"
