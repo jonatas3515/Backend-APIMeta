@@ -664,7 +664,39 @@ async function saveMessage(conversationId, text, sender, messageType = 'text', m
       .select()
       .single();
 
-    if (error) throw error;
+    // Fallback: se a tabela ainda nao tem as colunas novas (migration nao aplicada), tenta salvar sem elas
+    if (error) {
+      const isColumnError = error.message && (
+        error.message.includes('media_status') ||
+        error.message.includes('media_transcript') ||
+        error.message.includes('column')
+      );
+
+      if (isColumnError) {
+        console.warn('[SUPABASE] Colunas de mídia não encontradas, salvando sem elas. Aplique a migration 020_add_media_transcript.sql:', error.message);
+        const minimalInsertData = {
+          conversation_id: conversationId,
+          text,
+          sender_type: senderType,
+          direction: direction,
+          content_type: messageType
+        };
+        if (mediaUrl) minimalInsertData.media_url = mediaUrl;
+        if (mediaSummary) minimalInsertData.media_summary = mediaSummary;
+
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('messages')
+          .insert(minimalInsertData)
+          .select()
+          .single();
+
+        if (fallbackError) throw fallbackError;
+        console.log(`[SUPABASE] Mensagem salva (fallback): ${fallbackData.id}`);
+        return fallbackData;
+      }
+
+      throw error;
+    }
 
     console.log(`[SUPABASE] Mensagem salva: ${data.id}`);
     return data;
