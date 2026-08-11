@@ -165,9 +165,9 @@ export default async function handler(req, res) {
         }
       }
       
-      // ================= PROCESSAMENTO DE MÍDIA =================
-      let mediaSummary = '';
+      // ================= PROCESSAMENTO DE MÍDIA (SÓ UPLOAD, PROCESSAMENTO ASSÍNCRONO) =================
       let publicUrl = '';
+      let mediaStatus = 'pending';
       
       if (mediaId && (messageType === 'audio' || messageType === 'image' || messageType === 'document' || messageType === 'video')) {
         try {
@@ -185,6 +185,7 @@ export default async function handler(req, res) {
 
             if (uploadError) {
               console.error('[WEBHOOK] Erro upload mídia:', uploadError);
+              mediaStatus = 'failed';
             } else {
               const { data: publicUrlData } = await supabase.storage
                 .from('chat-files')
@@ -193,28 +194,23 @@ export default async function handler(req, res) {
               console.log(`[WEBHOOK] ✅ Mídia salva: ${publicUrl}`);
 
               if (messageType === 'audio' || messageType === 'video') {
-                mediaSummary = await transcribeAudio(publicUrl, mediaBuffer.mimeType);
-                if (mediaSummary) {
-                  textBody = `[Áudio transcrito]: ${mediaSummary}`;
-                  console.log(`[WEBHOOK] 🎤 Transcrição: ${mediaSummary?.substring(0, 80)}`);
-                }
-              } else if (messageType === 'image' || messageType === 'document') {
-                mediaSummary = await summarizeMedia(publicUrl, mediaBuffer.mimeType);
-                if (mediaSummary) {
-                  textBody = `${textBody}\n\n[Resumo automático]: ${mediaSummary}`;
-                  console.log(`[WEBHOOK] 📄 Resumo: ${mediaSummary?.substring(0, 80)}`);
-                }
+                textBody = textBody || `[Áudio/vídeo enviado - processando transcrição...]`;
               }
             }
+          } else {
+            mediaStatus = 'failed';
           }
         } catch (mediaError) {
-          console.error('[WEBHOOK] ❌ Erro ao processar mídia:', mediaError.message);
+          console.error('[WEBHOOK] ❌ Erro ao baixar mídia:', mediaError.message);
+          mediaStatus = 'failed';
         }
+      } else {
+        mediaStatus = '';
       }
 
-      // Salvar mensagem do cliente
+      // Salvar mensagem do cliente (mídia vai para processamento assíncrono)
       if (conversation) {
-        await saveMessage(conversation.id, textBody, 'client', messageType, publicUrl, mediaSummary);
+        const savedMessage = await saveMessage(conversation.id, textBody, 'client', messageType, publicUrl, '', { media_status: mediaStatus || undefined });
         
         // Marca conversa como não lida para o atendente
         await supabase
@@ -263,10 +259,12 @@ export default async function handler(req, res) {
       // Resposta da IA para mídia
       let promptForAI = textBody;
       if (messageType !== 'text') {
-        if (mediaSummary) {
-          promptForAI = `O cliente enviou ${messageType} com o seguinte conteúdo: ${textBody}. Analise e responda de forma breve, objetiva e educada.`;
+        if (messageType === 'audio' || messageType === 'video') {
+          promptForAI = `Cliente enviou um ${messageType}. Diga: "Recebido! Assim que o áudio for processado, eu resumo para você. Enquanto isso, se for urgente, pode mandar por texto também." NUNCA mencione equipe, advogado ou retorno.`;
+        } else if (textBody && !textBody.includes('processando transcrição')) {
+          promptForAI = `O cliente enviou ${messageType} com a seguinte legenda/descrição: ${textBody}. Responda de forma breve, objetiva e educada.`;
         } else {
-          promptForAI = `Cliente enviou ${messageType}. Você não conseguiu ler/ouvir o conteúdo. Responda: "Recebido! Para agilizar, consegue me contar por texto o que é o arquivo?" NUNCA mencione equipe, advogado ou retorno.`;
+          promptForAI = `Cliente enviou ${messageType}. Responda: "Recebido! Para agilizar, consegue me contar por texto o que é o arquivo?" NUNCA mencione equipe, advogado ou retorno.`;
         }
       }
 
@@ -324,73 +322,18 @@ async function handleIntake(conversation, clientMessage) {
   let triage = intakeData.triage || {};
   let currentStep = parseInt(intakeData.current_step || -1);
 
-  // ========== TRIAGEM ESTRUTURADA ==========
-  // Etapa 0 a 3: pergunta municipality, agency, client_role e case_type
-  if (currentArea && triageStep >= 0 && triageStep < TRIAGE_FIELDS.length) {
-    // Salva resposta da pergunta anterior
-    const previousField = triageStep > 0 ? TRIAGE_FIELDS[triageStep - 1].field : null;
-    if (previousField) {
-      triage[previousField] = clientMessage;
-      intakeData.triage = triage;
-    }
+  console.log('[INTAKE] Estado:', {
+    conversationId: conversation.id,
+    legal_area: currentArea,
+    triage_step: triageStep,
+    current_step: currentStep,
+    triage_completed: !!intakeData.triage_completed,
+    message: clientMessage.substring(0, 50)
+  });
 
-    const nextIndex = triageStep;
-    const nextField = TRIAGE_FIELDS[nextIndex].field;
-    const question = getTriageQuestion(currentArea, nextField);
-
-    // Avança o passo da triagem
-    intakeData.triage_step = triageStep + 1;
-
-    // Atualiza os campos já preenchidos na conversa
-    const updatePayload = {
-      intake_data: intakeData,
-      municipality: triage.municipality || null,
-      agency: triage.agency || null,
-      client_role: triage.client_role || null,
-      case_type: triage.case_type || null
-    };
-
-    const { error: triageError } = await supabase
-      .from('conversations')
-      .update(updatePayload)
-      .eq('id', conversation.id);
-
-    if (triageError) {
-      console.error('[INTAKE] Erro ao atualizar triagem:', triageError);
-    }
-
-    return { reply: question };
-  }
-
-  // Triagem completa, mas ainda não iniciou o intake detalhado
-  if (currentArea && triageStep >= TRIAGE_FIELDS.length && currentStep < 0) {
-    // Salva a última resposta da triagem
-    const lastField = TRIAGE_FIELDS[TRIAGE_FIELDS.length - 1].field;
-    triage[lastField] = clientMessage;
-    intakeData.triage = triage;
-    intakeData.triage_step = TRIAGE_FIELDS.length;
-
-    const { error: finishTriageError } = await supabase
-      .from('conversations')
-      .update({
-        intake_data: { ...intakeData, current_step: 0, answers: {}, started_at: new Date().toISOString() },
-        municipality: triage.municipality || null,
-        agency: triage.agency || null,
-        client_role: triage.client_role || null,
-        case_type: triage.case_type || null,
-        funnel_stage: 'intake'
-      })
-      .eq('id', conversation.id);
-
-    if (finishTriageError) {
-      console.error('[INTAKE] Erro ao finalizar triagem e iniciar intake:', finishTriageError);
-    }
-
-    const firstQuestion = getNextQuestion(currentArea, 0);
-    return { reply: `Obrigado! Agora mais alguns detalhes: ${firstQuestion.question}` };
-  }
-
-  // ========== INTAKE DETALHADO (fluxo antigo) ==========
+  // ========== INTAKE DETALHADO ==========
+  // Sempre prioriza o fluxo de intake se ele já começou (currentStep >= 0).
+  // Isso evita que a triagem seja reexecutada acidentalmente.
   if (currentArea && currentStep >= 0) {
     const flow = getFlow(currentArea);
     if (!flow) return null;
@@ -419,14 +362,19 @@ async function handleIntake(conversation, clientMessage) {
 
       if (finalError) {
         console.error('[INTAKE] Erro ao finalizar intake:', finalError);
+        return null;
       }
 
       return { reply: `Obrigado pelas informações! 📝\n\nResumo do seu caso:\n${summary}\n\nNossa equipe irá analisar e retornar em breve.`, completed: true };
     } else {
       const nextQuestion = getNextQuestion(currentArea, nextStep);
+      if (!nextQuestion) {
+        console.error('[INTAKE] Pergunta não encontrada para step:', nextStep);
+        return null;
+      }
       intakeData.current_step = nextStep;
       
-      await supabase
+      const { error: stepError } = await supabase
         .from('conversations')
         .update({
           intake_data: intakeData,
@@ -435,8 +383,80 @@ async function handleIntake(conversation, clientMessage) {
         })
         .eq('id', conversation.id);
 
+      if (stepError) {
+        console.error('[INTAKE] Erro ao avançar intake:', stepError);
+        return null;
+      }
+
       return { reply: nextQuestion.question };
     }
+  }
+
+  // ========== TRIAGEM ESTRUTURADA ==========
+  // Etapa 0 a 3: pergunta municipality, agency, client_role e case_type
+  if (currentArea && triageStep >= 0 && triageStep < TRIAGE_FIELDS.length) {
+    const previousField = triageStep > 0 ? TRIAGE_FIELDS[triageStep - 1].field : null;
+    if (previousField) {
+      triage[previousField] = clientMessage;
+      intakeData.triage = triage;
+    }
+
+    const nextIndex = triageStep;
+    const nextField = TRIAGE_FIELDS[nextIndex].field;
+    const question = getTriageQuestion(currentArea, nextField);
+    intakeData.triage_step = triageStep + 1;
+
+    const { error: triageError } = await supabase
+      .from('conversations')
+      .update({
+        intake_data: intakeData,
+        municipality: triage.municipality || null,
+        agency: triage.agency || null,
+        client_role: triage.client_role || null,
+        case_type: triage.case_type || null
+      })
+      .eq('id', conversation.id);
+
+    if (triageError) {
+      console.error('[INTAKE] Erro ao atualizar triagem:', triageError);
+      return null;
+    }
+
+    return { reply: question };
+  }
+
+  // Triagem completa: salva a última resposta (case_type) e inicia o intake detalhado
+  if (currentArea && triageStep >= TRIAGE_FIELDS.length && !intakeData.triage_completed) {
+    const lastField = TRIAGE_FIELDS[TRIAGE_FIELDS.length - 1].field;
+    triage[lastField] = clientMessage;
+    const nextIntakeData = {
+      ...intakeData,
+      triage,
+      triage_completed: true,
+      current_step: 0,
+      answers: {},
+      started_at: new Date().toISOString()
+    };
+
+    const { error: finishTriageError } = await supabase
+      .from('conversations')
+      .update({
+        intake_data: nextIntakeData,
+        municipality: triage.municipality || null,
+        agency: triage.agency || null,
+        client_role: triage.client_role || null,
+        case_type: triage.case_type || null,
+        funnel_stage: 'intake'
+      })
+      .eq('id', conversation.id);
+
+    if (finishTriageError) {
+      console.error('[INTAKE] Erro ao finalizar triagem e iniciar intake:', finishTriageError);
+      return null;
+    }
+
+    const firstQuestion = getNextQuestion(currentArea, 0);
+    return { reply: `Obrigado! Agora mais alguns detalhes: ${firstQuestion.question}` };
   }
 
   // ========== DETECÇÃO INICIAL DE ÁREA ==========
@@ -444,8 +464,6 @@ async function handleIntake(conversation, clientMessage) {
   
   if (detectedArea) {
     const flow = getFlow(detectedArea);
-    
-    // Inicia triagem diretamente (município é a primeira pergunta)
     const firstField = TRIAGE_FIELDS[0].field;
     const firstQuestion = getTriageQuestion(detectedArea, firstField);
 
@@ -453,13 +471,19 @@ async function handleIntake(conversation, clientMessage) {
       .from('conversations')
       .update({
         legal_area: detectedArea,
-        intake_data: { triage_step: 0, triage: {}, started_at: new Date().toISOString() },
+        intake_data: {
+          triage_step: 0,
+          triage: {},
+          triage_completed: false,
+          started_at: new Date().toISOString()
+        },
         funnel_stage: 'triage'
       })
       .eq('id', conversation.id);
 
     if (startError) {
       console.error('[INTAKE] Erro ao iniciar triagem:', startError);
+      return null;
     }
 
     return { reply: `Entendi que pode ser um caso de ${flow.displayName}. Vou fazer algumas perguntas rápidas para organizar as informações. ${firstQuestion}` };
@@ -610,7 +634,7 @@ async function getOrCreateConversation(phoneNumber, clientName) {
 }
 
 // Função para salvar mensagem
-async function saveMessage(conversationId, text, sender, messageType = 'text', mediaUrl = '', mediaSummary = '') {
+async function saveMessage(conversationId, text, sender, messageType = 'text', mediaUrl = '', mediaSummary = '', extraData = {}) {
   if (!supabase || !conversationId) {
     console.warn('[SUPABASE] Cliente não configurado ou conversa inválida');
     return null;
@@ -631,6 +655,8 @@ async function saveMessage(conversationId, text, sender, messageType = 'text', m
 
     if (mediaUrl) insertData.media_url = mediaUrl;
     if (mediaSummary) insertData.media_summary = mediaSummary;
+    if (extraData.media_status) insertData.media_status = extraData.media_status;
+    if (extraData.media_transcript) insertData.media_transcript = extraData.media_transcript;
 
     const { data, error } = await supabase
       .from('messages')

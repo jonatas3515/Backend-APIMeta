@@ -28,6 +28,7 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
   const [pendingAudio, setPendingAudio] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const [expandedTranscript, setExpandedTranscript] = useState(null);
   const messagesEndRef = useRef(null);
 
   // Sincroniza o mode local com a conversa atual
@@ -501,7 +502,11 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages
-          .filter(msg => !searchTerm || msg.text?.toLowerCase().includes(searchTerm.toLowerCase()))
+          .filter(msg => !searchTerm || (
+            msg.text?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            msg.media_transcript?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            msg.media_summary?.toLowerCase().includes(searchTerm.toLowerCase())
+          ))
           .map((msg) => (
           <div
             key={msg.id}
@@ -548,6 +553,41 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
               )}
               
               <p className="text-sm text-nc-text leading-relaxed">{msg.text}</p>
+
+              {/* Status e resumo de mídia */}
+              {(msg.content_type === 'audio' || msg.content_type === 'video' || msg.content_type === 'image' || msg.content_type === 'document') && (
+                <div className="mt-2 pt-2 border-t border-nc-gray-200/50">
+                  {msg.media_status === 'pending' && (
+                    <span className="text-xs text-nc-text-muted flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-nc-yellow animate-pulse"></span>
+                      Processando {msg.content_type === 'audio' ? 'áudio' : msg.content_type === 'video' ? 'vídeo' : 'mídia'}...
+                    </span>
+                  )}
+                  {msg.media_status === 'failed' && (
+                    <span className="text-xs text-red-500 flex items-center gap-1">
+                      ❌ Falha no processamento
+                    </span>
+                  )}
+                  {msg.media_status === 'processed' && msg.media_summary && (
+                    <p className="text-xs text-nc-text-secondary bg-nc-yellow-50/50 p-1.5 rounded mt-1">
+                      📝 {msg.media_summary}
+                    </p>
+                  )}
+                  {msg.media_status === 'processed' && msg.media_transcript && (
+                    <button
+                      onClick={() => setExpandedTranscript(expandedTranscript === msg.id ? null : msg.id)}
+                      className="text-xs text-nc-yellow hover:text-nc-yellow-700 font-medium mt-1 transition"
+                    >
+                      {expandedTranscript === msg.id ? 'Ocultar transcrição' : 'Ver transcrição'}
+                    </button>
+                  )}
+                  {expandedTranscript === msg.id && msg.media_transcript && (
+                    <div className="mt-1.5 p-2 bg-nc-gray-100 rounded text-xs text-nc-text max-h-48 overflow-y-auto">
+                      {msg.media_transcript}
+                    </div>
+                  )}
+                </div>
+              )}
               
               <div className="flex items-center justify-between mt-1.5 gap-2">
                 <p className="text-xs text-nc-text-muted">
