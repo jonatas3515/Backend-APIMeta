@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,10 +10,43 @@
   box-sizing: border-box;
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #171717;
+  background-color: #FAFAFA;
+}
+
+@layer components {
+  .nc-btn {
+    @apply inline-flex items-center justify-center px-3 py-2 bg-nc-white text-nc-text border border-nc-gray-300 rounded-nc text-sm font-medium transition-all duration-200;
+  }
+  .nc-btn:hover {
+    @apply border-nc-yellow text-nc-yellow;
+  }
+  .nc-btn-active {
+    @apply bg-nc-yellow text-nc-black border-nc-yellow;
+  }
+  .nc-btn-active:hover {
+    @apply bg-nc-yellow-400 text-nc-black border-nc-yellow-400;
+  }
+  .nc-btn-primary {
+    @apply inline-flex items-center justify-center px-4 py-2 bg-nc-yellow text-nc-black rounded-nc text-sm font-semibold transition-all duration-200;
+  }
+  .nc-btn-primary:hover {
+    @apply bg-nc-yellow-600;
+  }
+  .nc-input {
+    @apply w-full px-3 py-2 bg-nc-white border border-nc-gray-350 rounded-nc text-sm text-nc-text placeholder-nc-text-placeholder focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow transition-all duration-200;
+  }
+  .nc-card {
+    @apply bg-nc-white border border-nc-gray-300 rounded-nc shadow-card;
+  }
+  .nc-panel {
+    @apply bg-nc-surface border-b border-nc-gray-200;
+  }
 }

@@ -191,8 +191,8 @@ export default function Home() {
 
   if (checkingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <p className="text-gray-500">Carregando...</p>
+      <div className="min-h-screen flex items-center justify-center bg-nc-surface">
+        <p className="text-nc-text-secondary">Carregando...</p>
       </div>
     );
   }
@@ -212,63 +212,41 @@ export default function Home() {
         <link rel="icon" href="/Logo transparente.png" />
       </Head>
       
-      <div className="flex h-screen bg-gray-100">
+      <div className="flex h-screen bg-nc-surface">
         {/* Sidebar com logo e navegação */}
-        <div className="w-20 bg-gradient-to-b from-nc-yellow to-nc-yellow-500 flex flex-col items-center py-6 space-y-6 border-r-4 border-black">
-          <img src="/Logo transparente.png" alt="N&C Logo" className="w-12 h-12 object-contain" />
+        <div className="w-20 bg-nc-black flex flex-col items-center py-6 border-r border-nc-gray-800">
+          <img src="/Logo transparente.png" alt="N&C Logo" className="w-10 h-10 object-contain" />
           
-          <div className="flex flex-col space-y-4 mt-8">
-            <button
-              onClick={() => setActiveTab('chat')}
-              className={`p-3 rounded-lg transition ${
-                activeTab === 'chat' 
-                  ? 'bg-black text-nc-yellow' 
-                  : 'text-black hover:bg-nc-yellow-300'
-              }`}
-              title="Chat"
-            >
-              💬
-            </button>
-            <button
-              onClick={() => setActiveTab('clients')}
-              className={`p-3 rounded-lg transition ${
-                activeTab === 'clients' 
-                  ? 'bg-black text-nc-yellow' 
-                  : 'text-black hover:bg-nc-yellow-300'
-              }`}
-              title="Clientes"
-            >
-              👥
-            </button>
-            <button
-              onClick={() => setActiveTab('funnel')}
-              className={`p-3 rounded-lg transition ${
-                activeTab === 'funnel' 
-                  ? 'bg-black text-nc-yellow' 
-                  : 'text-black hover:bg-nc-yellow-300'
-              }`}
-              title="Funil"
-            >
-              🎯
-            </button>
-            <button
-              onClick={() => setActiveTab('metrics')}
-              className={`p-3 rounded-lg transition ${
-                activeTab === 'metrics' 
-                  ? 'bg-black text-nc-yellow' 
-                  : 'text-black hover:bg-nc-yellow-300'
-              }`}
-              title="Métricas"
-            >
-              📊
-            </button>
+          <div className="flex flex-col space-y-3 mt-10 w-full px-2">
+            {[
+              { key: 'chat', icon: '💬', label: 'Chat' },
+              { key: 'clients', icon: '👥', label: 'Clientes' },
+              { key: 'funnel', icon: '🎯', label: 'Funil' },
+              { key: 'metrics', icon: '📊', label: 'Métricas' },
+            ].map(item => (
+              <button
+                key={item.key}
+                onClick={() => setActiveTab(item.key)}
+                className={`p-3 rounded-nc transition relative ${
+                  activeTab === item.key
+                    ? 'text-nc-yellow'
+                    : 'text-nc-gray-400 hover:text-nc-white'
+                }`}
+                title={item.label}
+              >
+                {activeTab === item.key && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-nc-yellow rounded-r" />
+                )}
+                <span className="text-lg">{item.icon}</span>
+              </button>
+            ))}
           </div>
 
           {/* Botão de logout no final */}
-          <div className="mt-auto">
+          <div className="mt-auto w-full px-2">
             <button
               onClick={handleLogout}
-              className="p-3 rounded-lg transition text-black hover:bg-red-500 hover:text-white"
+              className="w-full p-3 rounded-nc transition text-nc-gray-500 hover:text-nc-white hover:bg-nc-gray-800"
               title="Sair"
             >
               🚪
@@ -316,38 +294,38 @@ export default function Home() {
 
         {/* Modal de nova conversa */}
         {showNewConvModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
-              <h2 className="text-lg font-bold mb-4 text-gray-900">Iniciar conversa</h2>
+          <div className="fixed inset-0 bg-nc-black/70 flex items-center justify-center z-50">
+            <div className="bg-nc-white rounded-nc p-6 w-96 shadow-card border border-nc-gray-300">
+              <h2 className="text-lg font-bold mb-4 text-nc-text-title">Iniciar conversa</h2>
               <form onSubmit={handleStartConversation} className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Número do WhatsApp</label>
+                  <label className="block text-sm font-medium text-nc-text-secondary mb-1">Número do WhatsApp</label>
                   <input
                     type="tel"
                     value={newPhone}
                     onChange={(e) => setNewPhone(e.target.value)}
                     placeholder="5573999999999"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="nc-input"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Nome (opcional)</label>
+                  <label className="block text-sm font-medium text-nc-text-secondary mb-1">Nome (opcional)</label>
                   <input
                     type="text"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     placeholder="Nome do contato"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="nc-input"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Mensagem inicial (opcional)</label>
+                  <label className="block text-sm font-medium text-nc-text-secondary mb-1">Mensagem inicial (opcional)</label>
                   <textarea
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Olá, tudo bem?"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+                    className="nc-input resize-none"
                     rows="3"
                   />
                 </div>
@@ -355,14 +333,14 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setShowNewConvModal(false)}
-                    className="flex-1 py-2 px-4 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 text-sm font-semibold"
+                    className="nc-btn flex-1"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={startingConversation}
-                    className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold disabled:opacity-50"
+                    className="nc-btn-primary flex-1 disabled:opacity-50"
                   >
                     {startingConversation ? 'Iniciando...' : 'Iniciar'}
                   </button>

@@ -1,12 +1,12 @@
 import { useState } from 'react';
 
 const FUNNEL_STAGES = [
-  { id: 'intake', label: '📥 Intake', color: 'gray' },
-  { id: 'qualificacao', label: '✅ Qualificação', color: 'blue' },
-  { id: 'proposta', label: '💰 Proposta', color: 'yellow' },
-  { id: 'contrato', label: '📝 Contrato', color: 'purple' },
-  { id: 'andamento', label: '⚙️ Andamento', color: 'orange' },
-  { id: 'pos_caso', label: '🏁 Pós-caso', color: 'green' }
+  { id: 'intake', label: '📥 Intake' },
+  { id: 'qualificacao', label: '✅ Qualificação' },
+  { id: 'proposta', label: '💰 Proposta' },
+  { id: 'contrato', label: '📝 Contrato' },
+  { id: 'andamento', label: '⚙️ Andamento' },
+  { id: 'pos_caso', label: '🏁 Pós-caso' }
 ];
 
 const LEGAL_AREAS = [
@@ -59,15 +59,15 @@ export default function FunnelKanban({ conversations, onSelectConversation }) {
   }));
 
   return (
-    <div className="h-full flex flex-col bg-gray-50">
+    <div className="h-full flex flex-col bg-nc-surface">
       {/* Filtros */}
-      <div className="bg-white p-4 border-b border-gray-200">
-        <h2 className="text-xl font-bold text-gray-900 mb-3">🎯 Funil de Atendimento</h2>
+      <div className="bg-nc-white p-4 border-b border-nc-gray-200">
+        <h2 className="text-xl font-bold text-nc-text-title mb-3">🎯 Funil de Atendimento</h2>
         <div className="flex gap-3 flex-wrap">
           <select
             value={filters.area}
             onChange={(e) => setFilters({ ...filters, area: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="nc-input w-auto"
           >
             {LEGAL_AREAS.map(area => (
               <option key={area.value} value={area.value}>{area.label}</option>
@@ -77,7 +77,7 @@ export default function FunnelKanban({ conversations, onSelectConversation }) {
           <select
             value={filters.status}
             onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="nc-input w-auto"
           >
             {STATUS_OPTIONS.map(status => (
               <option key={status.value} value={status.value}>{status.label}</option>
@@ -88,8 +88,8 @@ export default function FunnelKanban({ conversations, onSelectConversation }) {
             type="text"
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            placeholder="🔍 Buscar cliente..."
-            className="flex-1 min-w-[200px] px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Buscar cliente..."
+            className="nc-input flex-1 min-w-[200px]"
           />
         </div>
       </div>
@@ -100,12 +100,12 @@ export default function FunnelKanban({ conversations, onSelectConversation }) {
           {groupedConversations.map(stage => (
             <div
               key={stage.id}
-              className={`w-72 flex flex-col bg-${stage.color}-50 rounded-lg border border-${stage.color}-200`}
+              className="w-72 flex flex-col bg-nc-white rounded-nc border border-nc-gray-300"
             >
-              <div className={`p-3 bg-${stage.color}-100 border-b border-${stage.color}-200 rounded-t-lg`}>
+              <div className="p-3 bg-nc-gray-100 border-b border-nc-gray-200 rounded-t-nc">
                 <div className="flex justify-between items-center">
-                  <h3 className="font-bold text-sm text-gray-800">{stage.label}</h3>
-                  <span className={`bg-${stage.color}-200 text-${stage.color}-800 text-xs px-2 py-1 rounded-full font-semibold`}>
+                  <h3 className="font-bold text-sm text-nc-text-title">{stage.label}</h3>
+                  <span className="bg-nc-white text-nc-text border border-nc-gray-300 text-xs px-2 py-1 rounded-full font-medium">
                     {stage.items.length}
                   </span>
                 </div>
@@ -116,24 +116,24 @@ export default function FunnelKanban({ conversations, onSelectConversation }) {
                   <div
                     key={conv.id}
                     onClick={() => onSelectConversation(conv)}
-                    className="bg-white p-3 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition"
+                    className="nc-card p-3 cursor-pointer hover:border-nc-yellow transition"
                   >
-                    <p className="font-semibold text-sm text-gray-900 truncate">
+                    <p className="font-semibold text-sm text-nc-text truncate">
                       {conv.client_name || conv.client_phone}
                     </p>
-                    <p className="text-xs text-gray-500 mb-2">{conv.client_phone}</p>
+                    <p className="text-xs text-nc-text-muted mb-2">{conv.client_phone}</p>
 
                     {conv.legal_area && (
-                      <span className="inline-block text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded mb-1">
+                      <span className="inline-block text-xs px-2 py-1 bg-nc-gray-100 text-nc-text border border-nc-gray-200 rounded mb-1">
                         {conv.legal_area}
                       </span>
                     )}
 
                     {conv.priority && conv.priority !== 'normal' && (
-                      <span className={`inline-block text-xs px-2 py-1 rounded mb-1 ml-1 ${
-                        conv.priority === 'urgente' ? 'bg-red-100 text-red-800' :
-                        conv.priority === 'alta' ? 'bg-orange-100 text-orange-800' :
-                        'bg-green-100 text-green-800'
+                      <span className={`inline-block text-xs px-2 py-1 rounded mb-1 ml-1 border ${
+                        conv.priority === 'urgente' ? 'bg-nc-gray-100 text-nc-text border-nc-gray-300' :
+                        conv.priority === 'alta' ? 'bg-nc-gray-100 text-nc-text border-nc-gray-300' :
+                        'bg-nc-white text-nc-text-secondary border-nc-gray-300'
                       }`}>
                         {conv.priority}
                       </span>
@@ -143,7 +143,7 @@ export default function FunnelKanban({ conversations, onSelectConversation }) {
                       value={conv.funnel_stage || 'intake'}
                       onChange={(e) => handleStageChange(e, conv)}
                       onClick={(e) => e.stopPropagation()}
-                      className="w-full mt-2 text-xs px-2 py-1 border border-gray-300 rounded"
+                      className="nc-input w-full mt-2 text-xs"
                     >
                       {FUNNEL_STAGES.map(s => (
                         <option key={s.id} value={s.id}>{s.label}</option>
@@ -153,7 +153,7 @@ export default function FunnelKanban({ conversations, onSelectConversation }) {
                 ))}
 
                 {stage.items.length === 0 && (
-                  <p className="text-xs text-gray-400 text-center py-4">
+                  <p className="text-xs text-nc-text-muted text-center py-4">
                     Nenhuma conversa
                   </p>
                 )}
