@@ -29,6 +29,11 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const messagesEndRef = useRef(null);
+
+  // Sincroniza o mode local com a conversa atual
+  useEffect(() => {
+    setMode(conversation.mode);
+  }, [conversation.id, conversation.mode]);
   const fileInputRef = useRef(null);
   
   const emojis = [

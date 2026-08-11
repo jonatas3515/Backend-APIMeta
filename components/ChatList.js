@@ -84,45 +84,46 @@ export default function ChatList({ conversations, selectedConversation, onSelect
                   : 'hover:bg-nc-gray-50'
               }`}
             >
-              <div className="flex justify-between items-start">
-                <div className="flex-1 min-w-0 pr-2">
-                  <p className={`font-semibold truncate ${
-                    selectedConversation?.id === conv.id ? 'text-nc-text-title' : 'text-nc-text'
-                  }`}>
-                    {conv.client_name || conv.client_phone}
-                  </p>
+              <div className="flex justify-between items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className={`font-semibold truncate ${
+                      selectedConversation?.id === conv.id ? 'text-nc-text-title' : 'text-nc-text'
+                    }`}>
+                      {conv.client_name || conv.client_phone}
+                    </p>
+                    <p className="text-xs text-nc-text-muted whitespace-nowrap">
+                      {(() => {
+                        const now = new Date();
+                        const updated = new Date(conv.updated_at);
+                        const diffMinutes = Math.floor((now - updated) / (1000 * 60));
+
+                        if (diffMinutes < 1) return 'Agora';
+                        if (diffMinutes < 60) return `${diffMinutes} min`;
+                        if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h`;
+                        return updated.toLocaleDateString('pt-BR');
+                      })()}
+                    </p>
+                  </div>
                   <p className="text-sm text-nc-text-secondary truncate">
                     {conv.messages?.[0]?.text || 'Sem mensagens'}
                   </p>
                 </div>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full font-medium border ${
-                    conv.mode === 'bot'
-                      ? 'bg-nc-gray-100 text-nc-text border-nc-gray-200'
-                      : 'bg-nc-white text-nc-text-secondary border-nc-gray-300'
-                  }`}
-                >
-                  {conv.mode === 'bot' ? 'Bot' : 'Humano'}
-                </span>
-              </div>
-              <div className="flex justify-between items-center mt-2">
-                <p className="text-xs text-nc-text-muted">
-                  {(() => {
-                    const now = new Date();
-                    const updated = new Date(conv.updated_at);
-                    const diffMinutes = Math.floor((now - updated) / (1000 * 60));
-
-                    if (diffMinutes < 1) return 'Agora';
-                    if (diffMinutes < 60) return `${diffMinutes} min atrás`;
-                    if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h atrás`;
-                    return updated.toLocaleDateString('pt-BR');
-                  })()}
-                </p>
-                <div className="flex items-center gap-2">
-                  {conv.status === 'open' && (
-                    <span className="w-2 h-2 bg-nc-yellow rounded-full" title="Conversa ativa"></span>
-                  )}
-                  <button
+                <div className="flex flex-col items-end gap-2">
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium border whitespace-nowrap ${
+                      conv.mode === 'bot'
+                        ? 'bg-nc-gray-100 text-nc-text border-nc-gray-200'
+                        : 'bg-nc-white text-nc-text-secondary border-nc-gray-300'
+                    }`}
+                  >
+                    {conv.mode === 'bot' ? 'Bot' : 'Humano'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {conv.status === 'open' && (
+                      <span className="w-2 h-2 bg-nc-yellow rounded-full" title="Conversa ativa"></span>
+                    )}
+                    <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onDeleteConversation(conv);

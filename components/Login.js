@@ -35,12 +35,14 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-nc-black">
-      <div className="bg-nc-white rounded-nc shadow-card p-8 w-full max-w-md border border-nc-gray-300">
-        <div className="text-center mb-8">
-          <img src="/Logo transparente.png" alt="N&C Logo" className="w-32 h-32 mx-auto" />
-        </div>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-nc-black">
+      <img
+        src="/Logo transparente.png"
+        alt="N&C Logo"
+        className="w-64 h-64 mb-6 object-contain"
+      />
 
+      <div className="bg-nc-white rounded-nc shadow-card p-8 w-full max-w-md border border-nc-gray-300">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-semibold text-nc-text mb-2">

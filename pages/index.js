@@ -59,6 +59,16 @@ export default function Home() {
     };
   }, []);
 
+  // Mantém a conversa selecionada sincronizada com o array de conversas
+  useEffect(() => {
+    if (selectedConversation && conversations.length > 0) {
+      const updated = conversations.find(c => c.id === selectedConversation.id);
+      if (updated && updated !== selectedConversation) {
+        setSelectedConversation(updated);
+      }
+    }
+  }, [conversations]);
+
   const fetchConversations = async () => {
     try {
       console.log('[FRONTEND] Buscando conversas...');
