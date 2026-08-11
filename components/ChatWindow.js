@@ -90,6 +90,7 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
   useEffect(() => {
     fetchMessages();
 
+    // Real-time via Supabase
     const subscription = supabase
       .channel(`messages-${conversation.id}`)
       .on(
@@ -106,8 +107,12 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
       )
       .subscribe();
 
+    // Fallback de polling rápido (2s) para garantir sincronia
+    const pollInterval = setInterval(fetchMessages, 2000);
+
     return () => {
       subscription.unsubscribe();
+      clearInterval(pollInterval);
     };
   }, [conversation.id]);
 
