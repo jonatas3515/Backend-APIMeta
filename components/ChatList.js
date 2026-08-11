@@ -1,7 +1,14 @@
 import { useState } from 'react';
 
-export default function ChatList({ conversations, selectedConversation, onSelectConversation, loading }) {
+const FILTERS = [
+  { key: 'all', label: 'Tudo' },
+  { key: 'unread', label: 'Não lidos' },
+  { key: 'archived', label: 'Arquivados' }
+];
+
+export default function ChatList({ conversations, selectedConversation, onSelectConversation, loading, onNewConversation }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
 
   if (loading) {
     return (
@@ -11,18 +18,33 @@ export default function ChatList({ conversations, selectedConversation, onSelect
     );
   }
 
-  const filteredConversations = conversations.filter(conv => {
-    const search = searchTerm.toLowerCase();
-    return (
-      conv.client_name?.toLowerCase().includes(search) ||
-      conv.client_phone?.includes(search)
-    );
-  });
+  const filteredConversations = conversations
+    .filter(conv => {
+      if (activeFilter === 'unread') return conv.unread === true;
+      if (activeFilter === 'archived') return conv.archived === true;
+      return !conv.archived; // Tudo = ativas (não arquivadas)
+    })
+    .filter(conv => {
+      const search = searchTerm.toLowerCase();
+      return (
+        conv.client_name?.toLowerCase().includes(search) ||
+        conv.client_phone?.includes(search)
+      );
+    });
 
   return (
     <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
       <div className="p-4 border-b border-gray-200">
-        <h1 className="text-2xl font-bold text-gray-800 mb-3">Chat Advocacia N&C</h1>
+        <div className="flex justify-between items-center mb-3">
+          <h1 className="text-2xl font-bold text-gray-800">Chat Advocacia N&C</h1>
+          <button
+            onClick={onNewConversation}
+            className="w-8 h-8 bg-blue-600 text-white rounded-full hover:bg-blue-700 flex items-center justify-center text-xl font-bold"
+            title="Nova conversa"
+          >
+            +
+          </button>
+        </div>
         <input
           type="text"
           value={searchTerm}
@@ -30,6 +52,21 @@ export default function ChatList({ conversations, selectedConversation, onSelect
           placeholder="🔍 Pesquisar..."
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
         />
+        <div className="flex gap-2 mt-3">
+          {FILTERS.map(filter => (
+            <button
+              key={filter.key}
+              onClick={() => setActiveFilter(filter.key)}
+              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition ${
+                activeFilter === filter.key
+                  ? 'bg-blue-100 text-blue-800 ring-1 ring-blue-300'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto">
         {filteredConversations.length === 0 ? (
