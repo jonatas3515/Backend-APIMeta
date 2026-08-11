@@ -87,23 +87,23 @@ export default function DocumentGenerator({ conversation }) {
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-4">
+    <div className="nc-card p-4 space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="font-bold text-gray-900">📄 Gerar Documento</h3>
+        <h3 className="font-bold text-nc-text-title">📄 Gerar Documento</h3>
         <button
           onClick={autoFill}
-          className="text-xs text-blue-600 hover:text-blue-800"
+          className="text-xs text-nc-yellow hover:text-nc-yellow-700 font-medium transition"
         >
           ✨ Preencher do caso
         </button>
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-gray-700 mb-1">Template</label>
+        <label className="block text-xs font-semibold text-nc-text-secondary mb-1">Template</label>
         <select
           value={selectedTemplate}
           onChange={(e) => setSelectedTemplate(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="nc-input"
         >
           <option value="">Selecione um template...</option>
           {templates.map(template => (
@@ -113,14 +113,14 @@ export default function DocumentGenerator({ conversation }) {
       </div>
 
       {selectedTemplateData && (
-        <p className="text-xs text-gray-500">{selectedTemplateData.description}</p>
+        <p className="text-xs text-nc-text-muted">{selectedTemplateData.description}</p>
       )}
 
       {selectedTemplate && (
         <form onSubmit={handleSubmit} className="space-y-3">
           {selectedTemplateData?.fields?.map(field => (
             <div key={field.field}>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">
+              <label className="block text-xs font-semibold text-nc-text-secondary mb-1">
                 {field.label} {field.required && <span className="text-red-500">*</span>}
               </label>
               <input
@@ -128,7 +128,7 @@ export default function DocumentGenerator({ conversation }) {
                 value={formData[field.field] || ''}
                 onChange={(e) => setFormData({ ...formData, [field.field]: e.target.value })}
                 placeholder={field.label}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="nc-input"
               />
             </div>
           ))}
@@ -136,7 +136,7 @@ export default function DocumentGenerator({ conversation }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 disabled:bg-gray-300 transition"
+            className="w-full nc-btn-primary disabled:opacity-50"
           >
             {loading ? 'Gerando...' : '📄 Gerar Documento'}
           </button>
@@ -144,17 +144,17 @@ export default function DocumentGenerator({ conversation }) {
       )}
 
       {document && (
-        <div className="border-t border-gray-200 pt-3">
+        <div className="border-t border-nc-gray-200 pt-3">
           <div className="flex justify-between items-center mb-2">
-            <h4 className="font-semibold text-sm text-gray-800">Documento Gerado</h4>
+            <h4 className="font-semibold text-sm text-nc-text-title">Documento Gerado</h4>
             <button
               onClick={handleCopy}
-              className="text-xs text-blue-600 hover:text-blue-800"
+              className="text-xs text-nc-yellow hover:text-nc-yellow-700 font-medium"
             >
               📋 Copiar
             </button>
           </div>
-          <pre className="bg-gray-50 p-3 rounded-lg text-xs text-gray-700 whitespace-pre-wrap max-h-80 overflow-y-auto font-mono">
+          <pre className="bg-nc-gray-50 p-3 rounded-nc text-xs text-nc-text whitespace-pre-wrap max-h-80 overflow-y-auto font-mono border border-nc-gray-200">
             {document}
           </pre>
         </div>

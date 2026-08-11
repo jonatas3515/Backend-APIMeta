@@ -333,36 +333,63 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gray-50">
-        <p className="text-gray-500">Carregando mensagens...</p>
+      <div className="flex-1 flex items-center justify-center bg-nc-surface">
+        <p className="text-nc-text-muted">Carregando mensagens...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-50">
-      <div className="bg-white border-b border-gray-200 p-4">
-        <div className="flex justify-between items-center mb-3">
+    <div className="flex-1 flex flex-col bg-nc-surface">
+      <div className="bg-nc-white border-b border-nc-gray-200 p-4">
+        <div className="flex justify-between items-start mb-3">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-nc-text-title">
               {conversation.client_name || conversation.client_phone}
             </h2>
-            <p className="text-sm text-gray-500">{conversation.client_phone}</p>
+            <p className="text-sm text-nc-text-secondary">{conversation.client_phone}</p>
           </div>
-        <div className="relative flex gap-2">
+          <div className="flex items-center gap-2">
+            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border ${
+              mode === 'bot'
+                ? 'bg-nc-gray-100 text-nc-text border-nc-gray-200'
+                : 'bg-nc-gray-100 text-nc-text border-nc-gray-200'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${mode === 'bot' ? 'bg-green-500' : 'bg-nc-yellow'}`}></span>
+              {mode === 'bot' ? 'Bot Ativo' : 'Modo Humano'}
+            </div>
+            {mode === 'bot' ? (
+              <button
+                onClick={() => setShowPauseMenu(!showPauseMenu)}
+                className="nc-btn"
+                title="Pausar Bot"
+              >
+                ⏸️ Pausar
+              </button>
+            ) : (
+              <button
+                onClick={handleResumeBot}
+                className="nc-btn"
+                title="Reativar Bot"
+              >
+                ▶️ Reativar
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="relative flex flex-wrap items-center gap-2">
           <button
             onClick={() => setShowClassification(!showClassification)}
-            className="px-3 py-2 bg-blue-100 text-blue-800 rounded-lg text-sm font-semibold hover:bg-blue-200 transition"
+            className={`nc-btn ${showClassification ? 'nc-btn-active' : ''}`}
             title="Classificação Jurídica"
           >
-            📋 Classificar
+            � Classificar
           </button>
           
           <button
             onClick={() => setShowReminders(!showReminders)}
-            className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
-              showReminders ? 'bg-purple-200 text-purple-900' : 'bg-purple-100 text-purple-800 hover:bg-purple-200'
-            }`}
+            className={`nc-btn ${showReminders ? 'nc-btn-active' : ''}`}
             title="Lembretes"
           >
             ⏰ Lembretes
@@ -370,19 +397,15 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
           
           <button
             onClick={() => setShowDocuments(!showDocuments)}
-            className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
-              showDocuments ? 'bg-green-200 text-green-900' : 'bg-green-100 text-green-800 hover:bg-green-200'
-            }`}
+            className={`nc-btn ${showDocuments ? 'nc-btn-active' : ''}`}
             title="Gerar Documento"
           >
-            📄 Documentos
+            � Documentos
           </button>
           
           <button
             onClick={() => setShowNotes(!showNotes)}
-            className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
-              showNotes ? 'bg-orange-200 text-orange-900' : 'bg-orange-100 text-orange-800 hover:bg-orange-200'
-            }`}
+            className={`nc-btn ${showNotes ? 'nc-btn-active' : ''}`}
             title="Notas Internas"
           >
             📝 Notas
@@ -391,51 +414,22 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
           <button
             onClick={toggleConfidential}
             disabled={savingConfidential}
-            className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
-              confidential
-                ? 'bg-red-200 text-red-900'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+            className={`nc-btn ${confidential ? 'nc-btn-active' : ''}`}
             title={confidential ? 'Conversa sigilosa' : 'Marcar como sigilosa'}
           >
             {confidential ? '🔒 Sigiloso' : '🔓 Sigiloso'}
           </button>
           
-          <div className={`px-3 py-1 rounded-full text-sm font-semibold ${
-            mode === 'bot'
-              ? 'bg-green-100 text-green-800'
-              : 'bg-yellow-100 text-yellow-800'
-          }`}>
-            {mode === 'bot' ? '🤖 Bot Ativo' : '👤 Modo Humano'}
-          </div>
-          
-          {mode === 'bot' ? (
-            <button
-              onClick={() => setShowPauseMenu(!showPauseMenu)}
-              className="px-4 py-2 bg-yellow-500 text-white rounded-lg font-semibold hover:bg-yellow-600 transition"
-            >
-              ⏸️ Pausar Bot
-            </button>
-          ) : (
-            <button
-              onClick={handleResumeBot}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 transition"
-            >
-              ▶️ Reativar Bot
-            </button>
-          )}
-          
           {showPauseMenu && (
-            <div className="absolute right-0 top-12 bg-white border border-gray-200 rounded-lg shadow-lg p-2 z-10 w-48">
-              <button onClick={() => handlePauseBot('15')} className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded">⏱️ 15 minutos</button>
-              <button onClick={() => handlePauseBot('30')} className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded">⏱️ 30 minutos</button>
-              <button onClick={() => handlePauseBot('60')} className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded">⏱️ 1 hora</button>
-              <button onClick={() => handlePauseBot('180')} className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded">⏱️ 3 horas</button>
-              <button onClick={() => handlePauseBot('1440')} className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded">📅 1 dia</button>
-              <button onClick={() => handlePauseBot('forever')} className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-red-600">⏹️ Pausar sempre</button>
+            <div className="absolute left-0 top-12 bg-nc-white border border-nc-gray-300 rounded-nc shadow-card p-2 z-10 w-48">
+              <button onClick={() => handlePauseBot('15')} className="w-full text-left px-3 py-2 text-sm text-nc-text hover:bg-nc-gray-100 rounded transition">⏱️ 15 minutos</button>
+              <button onClick={() => handlePauseBot('30')} className="w-full text-left px-3 py-2 text-sm text-nc-text hover:bg-nc-gray-100 rounded transition">⏱️ 30 minutos</button>
+              <button onClick={() => handlePauseBot('60')} className="w-full text-left px-3 py-2 text-sm text-nc-text hover:bg-nc-gray-100 rounded transition">⏱️ 1 hora</button>
+              <button onClick={() => handlePauseBot('180')} className="w-full text-left px-3 py-2 text-sm text-nc-text hover:bg-nc-gray-100 rounded transition">⏱️ 3 horas</button>
+              <button onClick={() => handlePauseBot('1440')} className="w-full text-left px-3 py-2 text-sm text-nc-text hover:bg-nc-gray-100 rounded transition">📅 1 dia</button>
+              <button onClick={() => handlePauseBot('forever')} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded transition">⏹️ Pausar sempre</button>
             </div>
           )}
-        </div>
         </div>
         
         {/* Busca de mensagens */}
@@ -444,15 +438,15 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="🔍 Buscar mensagens..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Buscar mensagens..."
+            className="nc-input"
           />
         </div>
       </div>
 
       {/* Painel de Classificação Jurídica */}
       {showClassification && (
-        <div className="bg-gray-100 border-b border-gray-200 p-4">
+        <div className="nc-panel p-4">
           <LegalClassification 
             conversation={conversation} 
             onUpdate={onConversationUpdate}
@@ -462,33 +456,33 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
 
       {/* Painel de Lembretes */}
       {showReminders && (
-        <div className="bg-gray-100 border-b border-gray-200 p-4">
+        <div className="nc-panel p-4">
           <RemindersPanel conversation={conversation} />
         </div>
       )}
 
       {/* Painel de Documentos */}
       {showDocuments && (
-        <div className="bg-gray-100 border-b border-gray-200 p-4">
+        <div className="nc-panel p-4">
           <DocumentGenerator conversation={conversation} />
         </div>
       )}
 
       {/* Painel de Notas Internas */}
       {showNotes && (
-        <div className="bg-orange-50 border-b border-orange-200 p-4">
-          <h3 className="text-sm font-bold text-orange-900 mb-2">📝 Notas Internas</h3>
+        <div className="bg-nc-gray-100 border-b border-nc-gray-200 p-4">
+          <h3 className="text-sm font-bold text-nc-text-title mb-2">📝 Notas Internas</h3>
           <textarea
             value={internalNotes}
             onChange={(e) => setInternalNotes(e.target.value)}
             placeholder="Anotações internas sobre o cliente/caso..."
-            className="w-full px-3 py-2 border border-orange-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 resize-none"
+            className="nc-input resize-none"
             rows="4"
           />
           <button
             onClick={saveNotes}
             disabled={savingNotes}
-            className="mt-2 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-semibold hover:bg-orange-700 disabled:opacity-50"
+            className="mt-2 nc-btn-primary disabled:opacity-50"
           >
             {savingNotes ? 'Salvando...' : 'Salvar notas'}
           </button>
@@ -506,12 +500,12 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
             }`}
           >
             <div
-              className={`max-w-md px-4 py-2 rounded-lg ${
+              className={`max-w-md px-4 py-2.5 rounded-nc shadow-soft ${
                 msg.direction === 'inbound'
-                  ? 'bg-gray-200 text-gray-900'
+                  ? 'bg-nc-gray-150 text-nc-text'
                   : msg.sender_type === 'bot'
-                  ? 'bg-blue-100 text-blue-900'
-                  : 'bg-green-100 text-green-900'
+                  ? 'bg-nc-white text-nc-text border border-nc-gray-300'
+                  : 'bg-nc-yellow-50 text-nc-text border border-nc-yellow-200'
               }`}
             >
               {/* Renderizar mídia se existir */}
@@ -535,7 +529,7 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
                       download 
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-blue-600 hover:underline"
+                      className="flex items-center gap-2 text-nc-text hover:text-nc-yellow hover:underline transition"
                     >
                       📎 {msg.text || 'Baixar arquivo'}
                     </a>
@@ -543,10 +537,10 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
                 </div>
               )}
               
-              <p className="text-sm">{msg.text}</p>
+              <p className="text-sm text-nc-text leading-relaxed">{msg.text}</p>
               
-              <div className="flex items-center justify-between mt-1 gap-2">
-                <p className="text-xs opacity-70">
+              <div className="flex items-center justify-between mt-1.5 gap-2">
+                <p className="text-xs text-nc-text-muted">
                   {new Date(msg.created_at).toLocaleTimeString('pt-BR')}
                 </p>
                 <div className="flex gap-1">
@@ -556,7 +550,7 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
                         navigator.clipboard.writeText(msg.text);
                         alert('Mensagem copiada!');
                       }}
-                      className="text-xs text-gray-600 hover:text-gray-900"
+                      className="text-xs text-nc-text-muted hover:text-nc-text transition"
                       title="Copiar mensagem"
                     >
                       📋
@@ -566,7 +560,7 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
                     <a 
                       href={msg.media_url} 
                       download 
-                      className="text-xs text-blue-600 hover:text-blue-800"
+                      className="text-xs text-nc-text-muted hover:text-nc-text transition"
                       title="Baixar"
                     >
                       ⬇️
@@ -576,10 +570,10 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
               </div>
               
               {msg.sender_type === 'bot' && (
-                <p className="text-xs font-semibold mt-1">🤖 Bot</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide mt-1.5 text-nc-text-muted">🤖 Bot</p>
               )}
               {msg.sender_type === 'human' && (
-                <p className="text-xs font-semibold mt-1">👤 Você</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide mt-1.5 text-nc-text-muted">👤 Você</p>
               )}
             </div>
           </div>
@@ -587,10 +581,10 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="bg-white border-t border-gray-200 p-4">
+      <div className="bg-nc-white border-t border-nc-gray-200 p-4">
         <div className="relative">
           {showEmojiPicker && (
-            <div className="absolute bottom-16 left-0 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-10 max-h-80 overflow-y-auto w-96">
+            <div className="absolute bottom-16 left-0 bg-nc-white border border-nc-gray-300 rounded-nc shadow-card p-3 z-10 max-h-80 overflow-y-auto w-96">
               <div className="grid grid-cols-8 gap-1">
                 {emojis.map((emoji, idx) => (
                   <button
@@ -599,7 +593,7 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
                       setNewMessage(newMessage + emoji);
                       setShowEmojiPicker(false);
                     }}
-                    className="text-2xl hover:bg-gray-100 p-2 rounded transition"
+                    className="text-2xl hover:bg-nc-gray-100 p-2 rounded transition"
                     title={emoji}
                   >
                     {emoji}
@@ -611,13 +605,13 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
           
           {/* Preview de arquivo pendente */}
           {(pendingFile || pendingAudio) && (
-            <div className="mb-2 flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg p-2">
-              <span className="text-sm text-blue-900">
+            <div className="mb-2 flex items-center justify-between gap-2 bg-nc-yellow-50 border border-nc-yellow-200 rounded-nc p-2">
+              <span className="text-sm text-nc-text truncate">
                 {pendingAudio ? '🎤 Áudio gravado' : `📎 ${pendingFile?.name}`}
               </span>
               <button
                 onClick={removePendingFile}
-                className="text-red-600 hover:text-red-800 font-bold"
+                className="text-nc-text-muted hover:text-red-600 transition"
                 title="Remover"
               >
                 ❌
@@ -625,16 +619,16 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
             </div>
           )}
 
-          <div className="flex gap-2 items-end">
+          <div className="flex gap-2 items-end bg-nc-gray-100 rounded-nc p-2 border border-nc-gray-200 focus-within:border-nc-yellow focus-within:ring-1 focus-within:ring-nc-yellow transition-all">
             <button
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+              className="p-2 text-nc-text-secondary hover:text-nc-yellow hover:bg-nc-white rounded-nc transition"
               title="Emojis"
             >
               😊
             </button>
             
-            <label className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition cursor-pointer" title="Enviar arquivo">
+            <label className="p-2 text-nc-text-secondary hover:text-nc-yellow hover:bg-nc-white rounded-nc transition cursor-pointer" title="Enviar arquivo">
               📎
               <input
                 ref={fileInputRef}
@@ -646,10 +640,10 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
             </label>
             
             <button
-              className={`px-3 py-2 rounded-lg transition ${
+              className={`p-2 rounded-nc transition ${
                 isRecording 
-                  ? 'bg-red-500 text-white animate-pulse' 
-                  : 'text-gray-600 hover:bg-gray-100'
+                  ? 'bg-red-500 text-white' 
+                  : 'text-nc-text-secondary hover:text-nc-yellow hover:bg-nc-white'
               }`}
               title={isRecording ? 'Parar gravação' : 'Gravar áudio'}
               onClick={isRecording ? stopRecording : startRecording}
@@ -668,7 +662,7 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
                 }
               }}
               placeholder="Digite sua resposta... (Shift+Enter para quebrar linha)"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[42px] max-h-32"
+              className="flex-1 bg-transparent text-nc-text placeholder-nc-text-placeholder resize-none min-h-[40px] max-h-32 outline-none px-1"
               rows="1"
               disabled={sending}
               style={{ height: 'auto' }}
@@ -677,16 +671,16 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
                 e.target.style.height = e.target.scrollHeight + 'px';
               }}
             />
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 justify-end">
               <button
                 onClick={handleSendMessage}
                 disabled={sending || (!newMessage.trim() && !pendingFile && !pendingAudio)}
-                className="px-6 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 disabled:bg-gray-300 transition"
+                className="nc-btn-primary h-[40px] disabled:opacity-50"
               >
                 {sending ? 'Enviando...' : 'Enviar'}
               </button>
               {newMessage && (
-                <span className="text-xs text-gray-500 text-center">
+                <span className="text-xs text-nc-text-muted text-center">
                   {newMessage.length} caracteres
                 </span>
               )}

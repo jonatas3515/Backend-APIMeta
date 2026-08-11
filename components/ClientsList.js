@@ -47,17 +47,17 @@ export default function ClientsList() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <p className="text-gray-500">Carregando clientes...</p>
+      <div className="flex-1 flex items-center justify-center bg-nc-surface">
+        <p className="text-nc-text-muted">Carregando clientes...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white">
+    <div className="flex-1 flex flex-col bg-nc-white">
       {/* Header */}
-      <div className="bg-gradient-to-r from-nc-yellow to-nc-yellow-500 text-black p-6 border-b-4 border-black">
-        <h1 className="text-2xl font-bold mb-4">📋 Lista de Clientes</h1>
+      <div className="bg-nc-white border-b border-nc-gray-200 p-6">
+        <h1 className="text-2xl font-bold mb-4 text-nc-text-title">📋 Lista de Clientes</h1>
         
         {/* Barra de pesquisa */}
         <div className="relative">
@@ -65,8 +65,8 @@ export default function ClientsList() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="🔍 Pesquisar por nome ou telefone..."
-            className="w-full px-4 py-3 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-300"
+            placeholder="Pesquisar por nome ou telefone..."
+            className="nc-input py-3"
           />
         </div>
       </div>
@@ -74,7 +74,7 @@ export default function ClientsList() {
       {/* Lista de clientes */}
       <div className="flex-1 overflow-y-auto p-6">
         {filteredClients.length === 0 ? (
-          <div className="text-center text-gray-500 mt-10">
+          <div className="text-center text-nc-text-muted mt-10">
             <p className="text-xl">👥</p>
             <p className="mt-2">
               {searchTerm ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado ainda'}
@@ -85,17 +85,17 @@ export default function ClientsList() {
             {filteredClients.map((client) => (
               <div
                 key={client.id}
-                className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
+                className="nc-card p-4 hover:border-nc-yellow transition"
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-nc-text-title">
                       {client.name || 'Sem nome'}
                     </h3>
-                    <p className="text-gray-600 mt-1">
+                    <p className="text-nc-text-secondary mt-1">
                       📱 {client.phone}
                     </p>
-                    <div className="flex gap-4 mt-2 text-sm text-gray-500">
+                    <div className="flex gap-4 mt-2 text-sm text-nc-text-muted">
                       <span>
                         📅 Primeiro contato: {new Date(client.first_contact_date).toLocaleDateString('pt-BR')}
                       </span>
@@ -104,13 +104,13 @@ export default function ClientsList() {
                       </span>
                     </div>
                     {client.notes && (
-                      <p className="mt-2 text-sm text-gray-600 italic">
+                      <p className="mt-2 text-sm text-nc-text-secondary italic">
                         📝 {client.notes}
                       </p>
                     )}
                   </div>
                   <div className="text-right">
-                    <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold">
+                    <span className="inline-block bg-nc-gray-100 text-nc-text border border-nc-gray-200 px-3 py-1 rounded-full text-sm font-medium">
                       {client.total_messages || 0} msgs
                     </span>
                   </div>
@@ -122,10 +122,10 @@ export default function ClientsList() {
       </div>
 
       {/* Footer com estatísticas */}
-      <div className="bg-gray-50 border-t border-gray-200 p-4">
-        <div className="flex justify-between text-sm text-gray-600">
-          <span>Total de clientes: <strong>{clients.length}</strong></span>
-          <span>Exibindo: <strong>{filteredClients.length}</strong></span>
+      <div className="bg-nc-gray-50 border-t border-nc-gray-200 p-4">
+        <div className="flex justify-between text-sm text-nc-text-secondary">
+          <span>Total de clientes: <strong className="text-nc-text">{clients.length}</strong></span>
+          <span>Exibindo: <strong className="text-nc-text">{filteredClients.length}</strong></span>
         </div>
       </div>
     </div>

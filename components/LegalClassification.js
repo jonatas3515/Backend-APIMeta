@@ -24,11 +24,11 @@ export default function LegalClassification({ conversation, onUpdate }) {
   });
 
   const legalAreas = [
-    { value: 'trabalhista', label: '⚖️ Trabalhista', color: 'blue' },
-    { value: 'previdenciario', label: '🏛️ Previdenciário', color: 'purple' },
-    { value: 'civel', label: '📄 Cível', color: 'gray' },
-    { value: 'consumidor', label: '🛒 Consumidor', color: 'green' },
-    { value: 'administrativo', label: '🏢 Administrativo', color: 'yellow' }
+    { value: 'trabalhista', label: '⚖️ Trabalhista' },
+    { value: 'previdenciario', label: '🏛️ Previdenciário' },
+    { value: 'civel', label: '📄 Cível' },
+    { value: 'consumidor', label: '🛒 Consumidor' },
+    { value: 'administrativo', label: '🏢 Administrativo' }
   ];
 
   const legalSituations = [
@@ -39,17 +39,17 @@ export default function LegalClassification({ conversation, onUpdate }) {
   ];
 
   const clientStatuses = [
-    { value: 'lead', label: '🎯 Lead', color: 'yellow' },
-    { value: 'cliente_ativo', label: '✅ Cliente Ativo', color: 'green' },
-    { value: 'cliente_antigo', label: '📁 Cliente Antigo', color: 'gray' },
-    { value: 'caso_recusado', label: '❌ Caso Recusado', color: 'red' }
+    { value: 'lead', label: '🎯 Lead' },
+    { value: 'cliente_ativo', label: '✅ Cliente Ativo' },
+    { value: 'cliente_antigo', label: '📁 Cliente Antigo' },
+    { value: 'caso_recusado', label: '❌ Caso Recusado' }
   ];
 
   const priorities = [
-    { value: 'baixa', label: '🟢 Baixa', color: 'green' },
-    { value: 'normal', label: '🟡 Normal', color: 'yellow' },
-    { value: 'alta', label: '🟠 Alta', color: 'orange' },
-    { value: 'urgente', label: '🔴 Urgente', color: 'red' }
+    { value: 'baixa', label: '🟢 Baixa' },
+    { value: 'normal', label: '🟡 Normal' },
+    { value: 'alta', label: '🟠 Alta' },
+    { value: 'urgente', label: '🔴 Urgente' }
   ];
 
   const funnelStages = [
@@ -139,29 +139,16 @@ export default function LegalClassification({ conversation, onUpdate }) {
     }
   };
 
-  const getAreaColor = (area) => {
-    const areaObj = legalAreas.find(a => a.value === area);
-    return areaObj?.color || 'gray';
-  };
-
-  const getStatusColor = (status) => {
-    const statusObj = clientStatuses.find(s => s.value === status);
-    return statusObj?.color || 'gray';
-  };
-
-  const getPriorityColor = (priority) => {
-    const priorityObj = priorities.find(p => p.value === priority);
-    return priorityObj?.color || 'gray';
-  };
+  const getBadgeStyle = () => 'bg-nc-gray-100 text-nc-text border border-nc-gray-200';
 
   if (!editing) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+      <div className="nc-card p-4 space-y-3">
         <div className="flex justify-between items-center">
-          <h3 className="font-bold text-gray-900">📋 Classificação Jurídica</h3>
+          <h3 className="font-bold text-nc-text-title">📋 Classificação Jurídica</h3>
           <button
             onClick={() => setEditing(true)}
-            className="text-sm text-blue-600 hover:text-blue-800"
+            className="text-sm text-nc-yellow hover:text-nc-yellow-700 font-medium transition"
           >
             ✏️ Editar
           </button>
@@ -171,35 +158,35 @@ export default function LegalClassification({ conversation, onUpdate }) {
           <div>
             <p className="text-gray-500 text-xs mb-1">Área Jurídica</p>
             {formData.legal_area ? (
-              <span className={`inline-block px-2 py-1 rounded bg-${getAreaColor(formData.legal_area)}-100 text-${getAreaColor(formData.legal_area)}-800 text-xs font-semibold`}>
+              <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getBadgeStyle()}`}>
                 {legalAreas.find(a => a.value === formData.legal_area)?.label || formData.legal_area}
               </span>
             ) : (
-              <span className="text-gray-400 text-xs">Não definida</span>
+              <span className="text-nc-text-muted text-xs">Não definida</span>
             )}
           </div>
 
           <div>
             <p className="text-gray-500 text-xs mb-1">Situação</p>
             {formData.legal_situation ? (
-              <span className="text-xs">
+              <span className="text-xs text-nc-text">
                 {legalSituations.find(s => s.value === formData.legal_situation)?.label || formData.legal_situation}
               </span>
             ) : (
-              <span className="text-gray-400 text-xs">Não definida</span>
+              <span className="text-nc-text-muted text-xs">Não definida</span>
             )}
           </div>
 
           <div>
             <p className="text-gray-500 text-xs mb-1">Status do Cliente</p>
-            <span className={`inline-block px-2 py-1 rounded bg-${getStatusColor(formData.client_status)}-100 text-${getStatusColor(formData.client_status)}-800 text-xs font-semibold`}>
+            <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getBadgeStyle()}`}>
               {clientStatuses.find(s => s.value === formData.client_status)?.label || formData.client_status}
             </span>
           </div>
 
           <div>
             <p className="text-gray-500 text-xs mb-1">Prioridade</p>
-            <span className={`inline-block px-2 py-1 rounded bg-${getPriorityColor(formData.priority)}-100 text-${getPriorityColor(formData.priority)}-800 text-xs font-semibold`}>
+            <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getBadgeStyle()}`}>
               {priorities.find(p => p.value === formData.priority)?.label || formData.priority}
             </span>
           </div>
@@ -213,8 +200,8 @@ export default function LegalClassification({ conversation, onUpdate }) {
 
           {formData.notes && (
             <div className="col-span-2">
-              <p className="text-gray-500 text-xs mb-1">Observações</p>
-              <p className="text-xs text-gray-700 bg-gray-50 p-2 rounded">{formData.notes}</p>
+              <p className="text-nc-text-muted text-xs mb-1">Observações</p>
+              <p className="text-xs text-nc-text bg-nc-gray-50 p-2 rounded">{formData.notes}</p>
             </div>
           )}
 

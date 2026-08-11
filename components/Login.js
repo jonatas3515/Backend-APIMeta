@@ -35,29 +35,29 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-nc-yellow via-nc-yellow-500 to-nc-yellow-600">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md border-4 border-black">
+    <div className="min-h-screen flex items-center justify-center bg-nc-black">
+      <div className="bg-nc-white rounded-nc shadow-card p-8 w-full max-w-md border border-nc-gray-300">
         <div className="text-center mb-8">
-          <img src="/Logo transparente.png" alt="N&C Logo" className="w-48 h-48 mx-auto" />
+          <img src="/Logo transparente.png" alt="N&C Logo" className="w-32 h-32 mx-auto" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-nc-text mb-2">
               Usuário
             </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-nc-yellow focus:border-transparent"
+              className="nc-input py-3"
               placeholder="Digite seu usuário"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <label className="block text-sm font-semibold text-nc-text mb-2">
               Senha
             </label>
             <div className="relative">
@@ -65,14 +65,14 @@ export default function Login({ onLogin }) {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-nc-yellow focus:border-transparent pr-12"
+                className="nc-input py-3 pr-12"
                 placeholder="Digite sua senha"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-gray-900"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-nc-text-muted hover:text-nc-text"
               >
                 {showPassword ? '👁️' : '👁️‍🗨️'}
               </button>
@@ -80,7 +80,7 @@ export default function Login({ onLogin }) {
           </div>
 
           {error && (
-            <div className="bg-red-100 border-2 border-red-400 text-red-700 px-4 py-3 rounded-lg">
+            <div className="bg-nc-gray-100 border border-red-400 text-red-700 px-4 py-3 rounded-nc">
               {error}
             </div>
           )}
@@ -88,14 +88,14 @@ export default function Login({ onLogin }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-nc-yellow to-nc-yellow-500 text-black font-bold py-3 px-4 rounded-lg hover:from-nc-yellow-500 hover:to-nc-yellow-600 transition border-2 border-black disabled:opacity-50"
+            className="w-full nc-btn-primary py-3 disabled:opacity-50"
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
-          🔒 Acesso restrito a administradores
+        <p className="text-center text-sm text-nc-text-secondary mt-6">
+          Acesso restrito a administradores
         </p>
       </div>
     </div>

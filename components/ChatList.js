@@ -12,8 +12,8 @@ export default function ChatList({ conversations, selectedConversation, onSelect
 
   if (loading) {
     return (
-      <div className="w-80 bg-white border-r border-gray-200 flex items-center justify-center">
-        <p className="text-gray-500">Carregando conversas...</p>
+      <div className="w-80 bg-nc-white border-r border-nc-gray-300 flex items-center justify-center">
+        <p className="text-nc-text-muted">Carregando conversas...</p>
       </div>
     );
   }
@@ -33,13 +33,13 @@ export default function ChatList({ conversations, selectedConversation, onSelect
     });
 
   return (
-    <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-      <div className="p-4 border-b border-gray-200">
+    <div className="w-80 bg-nc-white border-r border-nc-gray-300 flex flex-col">
+      <div className="p-4 border-b border-nc-gray-200">
         <div className="flex justify-between items-center mb-3">
-          <h1 className="text-2xl font-bold text-gray-800">Chat Advocacia N&C</h1>
+          <h1 className="text-xl font-bold text-nc-text-title">Conversas</h1>
           <button
             onClick={onNewConversation}
-            className="w-8 h-8 bg-blue-600 text-white rounded-full hover:bg-blue-700 flex items-center justify-center text-xl font-bold"
+            className="w-8 h-8 bg-nc-yellow text-nc-black rounded-nc hover:bg-nc-yellow-600 flex items-center justify-center text-xl font-semibold transition"
             title="Nova conversa"
           >
             +
@@ -49,18 +49,18 @@ export default function ChatList({ conversations, selectedConversation, onSelect
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="🔍 Pesquisar..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          placeholder="Pesquisar..."
+          className="nc-input"
         />
         <div className="flex gap-2 mt-3">
           {FILTERS.map(filter => (
             <button
               key={filter.key}
               onClick={() => setActiveFilter(filter.key)}
-              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition ${
+              className={`flex-1 py-1.5 px-2 rounded-nc text-xs font-medium transition border ${
                 activeFilter === filter.key
-                  ? 'bg-blue-100 text-blue-800 ring-1 ring-blue-300'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-nc-yellow text-nc-black border-nc-yellow'
+                  : 'bg-nc-white text-nc-text-secondary border-nc-gray-300 hover:border-nc-yellow hover:text-nc-yellow'
               }`}
             >
               {filter.label}
@@ -70,7 +70,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
       </div>
       <div className="flex-1 overflow-y-auto">
         {filteredConversations.length === 0 ? (
-          <div className="p-4 text-center text-gray-500">
+          <div className="p-4 text-center text-nc-text-muted">
             {searchTerm ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}
           </div>
         ) : (
@@ -78,58 +78,62 @@ export default function ChatList({ conversations, selectedConversation, onSelect
             <div
               key={conv.id}
               onClick={() => onSelectConversation(conv)}
-              className={`p-4 border-b border-gray-100 cursor-pointer transition ${
+              className={`p-4 border-b border-nc-gray-150 cursor-pointer transition relative ${
                 selectedConversation?.id === conv.id
-                  ? 'bg-blue-50 border-l-4 border-l-blue-500'
-                  : 'hover:bg-gray-50'
+                  ? 'bg-nc-gray-100 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-nc-yellow'
+                  : 'hover:bg-nc-gray-50'
               }`}
             >
               <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900">
+                <div className="flex-1 min-w-0 pr-2">
+                  <p className={`font-semibold truncate ${
+                    selectedConversation?.id === conv.id ? 'text-nc-text-title' : 'text-nc-text'
+                  }`}>
                     {conv.client_name || conv.client_phone}
                   </p>
-                  <p className="text-sm text-gray-500 truncate">
+                  <p className="text-sm text-nc-text-secondary truncate">
                     {conv.messages?.[0]?.text || 'Sem mensagens'}
                   </p>
                 </div>
                 <span
-                  className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                  className={`text-xs px-2 py-0.5 rounded-full font-medium border ${
                     conv.mode === 'bot'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-yellow-100 text-yellow-800'
+                      ? 'bg-nc-gray-100 text-nc-text border-nc-gray-200'
+                      : 'bg-nc-white text-nc-text-secondary border-nc-gray-300'
                   }`}
                 >
                   {conv.mode === 'bot' ? 'Bot' : 'Humano'}
                 </span>
               </div>
               <div className="flex justify-between items-center mt-2">
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-nc-text-muted">
                   {(() => {
                     const now = new Date();
                     const updated = new Date(conv.updated_at);
                     const diffMinutes = Math.floor((now - updated) / (1000 * 60));
-                    
+
                     if (diffMinutes < 1) return 'Agora';
                     if (diffMinutes < 60) return `${diffMinutes} min atrás`;
                     if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h atrás`;
                     return updated.toLocaleDateString('pt-BR');
                   })()}
                 </p>
-                {conv.status === 'open' && (
-                  <span className="w-2 h-2 bg-green-500 rounded-full" title="Conversa ativa"></span>
-                )}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteConversation(conv);
-                  }}
-                  disabled={deletingId === conv.id}
-                  className="ml-2 text-red-500 hover:text-red-700 text-xs"
-                  title="Excluir conversa"
-                >
-                  {deletingId === conv.id ? '...' : '🗑️'}
-                </button>
+                <div className="flex items-center gap-2">
+                  {conv.status === 'open' && (
+                    <span className="w-2 h-2 bg-nc-yellow rounded-full" title="Conversa ativa"></span>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteConversation(conv);
+                    }}
+                    disabled={deletingId === conv.id}
+                    className="text-nc-text-muted hover:text-red-600 text-xs transition"
+                    title="Excluir conversa"
+                  >
+                    {deletingId === conv.id ? '...' : '🗑️'}
+                  </button>
+                </div>
               </div>
             </div>
           ))
