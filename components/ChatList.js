@@ -6,9 +6,28 @@ const FILTERS = [
   { key: 'archived', label: 'Arquivados' }
 ];
 
+const LEGAL_AREA_OPTIONS = [
+  { value: '', label: 'Área' },
+  { value: 'trabalhista', label: 'Trabalhista' },
+  { value: 'administrativo', label: 'Administrativo' },
+  { value: 'previdenciario', label: 'Previdenciário' },
+  { value: 'civel', label: 'Cível' },
+  { value: 'consumidor', label: 'Consumidor' }
+];
+
 export default function ChatList({ conversations, selectedConversation, onSelectConversation, loading, onNewConversation, onDeleteConversation, deletingId }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
+  const [triageFilters, setTriageFilters] = useState({ legal_area: '', municipality: '', agency: '', client_role: '' });
+
+  const uniqueValues = (field) => {
+    const values = [];
+    conversations.forEach(c => {
+      const v = c[field];
+      if (v && !values.includes(v)) values.push(v);
+    });
+    return values.sort();
+  };
 
   if (loading) {
     return (
@@ -25,10 +44,19 @@ export default function ChatList({ conversations, selectedConversation, onSelect
       return !conv.archived; // Tudo = ativas (não arquivadas)
     })
     .filter(conv => {
+      if (triageFilters.legal_area && conv.legal_area !== triageFilters.legal_area) return false;
+      if (triageFilters.municipality && conv.municipality !== triageFilters.municipality) return false;
+      if (triageFilters.agency && conv.agency !== triageFilters.agency) return false;
+      if (triageFilters.client_role && conv.client_role !== triageFilters.client_role) return false;
+      return true;
+    })
+    .filter(conv => {
       const search = searchTerm.toLowerCase();
       return (
         conv.client_name?.toLowerCase().includes(search) ||
-        conv.client_phone?.includes(search)
+        conv.client_phone?.includes(search) ||
+        conv.legal_area?.toLowerCase().includes(search) ||
+        conv.case_type?.toLowerCase().includes(search)
       );
     });
 
@@ -66,6 +94,52 @@ export default function ChatList({ conversations, selectedConversation, onSelect
               {filter.label}
             </button>
           ))}
+        </div>
+
+        {/* Filtros de triagem jurídica */}
+        <div className="grid grid-cols-2 gap-2 mt-3">
+          <select
+            value={triageFilters.legal_area}
+            onChange={(e) => setTriageFilters({ ...triageFilters, legal_area: e.target.value })}
+            className="nc-select text-xs py-1.5"
+          >
+            {LEGAL_AREA_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+
+          <select
+            value={triageFilters.municipality}
+            onChange={(e) => setTriageFilters({ ...triageFilters, municipality: e.target.value })}
+            className="nc-select text-xs py-1.5"
+          >
+            <option value="">Município</option>
+            {uniqueValues('municipality').map(v => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
+
+          <select
+            value={triageFilters.agency}
+            onChange={(e) => setTriageFilters({ ...triageFilters, agency: e.target.value })}
+            className="nc-select text-xs py-1.5"
+          >
+            <option value="">Órgão</option>
+            {uniqueValues('agency').map(v => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
+
+          <select
+            value={triageFilters.client_role}
+            onChange={(e) => setTriageFilters({ ...triageFilters, client_role: e.target.value })}
+            className="nc-select text-xs py-1.5"
+          >
+            <option value="">Papel</option>
+            {uniqueValues('client_role').map(v => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto">
@@ -105,6 +179,20 @@ export default function ChatList({ conversations, selectedConversation, onSelect
                       })()}
                     </p>
                   </div>
+                  {(conv.legal_area || conv.case_type) && (
+                    <div className="flex flex-wrap gap-1 mb-1.5">
+                      {conv.legal_area && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-nc-gray-100 text-nc-text-secondary border border-nc-gray-200">
+                          {conv.legal_area}
+                        </span>
+                      )}
+                      {conv.case_type && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-nc-white text-nc-text-secondary border border-nc-gray-200">
+                          {conv.case_type}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <p className="text-sm text-nc-text-secondary truncate">
                     {conv.messages?.[0]?.text || 'Sem mensagens'}
                   </p>

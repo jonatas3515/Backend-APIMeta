@@ -270,10 +270,21 @@ export default function Home() {
             <ChatList
               conversations={conversations}
               selectedConversation={selectedConversation}
-              onSelectConversation={(conv) => {
+              onSelectConversation={async (conv) => {
                 setSelectedConversation(conv);
                 if (conv.unread) {
-                  supabase.from('conversations').update({ unread: false }).eq('id', conv.id);
+                  const { error } = await supabase
+                    .from('conversations')
+                    .update({ unread: false })
+                    .eq('id', conv.id);
+
+                  if (error) {
+                    console.error('[FRONTEND] Erro ao marcar como lida:', error);
+                  } else {
+                    setConversations(prev => prev.map(c =>
+                      c.id === conv.id ? { ...c, unread: false } : c
+                    ));
+                  }
                 }
               }}
               loading={loading}

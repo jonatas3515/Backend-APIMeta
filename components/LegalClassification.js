@@ -16,8 +16,8 @@ export default function LegalClassification({ conversation, onUpdate }) {
     case_type: conversation.case_type || '',
     municipality: conversation.municipality || '',
     state: conversation.state || '',
-    organ: conversation.organ || '',
-    position: conversation.position || '',
+    agency: conversation.agency || '',
+    client_role: conversation.client_role || '',
     is_public_employee: conversation.is_public_employee || false,
     source: conversation.source || '',
     campaign: conversation.campaign || ''
@@ -61,7 +61,7 @@ export default function LegalClassification({ conversation, onUpdate }) {
     { value: 'pos_caso', label: '🏁 Pós-caso' }
   ];
 
-  const organs = [
+  const agencies = [
     { value: 'prefeitura', label: '🏛️ Prefeitura' },
     { value: 'camara', label: '🏛️ Câmara' },
     { value: 'autarquia', label: '🏛️ Autarquia' },
@@ -69,13 +69,14 @@ export default function LegalClassification({ conversation, onUpdate }) {
     { value: 'outro', label: '📋 Outro' }
   ];
 
-  const positions = [
-    { value: 'professor_municipal', label: '👨‍🏫 Professor Municipal' },
-    { value: 'agente_comunitario', label: '👥 Agente Comunitário' },
-    { value: 'servidor_efetivo', label: '👤 Servidor Efetivo' },
+  const clientRoles = [
+    { value: 'servidor_efetivo', label: '� Servidor Efetivo' },
+    { value: 'servidor_contratado', label: '👥 Servidor Contratado' },
     { value: 'servidor_comissionado', label: '👤 Servidor Comissionado' },
-    { value: 'empregado_privado', label: '👷 Empregado Privado' },
-    { value: 'aposentado', label: '🧓 Aposentado' },
+    { value: 'empregado_clt', label: '� Empregado CLT' },
+    { value: 'empregador', label: '🏢 Empregador / Empresa' },
+    { value: 'autonomo', label: '🛠️ Autônomo' },
+    { value: 'beneficiario', label: '🏛️ Beneficiário / Cidadão' },
     { value: 'outro', label: '📋 Outro' }
   ];
 
@@ -89,8 +90,8 @@ export default function LegalClassification({ conversation, onUpdate }) {
   ];
 
   const getFunnelLabel = (stage) => funnelStages.find(s => s.value === stage)?.label || stage;
-  const getOrganLabel = (organ) => organs.find(o => o.value === organ)?.label || organ;
-  const getPositionLabel = (position) => positions.find(p => p.value === position)?.label || position;
+  const getAgencyLabel = (agency) => agencies.find(a => a.value === agency)?.label || agency;
+  const getClientRoleLabel = (clientRole) => clientRoles.find(r => r.value === clientRole)?.label || clientRole;
   const getSourceLabel = (source) => sources.find(s => s.value === source)?.label || source;
 
   const handleSave = async () => {
@@ -224,10 +225,17 @@ export default function LegalClassification({ conversation, onUpdate }) {
             </div>
           )}
 
-          {formData.organ && (
+          {formData.agency && (
             <div>
-              <p className="text-gray-500 text-xs mb-1">Órgão/Cargo</p>
-              <span className="text-xs">{getOrganLabel(formData.organ)} {formData.position ? `• ${getPositionLabel(formData.position)}` : ''}</span>
+              <p className="text-gray-500 text-xs mb-1">Órgão/Entidade</p>
+              <span className="text-xs">{getAgencyLabel(formData.agency)}</span>
+            </div>
+          )}
+
+          {formData.client_role && (
+            <div>
+              <p className="text-gray-500 text-xs mb-1">Papel do Cliente</p>
+              <span className="text-xs">{getClientRoleLabel(formData.client_role)}</span>
             </div>
           )}
 
@@ -380,28 +388,28 @@ export default function LegalClassification({ conversation, onUpdate }) {
 
           <div className="grid grid-cols-2 gap-3 mt-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Órgão</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Órgão/Entidade</label>
               <select
-                value={formData.organ}
-                onChange={(e) => setFormData({ ...formData, organ: e.target.value })}
+                value={formData.agency}
+                onChange={(e) => setFormData({ ...formData, agency: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecione...</option>
-                {organs.map(organ => (
-                  <option key={organ.value} value={organ.value}>{organ.label}</option>
+                {agencies.map(agency => (
+                  <option key={agency.value} value={agency.value}>{agency.label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Cargo</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Papel do Cliente</label>
               <select
-                value={formData.position}
-                onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                value={formData.client_role}
+                onChange={(e) => setFormData({ ...formData, client_role: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecione...</option>
-                {positions.map(position => (
-                  <option key={position.value} value={position.value}>{position.label}</option>
+                {clientRoles.map(clientRole => (
+                  <option key={clientRole.value} value={clientRole.value}>{clientRole.label}</option>
                 ))}
               </select>
             </div>
