@@ -270,7 +270,8 @@ export default async function handler(req, res) {
       console.log(`[WEBHOOK] ✅ Resposta da IA: ${aiReply?.substring(0, 100)}`);
 
       // Detectar se precisa de atendimento humano
-      const needsHuman = detectNeedsHuman(textBody, aiReply);
+      const intakeCompleted = conversation?.intake_data?.completed === true;
+      const needsHuman = detectNeedsHuman(textBody, aiReply, intakeCompleted);
       
       // Salvar resposta da IA
       if (conversation) {
@@ -446,21 +447,49 @@ function generateIntakeSummary(area, answers) {
 }
 
 // Função para detectar se cliente precisa de atendimento humano
-function detectNeedsHuman(clientMessage, aiResponse) {
+// Só ativa handoff durante coleta quando o cliente pede expressamente.
+// Após o intake completo, palavras de contexto jurídico também podem acionar.
+function detectNeedsHuman(clientMessage, aiResponse, intakeCompleted = false) {
   const clientLower = clientMessage.toLowerCase();
   const aiLower = aiResponse.toLowerCase();
   
-  // Palavras-chave que indicam necessidade de humano
-  const keywords = [
+  // Solicitação expressa do cliente (sempre atende, independente do estágio)
+  const expressRequest = [
     'falar com advogado',
     'falar com alguém',
     'falar com humano',
     'atendimento humano',
     'quero um advogado',
     'preciso de um advogado',
-    'advogado de verdade',
+    'quero falar com',
+    'preciso falar com',
+    'quero atendimento',
+    'preciso de atendimento',
+    'atende ai',
+    'atende aí',
+    'chama alguém',
+    'me transfere',
+    'me passa',
+    'passa pra pessoa',
+    'passa para a pessoa',
+    'passa pro advogado',
+    'passa para o advogado',
     'pessoa de verdade',
+    'advogado de verdade',
     'atendente',
+    'me liga',
+    'me ligue',
+    'liga pra mim',
+    'liga para mim',
+    'me chama',
+    'me chame',
+    'meu atendente'
+  ];
+  
+  const hasExpressRequest = expressRequest.some(keyword => clientLower.includes(keyword));
+  
+  // Palavras de contexto jurídico só disparam handoff após intake completo
+  const contextKeywords = intakeCompleted ? [
     'prazo processual',
     'audiência',
     'contratar',
@@ -472,16 +501,17 @@ function detectNeedsHuman(clientMessage, aiResponse) {
     'licitação',
     'dispensado',
     'justa causa',
-    'trabalhista',
     'indenização',
     'processo',
     'ajuizar',
     'entrar com ação',
-    'me liga',
-    'liga pra mim',
-    'me ligue',
+    'processo',
+    'entrada',
+    'colocar no pau',
+    'andar',
+    'andamento',
     'urgente'
-  ];
+  ] : [];
   
   // Verifica se a IA mencionou encaminhamento (desconsidera respostas automáticas de mídia)
   const aiMentionsForwarding = !clientLower.includes('[áudio enviado]') &&
@@ -489,10 +519,9 @@ function detectNeedsHuman(clientMessage, aiResponse) {
                                  aiLower.includes('equipe') ||
                                  aiLower.includes('aguarde o retorno'));
   
-  // Verifica palavras-chave na mensagem do cliente
-  const hasKeyword = keywords.some(keyword => clientLower.includes(keyword));
+  const hasContextKeyword = contextKeywords.some(keyword => clientLower.includes(keyword));
   
-  return hasKeyword || aiMentionsForwarding;
+  return hasExpressRequest || hasContextKeyword || (intakeCompleted && aiMentionsForwarding);
 }
 
 // Função para buscar ou criar conversa
