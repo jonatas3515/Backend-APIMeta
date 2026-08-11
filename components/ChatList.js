@@ -144,7 +144,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
       </div>
       <div className="flex-1 overflow-y-auto">
         {filteredConversations.length === 0 ? (
-          <div className="p-4 text-center text-nc-text-muted">
+          <div className="p-3 text-center text-nc-text-muted text-sm">
             {searchTerm ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}
           </div>
         ) : (
@@ -152,66 +152,56 @@ export default function ChatList({ conversations, selectedConversation, onSelect
             <div
               key={conv.id}
               onClick={() => onSelectConversation(conv)}
-              className={`p-4 border-b border-nc-gray-150 cursor-pointer transition relative ${
+              className={`px-3 py-2 border-b border-nc-gray-150 cursor-pointer transition relative ${
                 selectedConversation?.id === conv.id
                   ? 'bg-nc-gray-100 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-nc-yellow'
                   : 'hover:bg-nc-gray-50'
               }`}
             >
-              <div className="flex justify-between items-start">
-                <div className="flex-1 min-w-0 pr-2">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <p className={`font-semibold truncate ${
+              <div className="flex justify-between items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <p className={`text-sm font-medium truncate ${
                       selectedConversation?.id === conv.id ? 'text-nc-text-title' : 'text-nc-text'
                     }`}>
                       {conv.client_name || conv.client_phone}
                     </p>
-                    <p className="text-xs text-nc-text-muted whitespace-nowrap">
+                    <span className="text-xs text-nc-text-muted whitespace-nowrap">
                       {(() => {
                         const now = new Date();
                         const updated = new Date(conv.updated_at);
                         const diffMinutes = Math.floor((now - updated) / (1000 * 60));
 
                         if (diffMinutes < 1) return 'Agora';
-                        if (diffMinutes < 60) return `${diffMinutes} min`;
+                        if (diffMinutes < 60) return `${diffMinutes}m`;
                         if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h`;
                         return updated.toLocaleDateString('pt-BR');
                       })()}
-                    </p>
+                    </span>
                   </div>
                   {(conv.legal_area || conv.case_type) && (
-                    <div className="flex flex-wrap gap-1 mb-1.5">
+                    <div className="flex flex-wrap gap-0.5 mb-1">
                       {conv.legal_area && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-nc-gray-100 text-nc-text-secondary border border-nc-gray-200">
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-nc-gray-100 text-nc-text-secondary border border-nc-gray-200">
                           {conv.legal_area}
                         </span>
                       )}
                       {conv.case_type && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-nc-white text-nc-text-secondary border border-nc-gray-200">
+                        <span className="text-[9px] px-1 py-0.5 rounded bg-nc-white text-nc-text-secondary border border-nc-gray-200">
                           {conv.case_type}
                         </span>
                       )}
                     </div>
                   )}
-                  <p className="text-sm text-nc-text-secondary truncate">
+                  <p className="text-xs text-nc-text-secondary truncate">
                     {conv.messages?.[0]?.text || 'Sem mensagens'}
                   </p>
                 </div>
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full font-medium border ${
-                    conv.mode === 'bot'
-                      ? 'bg-nc-gray-100 text-nc-text border-nc-gray-200'
-                      : 'bg-nc-white text-nc-text-secondary border-nc-gray-300'
-                  }`}
-                >
-                  {conv.mode === 'bot' ? 'Bot' : 'Humano'}
-                </span>
-              </div>
-              <div className="flex justify-end items-center mt-2">
-                <div className="flex items-center gap-2">
-                  {conv.status === 'open' && (
-                    <span className="w-2 h-2 bg-nc-yellow rounded-full" title="Conversa ativa"></span>
-                  )}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {/* Status de leitura: ✓✓ azul = lido, ✓ cinza = enviado */}
+                  <span className="text-xs" title={conv.unread ? 'Não lido' : 'Lido'}>
+                    {conv.unread ? '✓' : '✓✓'}
+                  </span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
