@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { detectArea, getNextQuestion, isIntakeComplete, getFlow } from '../../lib/intakeFlows';
+import { detectArea, getNextQuestion, isIntakeComplete, getFlow, getTriageQuestion, TRIAGE_FIELDS } from '../../lib/intakeFlows';
 import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
@@ -315,36 +315,86 @@ export default async function handler(req, res) {
   }
 }
 
-// Função para gerenciar coleta guiada de informações (intake)
+// Função para gerenciar coleta guiada de informações (intake) com triagem estruturada
 async function handleIntake(conversation, clientMessage) {
   const msg = clientMessage.toLowerCase().trim();
   let intakeData = conversation.intake_data || {};
   let currentArea = conversation.legal_area;
+  const triageStep = typeof intakeData.triage_step === 'number' ? intakeData.triage_step : -1;
+  let triage = intakeData.triage || {};
   let currentStep = parseInt(intakeData.current_step || -1);
 
-  // Se o cliente confirmou início de um intake pendente
-  const wantsStart = msg.includes('sim') || msg.includes('quero') || msg.includes('pode ser') || msg.includes('ok') || msg.includes('vamos');
-  if (currentArea && intakeData.pending_start && wantsStart) {
-    const firstQuestion = getNextQuestion(currentArea, 0);
-    
-    await supabase
+  // ========== TRIAGEM ESTRUTURADA ==========
+  // Etapa 0 a 3: pergunta municipality, agency, client_role e case_type
+  if (currentArea && triageStep >= 0 && triageStep < TRIAGE_FIELDS.length) {
+    // Salva resposta da pergunta anterior
+    const previousField = triageStep > 0 ? TRIAGE_FIELDS[triageStep - 1].field : null;
+    if (previousField) {
+      triage[previousField] = clientMessage;
+      intakeData.triage = triage;
+    }
+
+    const nextIndex = triageStep;
+    const nextField = TRIAGE_FIELDS[nextIndex].field;
+    const question = getTriageQuestion(currentArea, nextField);
+
+    // Avança o passo da triagem
+    intakeData.triage_step = triageStep + 1;
+
+    // Atualiza os campos já preenchidos na conversa
+    const updatePayload = {
+      intake_data: intakeData,
+      municipality: triage.municipality || null,
+      agency: triage.agency || null,
+      client_role: triage.client_role || null,
+      case_type: triage.case_type || null
+    };
+
+    const { error: triageError } = await supabase
+      .from('conversations')
+      .update(updatePayload)
+      .eq('id', conversation.id);
+
+    if (triageError) {
+      console.error('[INTAKE] Erro ao atualizar triagem:', triageError);
+    }
+
+    return { reply: question };
+  }
+
+  // Triagem completa, mas ainda não iniciou o intake detalhado
+  if (currentArea && triageStep >= TRIAGE_FIELDS.length && currentStep < 0) {
+    // Salva a última resposta da triagem
+    const lastField = TRIAGE_FIELDS[TRIAGE_FIELDS.length - 1].field;
+    triage[lastField] = clientMessage;
+    intakeData.triage = triage;
+    intakeData.triage_step = TRIAGE_FIELDS.length;
+
+    const { error: finishTriageError } = await supabase
       .from('conversations')
       .update({
-        legal_area: currentArea,
-        intake_data: { current_step: 0, started_at: new Date().toISOString(), answers: {} },
+        intake_data: { ...intakeData, current_step: 0, answers: {}, started_at: new Date().toISOString() },
+        municipality: triage.municipality || null,
+        agency: triage.agency || null,
+        client_role: triage.client_role || null,
+        case_type: triage.case_type || null,
         funnel_stage: 'intake'
       })
       .eq('id', conversation.id);
 
-    return { reply: firstQuestion.question };
+    if (finishTriageError) {
+      console.error('[INTAKE] Erro ao finalizar triagem e iniciar intake:', finishTriageError);
+    }
+
+    const firstQuestion = getNextQuestion(currentArea, 0);
+    return { reply: `Obrigado! Agora mais alguns detalhes: ${firstQuestion.question}` };
   }
 
-  // Se já está em processo de intake
+  // ========== INTAKE DETALHADO (fluxo antigo) ==========
   if (currentArea && currentStep >= 0) {
     const flow = getFlow(currentArea);
     if (!flow) return null;
 
-    // Salvar resposta da pergunta anterior
     const previousQuestion = flow.questions[currentStep];
     if (previousQuestion) {
       intakeData[previousQuestion.field] = clientMessage;
@@ -355,10 +405,9 @@ async function handleIntake(conversation, clientMessage) {
     const nextStep = currentStep + 1;
 
     if (isIntakeComplete(currentArea, nextStep)) {
-      // Intake completo - gerar resumo
       const summary = generateIntakeSummary(currentArea, intakeData.answers || {});
       
-      await supabase
+      const { error: finalError } = await supabase
         .from('conversations')
         .update({
           intake_data: { ...intakeData, completed: true, completed_at: new Date().toISOString() },
@@ -368,11 +417,12 @@ async function handleIntake(conversation, clientMessage) {
         })
         .eq('id', conversation.id);
 
-      const finalMessage = `Obrigado pelas informações! 📝\n\nResumo do seu caso:\n${summary}\n\nNossa equipe irá analisar e retornar em breve.`;
-      
-      return { reply: finalMessage, completed: true };
+      if (finalError) {
+        console.error('[INTAKE] Erro ao finalizar intake:', finalError);
+      }
+
+      return { reply: `Obrigado pelas informações! 📝\n\nResumo do seu caso:\n${summary}\n\nNossa equipe irá analisar e retornar em breve.`, completed: true };
     } else {
-      // Próxima pergunta
       const nextQuestion = getNextQuestion(currentArea, nextStep);
       intakeData.current_step = nextStep;
       
@@ -389,41 +439,30 @@ async function handleIntake(conversation, clientMessage) {
     }
   }
 
-  // Se não está em intake, tentar detectar área
+  // ========== DETECÇÃO INICIAL DE ÁREA ==========
   const detectedArea = detectArea(clientMessage);
   
   if (detectedArea) {
     const flow = getFlow(detectedArea);
     
-    // Perguntar se quer iniciar coleta guiada
-    if (msg.includes('sim') || msg.includes('quero') || msg.includes('pode ser') || msg.includes('ok')) {
-      // Iniciar intake
-      const firstQuestion = getNextQuestion(detectedArea, 0);
-      
-      await supabase
-        .from('conversations')
-        .update({
-          legal_area: detectedArea,
-          intake_data: { current_step: 0, started_at: new Date().toISOString(), answers: {} },
-          funnel_stage: 'intake'
-        })
-        .eq('id', conversation.id);
+    // Inicia triagem diretamente (município é a primeira pergunta)
+    const firstField = TRIAGE_FIELDS[0].field;
+    const firstQuestion = getTriageQuestion(detectedArea, firstField);
 
-      return { reply: firstQuestion.question };
-    } else {
-      // Oferecer coleta guiada
-      await supabase
-        .from('conversations')
-        .update({
-          legal_area: detectedArea,
-          intake_data: { detected_area: detectedArea, pending_start: true }
-        })
-        .eq('id', conversation.id);
+    const { error: startError } = await supabase
+      .from('conversations')
+      .update({
+        legal_area: detectedArea,
+        intake_data: { triage_step: 0, triage: {}, started_at: new Date().toISOString() },
+        funnel_stage: 'triage'
+      })
+      .eq('id', conversation.id);
 
-      return {
-        reply: `Entendi que pode ser um caso de ${flow.displayName}. Para que eu possa organizar as informações e passar tudo certinho para a equipe, posso fazer algumas perguntas rápidas? Responda "sim" para começar.`
-      };
+    if (startError) {
+      console.error('[INTAKE] Erro ao iniciar triagem:', startError);
     }
+
+    return { reply: `Entendi que pode ser um caso de ${flow.displayName}. Vou fazer algumas perguntas rápidas para organizar as informações. ${firstQuestion}` };
   }
 
   return null;
