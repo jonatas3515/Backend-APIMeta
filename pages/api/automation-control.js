@@ -22,6 +22,12 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing conversationId or action' });
   }
 
+  // Garante que só atualiza uma conversa específica
+  if (typeof conversationId !== 'string' || conversationId.length < 10) {
+    console.error('[AUTOMATION] conversationId inválido:', conversationId);
+    return res.status(400).json({ error: 'conversationId inválido' });
+  }
+
   try {
     let mode = 'bot';
     let pausedUntil = null;

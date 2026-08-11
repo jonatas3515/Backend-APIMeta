@@ -131,8 +131,13 @@ export default async function handler(req, res) {
       // Buscar ou criar conversa no Supabase
       const conversation = await getOrCreateConversation(from, clientName);
       
+      if (!conversation || !conversation.id) {
+        console.error('[WEBHOOK] ❌ Conversa inválida, abortando processamento');
+        return res.status(200).json({ success: false, error: 'Conversa inválida' });
+      }
+      
       // Verificar se o bot está pausado e se deve reativar automaticamente
-      if (conversation && conversation.mode === 'human') {
+      if (conversation.mode === 'human') {
         // Verificar se passou 30 minutos desde a última atualização
         const lastUpdate = new Date(conversation.updated_at);
         const now = new Date();
@@ -278,7 +283,7 @@ export default async function handler(req, res) {
         await saveMessage(conversation.id, aiReply, 'ai');
         
         // Marcar conversa como precisando de humano
-        if (needsHuman) {
+        if (needsHuman && conversation.id) {
           await supabase
             .from('conversations')
             .update({ mode: 'human' })

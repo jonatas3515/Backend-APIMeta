@@ -14,6 +14,11 @@ export default async function handler(req, res) {
     const { id } = req.query;
     const { mode } = req.body;
 
+    if (!id || typeof id !== 'string' || id.length < 10) {
+      console.error('[MODE] id inválido:', id);
+      return res.status(400).json({ error: 'ID da conversa inválido' });
+    }
+
     if (!['bot', 'human'].includes(mode)) {
       return res.status(400).json({ error: 'Mode deve ser "bot" ou "human"' });
     }
