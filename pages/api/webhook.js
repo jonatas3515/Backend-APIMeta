@@ -210,6 +210,12 @@ export default async function handler(req, res) {
       // Salvar mensagem do cliente
       if (conversation) {
         await saveMessage(conversation.id, textBody, 'client', messageType, publicUrl, mediaSummary);
+        
+        // Marca conversa como não lida para o atendente
+        await supabase
+          .from('conversations')
+          .update({ unread: true })
+          .eq('id', conversation.id);
       }
 
       // ================= COLETA GUIADA DE INFORMAÇÕES =================

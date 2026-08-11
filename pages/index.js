@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import axios from 'axios';
 import ChatList from '../components/ChatList';
 import ChatWindow from '../components/ChatWindow';
 import ClientsList from '../components/ClientsList';
@@ -17,6 +18,11 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('chat');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [showNewConvModal, setShowNewConvModal] = useState(false);
+  const [newPhone, setNewPhone] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newMessage, setNewMessage] = useState('');
+  const [startingConversation, setStartingConversation] = useState(false);
 
   useEffect(() => {
     // Verificar autenticação
@@ -83,6 +89,72 @@ export default function Home() {
   const handleLogout = () => {
     localStorage.removeItem('chat_auth_token');
     setIsAuthenticated(false);
+  };
+
+  const handleStartConversation = async (e) => {
+    e.preventDefault();
+    if (!newPhone.trim()) return;
+
+    setStartingConversation(true);
+    try {
+      // Normaliza o telefone (só números)
+      const phone = newPhone.replace(/\D/g, '');
+
+      // Cria conversa no Supabase
+      const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .insert({
+          client_phone: phone,
+          client_name: newName.trim() || 'Novo contato',
+          status: 'open',
+          mode: 'human',
+          unread: false,
+          archived: false
+        })
+        .select()
+        .single();
+
+      if (convError) {
+        // Pode ser conflito de telefone único; busca existente
+        if (convError.code === '23505') {
+          const { data: existing } = await supabase
+            .from('conversations')
+            .select('*')
+            .eq('client_phone', phone)
+            .single();
+          if (existing) {
+            setSelectedConversation(existing);
+            setShowNewConvModal(false);
+            setActiveTab('chat');
+          }
+        } else {
+          throw convError;
+        }
+      } else {
+        // Envia mensagem inicial se houver texto
+        if (newMessage.trim()) {
+          await axios.post('/api/send-message', {
+            conversation_id: conversation.id,
+            text: newMessage,
+            media_url: null,
+            media_type: null
+          });
+        }
+
+        setConversations([conversation, ...conversations]);
+        setSelectedConversation(conversation);
+        setShowNewConvModal(false);
+        setNewPhone('');
+        setNewName('');
+        setNewMessage('');
+        setActiveTab('chat');
+      }
+    } catch (error) {
+      console.error('Erro ao iniciar conversa:', error);
+      alert('Erro ao iniciar conversa: ' + error.message);
+    } finally {
+      setStartingConversation(false);
+    }
   };
 
   if (checkingAuth) {
@@ -178,8 +250,14 @@ export default function Home() {
             <ChatList
               conversations={conversations}
               selectedConversation={selectedConversation}
-              onSelectConversation={setSelectedConversation}
+              onSelectConversation={(conv) => {
+                setSelectedConversation(conv);
+                if (conv.unread) {
+                  supabase.from('conversations').update({ unread: false }).eq('id', conv.id);
+                }
+              }}
               loading={loading}
+              onNewConversation={() => setShowNewConvModal(true)}
             />
             {selectedConversation && (
               <ChatWindow
@@ -200,6 +278,64 @@ export default function Home() {
           />
         ) : (
           <MetricsDashboard conversations={conversations} />
+        )}
+
+        {/* Modal de nova conversa */}
+        {showNewConvModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-96 shadow-xl">
+              <h2 className="text-lg font-bold mb-4 text-gray-900">Iniciar conversa</h2>
+              <form onSubmit={handleStartConversation} className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Número do WhatsApp</label>
+                  <input
+                    type="tel"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    placeholder="5573999999999"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Nome (opcional)</label>
+                  <input
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Nome do contato"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Mensagem inicial (opcional)</label>
+                  <textarea
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Olá, tudo bem?"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+                    rows="3"
+                  />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewConvModal(false)}
+                    className="flex-1 py-2 px-4 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 text-sm font-semibold"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={startingConversation}
+                    className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold disabled:opacity-50"
+                  >
+                    {startingConversation ? 'Iniciando...' : 'Iniciar'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
       </div>
     </>
