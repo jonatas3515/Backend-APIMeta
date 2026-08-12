@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
+import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '@/lib/whatsapp';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -8,8 +9,6 @@ const supabase = createClient(
 );
 
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
-const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || '1289520100904873';
-const WHATSAPP_API_URL = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -47,62 +46,41 @@ async function handler(req, res) {
       return res.status(403).json({ error: 'Você não tem permissão para enviar mensagens nesta conversa' });
     }
 
-    // Monta payload do WhatsApp
-    let whatsappPayload = {
-      messaging_product: 'whatsapp',
-      recipient_type: 'individual',
-      to: conversation.client_phone,
-      type: 'text',
-      text: { body: text }
-    };
-
-    // Se tem mídia, envia como documento/imagem/áudio
+    // Se tem mídia, faz upload para o servidor da Meta e envia por media_id
     let contentType = 'text';
+    let waMessageId = null;
+
     if (media_url) {
-      const isImage = media_type?.startsWith('image/');
-      const isAudio = media_type?.startsWith('audio/');
-      
-      if (isImage) {
-        whatsappPayload.type = 'image';
-        whatsappPayload.image = { link: media_url, caption: text };
-        delete whatsappPayload.text;
-        contentType = 'image';
-      } else if (isAudio) {
-        // Meta aceita audio/ogg, audio/mp4, audio/mpeg, audio/aac, audio/amr
-        // audio/webm pode ser rejeitado, então enviamos como documento se for webm
-        if (media_type === 'audio/webm') {
-          console.log('[SEND-MESSAGE] Áudio webm detectado, enviando como documento para compatibilidade');
-          whatsappPayload.type = 'document';
-          whatsappPayload.document = { 
-            link: media_url, 
-            caption: text,
-            filename: `audio-${Date.now()}.webm`
-          };
-          delete whatsappPayload.text;
-          contentType = 'document';
-        } else {
-          whatsappPayload.type = 'audio';
-          whatsappPayload.audio = { link: media_url };
-          delete whatsappPayload.text;
-          contentType = 'audio';
-        }
-      } else {
-        whatsappPayload.type = 'document';
-        whatsappPayload.document = { link: media_url, caption: text };
-        delete whatsappPayload.text;
-        contentType = 'document';
+      contentType = media_type?.startsWith('audio/') ? 'audio' 
+        : media_type?.startsWith('image/') ? 'image'
+        : media_type?.startsWith('video/') ? 'video'
+        : 'document';
+
+      try {
+        console.log('[SEND-MESSAGE] Baixando mídia do Supabase:', media_url);
+        const mediaResponse = await axios.get(media_url, { responseType: 'arraybuffer' });
+        const fileBuffer = Buffer.from(mediaResponse.data);
+        console.log('[SEND-MESSAGE] Mídia baixada:', fileBuffer.length, 'bytes');
+
+        console.log('[SEND-MESSAGE] Fazendo upload para Meta:', contentType, media_type);
+        const mediaId = await uploadMediaToWhatsApp(fileBuffer, media_type);
+
+        console.log('[SEND-MESSAGE] Enviando mídia por media_id:', mediaId);
+        await sendWhatsAppMediaMessage(conversation.client_phone, mediaId, contentType, text);
+
+        waMessageId = mediaId;
+      } catch (mediaError) {
+        console.error('[SEND-MESSAGE] ❌ Erro ao enviar mídia:', mediaError.message);
+        return res.status(500).json({ 
+          error: 'Erro ao enviar mídia: ' + mediaError.message,
+          details: mediaError.response?.data || mediaError.toString()
+        });
       }
+    } else {
+      // Envia mensagem de texto
+      const { sendWhatsAppMessage } = await import('@/lib/whatsapp');
+      await sendWhatsAppMessage(conversation.client_phone, text);
     }
-
-    console.log('[SEND-MESSAGE] Payload:', JSON.stringify(whatsappPayload, null, 2));
-    console.log('[SEND-MESSAGE] URL da mídia:', media_url, '| Tipo:', media_type);
-
-    const waResponse = await axios.post(WHATSAPP_API_URL, whatsappPayload, {
-      headers: {
-        'Authorization': `Bearer ${WHATSAPP_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-    });
 
     const { error: msgError } = await supabase
       .from('messages')
