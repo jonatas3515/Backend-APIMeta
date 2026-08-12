@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import axios from 'axios';
+import { getAuthHeaders } from '../lib/api';
 import LegalClassification from './LegalClassification';
 import RemindersPanel from './RemindersPanel';
 import DocumentGenerator from './DocumentGenerator';
@@ -157,11 +158,12 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
         setUploadProgress(10);
 
         // 1. Buscar URL assinada do backend (service_role)
+        const headers = await getAuthHeaders();
         const { data: signedData } = await axios.post('/api/upload-file', {
           fileName: fileToUpload.name,
           fileType: fileToUpload.type,
           conversationId: conversation.id
-        });
+        }, { headers });
 
         setUploadProgress(50);
 
@@ -191,12 +193,13 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
       }
 
       // Enviar mensagem
+      const headers = await getAuthHeaders();
       await axios.post('/api/send-message', {
         conversation_id: conversation.id,
         text: newMessage,
         media_url: mediaUrl,
         media_type: mediaType
-      });
+      }, { headers });
 
       setNewMessage('');
       setPendingFile(null);
@@ -217,11 +220,12 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
 
   const handlePauseBot = async (duration) => {
     try {
+      const headers = await getAuthHeaders();
       await axios.post('/api/automation-control', {
         conversationId: conversation.id,
         action: 'pause',
         duration
-      });
+      }, { headers });
       setMode('human');
       setShowPauseMenu(false);
       onConversationUpdate();
@@ -233,10 +237,11 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
 
   const handleResumeBot = async () => {
     try {
+      const headers = await getAuthHeaders();
       await axios.post('/api/automation-control', {
         conversationId: conversation.id,
         action: 'resume'
-      });
+      }, { headers });
       setMode('bot');
       onConversationUpdate();
     } catch (error) {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { getAuthHeaders } from '../lib/api';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -26,7 +27,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
     setLoading(true);
     try {
       // Busca usuários
-      const usersRes = await fetch('/api/collaboration?action=users');
+      const usersRes = await fetch('/api/collaboration?action=users', { headers: await getAuthHeaders() });
       if (usersRes.ok) {
         const usersData = await usersRes.json();
         setUsers(usersData);
@@ -35,7 +36,8 @@ export default function CollaborationPanel({ conversationId, caseId }) {
       if (activeTab === 'notes') {
         // Busca notas
         const notesRes = await fetch(
-          `/api/collaboration?action=notes&conversation_id=${conversationId}&case_id=${caseId}`
+          `/api/collaboration?action=notes&conversation_id=${conversationId}&case_id=${caseId}`,
+          { headers: await getAuthHeaders() }
         );
         if (notesRes.ok) {
           const notesData = await notesRes.json();
@@ -44,7 +46,8 @@ export default function CollaborationPanel({ conversationId, caseId }) {
       } else if (activeTab === 'audit') {
         // Busca auditoria
         const auditRes = await fetch(
-          `/api/collaboration?action=audit&entity_type=${caseId ? 'case' : 'conversation'}&entity_id=${caseId || conversationId}`
+          `/api/collaboration?action=audit&entity_type=${caseId ? 'case' : 'conversation'}&entity_id=${caseId || conversationId}`,
+          { headers: await getAuthHeaders() }
         );
         if (auditRes.ok) {
           const auditData = await auditRes.json();
@@ -64,7 +67,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
     try {
       const response = await fetch('/api/collaboration', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           action: 'add_note',
           conversation_id: conversationId,
@@ -90,7 +93,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
     try {
       const response = await fetch('/api/collaboration', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           action: 'assign_user',
           entity_type: caseId ? 'case' : 'conversation',

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { verifyAuthAndGetUser } from '@/lib/auth';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -12,6 +13,12 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
   : null;
 
 export default async function handler(req, res) {
+  try {
+    await verifyAuthAndGetUser(req);
+  } catch (error) {
+    return res.status(401).json({ error: error.message });
+  }
+
   if (req.method === 'GET') {
     // Listar lembretes pendentes ou de uma conversa
     const { conversation_id, status } = req.query;

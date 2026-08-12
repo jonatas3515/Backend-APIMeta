@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { withAuth } from '@/lib/auth';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -18,7 +19,7 @@ const FUNNEL_STAGES = [
   'encerrado'
 ];
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!supabase) {
     return res.status(500).json({ error: 'Supabase não configurado' });
   }
@@ -38,6 +39,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }
+
+export default withAuth(handler, { minRole: 'estagiario' });
 
 async function handleGet(req, res) {
   const { action, conversation_id } = req.query;

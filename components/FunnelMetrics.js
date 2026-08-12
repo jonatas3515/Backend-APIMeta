@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { getAuthHeaders } from '../lib/api';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -17,7 +18,7 @@ export default function FunnelMetrics() {
 
   const fetchMetrics = async () => {
     try {
-      const response = await fetch('/api/funnel?action=metrics');
+      const response = await fetch('/api/funnel?action=metrics', { headers: await getAuthHeaders() });
       if (!response.ok) throw new Error('Erro ao buscar métricas');
 
       const data = await response.json();

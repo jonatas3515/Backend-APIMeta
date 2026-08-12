@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { getAuthHeaders } from '../lib/api';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -19,7 +20,7 @@ export default function ClientInfoPanel({ conversationId, caseId }) {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/client-info?conversation_id=${conversationId}`);
+      const response = await fetch(`/api/client-info?conversation_id=${conversationId}`, { headers: await getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setRequests(data);

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { askGemini } from '../lib/ai';
+import { getAuthHeaders } from '../lib/api';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -33,7 +35,7 @@ export default function AgendaPanel() {
       if (filters.agency) params.append('agency', filters.agency);
       if (filters.priority) params.append('priority', filters.priority);
 
-      const response = await fetch(`/api/agenda?${params.toString()}`);
+      const response = await fetch(`/api/agenda?${params.toString()}`, { headers: await getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setAgenda(data);
@@ -50,7 +52,7 @@ export default function AgendaPanel() {
     try {
       const response = await fetch('/api/agenda', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           action: 'summary',
           range: activeTab

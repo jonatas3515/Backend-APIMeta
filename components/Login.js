@@ -1,11 +1,13 @@
 import { useState } from 'react';
+import { useAuth } from '../lib/useAuth';
 
 export default function Login({ onLogin }) {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const { signIn } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -13,19 +15,12 @@ export default function Login({ onLogin }) {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
+      const { success, error: signInError } = await signIn(email, password);
 
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem('chat_auth_token', data.token);
+      if (success) {
         onLogin();
       } else {
-        setError(data.error || 'Credenciais inválidas');
+        setError(signInError || 'Credenciais inválidas');
       }
     } catch (err) {
       setError('Erro ao fazer login');
@@ -46,14 +41,14 @@ export default function Login({ onLogin }) {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-semibold text-nc-text mb-2">
-              Usuário
+              Email
             </label>
             <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="nc-input py-3"
-              placeholder="Digite seu usuário"
+              placeholder="seu@email.com"
               required
             />
           </div>
@@ -97,7 +92,7 @@ export default function Login({ onLogin }) {
         </form>
 
         <p className="text-center text-sm text-nc-text-secondary mt-6">
-          Acesso restrito a administradores
+          Acesso por hierarquia de papéis (admin, advogado, estagiário)
         </p>
       </div>
     </div>

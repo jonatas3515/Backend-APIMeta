@@ -1,67 +1,81 @@
 import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY 
-  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
   : null;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    return res.status(405).json({ error: 'Método não permitido' });
   }
 
   if (!supabase) {
-    return res.status(500).json({ error: 'Supabase not configured' });
+    return res.status(500).json({ error: 'Supabase não configurado' });
   }
 
   try {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
 
-    // Buscar usuário na tabela chat_admin_users
-    const { data: user, error } = await supabase
-      .from('chat_admin_users')
-      .select('*')
-      .eq('username', username)
+    // Faz login no Supabase Auth
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      console.log('[AUTH] Erro no login:', error.message);
+      return res.status(401).json({ error: 'Email ou senha incorretos' });
+    }
+
+    const authUser = data.user;
+    const session = data.session;
+
+    // Busca perfil na tabela users
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('id, name, email, role, is_active, auth_user_id')
+      .eq('auth_user_id', authUser.id)
       .single();
 
-    if (error || !user) {
-      console.log('[AUTH] Usuário não encontrado:', username);
-      return res.status(401).json({ error: 'Credenciais inválidas' });
+    if (profileError || !profile) {
+      console.log('[AUTH] Perfil não encontrado para:', authUser.email);
+      return res.status(403).json({
+        error: 'Perfil não encontrado. Entre em contato com o administrador.'
+      });
     }
 
-    // Verificar senha (hash SHA256)
-    const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
-    
-    if (user.password_hash !== passwordHash) {
-      console.log('[AUTH] Senha incorreta para:', username);
-      return res.status(401).json({ error: 'Credenciais inválidas' });
+    if (!profile.is_active) {
+      return res.status(403).json({
+        error: 'Usuário inativo. Entre em contato com o administrador.'
+      });
     }
 
-    // Gerar token simples (em produção, use JWT)
-    const token = crypto.randomBytes(32).toString('hex');
-    
-    // Atualizar último login
+    // Atualiza último acesso
     await supabase
-      .from('chat_admin_users')
-      .update({ last_login: new Date().toISOString() })
-      .eq('id', user.id);
+      .from('users')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', profile.id);
 
-    console.log('[AUTH] Login bem-sucedido:', username);
+    console.log('[AUTH] Login bem-sucedido:', email, 'Role:', profile.role);
 
     return res.status(200).json({
       success: true,
-      token,
+      token: session.access_token,
+      refreshToken: session.refresh_token,
+      expiresAt: session.expires_at,
       user: {
-        id: user.id,
-        username: user.username,
-        name: user.name
+        id: profile.id,
+        auth_user_id: authUser.id,
+        email: profile.email,
+        name: profile.name,
+        role: profile.role
       }
     });
   } catch (error) {

@@ -1,1 +1,6 @@
-{}
+{
+  "components\\UserManagement.js -> ../lib/supabaseClient": {
+    "id": 5045,
+    "files": []
+  }
+}
