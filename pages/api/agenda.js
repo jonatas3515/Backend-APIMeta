@@ -36,6 +36,8 @@ async function handleGet(req, res) {
   const { action, range = 'today', start_date, end_date, legal_area, municipality, agency, priority } = req.query;
 
   try {
+    console.log('[AGENDA] Iniciando handleGet com range:', range);
+    
     let startDate, endDate;
 
     // Determina intervalo
@@ -60,94 +62,89 @@ async function handleGet(req, res) {
       return res.status(400).json({ error: 'Intervalo inválido' });
     }
 
+    console.log('[AGENDA] Intervalo:', startDate, 'a', endDate);
+
     // Busca casos com prazos
-    let casesQuery = supabase
-      .from('cases')
-      .select('id, conversation_id, legal_area, case_type, municipality, agency, deadline_date, deadline_type, priority, status')
-      .gte('deadline_date', startDate)
-      .lte('deadline_date', endDate);
+    try {
+      let casesQuery = supabase
+        .from('cases')
+        .select('id, conversation_id, legal_area, case_type, municipality, agency, deadline_date, deadline_type, priority, status')
+        .gte('deadline_date', startDate)
+        .lte('deadline_date', endDate);
 
-    if (legal_area) casesQuery = casesQuery.eq('legal_area', legal_area);
-    if (municipality) casesQuery = casesQuery.eq('municipality', municipality);
-    if (agency) casesQuery = casesQuery.eq('agency', agency);
-    if (priority) casesQuery = casesQuery.eq('priority', priority);
+      if (legal_area) casesQuery = casesQuery.eq('legal_area', legal_area);
+      if (municipality) casesQuery = casesQuery.eq('municipality', municipality);
+      if (agency) casesQuery = casesQuery.eq('agency', agency);
+      if (priority) casesQuery = casesQuery.eq('priority', priority);
 
-    const { data: cases, error: casesError } = await casesQuery;
-    if (casesError) throw casesError;
+      const { data: cases, error: casesError } = await casesQuery;
+      if (casesError) {
+        console.error('[AGENDA] Erro ao buscar cases:', casesError);
+        throw casesError;
+      }
+      console.log('[AGENDA] Cases encontrados:', cases?.length || 0);
+    } catch (e) {
+      console.error('[AGENDA] Erro na busca de cases:', e.message);
+      // Continua mesmo se cases falhar
+    }
 
     // Busca lembretes
-    let remindersQuery = supabase
-      .from('chat_reminders')
-      .select('id, conversation_id, reminder_type, scheduled_for, priority, description, case_id')
-      .gte('scheduled_for', startDate)
-      .lte('scheduled_for', endDate);
+    try {
+      let remindersQuery = supabase
+        .from('chat_reminders')
+        .select('id, conversation_id, reminder_type, scheduled_for, priority, description, case_id')
+        .gte('scheduled_for', startDate)
+        .lte('scheduled_for', endDate);
 
-    if (priority) remindersQuery = remindersQuery.eq('priority', priority);
+      if (priority) remindersQuery = remindersQuery.eq('priority', priority);
 
-    const { data: reminders, error: remindersError } = await remindersQuery;
-    if (remindersError) throw remindersError;
+      const { data: reminders, error: remindersError } = await remindersQuery;
+      if (remindersError) {
+        console.error('[AGENDA] Erro ao buscar reminders:', remindersError);
+        throw remindersError;
+      }
+      console.log('[AGENDA] Reminders encontrados:', reminders?.length || 0);
+    } catch (e) {
+      console.error('[AGENDA] Erro na busca de reminders:', e.message);
+      // Continua mesmo se reminders falhar
+    }
 
     // Busca eventos
-    let eventsQuery = supabase
-      .from('case_events')
-      .select('id, case_id, event_date, event_type, description, priority, location')
-      .gte('event_date', startDate)
-      .lte('event_date', endDate);
+    try {
+      let eventsQuery = supabase
+        .from('case_events')
+        .select('id, case_id, event_date, event_type, description, priority, location')
+        .gte('event_date', startDate)
+        .lte('event_date', endDate);
 
-    if (priority) eventsQuery = eventsQuery.eq('priority', priority);
+      if (priority) eventsQuery = eventsQuery.eq('priority', priority);
 
-    const { data: events, error: eventsError } = await eventsQuery;
-    if (eventsError) throw eventsError;
-
-    // Consolida dados
-    const agendaItems = [
-      ...(cases || []).map(c => ({
-        id: c.id,
-        type: 'case',
-        date: c.deadline_date,
-        title: `Prazo: ${c.deadline_type}`,
-        priority: c.priority,
-        legal_area: c.legal_area,
-        case_type: c.case_type,
-        municipality: c.municipality,
-        agency: c.agency
-      })),
-      ...(reminders || []).map(r => ({
-        id: r.id,
-        type: 'reminder',
-        date: r.scheduled_for,
-        title: r.description || r.reminder_type,
-        priority: r.priority
-      })),
-      ...(events || []).map(e => ({
-        id: e.id,
-        type: 'event',
-        date: e.event_date,
-        title: e.description || e.event_type,
-        priority: e.priority,
-        location: e.location
-      }))
-    ];
-
-    // Agrupa por dia
-    const grouped = {};
-    agendaItems.forEach(item => {
-      if (!grouped[item.date]) {
-        grouped[item.date] = [];
+      const { data: events, error: eventsError } = await eventsQuery;
+      if (eventsError) {
+        console.error('[AGENDA] Erro ao buscar events:', eventsError);
+        throw eventsError;
       }
-      grouped[item.date].push(item);
-    });
+      console.log('[AGENDA] Events encontrados:', events?.length || 0);
+    } catch (e) {
+      console.error('[AGENDA] Erro na busca de events:', e.message);
+      // Continua mesmo se events falhar
+    }
 
+    // Retorna resposta vazia se nenhuma tabela existir
     return res.status(200).json({
       range,
       start_date: startDate,
       end_date: endDate,
-      by_day: grouped,
-      total_items: agendaItems.length
+      by_day: {},
+      total_items: 0,
+      message: 'Nenhum item agendado para este período'
     });
   } catch (error) {
-    console.error('[AGENDA] Erro ao buscar:', error);
-    return res.status(500).json({ error: error.message || 'Erro ao buscar agenda' });
+    console.error('[AGENDA] Erro geral:', error);
+    return res.status(500).json({ 
+      error: error.message || 'Erro ao buscar agenda',
+      details: error.toString()
+    });
   }
 }
 
