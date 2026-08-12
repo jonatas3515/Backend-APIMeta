@@ -1,15 +1,20 @@
-'use client';
-
 import '../styles/globals.css';
-import { AuthProvider } from '../lib/useAuth';
+import Providers from './providers';
+
+export const metadata = {
+  title: 'N&C - Dashboard',
+  icons: {
+    icon: '/Logo%20transparente.png',
+  },
+};
 
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
       <body>
-        <AuthProvider>
+        <Providers>
           {children}
-        </AuthProvider>
+        </Providers>
       </body>
     </html>
   );
