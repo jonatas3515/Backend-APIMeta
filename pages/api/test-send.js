@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     // Buscar primeira conversa
     const { data: conversations, error: convError } = await supabase
       .from('conversations')
-      .select('id, client_phone, assigned_user_id')
+      .select('id, client_phone')
       .limit(1);
 
     if (convError || !conversations?.length) {
@@ -32,10 +32,9 @@ export default async function handler(req, res) {
       success: true,
       conversation: {
         id: conversation.id,
-        client_phone: conversation.client_phone,
-        assigned_user_id: conversation.assigned_user_id
+        client_phone: conversation.client_phone
       },
-      message: 'Conversa encontrada com sucesso'
+      message: 'Conversa encontrada com sucesso. Agora execute a migration 032 no Supabase SQL Editor.'
     });
   } catch (error) {
     console.error('[TEST-SEND] Erro:', error);
