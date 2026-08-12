@@ -1,11 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
+import { withAuth } from '@/lib/auth';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'PATCH') {
     return res.status(405).json({ error: 'Método não permitido' });
   }
@@ -39,3 +40,5 @@ export default async function handler(req, res) {
     res.status(500).json({ error: error.message });
   }
 }
+
+export default withAuth(handler, { minRole: 'estagiario' });

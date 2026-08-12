@@ -6,8 +6,10 @@ import ChatWindow from '../components/ChatWindow';
 import ClientsList from '../components/ClientsList';
 import FunnelKanban from '../components/FunnelKanban';
 import MetricsDashboard from '../components/MetricsDashboard';
+import UserManagement from '../components/UserManagement';
 import Login from '../components/Login';
 import Setup from './setup';
+import { useAuth } from '../lib/useAuth';
 import Head from 'next/head';
 
 export default function Home() {
@@ -16,8 +18,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [supabaseReady, setSupabaseReady] = useState(false);
   const [activeTab, setActiveTab] = useState('chat');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const { authUser, profile, loading: authLoading, signOut, canAccess } = useAuth();
   const [showNewConvModal, setShowNewConvModal] = useState(false);
   const [newPhone, setNewPhone] = useState('');
   const [newName, setNewName] = useState('');
@@ -26,20 +27,14 @@ export default function Home() {
   const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
-    // Verificar autenticação
-    const token = localStorage.getItem('chat_auth_token');
-    if (token) {
-      setIsAuthenticated(true);
-    }
-    setCheckingAuth(false);
-
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       setLoading(false);
       return;
     }
 
     setSupabaseReady(true);
-    if (token) {
+
+    if (authUser) {
       fetchConversations();
     }
 
@@ -57,7 +52,7 @@ export default function Home() {
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [authUser]);
 
   // Mantém a conversa selecionada sincronizada com o array de conversas
   useEffect(() => {
@@ -93,13 +88,11 @@ export default function Home() {
   };
 
   const handleLogin = () => {
-    setIsAuthenticated(true);
     fetchConversations();
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('chat_auth_token');
-    setIsAuthenticated(false);
+  const handleLogout = async () => {
+    await signOut();
   };
 
   const handleDeleteConversation = async (conv) => {
@@ -199,7 +192,7 @@ export default function Home() {
     }
   };
 
-  if (checkingAuth) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-nc-surface">
         <p className="text-nc-text-secondary">Carregando...</p>
@@ -207,7 +200,7 @@ export default function Home() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!authUser) {
     return <Login onLogin={handleLogin} />;
   }
 
@@ -229,27 +222,30 @@ export default function Home() {
           
           <div className="flex flex-col space-y-3 mt-10 w-full px-2">
             {[
-              { key: 'chat', icon: '💬', label: 'Chat' },
-              { key: 'clients', icon: '👥', label: 'Clientes' },
-              { key: 'funnel', icon: '🎯', label: 'Funil' },
-              { key: 'metrics', icon: '📊', label: 'Métricas' },
-            ].map(item => (
-              <button
-                key={item.key}
-                onClick={() => setActiveTab(item.key)}
-                className={`p-3 rounded-nc transition relative ${
-                  activeTab === item.key
-                    ? 'text-nc-yellow'
-                    : 'text-nc-gray-400 hover:text-nc-white'
-                }`}
-                title={item.label}
-              >
-                {activeTab === item.key && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-nc-yellow rounded-r" />
-                )}
-                <span className="text-lg">{item.icon}</span>
-              </button>
-            ))}
+              { key: 'chat', icon: '💬', label: 'Chat', minRole: 'estagiario' },
+              { key: 'clients', icon: '👥', label: 'Clientes', minRole: 'estagiario' },
+              { key: 'funnel', icon: '🎯', label: 'Funil', minRole: 'advogado' },
+              { key: 'metrics', icon: '📊', label: 'Métricas', minRole: 'advogado' },
+              { key: 'users', icon: '⚙️', label: 'Usuários', minRole: 'advogado' },
+            ]
+              .filter(item => canAccess(item.minRole))
+              .map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => setActiveTab(item.key)}
+                  className={`p-3 rounded-nc transition relative ${
+                    activeTab === item.key
+                      ? 'text-nc-yellow'
+                      : 'text-nc-gray-400 hover:text-nc-white'
+                  }`}
+                  title={item.label}
+                >
+                  {activeTab === item.key && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-nc-yellow rounded-r" />
+                  )}
+                  <span className="text-lg">{item.icon}</span>
+                </button>
+              ))}
           </div>
 
           {/* Botão de logout no final */}
@@ -309,8 +305,10 @@ export default function Home() {
               setActiveTab('chat');
             }}
           />
-        ) : (
+        ) : activeTab === 'metrics' ? (
           <MetricsDashboard conversations={conversations} />
+        ) : (
+          <UserManagement />
         )}
 
         {/* Modal de nova conversa */}

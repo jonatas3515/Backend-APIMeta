@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
+import { withAuth } from '@/lib/auth';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -10,13 +11,15 @@ const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || 'your_whatsapp_phone_number_id_here';
 const WHATSAPP_API_URL = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
   }
 
   try {
     const { conversation_id, text, media_url, media_type } = req.body;
+    const userRole = req.user?.role;
+    const userId = req.user?.id;
 
     if (!conversation_id || !text) {
       return res.status(400).json({ error: 'conversation_id e text são obrigatórios' });
@@ -24,12 +27,19 @@ export default async function handler(req, res) {
 
     const { data: conversation, error: convError } = await supabase
       .from('conversations')
-      .select('client_phone')
+      .select('client_phone, assigned_user_id')
       .eq('id', conversation_id)
       .single();
 
     if (convError || !conversation) {
       return res.status(404).json({ error: 'Conversa não encontrada' });
+    }
+
+    // Verificar permissão de acesso
+    // Admin e Advogado podem acessar todas as conversas
+    // Estagiário só pode acessar conversas atribuídas a ele
+    if (userRole === 'estagiario' && conversation.assigned_user_id !== userId) {
+      return res.status(403).json({ error: 'Você não tem permissão para enviar mensagens nesta conversa' });
     }
 
     // Monta payload do WhatsApp
@@ -111,3 +121,5 @@ export default async function handler(req, res) {
     res.status(500).json({ error: error.message });
   }
 }
+
+export default withAuth(handler, { minRole: 'estagiario' });

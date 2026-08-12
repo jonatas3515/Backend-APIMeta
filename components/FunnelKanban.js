@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getAuthHeaders } from '../lib/api';
 
 // Etapas padronizadas do funil
 const FUNNEL_STAGES = [
@@ -35,7 +36,7 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
     try {
       const response = await fetch('/api/funnel', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           conversation_id: conversation.id,
           new_stage: newStage,

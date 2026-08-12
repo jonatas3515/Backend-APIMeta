@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { getAuthHeaders } from '../lib/api';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -40,7 +41,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose }) {
       if (filters.agency) params.append('agency', filters.agency);
       if (filters.search) params.append('search', filters.search);
 
-      const response = await fetch(`/api/insights?${params.toString()}`);
+      const response = await fetch(`/api/insights?${params.toString()}`, { headers: await getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setInsights(data);
@@ -55,7 +56,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose }) {
   const fetchSimilarInsights = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/insights?action=similar&conversation_id=${conversationId}`);
+      const response = await fetch(`/api/insights?action=similar&conversation_id=${conversationId}`, { headers: await getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setSimilarInsights(data);
@@ -72,7 +73,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose }) {
 
     setGeneratingProposal(true);
     try {
-      const response = await fetch(`/api/insights?action=generate_proposal&conversation_id=${conversationId}`);
+      const response = await fetch(`/api/insights?action=generate_proposal&conversation_id=${conversationId}`, { headers: await getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setProposal(data);
@@ -92,7 +93,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose }) {
     try {
       const response = await fetch('/api/insights', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await getAuthHeaders(),
         body: JSON.stringify({
           action: 'create',
           conversation_id: conversationId,
