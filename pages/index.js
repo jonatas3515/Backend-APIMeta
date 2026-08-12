@@ -224,6 +224,7 @@ export default function Home() {
           
           <div className="flex flex-col space-y-3 mt-10 w-full px-2">
             {[
+              { key: 'dashboard', icon: '📊', label: 'Dashboard', minRole: 'advogado', href: '/dashboard' },
               { key: 'chat', icon: '💬', label: 'Chat', minRole: 'estagiario' },
               { key: 'clients', icon: '👥', label: 'Clientes', minRole: 'estagiario' },
               { key: 'funnel', icon: '🎯', label: 'Funil', minRole: 'advogado' },
@@ -236,7 +237,13 @@ export default function Home() {
               .map(item => (
                 <button
                   key={item.key}
-                  onClick={() => setActiveTab(item.key)}
+                  onClick={() => {
+                    if (item.href) {
+                      window.location.href = item.href;
+                    } else {
+                      setActiveTab(item.key);
+                    }
+                  }}
                   className={`p-3 rounded-nc transition relative ${
                     activeTab === item.key
                       ? 'text-nc-yellow'
