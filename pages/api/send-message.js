@@ -31,7 +31,12 @@ async function handler(req, res) {
       .eq('id', conversation_id)
       .single();
 
-    if (convError || !conversation) {
+    if (convError) {
+      console.error('[SEND-MESSAGE] Erro ao buscar conversa:', convError);
+      return res.status(500).json({ error: 'Erro ao buscar conversa: ' + convError.message });
+    }
+
+    if (!conversation) {
       return res.status(404).json({ error: 'Conversa não encontrada' });
     }
 
