@@ -7,6 +7,8 @@ import ClientsList from '../components/ClientsList';
 import FunnelKanban from '../components/FunnelKanban';
 import MetricsDashboard from '../components/MetricsDashboard';
 import UserManagement from '../components/UserManagement';
+import AgendaPanel from '../components/AgendaPanel';
+import CollaborationPanel from '../components/CollaborationPanel';
 import Login from '../components/Login';
 import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
@@ -225,6 +227,8 @@ export default function Home() {
               { key: 'chat', icon: '💬', label: 'Chat', minRole: 'estagiario' },
               { key: 'clients', icon: '👥', label: 'Clientes', minRole: 'estagiario' },
               { key: 'funnel', icon: '🎯', label: 'Funil', minRole: 'advogado' },
+              { key: 'agenda', icon: '📅', label: 'Agenda', minRole: 'advogado' },
+              { key: 'collaboration', icon: '🤝', label: 'Colaboração', minRole: 'advogado' },
               { key: 'metrics', icon: '📊', label: 'Métricas', minRole: 'advogado' },
               { key: 'users', icon: '⚙️', label: 'Usuários', minRole: 'advogado' },
             ]
@@ -305,6 +309,10 @@ export default function Home() {
               setActiveTab('chat');
             }}
           />
+        ) : activeTab === 'agenda' ? (
+          <AgendaPanel />
+        ) : activeTab === 'collaboration' ? (
+          <CollaborationPanel selectedConversation={selectedConversation} />
         ) : activeTab === 'metrics' ? (
           <MetricsDashboard conversations={conversations} />
         ) : (
