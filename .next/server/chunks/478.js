@@ -54,6 +54,17 @@ ESTILO DE COMUNICA\xc7\xc3O:
 - NUNCA mencione o WhatsApp (73) 9122-5215 a menos que o cliente pergunte explicitamente "qual o contato" ou "como falar com voc\xeas"
 - Responda APENAS o que foi perguntado, sem informa\xe7\xf5es extras
 
+CONDU\xc7\xc3O DO ATENDIMENTO (TOM FLUIDO, N\xc3O ENGESSADO):
+- SEMPRE comece a triagem com uma pergunta aberta: "Conte-me o que aconteceu" ou "Qual \xe9 a situa\xe7\xe3o?"
+- NUNCA comece perguntando munic\xedpio, \xf3rg\xe3o, cidade ou institui\xe7\xe3o
+- Deixe o cliente contar a hist\xf3ria livremente
+- Fa\xe7a APENAS UMA pergunta por vez
+- Fa\xe7a perguntas que fa\xe7am sentido no contexto do que o cliente disse
+- Para a\xe7\xf5es de guarda, fam\xedlia, c\xedvel e indeniza\xe7\xe3o: pergunte O QUE ACONTECEU, QUEM S\xc3O AS PARTES e QUAL O OBJETIVO
+- S\xf3 pe\xe7a munic\xedpio/\xf3rg\xe3o se o cliente mencionar servidor p\xfablico, administra\xe7\xe3o ou processo em uma localidade espec\xedfica
+- NUNCA repita a mesma pergunta se o cliente j\xe1 respondeu algo relacionado
+- Se n\xe3o entender, pe\xe7a para o cliente explicar de outra forma
+
 VOC\xca N\xc3O \xc9 ADVOGADO:
 - N\xe3o fa\xe7a an\xe1lise jur\xeddica conclusiva
 - NUNCA prometa resultado ou vit\xf3ria em processo
@@ -94,7 +105,7 @@ ${o}
 
 `:"",x=`${r}${c}NOVA MENSAGEM DO CLIENTE: ${e}
 
-Responda como Jhon, considerando TODO o contexto acima. NUNCA repita sauda\xe7\xe3o de apresenta\xe7\xe3o. Responda apenas ao que foi perguntado.`,d=new AbortController,l=setTimeout(()=>{console.error("[GEMINI] ⏱️ TIMEOUT de 12 segundos atingido!"),d.abort()},12e3);console.log("[GEMINI] Iniciando fetch...");let u=await fetch(t,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system_instruction:{parts:[{text:n}]},contents:[{parts:[{text:x}]}]}),signal:d.signal});if(clearTimeout(l),console.log("[GEMINI] Fetch completou! Response status:",u.status),u.ok){let e=await u.json(),o=e.candidates?.[0]?.content?.parts?.[0]?.text;return console.log("[GEMINI] ✅ Resposta do Gemini 2.5:",o?.substring(0,100)),o||"Desculpe, n\xe3o consegui gerar uma resposta."}console.warn(`[GEMINI] ⚠️ Gemini 2.5 falhou (${u.status}), tentando fallback 1.5...`)}catch(e){console.warn(`[GEMINI] ⚠️ Erro ao tentar Gemini 2.5: ${e.message}`)}try{console.log("[GEMINI] Tentando Gemini 3.1 Flash-Lite (fallback)...");let a=o?`HIST\xd3RICO DA CONVERSA:
+Responda como Jhon, considerando TODO o contexto acima. NUNCA repita sauda\xe7\xe3o de apresenta\xe7\xe3o. Responda apenas ao que foi perguntado.`,d=new AbortController,u=setTimeout(()=>{console.error("[GEMINI] ⏱️ TIMEOUT de 12 segundos atingido!"),d.abort()},12e3);console.log("[GEMINI] Iniciando fetch...");let l=await fetch(t,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system_instruction:{parts:[{text:n}]},contents:[{parts:[{text:x}]}]}),signal:d.signal});if(clearTimeout(u),console.log("[GEMINI] Fetch completou! Response status:",l.status),l.ok){let e=await l.json(),o=e.candidates?.[0]?.content?.parts?.[0]?.text;return console.log("[GEMINI] ✅ Resposta do Gemini 2.5:",o?.substring(0,100)),o||"Desculpe, n\xe3o consegui gerar uma resposta."}console.warn(`[GEMINI] ⚠️ Gemini 2.5 falhou (${l.status}), tentando fallback 1.5...`)}catch(e){console.warn(`[GEMINI] ⚠️ Erro ao tentar Gemini 2.5: ${e.message}`)}try{console.log("[GEMINI] Tentando Gemini 3.1 Flash-Lite (fallback)...");let a=o?`HIST\xd3RICO DA CONVERSA:
 ${o}
 
 NOVA MENSAGEM DO CLIENTE: ${e}`:e,s=await fetch(i,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({system_instruction:{parts:[{text:n}]},contents:[{parts:[{text:a}]}]})});if(!s.ok){let e=await s.text();throw console.error(`[GEMINI] ❌ Erro na API Gemini 3.1: status ${s.status} ${s.statusText}`),console.error(`[GEMINI] Corpo: ${e}`),Error(`Erro na API Gemini: ${s.status} ${s.statusText} - ${e}`)}let t=await s.json(),r=t.candidates?.[0]?.content?.parts?.[0]?.text;return console.log("[GEMINI] ✅ Resposta do Gemini 3.1:",r?.substring(0,100)),r||"Desculpe, n\xe3o consegui gerar uma resposta."}catch(e){throw console.error(`[GEMINI] ❌ Erro em ambos os modelos Gemini: ${e.message}`),e}}}};
