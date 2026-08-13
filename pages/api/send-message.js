@@ -92,7 +92,8 @@ async function handler(req, res) {
         text,
         media_url: media_url || null,
         media_type: media_type || null,
-        wa_message_id: waMessageId || null
+        wa_message_id: waMessageId || null,
+        status: 'pending'
       }]);
 
     if (msgError) {
