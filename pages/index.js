@@ -315,7 +315,7 @@ export default function Home() {
           ) : activeTab === 'agenda' ? (
             <AgendaPanel />
           ) : activeTab === 'collaboration' ? (
-            <CollaborationPanel selectedConversation={selectedConversation} />
+            <CollaborationPanel conversationId={selectedConversation?.id} caseId={null} />
           ) : activeTab === 'cases' ? (
             <CasesPanel />
           ) : activeTab === 'templates' ? (

@@ -1,86 +1,69 @@
-"use strict";(()=>{var e={};e.id=3753,e.ids=[3753],e.modules={145:e=>{e.exports=require("next/dist/compiled/next-server/pages-api.runtime.prod.js")},6249:(e,a)=>{Object.defineProperty(a,"l",{enumerable:!0,get:function(){return function e(a,o){return o in a?a[o]:"then"in a&&"function"==typeof a.then?a.then(a=>e(a,o)):"function"==typeof a&&"default"===o?a:void 0}}})},8281:(e,a,o)=>{o.r(a),o.d(a,{config:()=>c,default:()=>s,routeModule:()=>u});var r={};o.r(r),o.d(r,{config:()=>_,default:()=>l});var i=o(1802),t=o(7153),d=o(6249);let n={contrato_honorarios:{name:"Contrato de Honor\xe1rios",description:"Contrato de presta\xe7\xe3o de servi\xe7os advocat\xedcios",fields:[{field:"cliente_nome",label:"Nome completo do cliente",required:!0},{field:"cliente_cpf",label:"CPF do cliente",required:!0},{field:"cliente_endereco",label:"Endere\xe7o do cliente",required:!1},{field:"objeto",label:"Objeto do contrato (qual a\xe7\xe3o/assunto)",required:!0},{field:"valor_entrada",label:"Valor da entrada (R$)",required:!1},{field:"valor_total",label:"Valor total dos honor\xe1rios (R$)",required:!0},{field:"parcelas",label:"N\xfamero de parcelas",required:!1,default:"1"},{field:"advogado_nome",label:"Nome do advogado",required:!0},{field:"advogado_oab",label:"OAB do advogado",required:!0},{field:"data",label:"Data do contrato",required:!0,default:()=>new Date().toLocaleDateString("pt-BR")}],generate:e=>`CONTRATO DE PRESTA\xc7\xc3O DE SERVI\xc7OS ADVOCAT\xcdCIOS
+"use strict";(()=>{var e={};e.id=3753,e.ids=[3753],e.modules={145:e=>{e.exports=require("next/dist/compiled/next-server/pages-api.runtime.prod.js")},6249:(e,a)=>{Object.defineProperty(a,"l",{enumerable:!0,get:function(){return function e(a,o){return o in a?a[o]:"then"in a&&"function"==typeof a.then?a.then(a=>e(a,o)):"function"==typeof a&&"default"===o?a:void 0}}})},8281:(e,a,o)=>{o.r(a),o.d(a,{config:()=>u,default:()=>c,routeModule:()=>_});var r={};o.r(r),o.d(r,{config:()=>s,default:()=>l});var d=o(1802),i=o(7153),t=o(6249);let n={contrato_honorarios:{name:"Contrato de Honor\xe1rios",description:"Contrato completo de presta\xe7\xe3o de servi\xe7os advocat\xedcios",fields:[{field:"contratante_nome",label:"Nome completo do CONTRATANTE",required:!0},{field:"contratante_nacionalidade",label:"Nacionalidade do CONTRATANTE",required:!0,default:"brasileiro(a)"},{field:"contratante_estado_civil",label:"Estado civil do CONTRATANTE",required:!0},{field:"contratante_profissao",label:"Profiss\xe3o do CONTRATANTE",required:!0},{field:"contratante_rg",label:"RG do CONTRATANTE",required:!0},{field:"contratante_cpf",label:"CPF do CONTRATANTE",required:!0},{field:"contratante_nascimento",label:"Data de nascimento do CONTRATANTE",required:!1},{field:"contratante_endereco",label:"Endere\xe7o do CONTRATANTE (rua, n\xba, bairro)",required:!0},{field:"contratante_cidade",label:"Cidade do CONTRATANTE",required:!0},{field:"contratante_estado",label:"UF do CONTRATANTE",required:!0,default:"Bahia"},{field:"contratante_cep",label:"CEP do CONTRATANTE",required:!1},{field:"contratado1_nome",label:"Nome do advogado CONTRATADO 1",required:!0},{field:"contratado1_oab",label:"OAB/UF do advogado 1",required:!0},{field:"contratado2_nome",label:"Nome do advogado CONTRATADO 2 (opcional)",required:!1},{field:"contratado2_oab",label:"OAB/UF do advogado 2",required:!1},{field:"escritorio_endereco",label:"Endere\xe7o do escrit\xf3rio",required:!0},{field:"objeto",label:"Objeto do contrato (qual a\xe7\xe3o/assunto)",required:!0},{field:"empresa_re",label:"Nome da empresa-r\xe9 (se houver)",required:!1},{field:"percentual_honorarios",label:"Percentual de honor\xe1rios de \xeaxito (%)",required:!0,default:"30"},{field:"data",label:"Data do contrato",required:!0,default:()=>new Date().toLocaleDateString("pt-BR")},{field:"cidade_foro",label:"Cidade do foro",required:!0},{field:"estado_foro",label:"UF do foro",required:!0,default:"Bahia"}],generate:e=>`CONTRATO DE PRESTA\xc7\xc3O DE SERVI\xc7OS ADVOCAT\xcdCIOS
 
-CONTRATANTE: ${e.cliente_nome}, CPF: ${e.cliente_cpf}, endere\xe7o: ${e.cliente_endereco||"n\xe3o informado"}.
-CONTRATADO: ${e.advogado_nome}, OAB: ${e.advogado_oab}.
+Pelo presente instrumento particular de contrato de presta\xe7\xe3o de servi\xe7os advocat\xedcios, de um lado o(a) CONTRATADO(A) ${e.contratado1_nome}, inscrito(a) na ${e.contratado1_oab} ${e.contratado2_nome?"e "+e.contratado2_nome+", inscrito(a) na "+e.contratado2_oab:""}, com escrit\xf3rio profissional situado na ${e.escritorio_endereco}, doravante denominado(a) CONTRATADO(A) e, de outro lado, ${e.contratante_nome}, ${e.contratante_nacionalidade}, ${e.contratante_estado_civil}, ${e.contratante_profissao}, portador(a) do RG n.\xba ${e.contratante_rg} e inscrito(a) no CPF sob o n.\xba ${e.contratante_cpf} ${e.contratante_nascimento?", nascido(a) em "+e.contratante_nascimento:""}, residente e domiciliado(a) na ${e.contratante_endereco}, na cidade de ${e.contratante_cidade} – ${e.contratante_estado} ${e.contratante_cep?", CEP n.\xba "+e.contratante_cep:""}, doravante denominado(a) CONTRATANTE.
 
-CL\xc1USULA 1\xaa - OBJETO
-O presente contrato tem por objeto a presta\xe7\xe3o de servi\xe7os advocat\xedcios relativos a ${e.objeto}.
+As partes acima identificadas t\xeam, entre si, justo e acertado o presente Contrato de Presta\xe7\xe3o de Servi\xe7os Advocat\xedcios, que ser\xe1 regido pelas cl\xe1usulas seguintes e pelas condi\xe7\xf5es descritas a seguir:
 
-CL\xc1USULA 2\xaa - DOS HONOR\xc1RIOS
-Pelo servi\xe7o contratado, o(a) CONTRATANTE pagar\xe1 ao(\xe0) CONTRATADO(A) a quantia de R$ ${e.valor_total}.
-Entrada: R$ ${e.valor_entrada||"0,00"}.
-Parcelamento: ${e.parcelas||"1"} parcela(s).
+1 – DO OBJETO - O(a) CONTRATADO(A) compromete-se a prestar seus servi\xe7os profissionais em defesa dos interesses do(a) CONTRATANTE no \xe2mbito judicial para propor ${e.objeto} ${e.empresa_re?"contra "+e.empresa_re:""}.
+1.1 - O presente contrato n\xe3o tem car\xe1ter personal\xedssimo, podendo o(a) CONTRATADO(A) ser representado(a) por outros advogados em qualquer ato processual.
 
-CL\xc1USULA 3\xaa - DAS OBRIGA\xc7\xd5ES
-O(a) CONTRATADO(A) se obriga a prestar os servi\xe7os com zelo e dilig\xeancia, mantendo o(a) CONTRATANTE informado(a) sobre o andamento do caso.
+2 - DO PRAZO - O prazo do presente iniciar-se-\xe1 com a assinatura do mesmo e perdurar\xe1 at\xe9 a decis\xe3o final.
 
-CL\xc1USULA 4\xaa - VIG\xcaNCIA
-O presente contrato entra em vigor na data de sua assinatura e permanece at\xe9 o t\xe9rmino do objeto.
+3 – DO VALOR - Como contrapresta\xe7\xe3o dos trabalhos contratados pagar-lhe-\xe1 o valor de ${e.percentual_honorarios}% (${e.percentual_honorarios} por cento) sobre o valor auferido com o resultado.
+3.1 - Fica estabelecido que o valor fixado ou arbitrado judicialmente, a t\xedtulo de honor\xe1rios de sucumb\xeancia porventura existentes, pertencer\xe1, por direito, ao(\xe0) CONTRATADO(A), de acordo com o estabelecido na lei n.\xba 8.906, de 4 de julho de 1994, em seus artigos. 22 e 23.
 
-E, por estarem de comum acordo, firmam o presente contrato.
+3.2 - Ficam o(a) CONTRATADO(A) autorizado(a) desde j\xe1 a fazer a reten\xe7\xe3o de seus honor\xe1rios quando do recebimento de valores devidos a(o) CONTRATANTE, advindos de \xeaxito da demanda, ainda que parcial.
 
-Data: ${e.data}
+4 - DAS CUSTAS, TAXAS E DESPESAS GERAIS - As custas, taxas processuais, e, despesas gerais, tais como material reprogr\xe1fico, dilig\xeancias, viagens e deslocamentos, correr\xe3o por conta do(a) CONTRATANTE, que se reserva o direito de exigir a devida comprova\xe7\xe3o.
 
-_________________________________
-${e.cliente_nome}
-CONTRATANTE
+5 - DA PRESTA\xc7\xc3O DE CONTAS - O(a) CONTRATADO(A) obriga-se a prestar contas de quaisquer valores caso sejam recebidos ou dos valores das despesas adiantadas pelo(a) CONTRATANTE, tais como despesas cartor\xe1rias, c\xf3pias, viagens ou outras necess\xe1rias ao prosseguimento de a\xe7\xe3o judicial ou procedimentos administrativos perante \xf3rg\xe3os p\xfablicos.
 
-_________________________________
-${e.advogado_nome}
-CONTRATADO(A)`},declaracao_residencia:{name:"Declara\xe7\xe3o de Resid\xeancia",description:"Declara\xe7\xe3o para comprova\xe7\xe3o de endere\xe7o",fields:[{field:"cliente_nome",label:"Nome completo",required:!0},{field:"cliente_cpf",label:"CPF",required:!0},{field:"endereco",label:"Endere\xe7o completo",required:!0},{field:"municipio",label:"Munic\xedpio",required:!0},{field:"estado",label:"UF",required:!0},{field:"data",label:"Data",required:!0,default:()=>new Date().toLocaleDateString("pt-BR")}],generate:e=>`DECLARA\xc7\xc3O DE RESID\xcaNCIA
+6 - DA RESCIS\xc3O - O presente contrato poder\xe1 ser rescindido pelas partes mediante notifica\xe7\xe3o pr\xe9via, com o prazo de 15 (quinze) dias e atendendo aos prazos processuais, de modo a n\xe3o causar preju\xedzo aos termos judiciais.
+6.1 - A inobserv\xe2ncia por parte do(a) CONTRATANTE, de qualquer cl\xe1usula deste instrumento acarretar\xe1 a rescis\xe3o deste contrato, independente de notifica\xe7\xf5es e avisos, ficando sujeito(a) aos honor\xe1rios pactuados, bem como multa contratual de 20% sobre os mesmos, mais juros de 1% ao m\xeas e corre\xe7\xe3o monet\xe1ria pelo \xedndice INPC.
 
-Eu, ${e.cliente_nome}, CPF: ${e.cliente_cpf}, declaro, para os devidos fins, que resido no endere\xe7o abaixo:
+7 - DO FORO - Fica eleito o foro da Comarca de ${e.cidade_foro}-${e.estado_foro}, para a solu\xe7\xe3o das quest\xf5es, por ventura decorrente do presente Contrato, renunciando a qualquer outro.
 
-Endere\xe7o: ${e.endereco}
-Munic\xedpio: ${e.municipio}
-UF: ${e.estado}
+E, para firmeza e como prova de assim haverem contratado, fizeram este instrumento particular, impresso em 2(duas) vias de igual teor e forma, assinado pelas partes contratantes e pelas testemunhas abaixo.
 
-Declaro que as informa\xe7\xf5es acima s\xe3o verdadeiras e assumo inteira responsabilidade pelas mesmas.
+${e.cidade_foro} - ${e.estado_foro}, ${e.data}
 
-${e.municipio}, ${e.data}
+CONTRATADO(A):
 
-_________________________________
-${e.cliente_nome}
-CPF: ${e.cliente_cpf}`},autorizacao_representacao:{name:"Autoriza\xe7\xe3o de Representa\xe7\xe3o",description:"Procura\xe7\xe3o/advogacia para representar cliente",fields:[{field:"cliente_nome",label:"Nome completo do outorgante",required:!0},{field:"cliente_cpf",label:"CPF do outorgante",required:!0},{field:"advogado_nome",label:"Nome do advogado",required:!0},{field:"advogado_oab",label:"OAB do advogado",required:!0},{field:"poderes",label:"Poderes espec\xedficos",required:!1,default:"PODERES PARA ATUAR NA CAUSA"},{field:"data",label:"Data",required:!0,default:()=>new Date().toLocaleDateString("pt-BR")}],generate:e=>`PROCURA\xc7\xc3O AD JUDICIA
 
-OUTORGANTE: ${e.cliente_nome}, CPF: ${e.cliente_cpf}.
-OUTORGADO: ${e.advogado_nome}, OAB: ${e.advogado_oab}.
+${e.contratado1_nome}
+${e.contratado1_oab}
+${e.contratado2_nome?"\n"+e.contratado2_nome+"\n"+e.contratado2_oab+"\n":""}
 
-O OUTORGANTE confere ao OUTORGADO os poderes para represent\xe1-lo em todas as inst\xe2ncias judiciais e extrajudiciais, podendo praticar todos os atos necess\xe1rios, inclusive firmar compromissos, transigir, desistir, renunciar, receber e dar quita\xe7\xe3o.
+CONTRATANTE:
 
-Poderes espec\xedficos: ${e.poderes}
 
-${e.data}
+${e.contratante_nome}`},procuracao:{name:"Procura\xe7\xe3o",description:"Procura\xe7\xe3o ad judicia e extra com amplos poderes",fields:[{field:"cliente_nome",label:"Nome completo do OUTORGANTE",required:!0},{field:"cliente_nacionalidade",label:"Nacionalidade do OUTORGANTE",required:!0,default:"brasileiro(a)"},{field:"cliente_estado_civil",label:"Estado civil do OUTORGANTE",required:!0},{field:"cliente_profissao",label:"Profiss\xe3o do OUTORGANTE",required:!0},{field:"cliente_rg",label:"RG do OUTORGANTE",required:!0},{field:"cliente_rg_orgao",label:"\xd3rg\xe3o emissor do RG",required:!0,default:"SSP/BA"},{field:"cliente_cpf",label:"CPF do OUTORGANTE",required:!0},{field:"cliente_endereco",label:"Endere\xe7o do OUTORGANTE",required:!0},{field:"cliente_cidade",label:"Cidade do OUTORGANTE",required:!0},{field:"cliente_estado",label:"UF do OUTORGANTE",required:!0,default:"Bahia"},{field:"advogado1_nome",label:"Nome do advogado OUTORGADO 1",required:!0},{field:"advogado1_oab",label:"OAB/UF do advogado 1",required:!0},{field:"advogado1_nacionalidade",label:"Nacionalidade do advogado 1",required:!1,default:"brasileiro(a)"},{field:"advogado1_estado_civil",label:"Estado civil do advogado 1",required:!1,default:"casado(a)"},{field:"advogado2_nome",label:"Nome do advogado OUTORGADO 2 (opcional)",required:!1},{field:"advogado2_oab",label:"OAB/UF do advogado 2",required:!1},{field:"advogado2_nacionalidade",label:"Nacionalidade do advogado 2",required:!1,default:"brasileiro(a)"},{field:"advogado2_estado_civil",label:"Estado civil do advogado 2",required:!1,default:"solteiro(a)"},{field:"escritorio_endereco",label:"Endere\xe7o do escrit\xf3rio",required:!0,default:"Rua Palmeiras, n.\xb0 105, Novo Prado, Itamaraju/BA, CEP: 45.836-000"},{field:"data",label:"Data da procura\xe7\xe3o",required:!0,default:()=>new Date().toLocaleDateString("pt-BR")},{field:"local",label:"Local da procura\xe7\xe3o",required:!0,default:"Itamaraju"}],generate:e=>`PROCURA\xc7\xc3O AD JUDICIA E EXTRA
+
+Por este instrumento particular, a parte outorgante ao lado qualificada, nomeia e constitui seus bastantes procuradores, o(a)(s) advogado(s) ${e.advogado1_nome}, ${e.advogado1_nacionalidade}, ${e.advogado1_estado_civil}, inscrito(a) na ${e.advogado1_oab} ${e.advogado2_nome?"e "+e.advogado2_nome+", "+e.advogado2_nacionalidade+", "+e.advogado2_estado_civil+", inscrito(a) na "+e.advogado2_oab:""}, com escrit\xf3rio profissional situado na ${e.escritorio_endereco}, onde recebem intima\xe7\xf5es (art. 106, I CPC), a quem confere os poderes de cl\xe1usula ad judicia et extra, para agir na defesa de seus direitos e interesses, em qualquer foro, ju\xedzo, tribunal ou inst\xe2ncia, ou ainda fora deles, utilizando-se dos mais amplos poderes em direito permitidos, podendo propor e contestar a\xe7\xf5es; variar e desistir delas; interpor recursos, seguindo umas e outras at\xe9 o final da decis\xe3o, usando os recursos legais; e ainda os poderes especiais para arguir suspei\xe7\xe3o ou falsidade; transigir; receber valores e dar quita\xe7\xe3o; firmar compromissos; concordar, apresentar e impugnar c\xe1lculos; assinar termos de homologa\xe7\xe3o, requerer, retirar e receber alvar\xe1s judiciais, juntos a bancos p\xfablicos e/ou privados, inclusive aqueles relativos a contas de FGTS e do seguro-desemprego, junto aos Poder Judici\xe1rio e Bancos Federais, inclusive justi\xe7a gratuita, obrigando-se a prestar servi\xe7os profissionais advocat\xedcios na defesa dos direitos e interesses do OUTORGANTE/CONTRATANTE, desempenhando com zelo a atividade a seu encargo, podendo praticar todos os demais atos necess\xe1rios ao bom e fiel cumprimento deste mandato, agindo em conjunto ou separadamente, podendo ainda substabelecer a presente, no todo ou em parte, com ou sem reserva de poderes.
+
+OUTORGANTE: ${e.cliente_nome}, ${e.cliente_nacionalidade}, ${e.cliente_estado_civil}, ${e.cliente_profissao}, portador(a) do RG n.\xba ${e.cliente_rg} expedido pela ${e.cliente_rg_orgao} e inscrito(a) no CPF sob o n.\xba ${e.cliente_cpf}, residente e domiciliado(a) na ${e.cliente_endereco}, na cidade de ${e.cliente_cidade} - ${e.cliente_estado}.
+
+${e.local}, ${e.data}
+
 
 _________________________________
 ${e.cliente_nome}
-OUTORGANTE`},declaracao_renda:{name:"Declara\xe7\xe3o de Renda",description:"Declara\xe7\xe3o de renda mensal para a\xe7\xf5es trabalhistas",fields:[{field:"cliente_nome",label:"Nome completo",required:!0},{field:"cliente_cpf",label:"CPF",required:!0},{field:"renda_mensal",label:"Renda mensal (R$)",required:!0},{field:"fonte_renda",label:"Fonte da renda",required:!0},{field:"data",label:"Data",required:!0,default:()=>new Date().toLocaleDateString("pt-BR")}],generate:e=>`DECLARA\xc7\xc3O DE RENDA
+OUTORGANTE`},declaracao_hipossuficiencia:{name:"Declara\xe7\xe3o de Hipossufici\xeancia",description:"Declara\xe7\xe3o de pobreza para justi\xe7a gratuita",fields:[{field:"cliente_nome",label:"Nome completo",required:!0},{field:"cliente_cpf",label:"CPF",required:!0},{field:"data",label:"Data",required:!0,default:()=>new Date().toLocaleDateString("pt-BR")},{field:"local",label:"Local",required:!0,default:"Itamaraju"}],generate:e=>`DECLARA\xc7\xc3O DE HIPOSSUFICI\xcaNCIA ECON\xd4MICA
 
-Eu, ${e.cliente_nome}, CPF: ${e.cliente_cpf}, declaro, para os devidos fins, que minha renda mensal \xe9 de R$ ${e.renda_mensal}.
+O(a) outorgante/contratante ${e.cliente_nome}, inscrito(a) no CPF sob o n.\xba ${e.cliente_cpf}, DECLARA SER "POBRE" NA ACEP\xc7\xc3O JUR\xcdDICA DO TERMO, segundo os preceitos do art. 790, \xa73\xba, da CLT c/c art. 98 do CPC, fazendo jus aos benef\xedcios da Justi\xe7a Gratuita, por n\xe3o ter condi\xe7\xf5es de arcar com as custas judiciais, honor\xe1rios periciais e demais despesas do processo, sob pena de colocar em risco seu sustento pr\xf3prio e de sua fam\xedlia, nos termos da Lei 1.060/50 e est\xe1 ciente das implica\xe7\xf5es desta sua declara\xe7\xe3o, nos termos da Lei 7.510/86.
 
-Fonte de renda: ${e.fonte_renda}.
+${e.local} – Bahia, ${e.data}
 
-Declaro que as informa\xe7\xf5es s\xe3o verdadeiras e estou ciente de que eventuais omiss\xf5es podem gerar responsabiliza\xe7\xe3o legal.
-
-Data: ${e.data}
 
 _________________________________
 ${e.cliente_nome}
-CPF: ${e.cliente_cpf}`},requerimento_adm:{name:"Requerimento Administrativo",description:"Requerimento padr\xe3o para \xf3rg\xe3os p\xfablicos",fields:[{field:"cliente_nome",label:"Nome do requerente",required:!0},{field:"cliente_cpf",label:"CPF",required:!0},{field:"orgao",label:"\xd3rg\xe3o destinat\xe1rio",required:!0},{field:"assunto",label:"Assunto do requerimento",required:!0},{field:"solicitacao",label:"Solicita\xe7\xe3o",required:!0},{field:"municipio",label:"Munic\xedpio",required:!0},{field:"data",label:"Data",required:!0,default:()=>new Date().toLocaleDateString("pt-BR")}],generate:e=>`REQUERIMENTO
+CPF: ${e.cliente_cpf}`},declaracao_endereco:{name:"Declara\xe7\xe3o de Endere\xe7o",description:"Declara\xe7\xe3o para comprova\xe7\xe3o de endere\xe7o completo",fields:[{field:"cliente_nome",label:"Nome completo",required:!0},{field:"cliente_nacionalidade",label:"Nacionalidade",required:!0,default:"brasileiro(a)"},{field:"cliente_estado_civil",label:"Estado civil",required:!0},{field:"cliente_profissao",label:"Profiss\xe3o",required:!0},{field:"cliente_rg",label:"RG",required:!0},{field:"cliente_rg_orgao",label:"\xd3rg\xe3o emissor do RG",required:!0,default:"SSP/BA"},{field:"cliente_cpf",label:"CPF",required:!0},{field:"cliente_nascimento",label:"Data de nascimento",required:!1},{field:"cliente_pai",label:"Filia\xe7\xe3o - pai",required:!1,default:"n\xe3o informado"},{field:"cliente_mae",label:"Filia\xe7\xe3o - m\xe3e",required:!1,default:"n\xe3o informado"},{field:"cliente_endereco",label:"Endere\xe7o completo",required:!0},{field:"cliente_bairro",label:"Bairro",required:!0},{field:"cliente_cidade",label:"Cidade",required:!0},{field:"cliente_estado",label:"UF",required:!0,default:"Bahia"},{field:"cliente_cep",label:"CEP",required:!0},{field:"data",label:"Data",required:!0,default:()=>new Date().toLocaleDateString("pt-BR")},{field:"local",label:"Local",required:!0,default:"Itamaraju"}],generate:e=>`DECLARA\xc7\xc3O DE ENDERE\xc7O
 
-Ilmo. Sr. Respons\xe1vel pelo(a) ${e.orgao}.
+Eu, ${e.cliente_nome}, ${e.cliente_nacionalidade}, ${e.cliente_estado_civil}, ${e.cliente_profissao}, portador(a) do RG n.\xba ${e.cliente_rg} expedido pela ${e.cliente_rg_orgao} e inscrito(a) no CPF sob o n.\xba ${e.cliente_cpf} ${e.cliente_nascimento?", nascido(a) em "+e.cliente_nascimento:""}, filho(a) de ${e.cliente_pai} e ${e.cliente_mae}, declaro para os devidos fins legais, nos termos da lei n.\xba 7.115, de 29 de agosto de 1983 e sob minha responsabilidade, que mantenho resid\xeancia na ${e.cliente_endereco}, ${e.cliente_bairro}, na cidade de ${e.cliente_cidade} - ${e.cliente_estado}, CEP ${e.cliente_cep}. Por ser a express\xe3o da verdade, firmo o presente para efeitos legais.
 
-Eu, ${e.cliente_nome}, CPF: ${e.cliente_cpf}, por meio deste, venho requerer:
+${e.local} – ${e.cliente_estado}, ${e.data}
 
-Assunto: ${e.assunto}
-
-Solicita\xe7\xe3o:
-${e.solicitacao}
-
-Neste ato, requeiro o deferimento do pedido.
-
-${e.municipio}, ${e.data}
 
 _________________________________
 ${e.cliente_nome}
-CPF: ${e.cliente_cpf}`}},_={api:{bodyParser:{sizeLimit:"1mb"}}};async function l(e,a){if("GET"===e.method)return a.status(200).json({success:!0,templates:Object.entries(n).map(([e,a])=>({id:e,name:a.name,description:a.description,fields:a.fields}))});if("POST"===e.method){let{templateId:o,data:r}=e.body;if(!o||!r)return a.status(400).json({error:"Template e dados s\xe3o obrigat\xf3rios"});try{let e=function(e,a){let o=n[e];if(!o)throw Error("Template n\xe3o encontrado");for(let e of o.fields){if(e.required&&!a[e.field])throw Error(`Campo obrigat\xf3rio n\xe3o preenchido: ${e.label}`);!a[e.field]&&e.default&&(a[e.field]="function"==typeof e.default?e.default():e.default)}return o.generate(a)}(o,r);return a.status(200).json({success:!0,document:e,templateId:o})}catch(e){return console.error("[DOCUMENTS] Erro ao gerar:",e),a.status(400).json({error:e.message})}}return a.status(405).json({error:"Method not allowed"})}let s=(0,d.l)(r,"default"),c=(0,d.l)(r,"config"),u=new i.PagesAPIRouteModule({definition:{kind:t.x.PAGES_API,page:"/api/documents",pathname:"/api/documents",bundlePath:"",filename:""},userland:r})},7153:(e,a)=>{var o;Object.defineProperty(a,"x",{enumerable:!0,get:function(){return o}}),function(e){e.PAGES="PAGES",e.PAGES_API="PAGES_API",e.APP_PAGE="APP_PAGE",e.APP_ROUTE="APP_ROUTE"}(o||(o={}))},1802:(e,a,o)=>{e.exports=o(145)}};var a=require("../../webpack-api-runtime.js");a.C(e);var o=a(a.s=8281);module.exports=o})();
+CPF: ${e.cliente_cpf}`}},s={api:{bodyParser:{sizeLimit:"1mb"}}};async function l(e,a){if("GET"===e.method)return a.status(200).json({success:!0,templates:Object.entries(n).map(([e,a])=>({id:e,name:a.name,description:a.description,fields:a.fields}))});if("POST"===e.method){let{templateId:o,data:r}=e.body;if(!o||!r)return a.status(400).json({error:"Template e dados s\xe3o obrigat\xf3rios"});try{let e=function(e,a){let o=n[e];if(!o)throw Error("Template n\xe3o encontrado");for(let e of o.fields){if(e.required&&!a[e.field])throw Error(`Campo obrigat\xf3rio n\xe3o preenchido: ${e.label}`);!a[e.field]&&e.default&&(a[e.field]="function"==typeof e.default?e.default():e.default)}return o.generate(a)}(o,r);return a.status(200).json({success:!0,document:e,templateId:o})}catch(e){return console.error("[DOCUMENTS] Erro ao gerar:",e),a.status(400).json({error:e.message})}}return a.status(405).json({error:"Method not allowed"})}let c=(0,t.l)(r,"default"),u=(0,t.l)(r,"config"),_=new d.PagesAPIRouteModule({definition:{kind:i.x.PAGES_API,page:"/api/documents",pathname:"/api/documents",bundlePath:"",filename:""},userland:r})},7153:(e,a)=>{var o;Object.defineProperty(a,"x",{enumerable:!0,get:function(){return o}}),function(e){e.PAGES="PAGES",e.PAGES_API="PAGES_API",e.APP_PAGE="APP_PAGE",e.APP_ROUTE="APP_ROUTE"}(o||(o={}))},1802:(e,a,o)=>{e.exports=o(145)}};var a=require("../../webpack-api-runtime.js");a.C(e);var o=a(a.s=8281);module.exports=o})();
