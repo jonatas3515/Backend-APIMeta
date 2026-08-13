@@ -253,126 +253,172 @@ export default function Home() {
         <link rel="icon" href="/Logo transparente.png" />
       </Head>
       
-      <div className="flex h-screen bg-nc-surface">
-        {/* Sidebar com logo e navegação */}
-        <div className="w-20 bg-nc-black flex flex-col items-center py-6 border-r border-nc-gray-800">
-          <img src="/Logo transparente.png" alt="N&C Logo" className="w-10 h-10 object-contain" />
-          
-          <div className="flex flex-col space-y-3 mt-10 w-full px-2">
-              {[
-                { key: 'dashboard', icon: '📊', label: 'Dashboard', minRole: 'advogado', href: '/dashboard' },
-                { key: 'chat', icon: '💬', label: 'Chat', minRole: 'estagiario' },
-                { key: 'clients', icon: '👥', label: 'Clientes', minRole: 'estagiario' },
-                { key: 'cases', icon: '⚖️', label: 'Casos', minRole: 'estagiario' },
-                { key: 'funnel', icon: '🎯', label: 'Funil', minRole: 'advogado' },
-                { key: 'agenda', icon: '📅', label: 'Agenda', minRole: 'advogado' },
-                { key: 'collaboration', icon: '🤝', label: 'Colaboração', minRole: 'advogado' },
-                { key: 'templates', icon: '📄', label: 'Documentos', minRole: 'estagiario' },
-                { key: 'routines', icon: '🔄', label: 'Rotinas', minRole: 'estagiario' },
-                { key: 'insights', icon: '💡', label: 'Insights', minRole: 'advogado' },
-                { key: 'metrics', icon: '📊', label: 'Métricas', minRole: 'advogado' },
-                { key: 'users', icon: '⚙️', label: 'Usuários', minRole: 'advogado' },
-              ]
-              .filter(item => canAccess(item.minRole))
-              .map(item => (
-                <button
-                  key={item.key}
-                  onClick={() => {
-                    if (item.href) {
-                      window.location.href = item.href;
-                    } else {
-                      setActiveTab(item.key);
-                    }
-                  }}
-                  className={`p-3 rounded-nc transition relative ${
-                    activeTab === item.key
-                      ? 'text-nc-yellow'
-                      : 'text-nc-gray-400 hover:text-nc-white'
-                  }`}
-                  title={item.label}
-                >
-                  {activeTab === item.key && (
-                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-nc-yellow rounded-r" />
-                  )}
-                  <span className="text-lg">{item.icon}</span>
-                </button>
-              ))}
-          </div>
+      <div className="flex flex-col md:flex-row h-screen bg-nc-surface overflow-hidden">
+        {/* Sidebar desktop */}
+        <div className="hidden md:flex w-14 bg-nc-black flex-col items-center py-4 border-r border-nc-gray-800 flex-shrink-0">
+          <img src="/Logo transparente.png" alt="N&C Logo" className="w-8 h-8 object-contain" />
 
-          {/* Botão de logout no final */}
-          <div className="mt-auto w-full px-2">
+          <nav className="flex-1 flex flex-col space-y-2 mt-6 w-full px-2 overflow-y-auto scrollbar-thin">
+            {[
+              { key: 'dashboard', icon: '📊', label: 'Dashboard', minRole: 'advogado', href: '/dashboard' },
+              { key: 'chat', icon: '💬', label: 'Chat', minRole: 'estagiario' },
+              { key: 'clients', icon: '👥', label: 'Clientes', minRole: 'estagiario' },
+              { key: 'cases', icon: '⚖️', label: 'Casos', minRole: 'estagiario' },
+              { key: 'funnel', icon: '🎯', label: 'Funil', minRole: 'advogado' },
+              { key: 'agenda', icon: '📅', label: 'Agenda', minRole: 'advogado' },
+              { key: 'collaboration', icon: '🤝', label: 'Colab.', minRole: 'advogado' },
+              { key: 'templates', icon: '📄', label: 'Docs', minRole: 'estagiario' },
+              { key: 'routines', icon: '🔄', label: 'Rotinas', minRole: 'estagiario' },
+              { key: 'insights', icon: '💡', label: 'Insights', minRole: 'advogado' },
+              { key: 'metrics', icon: '📊', label: 'Métricas', minRole: 'advogado' },
+              { key: 'users', icon: '⚙️', label: 'Config.', minRole: 'advogado' },
+            ]
+            .filter(item => canAccess(item.minRole))
+            .map(item => (
+              <button
+                key={item.key}
+                onClick={() => {
+                  if (item.href) {
+                    window.location.href = item.href;
+                  } else {
+                    setActiveTab(item.key);
+                  }
+                }}
+                className={`p-2 rounded transition relative flex flex-col items-center justify-center gap-0.5 ${
+                  activeTab === item.key
+                    ? 'text-nc-yellow bg-nc-gray-800/50'
+                    : 'text-nc-gray-400 hover:text-nc-white hover:bg-nc-gray-800/30'
+                }`}
+                title={item.label}
+              >
+                <span className="text-base leading-none">{item.icon}</span>
+                <span className="text-[9px] truncate w-full text-center leading-tight">{item.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          {/* Logout */}
+          <div className="w-full px-2 pb-2 mt-2 border-t border-nc-gray-800 pt-2">
             <button
               onClick={handleLogout}
-              className="w-full p-3 rounded-nc transition text-nc-gray-500 hover:text-nc-white hover:bg-nc-gray-800"
+              className="w-full p-2 rounded transition text-nc-gray-500 hover:text-red-400 hover:bg-nc-gray-800/50 flex flex-col items-center gap-0.5"
               title="Sair"
             >
-              🚪
+              <span className="text-base leading-none">🚪</span>
+              <span className="text-[9px]">Sair</span>
             </button>
           </div>
         </div>
 
-        {/* Conteúdo principal */}
-        {activeTab === 'chat' ? (
-          <>
-            <ChatList
-              conversations={conversations}
-              selectedConversation={selectedConversation}
-              onSelectConversation={async (conv) => {
-                setSelectedConversation(conv);
-                if (conv.unread) {
-                  const { error } = await supabase
-                    .from('conversations')
-                    .update({ unread: false })
-                    .eq('id', conv.id);
+        {/* Bottom nav mobile */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-nc-black border-t border-nc-gray-800 z-50 flex items-center justify-around px-1 overflow-x-auto">
+          {[
+            { key: 'chat', icon: '💬', label: 'Chat' },
+            { key: 'clients', icon: '👥', label: 'Clientes' },
+            { key: 'cases', icon: '⚖️', label: 'Casos' },
+            { key: 'agenda', icon: '📅', label: 'Agenda' },
+            { key: 'users', icon: '⚙️', label: 'Config.' },
+          ]
+          .filter(item => canAccess(item.minRole))
+          .map(item => (
+            <button
+              key={item.key}
+              onClick={() => setActiveTab(item.key)}
+              className={`flex flex-col items-center justify-center min-w-[3.5rem] p-1 rounded transition ${
+                activeTab === item.key
+                  ? 'text-nc-yellow bg-nc-gray-800/50'
+                  : 'text-nc-gray-400'
+              }`}
+            >
+              <span className="text-base leading-none">{item.icon}</span>
+              <span className="text-[9px] mt-0.5 leading-tight">{item.label}</span>
+            </button>
+          ))}
+          <button
+            onClick={handleLogout}
+            className="flex flex-col items-center justify-center min-w-[3.5rem] p-1 text-nc-gray-400 hover:text-red-400 transition"
+          >
+            <span className="text-base leading-none">🚪</span>
+            <span className="text-[9px] mt-0.5 leading-tight">Sair</span>
+          </button>
+        </div>
 
-                  if (error) {
-                    console.error('[FRONTEND] Erro ao marcar como lida:', error);
-                  } else {
-                    setConversations(prev => prev.map(c =>
-                      c.id === conv.id ? { ...c, unread: false } : c
-                    ));
-                  }
-                }
+        {/* Espaço reservado para bottom nav em mobile */}
+        <div className="md:hidden h-16 flex-shrink-0" />
+
+        {/* Conteúdo principal */}
+        <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0">
+          {activeTab === 'chat' ? (
+            <>
+              <div
+                className={`${
+                  selectedConversation ? 'hidden md:flex' : 'flex'
+                } w-full md:w-80 flex-shrink-0 h-full`}
+              >
+                <ChatList
+                  conversations={conversations}
+                  selectedConversation={selectedConversation}
+                  onSelectConversation={async (conv) => {
+                    setSelectedConversation(conv);
+                    if (conv.unread) {
+                      const { error } = await supabase
+                        .from('conversations')
+                        .update({ unread: false })
+                        .eq('id', conv.id);
+
+                      if (error) {
+                        console.error('[FRONTEND] Erro ao marcar como lida:', error);
+                      } else {
+                        setConversations(prev => prev.map(c =>
+                          c.id === conv.id ? { ...c, unread: false } : c
+                        ));
+                      }
+                    }
+                  }}
+                  loading={loading}
+                  onNewConversation={() => setShowNewConvModal(true)}
+                  onDeleteConversation={handleDeleteConversation}
+                  deletingId={deletingId}
+                />
+              </div>
+              {selectedConversation && (
+                <div className="w-full md:flex-1 h-full flex flex-col">
+                  <ChatWindow
+                    conversation={selectedConversation}
+                    onConversationUpdate={fetchConversations}
+                    onBack={() => setSelectedConversation(null)}
+                  />
+                </div>
+              )}
+            </>
+          ) : activeTab === 'clients' ? (
+            <ClientsList />
+          ) : activeTab === 'funnel' ? (
+            <FunnelKanban
+              conversations={conversations}
+              onSelectConversation={(conv) => {
+                setSelectedConversation(conv);
+                setActiveTab('chat');
               }}
-              loading={loading}
-              onNewConversation={() => setShowNewConvModal(true)}
-              onDeleteConversation={handleDeleteConversation}
-              deletingId={deletingId}
             />
-            {selectedConversation && (
-              <ChatWindow
-                conversation={selectedConversation}
-                onConversationUpdate={fetchConversations}
-              />
-            )}
-          </>
-        ) : activeTab === 'clients' ? (
-          <ClientsList />
-        ) : activeTab === 'funnel' ? (
-          <FunnelKanban
-            conversations={conversations}
-            onSelectConversation={(conv) => {
-              setSelectedConversation(conv);
-              setActiveTab('chat');
-            }}
-          />
-        ) : activeTab === 'agenda' ? (
-          <AgendaPanel />
-        ) : activeTab === 'collaboration' ? (
-          <CollaborationPanel selectedConversation={selectedConversation} />
-        ) : activeTab === 'cases' ? (
-          <CasesPanel />
-        ) : activeTab === 'templates' ? (
-          <DocumentTemplatesManager />
-        ) : activeTab === 'routines' ? (
-          <LegalRoutinesManager />
-        ) : activeTab === 'insights' ? (
-          <CaseInsightsPanel />
-        ) : activeTab === 'metrics' ? (
-          <MetricsDashboard conversations={conversations} />
-        ) : (
-          <UserManagement />
-        )}
+          ) : activeTab === 'agenda' ? (
+            <AgendaPanel />
+          ) : activeTab === 'collaboration' ? (
+            <CollaborationPanel selectedConversation={selectedConversation} />
+          ) : activeTab === 'cases' ? (
+            <CasesPanel />
+          ) : activeTab === 'templates' ? (
+            <DocumentTemplatesManager />
+          ) : activeTab === 'routines' ? (
+            <LegalRoutinesManager />
+          ) : activeTab === 'insights' ? (
+            <CaseInsightsPanel />
+          ) : activeTab === 'metrics' ? (
+            <MetricsDashboard conversations={conversations} />
+          ) : (
+            <UserManagement />
+          )}
+        </main>
 
         {/* Modal de nova conversa */}
         {showNewConvModal && (

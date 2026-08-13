@@ -6,7 +6,7 @@ import LegalClassification from './LegalClassification';
 import RemindersPanel from './RemindersPanel';
 import DocumentGenerator from './DocumentGenerator';
 
-export default function ChatWindow({ conversation, onConversationUpdate }) {
+export default function ChatWindow({ conversation, onConversationUpdate, onBack }) {
   const [showClassification, setShowClassification] = useState(false);
   const [showReminders, setShowReminders] = useState(false);
   const [showDocuments, setShowDocuments] = useState(false);
@@ -357,44 +357,56 @@ export default function ChatWindow({ conversation, onConversationUpdate }) {
 
   return (
     <div className="flex-1 flex flex-col bg-nc-surface">
-      <div className="bg-nc-white border-b border-nc-gray-200 p-4">
-        <div className="flex justify-between items-start mb-3">
-          <div>
-            <h2 className="text-xl font-bold text-nc-text-title">
-              {conversation.client_name || conversation.client_phone}
-            </h2>
-            <p className="text-sm text-nc-text-secondary">{conversation.client_phone}</p>
+      <div className="bg-nc-white border-b border-nc-gray-200 p-3 md:p-4">
+        <div className="flex justify-between items-start mb-2 md:mb-3 gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="md:hidden p-1 -ml-1 text-nc-text-secondary hover:text-nc-text"
+                  title="Voltar"
+                >
+                  ←
+                </button>
+              )}
+              <h2 className="text-base md:text-xl font-bold text-nc-text-title truncate">
+                {conversation.client_name || conversation.client_phone}
+              </h2>
+            </div>
+            <p className="text-xs md:text-sm text-nc-text-secondary truncate">{conversation.client_phone}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border ${
+          <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+            <div className={`flex items-center gap-1.5 px-2 py-1 md:px-2.5 md:py-1.5 rounded-full text-xs font-medium border ${
               mode === 'bot'
                 ? 'bg-nc-gray-100 text-nc-text border-nc-gray-200'
                 : 'bg-nc-gray-100 text-nc-text border-nc-gray-200'
             }`}>
               <span className={`w-1.5 h-1.5 rounded-full ${mode === 'bot' ? 'bg-green-500' : 'bg-nc-yellow'}`}></span>
-              {mode === 'bot' ? 'Bot Ativo' : 'Modo Humano'}
+              <span className="hidden sm:inline">{mode === 'bot' ? 'Bot Ativo' : 'Modo Humano'}</span>
+              <span className="sm:hidden">{mode === 'bot' ? 'Bot' : 'Humano'}</span>
             </div>
             {mode === 'bot' ? (
               <button
                 onClick={() => setShowPauseMenu(!showPauseMenu)}
-                className="nc-btn"
+                className="nc-btn text-xs px-2 py-1"
                 title="Pausar Bot"
               >
-                ⏸️ Pausar
+                ⏸️ <span className="hidden sm:inline">Pausar</span>
               </button>
             ) : (
               <button
                 onClick={handleResumeBot}
-                className="nc-btn"
+                className="nc-btn text-xs px-2 py-1"
                 title="Reativar Bot"
               >
-                ▶️ Reativar
+                ▶️ <span className="hidden sm:inline">Reativar</span>
               </button>
             )}
           </div>
         </div>
 
-        <div className="relative flex flex-wrap items-center gap-2">
+        <div className="relative flex flex-wrap items-center gap-1.5 md:gap-2">
           <button
             onClick={() => setShowClassification(!showClassification)}
             className={`nc-btn ${showClassification ? 'nc-btn-active' : ''}`}
