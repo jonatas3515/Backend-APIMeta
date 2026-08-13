@@ -150,47 +150,29 @@ async function handlePatch(req, res) {
       .eq('id', conversation_id)
       .single();
 
-    if (fetchError) throw fetchError;
+    if (fetchError || !conversation) {
+      return res.status(404).json({ error: 'Conversa não encontrada' });
+    }
 
     const oldStage = conversation.funnel_stage;
 
-    // Atualiza stage
-    const updateData = {
-      funnel_stage: new_stage,
-      funnel_stage_updated_at: new Date().toISOString()
-    };
-
-    // Define timestamps específicos baseado no novo stage
-    if (new_stage === 'intake_em_andamento') {
-      updateData.intake_started_at = new Date().toISOString();
-    } else if (new_stage === 'intake_concluido') {
-      updateData.intake_completed_at = new Date().toISOString();
-    } else if (new_stage === 'proposta_enviada') {
-      updateData.proposal_sent_at = new Date().toISOString();
-    } else if (new_stage === 'contrato_assinado') {
-      updateData.contract_signed_at = new Date().toISOString();
-    } else if (new_stage === 'acao_protocolada') {
-      updateData.action_filed_at = new Date().toISOString();
-    } else if (new_stage === 'encerrado') {
-      updateData.case_closed_at = new Date().toISOString();
-    }
-
+    // Atualiza apenas o funnel_stage para evitar erros com colunas ausentes
     const { data, error } = await supabase
       .from('conversations')
-      .update(updateData)
+      .update({ funnel_stage: new_stage, updated_at: new Date().toISOString() })
       .eq('id', conversation_id)
       .select()
       .single();
 
     if (error) throw error;
 
-    // Log da mudança (trigger automático registra em funnel_history)
-    console.log(`[FUNNEL] Conversa ${conversation_id}: ${oldStage} → ${new_stage} (${reason || 'sem motivo'})`);
+    // Log da mudança
+    console.log(`[FUNNEL] Conversa ${conversation_id}: ${oldStage || 'sem stage'} → ${new_stage} (${reason || 'sem motivo'})`);
 
     return res.status(200).json({
       success: true,
       conversation: data,
-      message: `Conversa movida de ${oldStage} para ${new_stage}`
+      message: `Conversa movida de ${oldStage || 'início'} para ${new_stage}`
     });
   } catch (error) {
     console.error('[FUNNEL] Erro ao atualizar stage:', error);
