@@ -7,10 +7,8 @@ import RemindersPanel from './RemindersPanel';
 import DocumentGenerator from './DocumentGenerator';
 
 export default function ChatWindow({ conversation, onConversationUpdate, onBack }) {
-  const [showClassification, setShowClassification] = useState(false);
-  const [showReminders, setShowReminders] = useState(false);
-  const [showDocuments, setShowDocuments] = useState(false);
-  const [showNotes, setShowNotes] = useState(false);
+  const [activePanel, setActivePanel] = useState('');
+  const topBarRef = useRef(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [internalNotes, setInternalNotes] = useState(conversation.internal_notes || '');
@@ -37,6 +35,18 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
     setMode(conversation.mode);
   }, [conversation.id, conversation.mode]);
   const fileInputRef = useRef(null);
+
+  // Fechar painel ao clicar fora da barra superior
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (topBarRef.current && !topBarRef.current.contains(e.target)) {
+        setActivePanel('');
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   
   const emojis = [
     // Smileys e pessoas
@@ -358,7 +368,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
 
   return (
     <div className="flex-1 flex flex-col bg-nc-surface min-h-0">
-      <div className="bg-nc-white border-b border-nc-gray-200 p-3 md:p-4">
+      <div ref={topBarRef} className="flex-shrink-0 bg-nc-white border-b border-nc-gray-200 p-3 md:p-4">
         <div className="flex justify-between items-start mb-2 md:mb-3 gap-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -409,32 +419,32 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
 
         <div className="relative flex flex-wrap items-center gap-1.5 md:gap-2">
           <button
-            onClick={() => setShowClassification(!showClassification)}
-            className={`nc-btn ${showClassification ? 'nc-btn-active' : ''}`}
+            onClick={() => setActivePanel(activePanel === 'classification' ? '' : 'classification')}
+            className={`nc-btn ${activePanel === 'classification' ? 'nc-btn-active' : ''}`}
             title="Classificação Jurídica"
           >
             � Classificar
           </button>
           
           <button
-            onClick={() => setShowReminders(!showReminders)}
-            className={`nc-btn ${showReminders ? 'nc-btn-active' : ''}`}
+            onClick={() => setActivePanel(activePanel === 'reminders' ? '' : 'reminders')}
+            className={`nc-btn ${activePanel === 'reminders' ? 'nc-btn-active' : ''}`}
             title="Lembretes"
           >
             ⏰ Lembretes
           </button>
           
           <button
-            onClick={() => setShowDocuments(!showDocuments)}
-            className={`nc-btn ${showDocuments ? 'nc-btn-active' : ''}`}
+            onClick={() => setActivePanel(activePanel === 'documents' ? '' : 'documents')}
+            className={`nc-btn ${activePanel === 'documents' ? 'nc-btn-active' : ''}`}
             title="Gerar Documento"
           >
             � Documentos
           </button>
           
           <button
-            onClick={() => setShowNotes(!showNotes)}
-            className={`nc-btn ${showNotes ? 'nc-btn-active' : ''}`}
+            onClick={() => setActivePanel(activePanel === 'notes' ? '' : 'notes')}
+            className={`nc-btn ${activePanel === 'notes' ? 'nc-btn-active' : ''}`}
             title="Notas Internas"
           >
             📝 Notas
@@ -474,32 +484,32 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
       </div>
 
       {/* Painel de Classificação Jurídica */}
-      {showClassification && (
-        <div className="nc-panel p-4">
-          <LegalClassification 
-            conversation={conversation} 
+      {activePanel === 'classification' && (
+        <div className="nc-panel p-4 max-h-80 overflow-y-auto">
+          <LegalClassification
+            conversation={conversation}
             onUpdate={onConversationUpdate}
           />
         </div>
       )}
 
       {/* Painel de Lembretes */}
-      {showReminders && (
-        <div className="nc-panel p-4">
+      {activePanel === 'reminders' && (
+        <div className="nc-panel p-4 max-h-80 overflow-y-auto">
           <RemindersPanel conversation={conversation} />
         </div>
       )}
 
       {/* Painel de Documentos */}
-      {showDocuments && (
-        <div className="nc-panel p-4">
+      {activePanel === 'documents' && (
+        <div className="nc-panel p-4 max-h-80 overflow-y-auto">
           <DocumentGenerator conversation={conversation} />
         </div>
       )}
 
       {/* Painel de Notas Internas */}
-      {showNotes && (
-        <div className="bg-nc-gray-100 border-b border-nc-gray-200 p-4">
+      {activePanel === 'notes' && (
+        <div className="bg-nc-gray-100 border-b border-nc-gray-200 p-4 max-h-80 overflow-y-auto">
           <h3 className="text-sm font-bold text-nc-text-title mb-2">📝 Notas Internas</h3>
           <textarea
             value={internalNotes}

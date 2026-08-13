@@ -61,7 +61,25 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
     }
   };
 
-  const filteredConversations = conversations.filter(conv => {
+  // Mapeia antigos valores de funnel_stage para os atuais
+  const normalizeFunnelStage = (stage) => {
+    const map = {
+      'intake': 'intake_em_andamento',
+      'qualificacao': 'intake_concluido',
+      'proposta': 'proposta_enviada',
+      'contrato': 'contrato_assinado',
+      'andamento': 'acao_protocolada',
+      'pos_caso': 'encerrado'
+    };
+    return map[stage] || stage;
+  };
+
+  const normalizedConversations = conversations.map(conv => ({
+    ...conv,
+    funnel_stage: normalizeFunnelStage(conv.funnel_stage)
+  }));
+
+  const filteredConversations = normalizedConversations.filter(conv => {
     if (filters.area && conv.legal_area !== filters.area) return false;
     if (filters.search) {
       const term = filters.search.toLowerCase();
