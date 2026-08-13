@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { formatPhone } from '../lib/formatters';
 
 export default function ClientsList() {
   const [clients, setClients] = useState([]);
@@ -174,7 +175,7 @@ export default function ClientsList() {
                 </div>
                 
                 <div className="col-span-2 text-gray-600">
-                  📱 {client.client_phone}
+                  📱 {formatPhone(client.client_phone)}
                 </div>
                 
                 <div className="col-span-2 text-gray-600 text-xs">
