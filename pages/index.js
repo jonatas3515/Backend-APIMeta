@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import axios from 'axios';
+import { useRouter } from 'next/router';
 import ChatList from '../components/ChatList';
 import ChatWindow from '../components/ChatWindow';
 import ClientsList from '../components/ClientsList';
@@ -9,12 +10,17 @@ import MetricsDashboard from '../components/MetricsDashboard';
 import UserManagement from '../components/UserManagement';
 import AgendaPanel from '../components/AgendaPanel';
 import CollaborationPanel from '../components/CollaborationPanel';
+import CasesPanel from '../components/CasesPanel';
+import DocumentTemplatesManager from '../components/DocumentTemplatesManager';
+import LegalRoutinesManager from '../components/LegalRoutinesManager';
+import CaseInsightsPanel from '../components/CaseInsightsPanel';
 import Login from '../components/Login';
 import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
 import Head from 'next/head';
 
 export default function Home() {
+  const router = useRouter();
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -65,6 +71,26 @@ export default function Home() {
       }
     }
   }, [conversations]);
+
+  // Interpreta query string vindas de busca global
+  useEffect(() => {
+    if (!router.isReady) return;
+
+    const { tab, conversation, case: caseId } = router.query;
+
+    if (tab && typeof tab === 'string') {
+      setActiveTab(tab);
+
+      if (tab === 'chat' && conversation && conversations.length > 0) {
+        const conv = conversations.find(c => c.id === conversation);
+        if (conv) setSelectedConversation(conv);
+      }
+
+      if (tab === 'cases' && caseId) {
+        // Caso selecionado será gerenciado pelo CasesPanel via query
+      }
+    }
+  }, [router.isReady, router.query, conversations]);
 
   const fetchConversations = async () => {
     try {
@@ -233,16 +259,20 @@ export default function Home() {
           <img src="/Logo transparente.png" alt="N&C Logo" className="w-10 h-10 object-contain" />
           
           <div className="flex flex-col space-y-3 mt-10 w-full px-2">
-            {[
-              { key: 'dashboard', icon: '📊', label: 'Dashboard', minRole: 'advogado', href: '/dashboard' },
-              { key: 'chat', icon: '💬', label: 'Chat', minRole: 'estagiario' },
-              { key: 'clients', icon: '👥', label: 'Clientes', minRole: 'estagiario' },
-              { key: 'funnel', icon: '🎯', label: 'Funil', minRole: 'advogado' },
-              { key: 'agenda', icon: '📅', label: 'Agenda', minRole: 'advogado' },
-              { key: 'collaboration', icon: '🤝', label: 'Colaboração', minRole: 'advogado' },
-              { key: 'metrics', icon: '📊', label: 'Métricas', minRole: 'advogado' },
-              { key: 'users', icon: '⚙️', label: 'Usuários', minRole: 'advogado' },
-            ]
+              {[
+                { key: 'dashboard', icon: '📊', label: 'Dashboard', minRole: 'advogado', href: '/dashboard' },
+                { key: 'chat', icon: '💬', label: 'Chat', minRole: 'estagiario' },
+                { key: 'clients', icon: '👥', label: 'Clientes', minRole: 'estagiario' },
+                { key: 'cases', icon: '⚖️', label: 'Casos', minRole: 'estagiario' },
+                { key: 'funnel', icon: '🎯', label: 'Funil', minRole: 'advogado' },
+                { key: 'agenda', icon: '📅', label: 'Agenda', minRole: 'advogado' },
+                { key: 'collaboration', icon: '🤝', label: 'Colaboração', minRole: 'advogado' },
+                { key: 'templates', icon: '📄', label: 'Documentos', minRole: 'estagiario' },
+                { key: 'routines', icon: '🔄', label: 'Rotinas', minRole: 'estagiario' },
+                { key: 'insights', icon: '💡', label: 'Insights', minRole: 'advogado' },
+                { key: 'metrics', icon: '📊', label: 'Métricas', minRole: 'advogado' },
+                { key: 'users', icon: '⚙️', label: 'Usuários', minRole: 'advogado' },
+              ]
               .filter(item => canAccess(item.minRole))
               .map(item => (
                 <button
@@ -330,6 +360,14 @@ export default function Home() {
           <AgendaPanel />
         ) : activeTab === 'collaboration' ? (
           <CollaborationPanel selectedConversation={selectedConversation} />
+        ) : activeTab === 'cases' ? (
+          <CasesPanel />
+        ) : activeTab === 'templates' ? (
+          <DocumentTemplatesManager />
+        ) : activeTab === 'routines' ? (
+          <LegalRoutinesManager />
+        ) : activeTab === 'insights' ? (
+          <CaseInsightsPanel />
         ) : activeTab === 'metrics' ? (
           <MetricsDashboard conversations={conversations} />
         ) : (
