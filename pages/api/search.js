@@ -151,23 +151,34 @@ async function searchCases(pattern) {
 }
 
 async function searchDocuments(pattern) {
-  const [templates, routines] = await Promise.allSettled([
-    supabase
+  let templateRows = [];
+  let routineRows = [];
+
+  try {
+    const { data, error } = await supabase
       .from('document_templates')
       .select('id, name, description, legal_area, case_type')
       .or(`name.ilike.${pattern}, description.ilike.${pattern}, legal_area.ilike.${pattern}`)
       .eq('is_active', true)
-      .limit(MAX_PER_CATEGORY),
-    supabase
+      .limit(MAX_PER_CATEGORY);
+    if (error) throw error;
+    templateRows = data || [];
+  } catch (err) {
+    console.warn('[SEARCH] Tabela document_templates indisponível:', err.message);
+  }
+
+  try {
+    const { data, error } = await supabase
       .from('legal_routines')
       .select('id, name, description, legal_area, case_type, funnel_stage')
       .or(`name.ilike.${pattern}, description.ilike.${pattern}`)
       .eq('is_active', true)
-      .limit(MAX_PER_CATEGORY)
-  ]);
-
-  const templateRows = templates.status === 'fulfilled' ? (templates.value.data || []) : [];
-  const routineRows = routines.status === 'fulfilled' ? (routines.value.data || []) : [];
+      .limit(MAX_PER_CATEGORY);
+    if (error) throw error;
+    routineRows = data || [];
+  } catch (err) {
+    console.warn('[SEARCH] Tabela legal_routines indisponível:', err.message);
+  }
 
   const templateResults = templateRows.map(t => ({
     id: t.id,
@@ -193,23 +204,28 @@ async function searchDocuments(pattern) {
 }
 
 async function searchInsights(pattern) {
-  const { data, error } = await supabase
-    .from('case_insights')
-    .select('id, legal_area, case_type, municipality, agency, summary, confidential')
-    .or(`summary.ilike.${pattern}, strategy_notes.ilike.${pattern}, risk_notes.ilike.${pattern}, outcome_notes.ilike.${pattern}, similar_patterns.ilike.${pattern}`)
-    .eq('confidential', false)
-    .limit(MAX_PER_CATEGORY);
+  try {
+    const { data, error } = await supabase
+      .from('case_insights')
+      .select('id, legal_area, case_type, municipality, agency, summary, confidential')
+      .or(`summary.ilike.${pattern}, strategy_notes.ilike.${pattern}, risk_notes.ilike.${pattern}, outcome_notes.ilike.${pattern}, similar_patterns.ilike.${pattern}`)
+      .eq('confidential', false)
+      .limit(MAX_PER_CATEGORY);
 
-  if (error) throw error;
+    if (error) throw error;
 
-  return (data || []).map(i => ({
-    id: i.id,
-    title: `${i.legal_area || 'Insight'}: ${i.case_type || ''}`.trim(),
-    subtitle: i.summary?.substring(0, 80) || 'Aprendizado de caso encerrado',
-    meta: [i.municipality, i.agency].filter(Boolean).join(' • '),
-    type: 'insight',
-    href: `/?tab=insights&id=${i.id}`
-  }));
+    return (data || []).map(i => ({
+      id: i.id,
+      title: `${i.legal_area || 'Insight'}: ${i.case_type || ''}`.trim(),
+      subtitle: i.summary?.substring(0, 80) || 'Aprendizado de caso encerrado',
+      meta: [i.municipality, i.agency].filter(Boolean).join(' • '),
+      type: 'insight',
+      href: `/?tab=insights&id=${i.id}`
+    }));
+  } catch (err) {
+    console.warn('[SEARCH] Tabela case_insights indisponível:', err.message);
+    return [];
+  }
 }
 
 export default withAuth(handler, { minRole: 'estagiario' });
