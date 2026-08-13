@@ -7,8 +7,10 @@ export default function CasesPanel() {
   const [filters, setFilters] = useState({
     status: '',
     priority: '',
-    legal_area: ''
+    legal_area: '',
+    document_status: ''
   });
+  const [checklistMap, setChecklistMap] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [editingCase, setEditingCase] = useState(null);
   const [formData, setFormData] = useState({
@@ -27,6 +29,7 @@ export default function CasesPanel() {
 
   useEffect(() => {
     fetchCases();
+    fetchChecklists();
   }, [filters]);
 
   const fetchCases = async () => {
@@ -41,11 +44,46 @@ export default function CasesPanel() {
       const { data, error } = await query.order('deadline_date', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
-      setCases(data || []);
+      const allCases = data || [];
+
+      // Filtrar por documentos pendentes
+      if (filters.document_status && checklistMap) {
+        const filtered = allCases.filter(c => {
+          const checklist = checklistMap[c.id] || [];
+          const hasAny = checklist.length > 0;
+          const hasPending = checklist.some(i => i.status !== 'received' && i.status !== 'verified');
+          if (filters.document_status === 'pending') return hasAny && hasPending;
+          if (filters.document_status === 'complete') return hasAny && !hasPending;
+          return true;
+        });
+        setCases(filtered);
+      } else {
+        setCases(allCases);
+      }
     } catch (error) {
       console.error('[CASES] Erro ao buscar casos:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchChecklists = async () => {
+    try {
+      const { data: allChecklists, error } = await supabase
+        .from('case_document_checklists')
+        .select('case_id, status');
+
+      if (error) throw error;
+
+      const map = {};
+      (allChecklists || []).forEach(item => {
+        if (!map[item.case_id]) map[item.case_id] = [];
+        map[item.case_id].push(item);
+      });
+
+      setChecklistMap(map);
+    } catch (error) {
+      console.error('[CASES] Erro ao buscar checklists:', error);
     }
   };
 
@@ -178,7 +216,7 @@ export default function CasesPanel() {
       </div>
 
       {/* Filtros */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <select
           value={filters.status}
           onChange={(e) => setFilters({ ...filters, status: e.target.value })}
@@ -203,6 +241,16 @@ export default function CasesPanel() {
           <option value="baixa">Baixa</option>
           <option value="media">Média</option>
           <option value="alta">Alta</option>
+        </select>
+
+        <select
+          value={filters.document_status}
+          onChange={(e) => setFilters({ ...filters, document_status: e.target.value })}
+          className="px-3 py-2 border rounded"
+        >
+          <option value="">Todos os Documentos</option>
+          <option value="pending">Documentos Pendentes</option>
+          <option value="complete">Checklist Completo</option>
         </select>
 
         <input
@@ -328,11 +376,21 @@ export default function CasesPanel() {
               </tr>
             </thead>
             <tbody>
-              {cases.map((caseItem) => {
+                {cases.map((caseItem) => {
                 const daysLeft = daysUntilDeadline(caseItem.deadline_date);
+                const checklist = checklistMap[caseItem.id] || [];
+                const totalDocs = checklist.length;
+                const pendingDocs = checklist.filter(i => i.status !== 'received' && i.status !== 'verified').length;
                 return (
-                  <tr key={caseItem.id} className="border-b hover:bg-gray-50 text-xs md:text-sm">
-                    <td className="border p-3">{caseItem.title}</td>
+                <tr key={caseItem.id} className="border-b hover:bg-gray-50 text-xs md:text-sm">
+                    <td className="border p-3">
+                      {caseItem.title}
+                      {totalDocs > 0 && (
+                        <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${pendingDocs > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                          {pendingDocs > 0 ? `${pendingDocs} de ${totalDocs} pendentes` : '✓ completo'}
+                        </span>
+                      )}
+                    </td>
                     <td className="border p-3">{caseItem.legal_area || '-'}</td>
                     <td className="border p-3">
                       <span className={`px-2 py-1 rounded text-sm ${getStatusColor(caseItem.status)}`}>
