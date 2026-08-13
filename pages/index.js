@@ -267,6 +267,9 @@ export default function Home() {
                 { key: 'funnel', icon: '🎯', label: 'Funil', minRole: 'advogado' },
                 { key: 'agenda', icon: '📅', label: 'Agenda', minRole: 'advogado' },
                 { key: 'collaboration', icon: '🤝', label: 'Colaboração', minRole: 'advogado' },
+                { key: 'templates', icon: '📄', label: 'Documentos', minRole: 'estagiario' },
+                { key: 'routines', icon: '🔄', label: 'Rotinas', minRole: 'estagiario' },
+                { key: 'insights', icon: '💡', label: 'Insights', minRole: 'advogado' },
                 { key: 'metrics', icon: '📊', label: 'Métricas', minRole: 'advogado' },
                 { key: 'users', icon: '⚙️', label: 'Usuários', minRole: 'advogado' },
               ]
@@ -359,6 +362,12 @@ export default function Home() {
           <CollaborationPanel selectedConversation={selectedConversation} />
         ) : activeTab === 'cases' ? (
           <CasesPanel />
+        ) : activeTab === 'templates' ? (
+          <DocumentTemplatesManager />
+        ) : activeTab === 'routines' ? (
+          <LegalRoutinesManager />
+        ) : activeTab === 'insights' ? (
+          <CaseInsightsPanel />
         ) : activeTab === 'metrics' ? (
           <MetricsDashboard conversations={conversations} />
         ) : (

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/useAuth';
 
 export default function UserManagement() {
-  const { profile } = useAuth();
+  const { profile, changePassword } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -14,6 +14,14 @@ export default function UserManagement() {
   });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -39,6 +47,38 @@ export default function UserManagement() {
       setError('Erro ao conectar com servidor');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setMessage('');
+    setError('');
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setError('As senhas não conferem');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setError('A nova senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const result = await changePassword(passwordData.currentPassword, passwordData.newPassword);
+      if (result.success) {
+        setMessage('Senha alterada com sucesso');
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setShowPasswordForm(false);
+      } else {
+        setError(result.error || 'Erro ao alterar senha');
+      }
+    } catch (err) {
+      setError('Erro ao alterar senha');
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -132,14 +172,34 @@ export default function UserManagement() {
     <div className="flex-1 flex flex-col bg-white p-6 overflow-y-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">
-          {isAdmin ? '⚙️ Gestão de Usuários' : '🎓 Gestão de Estagiários'}
+          {isAdmin ? '⚙️ Gestão de Usuários' : '🎓 Configurações'}
         </h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-        >
-          {showForm ? 'Cancelar' : '+ Novo Usuário'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              setShowPasswordForm(!showPasswordForm);
+              setShowForm(false);
+              setMessage('');
+              setError('');
+            }}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
+          >
+            {showPasswordForm ? 'Cancelar' : '🔐 Alterar Senha'}
+          </button>
+          {isAdmin && (
+            <button
+              onClick={() => {
+                setShowForm(!showForm);
+                setShowPasswordForm(false);
+                setMessage('');
+                setError('');
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+            >
+              {showForm ? 'Cancelar' : '+ Novo Usuário'}
+            </button>
+          )}
+        </div>
       </div>
 
       {message && (
@@ -152,6 +212,53 @@ export default function UserManagement() {
         <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-800 rounded">
           {error}
         </div>
+      )}
+
+      {showPasswordForm && (
+        <form onSubmit={handlePasswordSubmit} className="mb-6 p-4 border rounded-lg bg-gray-50">
+          <h3 className="font-semibold mb-3">🔐 Alterar minha senha</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Senha atual</label>
+              <input
+                type="password"
+                value={passwordData.currentPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
+              <input
+                type="password"
+                value={passwordData.newPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                required
+                minLength={6}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar nova senha</label>
+              <input
+                type="password"
+                value={passwordData.confirmPassword}
+                onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                required
+                minLength={6}
+              />
+            </div>
+          </div>
+          <button
+            type="submit"
+            disabled={passwordLoading}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+          >
+            {passwordLoading ? 'Salvando...' : 'Salvar nova senha'}
+          </button>
+        </form>
       )}
 
       {showForm && (
