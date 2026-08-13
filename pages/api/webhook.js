@@ -59,10 +59,8 @@ export default async function handler(req, res) {
 
   // POST - Recebe mensagens do WhatsApp
   if (req.method === 'POST') {
-    // Desabilita timeout do socket para permitir processamento mais longo
-    if (res.socket) {
-      res.socket.setTimeout(0);
-    }
+    // Responde o mais rápido possível em rotinas de status/keep-alive
+    const ack = () => res.status(200).json({ success: true, processed: false });
     
     // Salva para debug
     global.lastWebhookPost = {
@@ -88,7 +86,7 @@ export default async function handler(req, res) {
 
       if (!messages || messages.length === 0) {
         console.log('[WEBHOOK] Nenhuma mensagem para processar');
-        return;
+        return ack();
       }
 
       const message = messages[0];
@@ -123,7 +121,7 @@ export default async function handler(req, res) {
 
       if (!from) {
         console.log('[WEBHOOK] ⚠️ Mensagem sem "from"');
-        return;
+        return ack();
       }
 
       console.log(`[WEBHOOK] ✅ Mensagem recebida de ${from}: ${textBody}`);
@@ -318,6 +316,7 @@ export default async function handler(req, res) {
     } catch (error) {
       console.error('[WEBHOOK] ❌ Erro ao processar mensagem:', error.message);
       console.error('[WEBHOOK] Stack:', error.stack);
+      res.status(200).json({ success: false, error: error.message });
     }
   }
 }
