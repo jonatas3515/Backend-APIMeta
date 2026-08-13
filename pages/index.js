@@ -151,6 +151,8 @@ export default function Home() {
         .select()
         .single();
 
+      let targetConversation = conversation;
+
       if (convError) {
         // Pode ser conflito de telefone único; busca existente
         if (convError.code === '23505') {
@@ -160,32 +162,40 @@ export default function Home() {
             .eq('client_phone', phone)
             .single();
           if (existing) {
-            setSelectedConversation(existing);
-            setShowNewConvModal(false);
-            setActiveTab('chat');
+            targetConversation = existing;
+          } else {
+            throw convError;
           }
         } else {
           throw convError;
         }
-      } else {
-        // Envia mensagem inicial se houver texto
-        if (newMessage.trim()) {
-          await axios.post('/api/send-message', {
-            conversation_id: conversation.id,
-            text: newMessage,
-            media_url: null,
-            media_type: null
-          });
-        }
-
-        setConversations([conversation, ...conversations]);
-        setSelectedConversation(conversation);
-        setShowNewConvModal(false);
-        setNewPhone('');
-        setNewName('');
-        setNewMessage('');
-        setActiveTab('chat');
       }
+
+      // Envia mensagem inicial se houver texto
+      if (newMessage.trim() && targetConversation?.id) {
+        const { data: authData } = await supabase.auth.getSession();
+        const headers = authData?.session?.access_token 
+          ? { Authorization: `Bearer ${authData.session.access_token}` }
+          : {};
+        await axios.post('/api/send-message', {
+          conversation_id: targetConversation.id,
+          text: newMessage,
+          media_url: null,
+          media_type: null
+        }, { headers });
+      }
+
+      if (!convError) {
+        setConversations([conversation, ...conversations]);
+      } else {
+        fetchConversations();
+      }
+      setSelectedConversation(targetConversation);
+      setShowNewConvModal(false);
+      setNewPhone('');
+      setNewName('');
+      setNewMessage('');
+      setActiveTab('chat');
     } catch (error) {
       console.error('Erro ao iniciar conversa:', error);
       alert('Erro ao iniciar conversa: ' + error.message);
