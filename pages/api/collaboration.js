@@ -53,13 +53,20 @@ async function handleGet(req, res) {
         return res.status(400).json({ error: 'conversation_id ou case_id é obrigatório' });
       }
 
+      const convId = conversation_id && conversation_id !== 'null' ? conversation_id : null;
+      const cId = case_id && case_id !== 'null' ? case_id : null;
+
+      if (!convId && !cId) {
+        return res.status(200).json([]);
+      }
+
       let query = supabase.from('internal_notes').select(`
         id, text, is_visible_to_client, created_at, updated_at,
         user_id, users(name, email)
       `);
 
-      if (conversation_id) query = query.eq('conversation_id', conversation_id);
-      if (case_id) query = query.eq('case_id', case_id);
+      if (convId) query = query.eq('conversation_id', convId);
+      if (cId) query = query.eq('case_id', cId);
 
       const { data, error } = await query.order('created_at', { ascending: false });
 

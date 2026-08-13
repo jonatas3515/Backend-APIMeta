@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { getAuthHeaders } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
 
 const REMINDER_TYPES = [
@@ -27,7 +28,9 @@ export default function RemindersPanel({ conversation }) {
 
   const fetchReminders = async () => {
     try {
-      const { data } = await axios.get(`/api/reminders?conversation_id=${conversation.id}`);
+      const { data } = await axios.get(`/api/reminders?conversation_id=${conversation.id}`, {
+        headers: await getAuthHeaders()
+      });
       setReminders(data.reminders || []);
     } catch (error) {
       console.error('Erro ao buscar lembretes:', error);
@@ -48,6 +51,8 @@ export default function RemindersPanel({ conversation }) {
         title,
         message: formData.message,
         scheduled_for: new Date(formData.scheduled_for).toISOString()
+      }, {
+        headers: await getAuthHeaders()
       });
       
       setFormData({ type: 'manual', title: '', message: '', scheduled_for: '' });
@@ -62,7 +67,9 @@ export default function RemindersPanel({ conversation }) {
 
   const handleSendNow = async (id) => {
     try {
-      await axios.put('/api/reminders', { id, send_now: true });
+      await axios.put('/api/reminders', { id, send_now: true }, {
+        headers: await getAuthHeaders()
+      });
       fetchReminders();
       alert('Mensagem enviada agora!');
     } catch (error) {
@@ -75,7 +82,9 @@ export default function RemindersPanel({ conversation }) {
     if (!confirm('Deseja excluir este lembrete?')) return;
     
     try {
-      await axios.delete(`/api/reminders?id=${id}`);
+      await axios.delete(`/api/reminders?id=${id}`, {
+        headers: await getAuthHeaders()
+      });
       fetchReminders();
     } catch (error) {
       console.error('Erro ao excluir:', error);

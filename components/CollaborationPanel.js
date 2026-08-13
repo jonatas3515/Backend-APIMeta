@@ -30,8 +30,10 @@ export default function CollaborationPanel({ conversationId, caseId }) {
 
       if (activeTab === 'notes') {
         // Busca notas
+        const notesParams = new URLSearchParams({ action: 'notes', conversation_id: conversationId || '' });
+        if (caseId) notesParams.append('case_id', caseId);
         const notesRes = await fetch(
-          `/api/collaboration?action=notes&conversation_id=${conversationId}&case_id=${caseId}`,
+          `/api/collaboration?${notesParams.toString()}`,
           { headers: await getAuthHeaders() }
         );
         if (notesRes.ok) {
