@@ -368,7 +368,8 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
 
   return (
     <div className="flex-1 flex flex-col bg-nc-surface min-h-0">
-      <div ref={topBarRef} className="flex-shrink-0 bg-nc-white border-b border-nc-gray-200 p-3 md:p-4">
+      <div ref={topBarRef} className="flex-shrink-0">
+        <div className="bg-nc-white border-b border-nc-gray-200 p-3 md:p-4">
         <div className="flex justify-between items-start mb-2 md:mb-3 gap-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -481,7 +482,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
             className="nc-input"
           />
         </div>
-      </div>
+        </div>
 
       {/* Painel de Classificação Jurídica */}
       {activePanel === 'classification' && (
@@ -527,6 +528,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           </button>
         </div>
       )}
+      </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
         {messages
