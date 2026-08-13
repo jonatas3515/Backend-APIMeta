@@ -31,7 +31,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
 
   if (loading) {
     return (
-      <div className="w-80 bg-nc-white border-r border-nc-gray-300 flex items-center justify-center">
+      <div className="w-full h-full bg-nc-white border-r border-nc-gray-300 flex items-center justify-center">
         <p className="text-nc-text-muted">Carregando conversas...</p>
       </div>
     );
@@ -61,7 +61,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
     });
 
   return (
-    <div className="w-80 bg-nc-white border-r border-nc-gray-300 flex flex-col">
+    <div className="w-full h-full bg-nc-white border-r border-nc-gray-300 flex flex-col">
       <div className="p-4 border-b border-nc-gray-200">
         <div className="flex justify-between items-center mb-3">
           <h1 className="text-xl font-bold text-nc-text-title">Conversas</h1>
