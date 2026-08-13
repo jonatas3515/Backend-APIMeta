@@ -1,4 +1,3 @@
-import { useRouter } from 'next/router';
 import { useAuth } from '../lib/useAuth';
 
 const NAV_ITEMS = [
@@ -18,11 +17,12 @@ const NAV_ITEMS = [
 
 export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' }) {
   const { canAccess, signOut } = useAuth();
-  const router = useRouter();
 
   const handleClick = (item) => {
     if (item.href) {
-      router.push(item.href);
+      if (typeof window !== 'undefined') {
+        window.location.href = item.href;
+      }
     } else {
       onChangeTab?.(item.key);
     }
