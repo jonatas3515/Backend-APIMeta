@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import axios from 'axios';
 import { getAuthHeaders } from '../lib/api';
+import { formatPhone } from '../lib/formatters';
 import LegalClassification from './LegalClassification';
 import RemindersPanel from './RemindersPanel';
 import DocumentGenerator from './DocumentGenerator';
@@ -386,7 +387,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                 {conversation.client_name || conversation.client_phone}
               </h2>
             </div>
-            <p className="text-xs md:text-sm text-nc-text-secondary truncate">{conversation.client_phone}</p>
+            <p className="text-xs md:text-sm text-nc-text-secondary truncate">{formatPhone(conversation.client_phone)}</p>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
             <div className={`flex items-center gap-1.5 px-2 py-1 md:px-2.5 md:py-1.5 rounded-full text-xs font-medium border ${

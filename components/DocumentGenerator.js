@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { maskField, formatPhone } from '../lib/formatters';
 
 export default function DocumentGenerator({ conversation }) {
   const [templates, setTemplates] = useState([]);
@@ -126,7 +127,7 @@ export default function DocumentGenerator({ conversation }) {
               <input
                 type="text"
                 value={formData[field.field] || ''}
-                onChange={(e) => setFormData({ ...formData, [field.field]: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, [field.field]: maskField(field.field, e.target.value) })}
                 placeholder={field.label}
                 className="nc-input"
               />
