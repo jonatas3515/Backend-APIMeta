@@ -194,13 +194,14 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
 
       // Enviar mensagem
       const headers = await getAuthHeaders();
-      await axios.post('/api/send-message', {
+      const { data: sendData } = await axios.post('/api/send-message', {
         conversation_id: conversation.id,
         text: newMessage,
         media_url: mediaUrl,
         media_type: mediaType
       }, { headers });
 
+      console.log('[CHAT] Mensagem enviada:', sendData);
       setNewMessage('');
       setPendingFile(null);
       setPendingAudio(null);
@@ -607,9 +608,19 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
               )}
               
               <div className="flex items-center justify-between mt-1.5 gap-2">
-                <p className="text-xs text-nc-text-muted">
-                  {new Date(msg.created_at).toLocaleTimeString('pt-BR')}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs text-nc-text-muted">
+                    {new Date(msg.created_at).toLocaleTimeString('pt-BR')}
+                  </p>
+                  {msg.direction === 'outbound' && msg.wa_message_id && (
+                    <span
+                      className="text-[10px] text-green-600 font-medium flex items-center gap-0.5"
+                      title={`Mensagem enviada para o WhatsApp (ID: ${msg.wa_message_id})`}
+                    >
+                      ✓ Enviado
+                    </span>
+                  )}
+                </div>
                 <div className="flex gap-1">
                   {msg.text && (
                     <button
