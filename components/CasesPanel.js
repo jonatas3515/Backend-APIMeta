@@ -155,7 +155,7 @@ export default function CasesPanel() {
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow">
+    <div className="p-4 md:p-6 bg-white rounded-lg shadow w-full h-full overflow-y-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Casos Jurídicos</h2>
         <button
@@ -183,7 +183,7 @@ export default function CasesPanel() {
       </div>
 
       {/* Filtros */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <select
           value={filters.status}
           onChange={(e) => setFilters({ ...filters, status: e.target.value })}
@@ -223,7 +223,7 @@ export default function CasesPanel() {
       {showForm && (
         <div className="mb-6 p-4 border rounded bg-gray-50">
           <h3 className="text-lg font-bold mb-4">{editingCase ? 'Editar Caso' : 'Novo Caso'}</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input
               type="text"
               placeholder="Título do caso"
@@ -315,16 +315,15 @@ export default function CasesPanel() {
         </div>
       )}
 
-      {/* Lista de Casos */}
       {loading ? (
         <p className="text-center text-gray-500">Carregando casos...</p>
       ) : cases.length === 0 ? (
         <p className="text-center text-gray-500">Nenhum caso encontrado</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -mx-2 px-2">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-gray-100">
+              <tr className="bg-gray-100 text-xs md:text-sm">
                 <th className="border p-3 text-left">Título</th>
                 <th className="border p-3 text-left">Área</th>
                 <th className="border p-3 text-left">Status</th>
@@ -337,7 +336,7 @@ export default function CasesPanel() {
               {cases.map((caseItem) => {
                 const daysLeft = daysUntilDeadline(caseItem.deadline_date);
                 return (
-                  <tr key={caseItem.id} className="border-b hover:bg-gray-50">
+                  <tr key={caseItem.id} className="border-b hover:bg-gray-50 text-xs md:text-sm">
                     <td className="border p-3">{caseItem.title}</td>
                     <td className="border p-3">{caseItem.legal_area || '-'}</td>
                     <td className="border p-3">

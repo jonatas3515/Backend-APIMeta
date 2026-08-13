@@ -8,6 +8,7 @@ const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || 'your_whatsapp_p
 const GEMINI_API_KEY = process.env.GOOGLE_AI_API_KEY;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const ADMIN_WHATSAPP_NUMBER = process.env.ADMIN_WHATSAPP_NUMBER || '557399348552';
 
 const WHATSAPP_API_URL = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
 const GEMINI_API_URL_PRIMARY = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
@@ -296,11 +297,15 @@ export default async function handler(req, res) {
           
           console.log(`[WEBHOOK] 🔔 Conversa marcada como mode=human`);
           
-          // Enviar notificação para você (seu WhatsApp pessoal)
+          // Enviar notificação para o WhatsApp pessoal configurado
           try {
             const notificationMessage = `🔔 *Atendimento Humano Solicitado*\n\nCliente: ${clientName}\nTelefone: ${from}\nÚltima mensagem: "${textBody}"\n\nAcesse: https://backend-apimeta.vercel.app/`;
-            await sendWhatsAppMessage('557399348552', notificationMessage);
-            console.log(`[WEBHOOK] 📲 Notificação enviada para Jonatas (557399348552)`);
+            if (!ADMIN_WHATSAPP_NUMBER) {
+              console.warn('[WEBHOOK] ⚠️ ADMIN_WHATSAPP_NUMBER não configurado. Notificação não enviada.');
+            } else {
+              await sendWhatsAppMessage(ADMIN_WHATSAPP_NUMBER, notificationMessage);
+              console.log(`[WEBHOOK] 📲 Notificação enviada para ${ADMIN_WHATSAPP_NUMBER}`);
+            }
           } catch (notifError) {
             console.error(`[WEBHOOK] ❌ Erro ao enviar notificação:`, notifError);
           }
