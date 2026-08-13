@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import DocumentChecklist from './DocumentChecklist';
 
 export default function CaseSidebar({ conversationId }) {
   const [cases, setCases] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [selectedCaseForChecklist, setSelectedCaseForChecklist] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
     legal_area: '',
@@ -262,6 +264,15 @@ export default function CaseSidebar({ conversationId }) {
                       <p className="text-gray-600 italic">{caseItem.notes}</p>
                     )}
 
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={() => setSelectedCaseForChecklist(caseItem)}
+                        className="flex-1 px-2 py-1 bg-white border border-blue-300 text-blue-700 rounded text-xs hover:bg-blue-50"
+                      >
+                        📎 Documentos
+                      </button>
+                    </div>
+
                     <select
                       value={caseItem.status}
                       onChange={(e) => handleUpdateCase(caseItem.id, { status: e.target.value })}
@@ -282,6 +293,13 @@ export default function CaseSidebar({ conversationId }) {
           </div>
         )}
       </div>
+
+      {selectedCaseForChecklist && (
+        <DocumentChecklist
+          caseItem={selectedCaseForChecklist}
+          onClose={() => setSelectedCaseForChecklist(null)}
+        />
+      )}
     </div>
   );
 }

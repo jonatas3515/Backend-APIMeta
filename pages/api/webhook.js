@@ -218,6 +218,11 @@ export default async function handler(req, res) {
       if (conversation) {
         const savedMessage = await saveMessage(conversation.id, textBody, 'client', messageType, publicUrl, '', { media_status: mediaStatus || undefined });
         
+        // Sugerir marcação de documento no checklist
+        if (publicUrl && (messageType === 'image' || messageType === 'document' || messageType === 'video' || messageType === 'audio')) {
+          await suggestDocumentChecklist(conversation.id, publicUrl, messageType, textBody, message);
+        }
+
         // Marca conversa como não lida para o atendente
         await supabase
           .from('conversations')
@@ -1083,6 +1088,92 @@ function getFileExtension(mimeType, messageType) {
      messageType === 'video' ? 'mp4' :
      messageType === 'image' ? 'jpg' :
      messageType === 'document' ? 'pdf' : 'bin');
+}
+
+// Sugerir marcação de documento no checklist do caso
+async function suggestDocumentChecklist(conversationId, publicUrl, messageType, textBody, message) {
+  try {
+    // Buscar caso ativo da conversa
+    const { data: cases, error: caseError } = await supabase
+      .from('cases')
+      .select('id, case_type')
+      .eq('conversation_id', conversationId)
+      .neq('status', 'encerrado')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (caseError || !cases || cases.length === 0) {
+      console.log('[WEBHOOK] ℹ️ Nenhum caso ativo para sugerir documento');
+      return;
+    }
+
+    const caseItem = cases[0];
+
+    // Buscar itens pendentes do checklist
+    const { data: items, error: itemsError } = await supabase
+      .from('case_document_checklists')
+      .select('*')
+      .eq('case_id', caseItem.id)
+      .eq('status', 'pending');
+
+    if (itemsError || !items || items.length === 0) {
+      console.log('[WEBHOOK] ℹ️ Nenhum documento pendente no checklist');
+      return;
+    }
+
+    // Montar texto de referência para matching
+    const filename = message?.document?.filename || '';
+    const caption = (message?.image?.caption || message?.video?.caption || message?.document?.caption || '')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const lowerText = (textBody + ' ' + filename + ' ' + caption)
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+    const keywordsMap = {
+      'RG': ['rg', 'identidade'],
+      'CPF': ['cpf'],
+      'CTPS': ['ctps', 'carteira de trabalho'],
+      'Holerites (últimos 12 meses)': ['holerite', 'contracheque', 'recibo', 'pagamento'],
+      'TRCT': ['trct', 'recibo de trabalho'],
+      'FGTS': ['fgts'],
+      'Carteira de Trabalho': ['carteira de trabalho', 'ctps'],
+      'Laudos Médicos': ['laudo', 'laudo medico'],
+      'Atestados': ['atestado', 'atestado medico']
+    };
+
+    for (const item of items) {
+      const itemName = item.document_name;
+      const normalizedName = itemName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const keys = keywordsMap[itemName] || [itemName.toLowerCase()];
+
+      const matched = keys.some(key => {
+        const normalizedKey = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        return lowerText.includes(normalizedKey);
+      });
+
+      if (matched) {
+        const { error: updateError } = await supabase
+          .from('case_document_checklists')
+          .update({
+            status: 'sent',
+            media_url: publicUrl,
+            media_type: messageType,
+            received_at: new Date().toISOString()
+          })
+          .eq('id', item.id);
+
+        if (updateError) {
+          console.error('[WEBHOOK] ❌ Erro ao sugerir documento:', updateError);
+        } else {
+          console.log(`[WEBHOOK] 📎 Documento sugerido como enviado: ${itemName}`);
+        }
+        return;
+      }
+    }
+
+    console.log('[WEBHOOK] ℹ️ Nenhum documento do checklist correspondente encontrado');
+  } catch (error) {
+    console.error('[WEBHOOK] ❌ Erro ao sugerir checklist:', error);
+  }
 }
 
 // Processar atualizações de status de entrega do WhatsApp

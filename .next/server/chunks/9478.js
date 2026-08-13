@@ -1,4 +1,4 @@
-"use strict";exports.id=478,exports.ids=[478],exports.modules={9478:(e,o,a)=>{a.d(o,{askGemini:()=>r});let s=process.env.GOOGLE_AI_API_KEY,t=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${s}`,i=`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${s}`,n=`🚨 ATEN\xc7\xc3O: NEVES & COSTA ADVOCACIA N\xc3O TEM CNPJ 🚨
+"use strict";exports.id=9478,exports.ids=[9478],exports.modules={9478:(e,o,a)=>{a.d(o,{askGemini:()=>r});let s=process.env.GOOGLE_AI_API_KEY,t=`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${s}`,i=`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${s}`,n=`🚨 ATEN\xc7\xc3O: NEVES & COSTA ADVOCACIA N\xc3O TEM CNPJ 🚨
 
 Voc\xea \xe9 o Jhon, assistente virtual da Neves & Costa Advocacia e Consultoria.
 
