@@ -79,11 +79,18 @@ export default async function handler(req, res) {
       const changes = entry?.changes?.[0];
       const value = changes?.value;
       const messages = value?.messages;
+      const statuses = value?.statuses;
 
       console.log(`[WEBHOOK] Entry:`, entry ? 'existe' : 'null');
       console.log(`[WEBHOOK] Changes:`, changes ? 'existe' : 'null');
       console.log(`[WEBHOOK] Value:`, value ? 'existe' : 'null');
       console.log(`[WEBHOOK] Mensagens recebidas:`, messages?.length || 0);
+      console.log(`[WEBHOOK] Statuses recebidos:`, statuses?.length || 0);
+
+      // Processar atualizações de status de entrega (sent, delivered, read, failed)
+      if (statuses && statuses.length > 0) {
+        await processDeliveryStatuses(statuses);
+      }
 
       if (!messages || messages.length === 0) {
         console.log('[WEBHOOK] Nenhuma mensagem para processar');
@@ -1076,4 +1083,61 @@ function getFileExtension(mimeType, messageType) {
      messageType === 'video' ? 'mp4' :
      messageType === 'image' ? 'jpg' :
      messageType === 'document' ? 'pdf' : 'bin');
+}
+
+// Processar atualizações de status de entrega do WhatsApp
+async function processDeliveryStatuses(statuses) {
+  for (const status of statuses) {
+    try {
+      const waMessageId = status.id;
+      const deliveryStatus = status.status;
+      const error = status.errors?.[0] || null;
+
+      console.log(`[WEBHOOK] 📬 Status de entrega: ${waMessageId} -> ${deliveryStatus}`);
+
+      // Buscar mensagem pelo wa_message_id
+      const { data: messages, error: findError } = await supabase
+        .from('messages')
+        .select('id')
+        .eq('wa_message_id', waMessageId)
+        .limit(1);
+
+      if (findError) {
+        console.error(`[WEBHOOK] ❌ Erro ao buscar mensagem por wa_message_id:`, findError);
+        continue;
+      }
+
+      if (!messages || messages.length === 0) {
+        console.log(`[WEBHOOK] ⚠️ Mensagem com wa_message_id ${waMessageId} não encontrada`);
+        continue;
+      }
+
+      const updateData = {
+        status: deliveryStatus,
+      };
+
+      if (error) {
+        updateData.error_info = {
+          code: error.code,
+          title: error.title,
+          message: error.message,
+          details: error.error_data?.details,
+          href: error.href
+        };
+      }
+
+      const { error: updateError } = await supabase
+        .from('messages')
+        .update(updateData)
+        .eq('id', messages[0].id);
+
+      if (updateError) {
+        console.error(`[WEBHOOK] ❌ Erro ao atualizar status da mensagem:`, updateError);
+      } else {
+        console.log(`[WEBHOOK] ✅ Status da mensagem ${messages[0].id} atualizado para ${deliveryStatus}`);
+      }
+    } catch (statusError) {
+      console.error(`[WEBHOOK] ❌ Erro ao processar status:`, statusError);
+    }
+  }
 }

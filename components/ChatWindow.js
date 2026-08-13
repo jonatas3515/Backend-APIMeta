@@ -612,12 +612,36 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                   <p className="text-xs text-nc-text-muted">
                     {new Date(msg.created_at).toLocaleTimeString('pt-BR')}
                   </p>
-                  {msg.direction === 'outbound' && msg.wa_message_id && (
+                  {msg.direction === 'outbound' && (
                     <span
-                      className="text-[10px] text-green-600 font-medium flex items-center gap-0.5"
-                      title={`Mensagem enviada para o WhatsApp (ID: ${msg.wa_message_id})`}
+                      className={`text-[10px] font-medium flex items-center gap-0.5 ${
+                        msg.status === 'failed'
+                          ? 'text-red-600'
+                          : msg.status === 'read'
+                          ? 'text-green-600'
+                          : msg.status === 'delivered'
+                          ? 'text-blue-600'
+                          : 'text-nc-text-muted'
+                      }`}
+                      title={
+                        msg.status === 'failed'
+                          ? `Falha na entrega: ${msg.error_info?.title || 'Erro desconhecido'} - ${msg.error_info?.message || ''}`
+                          : msg.status === 'read'
+                          ? 'Mensagem lida'
+                          : msg.status === 'delivered'
+                          ? 'Mensagem entregue'
+                          : msg.wa_message_id
+                          ? 'Mensagem enviada para o WhatsApp'
+                          : 'Enviando mensagem...'
+                      }
                     >
-                      ✓ Enviado
+                      {msg.status === 'failed' && '❌ Não entregue'}
+                      {msg.status === 'read' && '✓✓ Lida'}
+                      {msg.status === 'delivered' && '✓✓ Entregue'}
+                      {msg.status === 'sent' && '✓ Enviado'}
+                      {msg.status === 'pending' && '⏳ Enviando...'}
+                      {!msg.status && msg.wa_message_id && '✓ Enviado'}
+                      {!msg.status && !msg.wa_message_id && '⏳ Enviando...'}
                     </span>
                   )}
                 </div>

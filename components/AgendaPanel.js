@@ -1,12 +1,7 @@
 import { useState, useEffect } from 'react';
 import { askGemini } from '../lib/ai';
 import { getAuthHeaders } from '../lib/api';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+import { supabase } from '../lib/supabaseClient';
 
 export default function AgendaPanel() {
   const [activeTab, setActiveTab] = useState('today');
