@@ -79,7 +79,7 @@ async function handler(req, res) {
     } else {
       // Envia mensagem de texto
       const { sendWhatsAppMessage } = await import('@/lib/whatsapp');
-      await sendWhatsAppMessage(conversation.client_phone, text);
+      waMessageId = await sendWhatsAppMessage(conversation.client_phone, text);
     }
 
     const { error: msgError } = await supabase
@@ -91,14 +91,19 @@ async function handler(req, res) {
         content_type: contentType,
         text,
         media_url: media_url || null,
-        media_type: media_type || null
+        media_type: media_type || null,
+        wa_message_id: waMessageId || null
       }]);
 
     if (msgError) {
       console.error('Erro ao salvar mensagem:', msgError);
     }
 
-    res.json({ success: true, message: 'Mensagem enviada com sucesso' });
+    res.json({ 
+      success: true, 
+      message: 'Mensagem enviada com sucesso',
+      wa_message_id: waMessageId || null
+    });
   } catch (error) {
     console.error('Erro ao enviar mensagem:', error);
     res.status(500).json({ error: error.message });
