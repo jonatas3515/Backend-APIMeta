@@ -1,13 +1,26 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/useAuth';
+
+const REMEMBER_EMAIL_KEY = 'nc_remember_email';
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { signIn } = useAuth();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(REMEMBER_EMAIL_KEY);
+      if (saved) {
+        setEmail(saved);
+        setRememberMe(true);
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,6 +31,13 @@ export default function Login({ onLogin }) {
       const { success, error: signInError } = await signIn(email, password);
 
       if (success) {
+        if (typeof window !== 'undefined') {
+          if (rememberMe) {
+            localStorage.setItem(REMEMBER_EMAIL_KEY, email);
+          } else {
+            localStorage.removeItem(REMEMBER_EMAIL_KEY);
+          }
+        }
         onLogin();
       } else {
         setError(signInError || 'Credenciais inválidas');
@@ -74,6 +94,19 @@ export default function Login({ onLogin }) {
                 {showPassword ? '👁️' : '👁️‍🗨️'}
               </button>
             </div>
+          </div>
+
+          <div className="flex items-center">
+            <input
+              id="remember-me"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="h-4 w-4 text-nc-yellow border-nc-gray-300 rounded focus:ring-nc-yellow"
+            />
+            <label htmlFor="remember-me" className="ml-2 text-sm text-nc-text-secondary">
+              Lembrar-me (salvar email)
+            </label>
           </div>
 
           {error && (
