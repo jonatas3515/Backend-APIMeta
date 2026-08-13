@@ -158,10 +158,7 @@ export default function DashboardPage() {
                 Olá, {profile?.name || 'Advogado'} · {new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
-            <div className="mt-4 md:mt-0 flex gap-2">
-              <Link href="/" className="nc-btn">
-                ← Voltar ao chat
-              </Link>
+            <div className="mt-4 md:mt-0">
               <button onClick={fetchDashboard} className="nc-btn" title="Atualizar">
                 ↻ Atualizar
               </button>

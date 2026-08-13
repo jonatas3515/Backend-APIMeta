@@ -23,8 +23,10 @@ export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' })
       if (typeof window !== 'undefined') {
         window.location.href = item.href;
       }
-    } else {
-      onChangeTab?.(item.key);
+    } else if (onChangeTab) {
+      onChangeTab(item.key);
+    } else if (typeof window !== 'undefined') {
+      window.location.href = `/?tab=${item.key}`;
     }
   };
 
