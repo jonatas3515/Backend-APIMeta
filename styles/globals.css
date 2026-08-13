@@ -21,6 +21,35 @@ body {
   background-color: #FAFAFA;
 }
 
+/* Scrollbars discretas */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.dark ::-webkit-scrollbar-thumb,
+.bg-nc-black ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover,
+.bg-nc-black ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 @layer components {
   .nc-btn {
     @apply inline-flex items-center justify-center px-3 py-2 bg-nc-white text-nc-text border border-nc-gray-300 rounded-nc text-sm font-medium transition-all duration-200;

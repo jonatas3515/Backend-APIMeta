@@ -18,6 +18,7 @@ import Login from '../components/Login';
 import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
 import Head from 'next/head';
+import Sidebar from '../components/Sidebar';
 
 export default function Home() {
   const router = useRouter();
@@ -254,97 +255,7 @@ export default function Home() {
       </Head>
       
       <div className="flex flex-col md:flex-row h-screen bg-nc-surface overflow-hidden">
-        {/* Sidebar desktop */}
-        <div className="hidden md:flex w-14 bg-nc-black flex-col items-center py-4 border-r border-nc-gray-800 flex-shrink-0">
-          <img src="/Logo transparente.png" alt="N&C Logo" className="w-8 h-8 object-contain" />
-
-          <nav className="flex-1 flex flex-col space-y-2 mt-6 w-full px-2 overflow-y-auto scrollbar-thin">
-            {[
-              { key: 'dashboard', icon: '📊', label: 'Dashboard', minRole: 'advogado', href: '/dashboard' },
-              { key: 'chat', icon: '💬', label: 'Chat', minRole: 'estagiario' },
-              { key: 'clients', icon: '👥', label: 'Clientes', minRole: 'estagiario' },
-              { key: 'cases', icon: '⚖️', label: 'Casos', minRole: 'estagiario' },
-              { key: 'funnel', icon: '🎯', label: 'Funil', minRole: 'advogado' },
-              { key: 'agenda', icon: '📅', label: 'Agenda', minRole: 'advogado' },
-              { key: 'collaboration', icon: '🤝', label: 'Colab.', minRole: 'advogado' },
-              { key: 'templates', icon: '📄', label: 'Docs', minRole: 'estagiario' },
-              { key: 'routines', icon: '🔄', label: 'Rotinas', minRole: 'estagiario' },
-              { key: 'insights', icon: '💡', label: 'Insights', minRole: 'advogado' },
-              { key: 'metrics', icon: '📊', label: 'Métricas', minRole: 'advogado' },
-              { key: 'users', icon: '⚙️', label: 'Config.', minRole: 'advogado' },
-            ]
-            .filter(item => canAccess(item.minRole))
-            .map(item => (
-              <button
-                key={item.key}
-                onClick={() => {
-                  if (item.href) {
-                    window.location.href = item.href;
-                  } else {
-                    setActiveTab(item.key);
-                  }
-                }}
-                className={`p-2 rounded transition relative flex flex-col items-center justify-center gap-0.5 ${
-                  activeTab === item.key
-                    ? 'text-nc-yellow bg-nc-gray-800/50'
-                    : 'text-nc-gray-400 hover:text-nc-white hover:bg-nc-gray-800/30'
-                }`}
-                title={item.label}
-              >
-                <span className="text-base leading-none">{item.icon}</span>
-                <span className="text-[9px] truncate w-full text-center leading-tight">{item.label}</span>
-              </button>
-            ))}
-          </nav>
-
-          {/* Logout */}
-          <div className="w-full px-2 pb-2 mt-2 border-t border-nc-gray-800 pt-2">
-            <button
-              onClick={handleLogout}
-              className="w-full p-2 rounded transition text-nc-gray-500 hover:text-red-400 hover:bg-nc-gray-800/50 flex flex-col items-center gap-0.5"
-              title="Sair"
-            >
-              <span className="text-base leading-none">🚪</span>
-              <span className="text-[9px]">Sair</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Bottom nav mobile */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-nc-black border-t border-nc-gray-800 z-50 flex items-center justify-around px-1 overflow-x-auto">
-          {[
-            { key: 'chat', icon: '💬', label: 'Chat' },
-            { key: 'clients', icon: '👥', label: 'Clientes' },
-            { key: 'cases', icon: '⚖️', label: 'Casos' },
-            { key: 'agenda', icon: '📅', label: 'Agenda' },
-            { key: 'users', icon: '⚙️', label: 'Config.' },
-          ]
-          .filter(item => canAccess(item.minRole))
-          .map(item => (
-            <button
-              key={item.key}
-              onClick={() => setActiveTab(item.key)}
-              className={`flex flex-col items-center justify-center min-w-[3.5rem] p-1 rounded transition ${
-                activeTab === item.key
-                  ? 'text-nc-yellow bg-nc-gray-800/50'
-                  : 'text-nc-gray-400'
-              }`}
-            >
-              <span className="text-base leading-none">{item.icon}</span>
-              <span className="text-[9px] mt-0.5 leading-tight">{item.label}</span>
-            </button>
-          ))}
-          <button
-            onClick={handleLogout}
-            className="flex flex-col items-center justify-center min-w-[3.5rem] p-1 text-nc-gray-400 hover:text-red-400 transition"
-          >
-            <span className="text-base leading-none">🚪</span>
-            <span className="text-[9px] mt-0.5 leading-tight">Sair</span>
-          </button>
-        </div>
-
-        {/* Espaço reservado para bottom nav em mobile */}
-        <div className="md:hidden h-16 flex-shrink-0" />
+        <Sidebar activeTab={activeTab} onChangeTab={setActiveTab} />
 
         {/* Conteúdo principal */}
         <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0">

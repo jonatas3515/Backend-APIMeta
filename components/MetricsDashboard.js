@@ -82,11 +82,11 @@ export default function MetricsDashboard({ conversations }) {
   };
 
   return (
-    <div className="h-full overflow-y-auto p-6 bg-nc-surface">
+    <div className="h-full w-full overflow-y-auto p-4 md:p-6 bg-nc-surface">
       <h2 className="text-2xl font-bold text-nc-text-title mb-6">📊 Métricas do Escritório</h2>
 
       {/* Cards principais */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="nc-card p-4">
           <p className="text-sm text-nc-text-secondary">Total de Conversas</p>
           <p className="text-2xl font-bold text-nc-text">{metrics.totalConversations}</p>
@@ -106,7 +106,7 @@ export default function MetricsDashboard({ conversations }) {
       </div>
 
       {/* Gráficos simples */}
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="nc-card p-4">
           <h3 className="font-bold text-nc-text-title mb-4">Por Área Jurídica</h3>
           <div className="space-y-2">
@@ -137,7 +137,7 @@ export default function MetricsDashboard({ conversations }) {
 
         <div className="nc-card p-4 col-span-2">
           <h3 className="font-bold text-nc-text-title mb-4">Por Município</h3>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {Object.entries(metrics.byMunicipality).map(([municipality, count]) => (
               <div key={municipality} className="flex justify-between items-center p-2 bg-nc-gray-50 rounded">
                 <span className="text-sm text-nc-text">{municipality}</span>
