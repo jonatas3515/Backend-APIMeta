@@ -219,7 +219,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
             </div>
           )}
 
-          {!loading && !error && !data?.anonymized && (
+          {!loading && !error && data && !data.anonymized && (
             <>
               {/* Dados Básicos */}
               <section className="bg-nc-surface rounded-lg border border-nc-gray-200 p-4">
