@@ -20,6 +20,7 @@ import { useAuth } from '../lib/useAuth';
 import Head from 'next/head';
 import Sidebar from '../components/Sidebar';
 import NotificationPermissionPrompt from '../components/NotificationPermissionPrompt';
+import ProfilePanel from '../components/ProfilePanel';
 import { maybeNotify, getPermission, isSupported } from '../lib/notifications';
 import { getAuthHeaders } from '../lib/api';
 
@@ -397,6 +398,8 @@ export default function Home() {
             <CaseInsightsPanel />
           ) : activeTab === 'metrics' ? (
             <MetricsDashboard conversations={conversations} />
+          ) : activeTab === 'profile' ? (
+            <ProfilePanel />
           ) : (
             <UserManagement />
           )}
