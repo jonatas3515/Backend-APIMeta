@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 
 const LEGAL_AREAS = [
@@ -19,8 +20,11 @@ const CASE_TYPES = [
 ];
 
 export default function DocumentTemplatesManager() {
+  const router = useRouter();
+  const searchRef = useRef(null);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [formData, setFormData] = useState({
@@ -34,6 +38,16 @@ export default function DocumentTemplatesManager() {
   useEffect(() => {
     fetchTemplates();
   }, []);
+
+  // Atalho T: foca no campo de busca de templates
+  useEffect(() => {
+    if (router.isReady && router.query.focus === 'search' && searchRef.current) {
+      searchRef.current.focus();
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', '/?tab=templates');
+      }
+    }
+  }, [router.isReady, router.query]);
 
   const fetchTemplates = async () => {
     try {
@@ -115,10 +129,25 @@ export default function DocumentTemplatesManager() {
     }
   };
 
+  const filteredTemplates = templates.filter(t =>
+    !searchTerm ||
+    t.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.legal_area?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="p-6 bg-white rounded-lg shadow">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <h2 className="text-2xl font-bold">📄 Templates de Documentos</h2>
+        <input
+          ref={searchRef}
+          type="text"
+          placeholder="Buscar template... (T)"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full md:w-72 px-3 py-2 border rounded text-sm"
+        />
         <button
           onClick={() => {
             setShowForm(true);
@@ -217,11 +246,11 @@ export default function DocumentTemplatesManager() {
       {/* Lista de Templates */}
       {loading ? (
         <p className="text-center text-gray-500">Carregando templates...</p>
-      ) : templates.length === 0 ? (
+      ) : filteredTemplates.length === 0 ? (
         <p className="text-center text-gray-500">Nenhum template encontrado</p>
       ) : (
         <div className="space-y-4">
-          {templates.map(template => (
+          {filteredTemplates.map(template => (
             <div key={template.id} className="p-4 border rounded-lg bg-gray-50">
               <div className="flex justify-between items-start mb-2">
                 <div>

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import axios from 'axios';
 import { getAuthHeaders } from '../lib/api';
 import { formatPhone } from '../lib/formatters';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import LegalClassification from './LegalClassification';
 import RemindersPanel from './RemindersPanel';
 import DocumentGenerator from './DocumentGenerator';
@@ -30,6 +31,37 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedTranscript, setExpandedTranscript] = useState(null);
   const messagesEndRef = useRef(null);
+
+  // Atalhos contextuais do chat
+  useKeyboardShortcuts([
+    {
+      keys: ['m'],
+      handler: async () => {
+        try {
+          const { error } = await supabase
+            .from('conversations')
+            .update({ unread: false })
+            .eq('id', conversation.id);
+          if (error) throw error;
+          if (onConversationUpdate) onConversationUpdate();
+        } catch (err) {
+          console.error('[CHAT] Erro ao marcar como lida:', err);
+        }
+      }
+    },
+    {
+      keys: ['esc'],
+      handler: () => {
+        if (showEmojiPicker) {
+          setShowEmojiPicker(false);
+        } else if (activePanel) {
+          setActivePanel('');
+        } else if (showPauseMenu) {
+          setShowPauseMenu(false);
+        }
+      }
+    }
+  ]);
 
   // Sincroniza o mode local com a conversa atual
   useEffect(() => {

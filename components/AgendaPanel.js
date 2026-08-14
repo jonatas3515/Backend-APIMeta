@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { askGemini } from '../lib/ai';
 import { getAuthHeaders } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 export default function AgendaPanel() {
   const [activeTab, setActiveTab] = useState('today');
@@ -15,6 +16,12 @@ export default function AgendaPanel() {
     agency: '',
     priority: ''
   });
+
+  useKeyboardShortcuts([
+    { keys: ['h'], handler: () => setActiveTab('today') },
+    { keys: ['7'], handler: () => setActiveTab('week') },
+    { keys: ['3', '0'], handler: () => setActiveTab('month') }
+  ]);
 
   useEffect(() => {
     fetchAgenda();
