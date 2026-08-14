@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { detectArea, getNextQuestion, isIntakeComplete, getFlow, getTriageQuestion, TRIAGE_FIELDS } from '../../lib/intakeFlows';
 import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
+import { normalizePhoneForMatch } from '../../lib/formatters';
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
@@ -624,12 +625,14 @@ async function getOrCreateConversation(phoneNumber, clientName) {
     return null;
   }
 
+  const normalizedPhone = normalizePhoneForMatch(phoneNumber);
+
   try {
-    // Busca a conversa mais antiga com esse número (DDD + telefone exatos)
+    // Busca a conversa mais antiga com o número normalizado
     const { data: existing, error: searchError } = await supabase
       .from('conversations')
       .select('*')
-      .eq('client_phone', phoneNumber)
+      .eq('client_phone_normalized', normalizedPhone)
       .order('created_at', { ascending: true })
       .limit(1)
       .single();
@@ -644,6 +647,7 @@ async function getOrCreateConversation(phoneNumber, clientName) {
       .from('conversations')
       .insert({
         client_phone: phoneNumber,
+        client_phone_normalized: normalizedPhone,
         client_name: clientName || 'Cliente',
         status: 'open',
         mode: 'bot'
@@ -660,7 +664,7 @@ async function getOrCreateConversation(phoneNumber, clientName) {
       const { data: existing, error: secondSearchError } = await supabase
         .from('conversations')
         .select('*')
-        .eq('client_phone', phoneNumber)
+        .eq('client_phone_normalized', normalizedPhone)
         .order('created_at', { ascending: true })
         .limit(1)
         .single();
