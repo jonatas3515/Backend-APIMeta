@@ -69,6 +69,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
   const [showEdit, setShowEdit] = useState(false);
   const [editData, setEditData] = useState({ client_name: '', municipality: '', state: '' });
   const [savingEdit, setSavingEdit] = useState(false);
+  const [requestingConsent, setRequestingConsent] = useState(false);
 
   const conversationId = conversation?.id;
 
@@ -167,6 +168,25 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
       alert('Erro ao atualizar dados');
     } finally {
       setSavingEdit(false);
+    }
+  };
+
+  const handleRequestConsent = async () => {
+    if (!conversationId) return;
+    setRequestingConsent(true);
+    try {
+      const headers = await getAuthHeaders();
+      await axios.post('/api/customer-profile', {
+        action: 'request_consent',
+        conversation_id: conversationId
+      }, { headers });
+      fetchProfile();
+      if (onConversationUpdate) onConversationUpdate();
+    } catch (err) {
+      console.error('[CUSTOMER-PROFILE] Erro ao solicitar consentimento:', err);
+      alert('Erro ao solicitar consentimento. Verifique o console.');
+    } finally {
+      setRequestingConsent(false);
     }
   };
 
@@ -273,6 +293,28 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
                   </ul>
                 ) : (
                   <p className="text-sm text-nc-text-muted">Nenhum consentimento registrado.</p>
+                )}
+
+                {customer.intake_data?.consent_request_status === 'accepted' && customer.intake_data?.consent_protocol && (
+                  <p className="mt-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1">
+                    Protocolo: #{customer.intake_data.consent_protocol}
+                  </p>
+                )}
+
+                {customer.intake_data?.consent_request_status === 'pending' ? (
+                  <p className="mt-2 text-xs text-yellow-700">
+                    Solicitação enviada em {formatDate(customer.intake_data.consent_request_sent_at)}
+                  </p>
+                ) : (
+                  !getConsentStatus(data.consents).text.includes('Ativo') && (
+                    <button
+                      onClick={handleRequestConsent}
+                      disabled={requestingConsent}
+                      className="mt-3 w-full py-1.5 px-3 rounded text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition"
+                    >
+                      {requestingConsent ? 'Enviando...' : '📩 Solicitar Consentimento LGPD'}
+                    </button>
+                  )
                 )}
               </section>
 

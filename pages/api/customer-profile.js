@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
+import { sendWhatsAppMessage } from '@/lib/whatsapp';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -15,17 +16,20 @@ async function handler(req, res) {
 
   const { method } = req;
 
-  if (method !== 'GET') {
-    return res.status(405).json({ error: 'Método não permitido' });
-  }
-
-  const { conversation_id } = req.query;
-
-  if (!conversation_id) {
-    return res.status(400).json({ error: 'conversation_id é obrigatório' });
-  }
-
   try {
+    if (method === 'POST') {
+      return handlePost(req, res);
+    }
+
+    if (method !== 'GET') {
+      return res.status(405).json({ error: 'Método não permitido' });
+    }
+
+    const { conversation_id } = req.query;
+
+    if (!conversation_id) {
+      return res.status(400).json({ error: 'conversation_id é obrigatório' });
+    }
     // Dados da conversa/cliente
     const { data: conversation, error: convError } = await supabase
       .from('conversations')
@@ -167,7 +171,8 @@ async function handler(req, res) {
       client_status: conversation.client_status,
       funnel_stage: conversation.funnel_stage,
       status: conversation.status,
-      preferences
+      preferences,
+      intake_data: conversation.intake_data || {}
     };
 
     return res.status(200).json({
@@ -182,6 +187,71 @@ async function handler(req, res) {
   } catch (error) {
     console.error('[CUSTOMER-PROFILE] Erro:', error);
     return res.status(500).json({ error: 'Erro ao carregar perfil do cliente' });
+  }
+}
+
+async function handlePost(req, res) {
+  const { action, conversation_id } = req.body;
+
+  if (action !== 'request_consent' || !conversation_id) {
+    return res.status(400).json({ error: 'Ação ou conversation_id inválidos' });
+  }
+
+  try {
+    const { data: conversation, error: convError } = await supabase
+      .from('conversations')
+      .select('id, client_phone, client_name, intake_data')
+      .eq('id', conversation_id)
+      .single();
+
+    if (convError || !conversation) {
+      console.error('[CUSTOMER-PROFILE] Erro ao buscar conversa:', convError);
+      return res.status(404).json({ error: 'Conversa não encontrada' });
+    }
+
+    if (!conversation.client_phone) {
+      return res.status(400).json({ error: 'Conversa sem telefone do cliente' });
+    }
+
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.host}` || 'https://backend-apimeta.vercel.app';
+    const policyUrl = `${baseUrl}/politica-de-privacidade`;
+    const message = `Neves & Costa - LGPD\n\nPara prosseguir com o atendimento e armazenar seus dados com segurança, precisamos do seu consentimento conforme a LGPD.\n\nLeia nossa política de privacidade: ${policyUrl}\n\nSe concorda com o tratamento dos seus dados pessoais, responda apenas: *ACEITO* (ou CONCORDO).`;
+
+    await sendWhatsAppMessage(conversation.client_phone, message);
+
+    const now = new Date().toISOString();
+    const updatedIntake = {
+      ...(conversation.intake_data || {}),
+      consent_request_sent_at: now,
+      consent_request_status: 'pending'
+    };
+
+    const { error: updateError } = await supabase
+      .from('conversations')
+      .update({ intake_data: updatedIntake })
+      .eq('id', conversation_id);
+
+    if (updateError) {
+      console.error('[CUSTOMER-PROFILE] Erro ao atualizar intake_data:', updateError);
+      throw updateError;
+    }
+
+    // Salva a mensagem enviada como outbound/ai
+    await supabase
+      .from('messages')
+      .insert({
+        conversation_id,
+        direction: 'outbound',
+        sender_type: 'ai',
+        text: message,
+        content_type: 'text',
+        status: 'sent'
+      });
+
+    return res.status(200).json({ success: true, message: 'Solicitação de consentimento enviada' });
+  } catch (error) {
+    console.error('[CUSTOMER-PROFILE] Erro ao solicitar consentimento:', error);
+    return res.status(500).json({ error: error.message || 'Erro ao solicitar consentimento' });
   }
 }
 

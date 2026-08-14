@@ -166,6 +166,14 @@ export default async function handler(req, res) {
           if (conversation) {
             await saveMessage(conversation.id, textBody, 'client', messageType);
           }
+
+          // Verifica se o cliente está aceitando termos LGPD
+          if (conversation && messageType === 'text') {
+            const { handled } = await handleConsent(conversation, textBody, from, req);
+            if (handled) {
+              return res.status(200).json({ success: true, consent: true });
+            }
+          }
           
           // Retorna sem responder
           return res.status(200).json({ success: true, bot_paused: true });
@@ -229,6 +237,14 @@ export default async function handler(req, res) {
           .from('conversations')
           .update({ unread: true })
           .eq('id', conversation.id);
+
+        // Verifica se o cliente está aceitando termos LGPD
+        if (messageType === 'text') {
+          const { handled } = await handleConsent(conversation, textBody, from, req);
+          if (handled) {
+            return res.status(200).json({ success: true, consent: true });
+          }
+        }
       }
 
       // ================= COLETA GUIADA DE INFORMAÇÕES =================
@@ -1225,5 +1241,87 @@ async function processDeliveryStatuses(statuses) {
     } catch (statusError) {
       console.error(`[WEBHOOK] ❌ Erro ao processar status:`, statusError);
     }
+  }
+}
+
+// Detecta e registra aceite de consentimento LGPD enviado pelo cliente via WhatsApp
+async function handleConsent(conversation, text, from, req) {
+  try {
+    const clean = text.toLowerCase().replace(/[^\p{L}\s]/gu, '').trim();
+    const firstWord = clean.split(/\s+/)[0];
+    const ACCEPTED_WORDS = ['aceito', 'concordo', 'autorizo', 'aceita'];
+    const REJECTED_WORDS = ['revogo', 'revogar', 'negativo', 'recuso'];
+
+    if (!ACCEPTED_WORDS.includes(firstWord) && !REJECTED_WORDS.includes(firstWord)) {
+      return { handled: false };
+    }
+
+    const intake = conversation.intake_data || {};
+    const requestSentAt = intake.consent_request_sent_at;
+    const requestStatus = intake.consent_request_status;
+
+    if (!requestSentAt || requestStatus !== 'pending') {
+      return { handled: false };
+    }
+
+    // Solicitação válida por 24h
+    const requestAge = Date.now() - new Date(requestSentAt).getTime();
+    if (requestAge > 24 * 60 * 60 * 1000) {
+      return { handled: false };
+    }
+
+    const isAccepted = ACCEPTED_WORDS.includes(firstWord);
+    const ipAddress = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || req.connection?.remoteAddress || null;
+    const userAgent = req.headers['user-agent'] || null;
+    const now = new Date().toISOString();
+
+    // Insere log de consentimento
+    const { data: consentLog, error: insertError } = await supabase
+      .from('consent_logs')
+      .insert({
+        conversation_id: conversation.id,
+        consent_type: 'lgpd_geral',
+        value: isAccepted,
+        ip_address: ipAddress,
+        user_agent: userAgent
+      })
+      .select('id')
+      .single();
+
+    if (insertError) {
+      console.error('[WEBHOOK] ❌ Erro ao registrar consentimento:', insertError);
+      return { handled: false };
+    }
+
+    const protocol = consentLog.id.slice(0, 8).toUpperCase();
+    const updatedIntake = {
+      ...intake,
+      consent_request_status: isAccepted ? 'accepted' : 'rejected',
+      consent_accepted_at: isAccepted ? now : null,
+      consent_protocol: protocol
+    };
+
+    const { error: updateError } = await supabase
+      .from('conversations')
+      .update({ intake_data: updatedIntake })
+      .eq('id', conversation.id);
+
+    if (updateError) {
+      console.error('[WEBHOOK] ❌ Erro ao atualizar intake_data:', updateError);
+    }
+
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://backend-apimeta.vercel.app';
+    const policyUrl = `${baseUrl}/politica-de-privacidade`;
+    const confirmation = isAccepted
+      ? `Obrigado! Seu consentimento para tratamento de dados pessoais foi registrado em nosso sistema.\n\nProtocolo: #${protocol}\n\nVocê pode revogar a qualquer momento respondendo "REVogo" ou entrando em contato conosco.\n\nSaiba mais: ${policyUrl}`
+      : `Entendido. Seu não consentimento foi registrado. Entraremos em contato para orientar sobre os próximos passos.\n\nProtocolo: #${protocol}`;
+
+    await sendWhatsAppMessage(from, confirmation);
+    console.log(`[WEBHOOK] ✅ Consentimento ${isAccepted ? 'aceito' : 'rejeitado'} registrado para ${from}. Protocolo: ${protocol}`);
+
+    return { handled: true };
+  } catch (error) {
+    console.error('[WEBHOOK] ❌ Erro no handleConsent:', error);
+    return { handled: false };
   }
 }
