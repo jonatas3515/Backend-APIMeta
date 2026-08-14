@@ -348,7 +348,7 @@ export default function Home() {
         <Sidebar activeTab={activeTab} onChangeTab={setActiveTab} />
 
         {/* Conteúdo principal */}
-        <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0">
+        <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0 pb-16 md:pb-0">
           {activeTab === 'chat' ? (
             <>
               <div
