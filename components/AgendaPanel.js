@@ -12,6 +12,9 @@ export default function AgendaPanel() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [generatingSummary, setGeneratingSummary] = useState(false);
+  const [icalUrl, setIcalUrl] = useState(null);
+  const [showIcal, setShowIcal] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [filters, setFilters] = useState({
     legal_area: '',
     municipality: '',
@@ -28,6 +31,12 @@ export default function AgendaPanel() {
   useEffect(() => {
     fetchAgenda();
   }, [activeTab, filters]);
+
+  useEffect(() => {
+    if (showIcal && !icalUrl) {
+      fetchIcalUrl();
+    }
+  }, [showIcal]);
 
   const fetchAgenda = async () => {
     setLoading(true);
@@ -79,6 +88,72 @@ export default function AgendaPanel() {
     if (summary) {
       navigator.clipboard.writeText(summary);
       alert('Resumo copiado!');
+    }
+  };
+
+  const fetchIcalUrl = async () => {
+    try {
+      const response = await fetch('/api/calendar-integrations/ical-token', {
+        headers: await getAuthHeaders()
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setIcalUrl(data.icalUrl);
+      }
+    } catch (error) {
+      console.error('[AGENDA] Erro ao buscar iCal:', error);
+    }
+  };
+
+  const handleCopyIcal = () => {
+    if (icalUrl) {
+      navigator.clipboard.writeText(icalUrl).then(() => alert('Link iCal copiado!'));
+    }
+  };
+
+  const handleRegenerateIcal = async () => {
+    if (!confirm('Gerar novo link iCal? O link antigo será invalidado.')) return;
+
+    try {
+      const response = await fetch('/api/calendar-integrations/ical-token', {
+        method: 'POST',
+        headers: await getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setIcalUrl(data.icalUrl);
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Erro ao gerar link iCal');
+      }
+    } catch (error) {
+      console.error('[AGENDA] Erro ao gerar iCal:', error);
+      alert('Erro ao gerar link iCal');
+    }
+  };
+
+  const handleSyncAll = async () => {
+    setSyncing(true);
+    try {
+      const response = await fetch('/api/calendar-integrations/sync-batch', {
+        method: 'POST',
+        headers: await getAuthHeaders(),
+        body: JSON.stringify({ provider: 'google', days: 90 })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || 'OAuth não configurado. Disponível na Fase 2.');
+      } else {
+        alert(data.message || 'Sincronização iniciada.');
+      }
+    } catch (error) {
+      console.error('[AGENDA] Erro ao sincronizar:', error);
+      alert('Erro ao sincronizar prazos.');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -206,7 +281,54 @@ export default function AgendaPanel() {
             onPdf={() => exportAgendaPdf({ agenda, filters })}
             onExcel={() => exportAgendaExcel({ agenda, filters })}
           />
+
+          <div className="flex items-center gap-2 ml-auto">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showIcal}
+                onChange={(e) => setShowIcal(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              Sincronizar com calendário externo
+            </label>
+          </div>
         </div>
+
+        {showIcal && (
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded">
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
+              <div className="text-sm text-green-900">
+                <strong>Assinatura iCal</strong>
+                {icalUrl && (
+                  <p className="break-all text-xs text-green-800 mt-1">{icalUrl}</p>
+                )}
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={handleCopyIcal}
+                  disabled={!icalUrl}
+                    className="px-3 py-1.5 text-sm bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                >
+                  Copiar link iCal
+                </button>
+                <button
+                  onClick={handleRegenerateIcal}
+                  className="px-3 py-1.5 text-sm bg-green-100 text-green-800 rounded border border-green-300 hover:bg-green-200"
+                >
+                  Novo link
+                </button>
+                <button
+                  onClick={handleSyncAll}
+                  disabled={syncing}
+                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {syncing ? 'Sincronizando...' : 'Sincronizar todos os prazos'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Resumo */}

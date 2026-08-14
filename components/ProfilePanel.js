@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/useAuth';
 import NotificationSettings from './NotificationSettings';
+import CalendarSettings from './CalendarSettings';
 
 export default function ProfilePanel() {
   const { authUser, profile, loading, signOut } = useAuth();
@@ -55,6 +56,11 @@ export default function ProfilePanel() {
         <div className="border-t border-nc-gray-200 pt-6">
           <h2 className="text-lg font-semibold text-nc-text-title mb-4">🔔 Configurações de notificação</h2>
           <NotificationSettings />
+        </div>
+
+        <div className="border-t border-nc-gray-200 pt-6 mt-6">
+          <h2 className="text-lg font-semibold text-nc-text-title mb-4">📅 Calendários externos</h2>
+          <CalendarSettings />
         </div>
 
         <div className="mt-8 flex gap-3">
