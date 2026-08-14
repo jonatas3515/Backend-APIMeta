@@ -7,6 +7,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import LegalClassification from './LegalClassification';
 import RemindersPanel from './RemindersPanel';
 import DocumentGenerator from './DocumentGenerator';
+import CustomerProfilePanel from './CustomerProfilePanel';
 
 export default function ChatWindow({ conversation, onConversationUpdate, onBack }) {
   const [activePanel, setActivePanel] = useState('');
@@ -22,6 +23,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   const [mode, setMode] = useState(conversation.mode);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showPauseMenu, setShowPauseMenu] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunks, setAudioChunks] = useState([]);
@@ -412,6 +414,14 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
 
   return (
     <div className="flex-1 flex flex-col bg-nc-surface min-h-0">
+      {showProfile && (
+        <CustomerProfilePanel
+          conversation={conversation}
+          isOpen={showProfile}
+          onClose={() => setShowProfile(false)}
+          onConversationUpdate={onConversationUpdate}
+        />
+      )}
       <div ref={topBarRef} className="flex-shrink-0">
         <div className="bg-nc-white border-b border-nc-gray-200 p-3 md:p-4">
         <div className="flex justify-between items-start mb-2 md:mb-3 gap-2">
@@ -502,6 +512,14 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
             title={confidential ? 'Conversa sigilosa' : 'Marcar como sigilosa'}
           >
             {confidential ? '🔒 Sigiloso' : '🔓 Sigiloso'}
+          </button>
+
+          <button
+            onClick={() => setShowProfile(!showProfile)}
+            className={`nc-btn ${showProfile ? 'nc-btn-active' : ''}`}
+            title="Perfil do Cliente"
+          >
+            👤 Perfil
           </button>
           
           {showPauseMenu && (
