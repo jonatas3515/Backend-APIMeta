@@ -585,8 +585,8 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
               
               <p className="text-sm text-nc-text leading-relaxed">{msg.text}</p>
 
-              {/* Status e resumo de mídia */}
-              {(msg.content_type === 'audio' || msg.content_type === 'video' || msg.content_type === 'image' || msg.content_type === 'document') && (
+              {/* Status e resumo de mídia (apenas para mídias recebidas) */}
+              {(msg.direction === 'inbound') && (msg.content_type === 'audio' || msg.content_type === 'video' || msg.content_type === 'image' || msg.content_type === 'document') && (
                 <div className="mt-2 pt-2 border-t border-nc-gray-200/50">
                   {msg.media_status === 'pending' && (
                     <span className="text-xs text-nc-text-muted flex items-center gap-1">

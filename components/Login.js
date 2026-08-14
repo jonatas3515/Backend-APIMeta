@@ -123,10 +123,6 @@ export default function Login({ onLogin }) {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-
-        <p className="text-center text-sm text-nc-text-secondary mt-6">
-          Acesso por hierarquia de papéis (admin, advogado, estagiário)
-        </p>
       </div>
     </div>
   );

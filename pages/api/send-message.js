@@ -66,9 +66,7 @@ async function handler(req, res) {
         const mediaId = await uploadMediaToWhatsApp(fileBuffer, media_type);
 
         console.log('[SEND-MESSAGE] Enviando mídia por media_id:', mediaId);
-        await sendWhatsAppMediaMessage(conversation.client_phone, mediaId, contentType, text);
-
-        waMessageId = mediaId;
+        waMessageId = await sendWhatsAppMediaMessage(conversation.client_phone, mediaId, contentType, text);
       } catch (mediaError) {
         console.error('[SEND-MESSAGE] ❌ Erro ao enviar mídia:', mediaError.message);
         return res.status(500).json({ 
@@ -93,7 +91,8 @@ async function handler(req, res) {
         media_url: media_url || null,
         media_type: media_type || null,
         wa_message_id: waMessageId || null,
-        status: 'pending'
+        media_status: media_url ? 'processed' : null,
+        status: 'sent'
       }]);
 
     if (msgError) {
