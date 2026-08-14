@@ -69,7 +69,6 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
   const [showEdit, setShowEdit] = useState(false);
   const [editData, setEditData] = useState({ client_name: '', municipality: '', state: '' });
   const [savingEdit, setSavingEdit] = useState(false);
-  const [registeringConsent, setRegisteringConsent] = useState(false);
 
   const conversationId = conversation?.id;
 
@@ -168,25 +167,6 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
       alert('Erro ao atualizar dados');
     } finally {
       setSavingEdit(false);
-    }
-  };
-
-  const handleRegisterConsent = async () => {
-    setRegisteringConsent(true);
-    try {
-      const headers = await getAuthHeaders();
-      await axios.post('/api/customer-profile', {
-        action: 'register_consent',
-        conversation_id: conversationId,
-        consent_type: 'lgpd_geral',
-        value: true
-      }, { headers });
-      fetchProfile();
-    } catch (err) {
-      console.error('[CUSTOMER-PROFILE] Erro ao registrar consentimento:', err);
-      alert('Erro ao registrar consentimento');
-    } finally {
-      setRegisteringConsent(false);
     }
   };
 
@@ -294,14 +274,6 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
                 ) : (
                   <p className="text-sm text-nc-text-muted">Nenhum consentimento registrado.</p>
                 )}
-
-                <button
-                  onClick={handleRegisterConsent}
-                  disabled={registeringConsent}
-                  className="mt-3 w-full py-1.5 px-3 rounded text-xs font-medium bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 transition"
-                >
-                  {registeringConsent ? 'Registrando...' : '✓ Registrar Aceite LGPD'}
-                </button>
               </section>
 
               {/* Histórico de Casos */}
