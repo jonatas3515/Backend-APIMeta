@@ -29,13 +29,18 @@ async function handler(req, res) {
     // Dados da conversa/cliente
     const { data: conversation, error: convError } = await supabase
       .from('conversations')
-      .select('id, client_name, client_phone, municipality, state, legal_area, case_summary, created_at, first_contact_at, lead_created_at, is_client, client_status, funnel_stage, status, confidential')
+      .select('*')
       .eq('id', conversation_id)
       .single();
 
-    if (convError || !conversation) {
-      console.error('[CUSTOMER-PROFILE] Conversa não encontrada:', convError);
-      return res.status(404).json({ error: 'Conversa não encontrada' });
+    if (convError) {
+      console.error('[CUSTOMER-PROFILE] Erro na consulta de conversa:', convError);
+      return res.status(500).json({ error: convError.message || 'Erro na consulta de conversa' });
+    }
+
+    if (!conversation) {
+      console.error('[CUSTOMER-PROFILE] Conversa não encontrada:', conversation_id);
+      return res.status(404).json({ error: 'Conversa não encontrada', conversation_id });
     }
 
     // Verifica anonimização
