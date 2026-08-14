@@ -29,7 +29,7 @@ export default function ClientsList() {
     try {
       const { data, error } = await supabase
         .from('conversations')
-        .select('id, client_name, client_phone, created_at, updated_at')
+        .select('id, client_name, client_phone, created_at, updated_at, messages(created_at)')
         .order('client_name', { ascending: true });
 
       if (error) throw error;
@@ -188,7 +188,7 @@ export default function ClientsList() {
                 
                 <div className="col-span-1 text-center">
                   <span className="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">
-                    0
+                    {client.messages?.length || 0}
                   </span>
                 </div>
                 

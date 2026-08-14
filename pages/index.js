@@ -23,6 +23,7 @@ import NotificationPermissionPrompt from '../components/NotificationPermissionPr
 import ProfilePanel from '../components/ProfilePanel';
 import { maybeNotify, getPermission, isSupported } from '../lib/notifications';
 import { getAuthHeaders } from '../lib/api';
+import { normalizePhoneForMatch } from '../lib/formatters';
 
 export default function Home() {
   const router = useRouter();
@@ -233,14 +234,15 @@ export default function Home() {
 
     setStartingConversation(true);
     try {
-      // Normaliza o telefone (só números, incluindo DDD)
+      // Normaliza o telefone (ignora 9 opcional no mesmo DDD)
       const phone = newPhone.replace(/\D/g, '');
+      const phoneNormalized = normalizePhoneForMatch(phone);
 
-      // Busca conversa existente mais antiga com esse número
+      // Busca conversa existente mais antiga com esse número normalizado
       const { data: existing, error: searchError } = await supabase
         .from('conversations')
         .select('*')
-        .eq('client_phone', phone)
+        .eq('client_phone_normalized', phoneNormalized)
         .order('created_at', { ascending: true })
         .limit(1)
         .maybeSingle();
@@ -255,6 +257,7 @@ export default function Home() {
           .from('conversations')
           .insert({
             client_phone: phone,
+            client_phone_normalized: phoneNormalized,
             client_name: newName.trim() || 'Novo contato',
             status: 'open',
             mode: 'human',
@@ -270,7 +273,7 @@ export default function Home() {
             const { data: existingAfter } = await supabase
               .from('conversations')
               .select('*')
-              .eq('client_phone', phone)
+              .eq('client_phone_normalized', phoneNormalized)
               .order('created_at', { ascending: true })
               .limit(1)
               .single();
