@@ -38,6 +38,12 @@ DO $$
 DECLARE
   target_id UUID;
   phone TEXT;
+  tbl TEXT;
+  tables TEXT[] := ARRAY[
+    'messages', 'cases', 'chat_reminders', 'funnel_history',
+    'generated_documents', 'routine_executions', 'internal_notes',
+    'consent_logs', 'client_info_requests', 'case_insights', 'insight_usage'
+  ];
 BEGIN
   FOR phone IN
     SELECT client_phone_normalized
@@ -52,49 +58,14 @@ BEGIN
     ORDER BY created_at ASC, id ASC
     LIMIT 1;
 
-    UPDATE public.messages SET conversation_id = target_id WHERE conversation_id IN (
-      SELECT id FROM public.conversations WHERE client_phone_normalized = phone AND id <> target_id
-    );
-
-    UPDATE public.cases SET conversation_id = target_id WHERE conversation_id IN (
-      SELECT id FROM public.conversations WHERE client_phone_normalized = phone AND id <> target_id
-    );
-
-    UPDATE public.chat_reminders SET conversation_id = target_id WHERE conversation_id IN (
-      SELECT id FROM public.conversations WHERE client_phone_normalized = phone AND id <> target_id
-    );
-
-    UPDATE public.funnel_history SET conversation_id = target_id WHERE conversation_id IN (
-      SELECT id FROM public.conversations WHERE client_phone_normalized = phone AND id <> target_id
-    );
-
-    UPDATE public.generated_documents SET conversation_id = target_id WHERE conversation_id IN (
-      SELECT id FROM public.conversations WHERE client_phone_normalized = phone AND id <> target_id
-    );
-
-    UPDATE public.routine_executions SET conversation_id = target_id WHERE conversation_id IN (
-      SELECT id FROM public.conversations WHERE client_phone_normalized = phone AND id <> target_id
-    );
-
-    UPDATE public.internal_notes SET conversation_id = target_id WHERE conversation_id IN (
-      SELECT id FROM public.conversations WHERE client_phone_normalized = phone AND id <> target_id
-    );
-
-    UPDATE public.consent_logs SET conversation_id = target_id WHERE conversation_id IN (
-      SELECT id FROM public.conversations WHERE client_phone_normalized = phone AND id <> target_id
-    );
-
-    UPDATE public.client_info_requests SET conversation_id = target_id WHERE conversation_id IN (
-      SELECT id FROM public.conversations WHERE client_phone_normalized = phone AND id <> target_id
-    );
-
-    UPDATE public.case_insights SET conversation_id = target_id WHERE conversation_id IN (
-      SELECT id FROM public.conversations WHERE client_phone_normalized = phone AND id <> target_id
-    );
-
-    UPDATE public.insight_usage SET conversation_id = target_id WHERE conversation_id IN (
-      SELECT id FROM public.conversations WHERE client_phone_normalized = phone AND id <> target_id
-    );
+    -- Reassocia registros filhos apenas nas tabelas que existirem
+    FOREACH tbl IN ARRAY tables
+    LOOP
+      IF to_regclass('public.' || tbl) IS NOT NULL THEN
+        EXECUTE format('UPDATE public.%I SET conversation_id = $1 WHERE conversation_id IN (SELECT id FROM public.conversations WHERE client_phone_normalized = $2 AND id <> $1)', tbl)
+          USING target_id, phone;
+      END IF;
+    END LOOP;
 
     DELETE FROM public.conversations
     WHERE client_phone_normalized = phone
