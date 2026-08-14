@@ -73,11 +73,11 @@ export default function Home() {
     }
   }, [conversations]);
 
-  // Interpreta query string vindas de busca global
+  // Interpreta query string vindas de busca global e atalhos
   useEffect(() => {
     if (!router.isReady) return;
 
-    const { tab, conversation, case: caseId } = router.query;
+    const { tab, conversation, case: caseId, new: newParam } = router.query;
 
     if (tab && typeof tab === 'string') {
       setActiveTab(tab);
@@ -85,6 +85,15 @@ export default function Home() {
       if (tab === 'chat' && conversation && conversations.length > 0) {
         const conv = conversations.find(c => c.id === conversation);
         if (conv) setSelectedConversation(conv);
+      }
+
+      if (tab === 'chat' && newParam === '1') {
+        setShowNewConvModal(true);
+        setSelectedConversation(null);
+        // Limpa o parâmetro para não reabrir ao voltar
+        if (typeof window !== 'undefined') {
+          window.history.replaceState(null, '', '/?tab=chat');
+        }
       }
 
       if (tab === 'cases' && caseId) {

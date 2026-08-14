@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../lib/useAuth';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 export default function CasesPanel() {
+  const router = useRouter();
+  const { profile } = useAuth();
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -13,6 +18,7 @@ export default function CasesPanel() {
   const [checklistMap, setChecklistMap] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [editingCase, setEditingCase] = useState(null);
+  const [selectedCase, setSelectedCase] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
     legal_area: '',
@@ -31,6 +37,50 @@ export default function CasesPanel() {
     fetchCases();
     fetchChecklists();
   }, [filters]);
+
+  // Atalho N: abre formulário de novo caso via query string
+  useEffect(() => {
+    if (router.isReady && router.query.new === '1' && !showForm) {
+      setEditingCase(null);
+      setFormData({
+        title: '',
+        legal_area: '',
+        case_type: '',
+        municipality: '',
+        agency: '',
+        client_role: '',
+        status: 'prospect',
+        priority: 'media',
+        deadline_date: '',
+        deadline_type: '',
+        notes: ''
+      });
+      setShowForm(true);
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', '/?tab=cases');
+      }
+    }
+  }, [router.isReady, router.query, showForm]);
+
+  // Atalhos contextuais E e Delete
+  useKeyboardShortcuts([
+    {
+      keys: ['e'],
+      handler: () => {
+        if (selectedCase) {
+          handleEditCase(selectedCase);
+        }
+      }
+    },
+    {
+      keys: ['delete'],
+      handler: () => {
+        if (selectedCase) {
+          handleDeleteCase(selectedCase.id);
+        }
+      }
+    }
+  ]);
 
   const fetchCases = async () => {
     setLoading(true);
@@ -140,11 +190,16 @@ export default function CasesPanel() {
   };
 
   const handleDeleteCase = async (id) => {
+    if (profile?.role === 'estagiario') {
+      alert('Você não tem permissão para excluir casos.');
+      return;
+    }
     if (!confirm('Tem certeza que deseja deletar este caso?')) return;
 
     try {
       const { error } = await supabase.from('cases').delete().eq('id', id);
       if (error) throw error;
+      setSelectedCase(null);
       fetchCases();
     } catch (error) {
       console.error('[CASES] Erro ao deletar caso:', error);
@@ -382,7 +437,13 @@ export default function CasesPanel() {
                 const totalDocs = checklist.length;
                 const pendingDocs = checklist.filter(i => i.status !== 'received' && i.status !== 'verified').length;
                 return (
-                <tr key={caseItem.id} className="border-b hover:bg-gray-50 text-xs md:text-sm">
+                <tr
+                  key={caseItem.id}
+                  onClick={() => setSelectedCase(caseItem)}
+                  className={`border-b hover:bg-gray-50 text-xs md:text-sm cursor-pointer ${
+                    selectedCase?.id === caseItem.id ? 'bg-blue-50 ring-2 ring-inset ring-blue-200' : ''
+                  }`}
+                >
                     <td className="border p-3">
                       {caseItem.title}
                       {totalDocs > 0 && (
