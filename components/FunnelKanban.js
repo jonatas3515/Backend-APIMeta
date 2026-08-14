@@ -25,11 +25,16 @@ const LEGAL_AREAS = [
 ];
 
 export default function FunnelKanban({ conversations = [], onSelectConversation }) {
+  const [items, setItems] = useState(conversations);
   const [filters, setFilters] = useState({
     area: '',
     search: ''
   });
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setItems(conversations);
+  }, [conversations]);
 
   const handleStageChange = async (conversation, newStage) => {
     if (conversation.funnel_stage === newStage) return;
@@ -50,11 +55,9 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
 
       const result = await response.json();
       console.log('[KANBAN] Stage atualizado:', result.message);
-      
-      // Atualiza a conversa localmente
-      if (onSelectConversation) {
-        onSelectConversation(result.conversation);
-      }
+
+      // Atualiza a conversa localmente para que mude de coluna imediatamente
+      setItems(prev => prev.map(c => c.id === conversation.id ? result.conversation : c));
     } catch (error) {
       console.error('[KANBAN] Erro ao mudar stage:', error);
       alert('Erro ao mover conversa');
@@ -76,7 +79,7 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
     return map[stage] || stage;
   };
 
-  const normalizedConversations = conversations.map(conv => ({
+  const normalizedConversations = items.map(conv => ({
     ...conv,
     funnel_stage: normalizeFunnelStage(conv.funnel_stage)
   }));
