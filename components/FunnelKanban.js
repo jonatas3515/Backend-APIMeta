@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getAuthHeaders } from '../lib/api';
+import ExportButtons from './ExportButtons';
+import { exportFunnelPdf, exportFunnelExcel } from '../lib/export';
 
 // Etapas padronizadas do funil
 const FUNNEL_STAGES = [
@@ -99,13 +101,47 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
 
   const totalConversations = filteredConversations.length;
 
+  const metrics = groupedConversations.map(stage => ({
+    funnel_stage: stage.label,
+    total_count: stage.items.length,
+    with_case_count: stage.items.filter(c => c.has_case).length,
+    human_mode_count: stage.items.filter(c => c.mode === 'human').length,
+    avg_days_in_stage: 0
+  }));
+
+  const totalFirst = Math.max(totalConversations, 1);
+  const conversions = groupedConversations.map((stage, index) => {
+    const prev = index > 0 ? groupedConversations[index - 1].items.length : 0;
+    const count = stage.items.length;
+    const conversion_from_first = Number(((count / totalFirst) * 100).toFixed(1));
+    const drop_rate_from_previous = index > 0 && prev > 0
+      ? Number((((count - prev) / prev) * 100).toFixed(1))
+      : null;
+    return {
+      funnel_stage: stage.label,
+      count,
+      conversion_from_first,
+      drop_rate_from_previous
+    };
+  });
+
+  const handleExportPdf = () => exportFunnelPdf({ metrics, conversions, filters });
+  const handleExportExcel = () => exportFunnelExcel({ metrics, conversions });
+
   return (
     <div className="h-full flex flex-col bg-nc-surface">
       {/* Filtros */}
       <div className="bg-white p-4 border-b border-gray-200 shadow-sm">
-        <div className="flex justify-between items-center mb-3">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-3">
           <h2 className="text-xl font-bold">🎯 Funil de Atendimento</h2>
-          <span className="text-sm text-gray-600">Total: <strong>{totalConversations}</strong> conversas</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-600">Total: <strong>{totalConversations}</strong> conversas</span>
+            <ExportButtons
+              onPdf={handleExportPdf}
+              onExcel={handleExportExcel}
+              disabled={totalConversations === 0}
+            />
+          </div>
         </div>
         <div className="flex gap-3 flex-wrap">
           <select

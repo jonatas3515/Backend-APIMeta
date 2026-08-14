@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import ExportButtons from './ExportButtons';
+import { exportMetricsPdf, exportMetricsExcel } from '../lib/export';
 
 export default function MetricsDashboard({ conversations }) {
   const [metrics, setMetrics] = useState({
@@ -81,9 +83,59 @@ export default function MetricsDashboard({ conversations }) {
     administrativo: '🏢 Administrativo'
   };
 
+  const handleExportPdf = () => {
+    const exportData = {
+      summary: {
+        total_cases: metrics.totalConversations,
+        areas_count: Object.keys(metrics.byArea).length,
+        municipalities_count: Object.keys(metrics.byMunicipality).length,
+        agencies_count: 0
+      },
+      casesByArea: Object.entries(metrics.byArea).map(([area, count]) => ({ area, count })),
+      casesByType: [],
+      casesByLocation: Object.entries(metrics.byMunicipality).map(([municipality, count]) => ({ municipality, count, agency: '', areas: {} })),
+      funnelData: Object.entries(metrics.byFunnel).map(([label, count]) => ({
+        label,
+        count,
+        conversionRate: metrics.conversionRate
+      })),
+      timeSeriesData: [],
+      filters: {}
+    };
+    return exportMetricsPdf(exportData);
+  };
+
+  const handleExportExcel = () => {
+    const exportData = {
+      summary: {
+        total_cases: metrics.totalConversations,
+        areas_count: Object.keys(metrics.byArea).length,
+        municipalities_count: Object.keys(metrics.byMunicipality).length,
+        agencies_count: 0
+      },
+      casesByArea: Object.entries(metrics.byArea).map(([area, count]) => ({ area, count })),
+      casesByType: [],
+      casesByLocation: Object.entries(metrics.byMunicipality).map(([municipality, count]) => ({ municipality, count, agency: '', areas: {} })),
+      funnelData: Object.entries(metrics.byFunnel).map(([label, count]) => ({
+        label,
+        count,
+        conversionRate: metrics.conversionRate
+      })),
+      timeSeriesData: []
+    };
+    return exportMetricsExcel(exportData);
+  };
+
   return (
     <div className="h-full w-full overflow-y-auto p-4 md:p-6 bg-nc-surface">
-      <h2 className="text-2xl font-bold text-nc-text-title mb-6">📊 Métricas do Escritório</h2>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <h2 className="text-2xl font-bold text-nc-text-title">📊 Métricas do Escritório</h2>
+        <ExportButtons
+          onPdf={handleExportPdf}
+          onExcel={handleExportExcel}
+          disabled={metrics.totalConversations === 0}
+        />
+      </div>
 
       {/* Cards principais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
