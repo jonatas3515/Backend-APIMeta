@@ -19,6 +19,9 @@ import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
 import Head from 'next/head';
 import Sidebar from '../components/Sidebar';
+import NotificationPermissionPrompt from '../components/NotificationPermissionPrompt';
+import { maybeNotify, getPermission, isSupported } from '../lib/notifications';
+import { getAuthHeaders } from '../lib/api';
 
 export default function Home() {
   const router = useRouter();
@@ -34,6 +37,8 @@ export default function Home() {
   const [newMessage, setNewMessage] = useState('');
   const [startingConversation, setStartingConversation] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState(null);
 
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -72,6 +77,63 @@ export default function Home() {
       }
     }
   }, [conversations]);
+
+  // Busca preferências de notificação e agenda prompt de permissão
+  useEffect(() => {
+    if (!authUser || !profile) return;
+
+    const load = async () => {
+      try {
+        const headers = await getAuthHeaders();
+        const { data } = await axios.get('/api/notification-preferences', { headers });
+        setNotifPrefs(data);
+
+        if (isSupported() && getPermission() === 'default' && (!data.ask_again_after || new Date(data.ask_again_after) < new Date())) {
+          setShowNotifPrompt(true);
+        }
+      } catch (e) {
+        console.error('[NOTIFICATIONS] Erro ao carregar preferências:', e);
+      }
+    };
+
+    load();
+  }, [authUser, profile]);
+
+  // Realtime: novas mensagens (conversations.unread)
+  useEffect(() => {
+    if (!authUser || !notifPrefs) return;
+
+    const channel = supabase
+      .channel('conversations-notifications')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'conversations' },
+        (payload) => {
+          const conv = payload.new;
+          if (conv.unread && conv.assigned_user_id === profile.id && notifPrefs.enabled && notifPrefs.notify_messages) {
+            const clientName = conv.client_name || 'Cliente';
+            maybeNotify({
+              title: 'Nova mensagem no WhatsApp',
+              body: `${clientName} enviou uma mensagem`,
+              tag: `msg-${conv.id}`,
+              preferences: notifPrefs,
+              onClick: () => {
+                setSelectedConversation(conv);
+                setActiveTab('chat');
+                if (typeof window !== 'undefined') {
+                  window.history.pushState(null, '', `/?tab=chat&conversation=${conv.id}`);
+                }
+              }
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [authUser, profile, notifPrefs]);
 
   // Interpreta query string vindas de busca global e atalhos
   useEffect(() => {
@@ -341,6 +403,22 @@ export default function Home() {
         </main>
 
         {/* Modal de nova conversa */}
+        {showNotifPrompt && (
+          <NotificationPermissionPrompt
+            profile={profile}
+            onClose={() => setShowNotifPrompt(false)}
+            onUpdate={async () => {
+              try {
+                const headers = await getAuthHeaders();
+                const { data } = await axios.get('/api/notification-preferences', { headers });
+                setNotifPrefs(data);
+              } catch (e) {
+                console.error('[NOTIFICATIONS] Erro ao recarregar preferências:', e);
+              }
+            }}
+          />
+        )}
+
         {showNewConvModal && (
           <div className="fixed inset-0 bg-nc-black/70 flex items-center justify-center z-50">
             <div className="bg-nc-white rounded-nc p-6 w-96 shadow-card border border-nc-gray-300">
