@@ -15,21 +15,17 @@ async function handler(req, res) {
 
   const { method } = req;
 
+  if (method !== 'GET') {
+    return res.status(405).json({ error: 'Método não permitido' });
+  }
+
+  const { conversation_id } = req.query;
+
+  if (!conversation_id) {
+    return res.status(400).json({ error: 'conversation_id é obrigatório' });
+  }
+
   try {
-    if (method === 'POST') {
-      return handlePost(req, res);
-    }
-
-    if (method !== 'GET') {
-      return res.status(405).json({ error: 'Método não permitido' });
-    }
-
-    const { conversation_id } = req.query;
-
-    if (!conversation_id) {
-      return res.status(400).json({ error: 'conversation_id é obrigatório' });
-    }
-
     // Dados da conversa/cliente
     const { data: conversation, error: convError } = await supabase
       .from('conversations')
@@ -187,40 +183,6 @@ async function handler(req, res) {
     console.error('[CUSTOMER-PROFILE] Erro:', error);
     return res.status(500).json({ error: 'Erro ao carregar perfil do cliente' });
   }
-}
-
-async function handlePost(req, res) {
-  const { action, conversation_id, consent_type, value } = req.body;
-
-  if (!conversation_id) {
-    return res.status(400).json({ error: 'conversation_id é obrigatório' });
-  }
-
-  if (action === 'register_consent') {
-    try {
-      const { error } = await supabase
-        .from('consent_logs')
-        .insert({
-          conversation_id,
-          consent_type: consent_type || 'lgpd_geral',
-          value: value !== undefined ? value : true,
-          ip_address: req.headers['x-forwarded-for'] || req.socket.remoteAddress || null,
-          user_agent: req.headers['user-agent'] || null
-        });
-
-      if (error) {
-        console.error('[CUSTOMER-PROFILE] Erro ao registrar consentimento:', error);
-        return res.status(500).json({ error: error.message || 'Erro ao registrar consentimento' });
-      }
-
-      return res.status(201).json({ success: true, message: 'Consentimento registrado' });
-    } catch (error) {
-      console.error('[CUSTOMER-PROFILE] Erro:', error);
-      return res.status(500).json({ error: 'Erro ao registrar consentimento' });
-    }
-  }
-
-  return res.status(400).json({ error: 'Ação inválida' });
 }
 
 export default withAuth(handler, { minRole: 'estagiario' });
