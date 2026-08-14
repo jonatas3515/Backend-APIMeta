@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { key: 'routines', icon: '🔄', label: 'Rotinas', minRole: 'estagiario' },
   { key: 'insights', icon: '💡', label: 'Insights', minRole: 'advogado' },
   { key: 'metrics', icon: '📊', label: 'Métricas', minRole: 'advogado' },
-  { key: 'users', icon: '⚙️', label: 'Config.', minRole: 'advogado', href: '/change-password' },
+  { key: 'users', icon: '⚙️', label: 'Config.', minRole: 'advogado' },
   { key: 'profile', icon: '🔔', label: 'Perfil', minRole: 'estagiario' },
 ];
 

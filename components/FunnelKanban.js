@@ -165,12 +165,12 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
       </div>
 
       {/* Kanban */}
-      <div className="flex-1 overflow-x-auto p-4 bg-gray-50">
-        <div className="flex gap-4 h-full min-w-max">
+      <div className="flex-1 overflow-x-auto p-4 bg-gray-50" style={{ minHeight: 0 }}>
+        <div className="flex gap-4 h-full min-h-0 min-w-max">
           {groupedConversations.map(stage => (
             <div
               key={stage.id}
-              className="w-80 flex flex-col bg-white rounded-lg border border-gray-300 shadow-sm"
+              className="w-80 h-full min-h-0 flex flex-col bg-white rounded-lg border border-gray-300 shadow-sm"
             >
               {/* Header da coluna */}
               <div className={`p-4 ${stage.color} border-b border-gray-300 rounded-t-lg`}>
