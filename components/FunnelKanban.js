@@ -129,7 +129,7 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
   const handleExportExcel = () => exportFunnelExcel({ metrics, conversions });
 
   return (
-    <div className="h-full flex flex-col bg-nc-surface">
+    <div className="h-full w-full min-w-0 flex flex-col bg-nc-surface">
       {/* Filtros */}
       <div className="bg-white p-4 border-b border-gray-200 shadow-sm">
         <div className="flex flex-wrap justify-between items-center gap-3 mb-3">
@@ -165,7 +165,7 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
       </div>
 
       {/* Kanban */}
-      <div className="flex-1 overflow-x-auto p-4 bg-gray-50" style={{ minHeight: 0 }}>
+      <div className="flex-1 min-w-0 overflow-x-auto p-4 bg-gray-50" style={{ minHeight: 0 }}>
         <div className="flex gap-4 h-full min-h-0 min-w-max">
           {groupedConversations.map(stage => (
             <div
