@@ -31,6 +31,9 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedTranscript, setExpandedTranscript] = useState(null);
   const messagesEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
+  const isAtBottomRef = useRef(true);
+  const initialScrollDoneRef = useRef(false);
 
   // Atalhos contextuais do chat
   useKeyboardShortcuts([
@@ -167,7 +170,15 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   }, [conversation.id]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (!scrollContainerRef.current || !messagesEndRef.current) return;
+
+    const shouldScroll = !initialScrollDoneRef.current || isAtBottomRef.current;
+
+    if (shouldScroll) {
+      messagesEndRef.current.scrollIntoView({ behavior: initialScrollDoneRef.current ? 'smooth' : 'auto' });
+      initialScrollDoneRef.current = true;
+      isAtBottomRef.current = true;
+    }
   }, [messages]);
 
   const fetchMessages = async () => {
@@ -563,7 +574,15 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
       )}
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+      <div
+        ref={scrollContainerRef}
+        onScroll={() => {
+          if (!scrollContainerRef.current) return;
+          const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+          isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 80;
+        }}
+        className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4"
+      >
         {messages
           .filter(msg => !searchTerm || (
             msg.text?.toLowerCase().includes(searchTerm.toLowerCase()) ||

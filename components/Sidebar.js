@@ -83,22 +83,22 @@ export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' })
             <button
               key={item.key}
               onClick={() => handleClick(item)}
-              className={`flex flex-col items-center justify-center min-w-[3.5rem] p-1 rounded transition ${
+              className={`flex-1 flex flex-col items-center justify-center min-w-0 p-1 rounded transition ${
                 activeTab === item.key
                   ? 'text-nc-yellow bg-nc-gray-800/50'
                   : 'text-nc-gray-400'
               }`}
             >
               <span className="text-base leading-none">{item.icon}</span>
-              <span className="text-[9px] mt-0.5 leading-tight">{item.label}</span>
+              <span className="text-[9px] mt-0.5 leading-tight whitespace-nowrap">{item.label}</span>
             </button>
           ))}
         <button
           onClick={signOut}
-          className="flex flex-col items-center justify-center min-w-[3.5rem] p-1 text-nc-gray-400 hover:text-red-400 transition"
+          className="flex-1 flex flex-col items-center justify-center min-w-0 p-1 text-nc-gray-400 hover:text-red-400 transition"
         >
           <span className="text-base leading-none">🚪</span>
-          <span className="text-[9px] mt-0.5 leading-tight">Sair</span>
+          <span className="text-[9px] mt-0.5 leading-tight whitespace-nowrap">Sair</span>
         </button>
       </div>
 
