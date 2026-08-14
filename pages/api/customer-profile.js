@@ -29,7 +29,7 @@ async function handler(req, res) {
     // Dados da conversa/cliente
     const { data: conversation, error: convError } = await supabase
       .from('conversations')
-      .select('id, client_name, client_phone, client_email, municipality, state, legal_area, case_summary, created_at, first_contact_at, lead_created_at, is_client, client_status, funnel_stage, status, confidential')
+      .select('id, client_name, client_phone, municipality, state, legal_area, case_summary, created_at, first_contact_at, lead_created_at, is_client, client_status, funnel_stage, status, confidential')
       .eq('id', conversation_id)
       .single();
 
