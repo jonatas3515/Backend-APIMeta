@@ -3,6 +3,8 @@ import { askGemini } from '../lib/ai';
 import { getAuthHeaders } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import ExportButtons from './ExportButtons';
+import { exportAgendaPdf, exportAgendaExcel } from '../lib/export';
 
 export default function AgendaPanel() {
   const [activeTab, setActiveTab] = useState('today');
@@ -189,14 +191,22 @@ export default function AgendaPanel() {
           </select>
         </div>
 
-        {/* Botão de resumo */}
-        <button
-          onClick={generateSummary}
-          disabled={generatingSummary}
-          className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 text-sm font-medium"
-        >
-          {generatingSummary ? '⏳ Gerando...' : '✨ Gerar Resumo com IA'}
-        </button>
+        {/* Botões de resumo e exportação */}
+        <div className="flex flex-wrap gap-3 items-center">
+          <button
+            onClick={generateSummary}
+            disabled={generatingSummary}
+            className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 text-sm font-medium"
+          >
+            {generatingSummary ? '⏳ Gerando...' : '✨ Gerar Resumo com IA'}
+          </button>
+
+          <ExportButtons
+            disabled={loading || Object.keys(agenda.by_day || {}).length === 0}
+            onPdf={() => exportAgendaPdf({ agenda, filters })}
+            onExcel={() => exportAgendaExcel({ agenda, filters })}
+          />
+        </div>
       </div>
 
       {/* Resumo */}

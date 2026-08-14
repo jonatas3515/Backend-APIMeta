@@ -3,6 +3,8 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../lib/useAuth';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import ExportButtons from './ExportButtons';
+import { exportCasesExcel } from '../lib/export';
 
 export default function CasesPanel() {
   const router = useRouter();
@@ -244,10 +246,15 @@ export default function CasesPanel() {
 
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg shadow w-full h-full overflow-y-auto">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <h2 className="text-2xl font-bold">Casos Jurídicos</h2>
-        <button
-          onClick={() => {
+        <div className="flex flex-wrap gap-2 items-center">
+          <ExportButtons
+            onExcel={() => exportCasesExcel(cases)}
+            disabled={loading || cases.length === 0}
+          />
+          <button
+            onClick={() => {
             setShowForm(true);
             setEditingCase(null);
             setFormData({
@@ -268,6 +275,7 @@ export default function CasesPanel() {
         >
           + Novo Caso
         </button>
+        </div>
       </div>
 
       {/* Filtros */}

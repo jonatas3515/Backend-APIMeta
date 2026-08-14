@@ -5,49 +5,49 @@
   "devFiles": [],
   "ampDevFiles": [],
   "lowPriorityFiles": [
-    "static/R20cpVGxxnLiWniGB2WLP/_buildManifest.js",
-    "static/R20cpVGxxnLiWniGB2WLP/_ssgManifest.js"
+    "static/dKgHE4XLHd8K9hkr5xC-f/_buildManifest.js",
+    "static/dKgHE4XLHd8K9hkr5xC-f/_ssgManifest.js"
   ],
   "rootMainFiles": [
-    "static/chunks/webpack-c105cf7135d99ba2.js",
+    "static/chunks/webpack-10fbf4b6ecad441d.js",
     "static/chunks/fd9d1056-8330337790fd1d70.js",
     "static/chunks/117-3afdb7b4787df8df.js",
     "static/chunks/main-app-d1eac1a495d10f28.js"
   ],
   "pages": {
     "/": [
-      "static/chunks/webpack-c105cf7135d99ba2.js",
+      "static/chunks/webpack-10fbf4b6ecad441d.js",
       "static/chunks/framework-04a7b8779feb18cf.js",
       "static/chunks/main-bee4b89b4df5cab8.js",
-      "static/chunks/pages/index-266368f162d238b2.js"
+      "static/chunks/pages/index-a76f47127c7df873.js"
     ],
     "/_app": [
-      "static/chunks/webpack-c105cf7135d99ba2.js",
+      "static/chunks/webpack-10fbf4b6ecad441d.js",
       "static/chunks/framework-04a7b8779feb18cf.js",
       "static/chunks/main-bee4b89b4df5cab8.js",
-      "static/css/45a50ca02076a9e1.css",
-      "static/chunks/pages/_app-43dfcfcea95e5c88.js"
+      "static/css/7dd796b7ccb6b616.css",
+      "static/chunks/pages/_app-ca12ffc9d46ee23e.js"
     ],
     "/_error": [
-      "static/chunks/webpack-c105cf7135d99ba2.js",
+      "static/chunks/webpack-10fbf4b6ecad441d.js",
       "static/chunks/framework-04a7b8779feb18cf.js",
       "static/chunks/main-bee4b89b4df5cab8.js",
       "static/chunks/pages/_error-7ba65e1336b92748.js"
     ],
     "/change-password": [
-      "static/chunks/webpack-c105cf7135d99ba2.js",
+      "static/chunks/webpack-10fbf4b6ecad441d.js",
       "static/chunks/framework-04a7b8779feb18cf.js",
       "static/chunks/main-bee4b89b4df5cab8.js",
       "static/chunks/pages/change-password-c5410df6e156656e.js"
     ],
     "/politica-de-privacidade": [
-      "static/chunks/webpack-c105cf7135d99ba2.js",
+      "static/chunks/webpack-10fbf4b6ecad441d.js",
       "static/chunks/framework-04a7b8779feb18cf.js",
       "static/chunks/main-bee4b89b4df5cab8.js",
       "static/chunks/pages/politica-de-privacidade-44481d5b0adae6af.js"
     ],
     "/setup": [
-      "static/chunks/webpack-c105cf7135d99ba2.js",
+      "static/chunks/webpack-10fbf4b6ecad441d.js",
       "static/chunks/framework-04a7b8779feb18cf.js",
       "static/chunks/main-bee4b89b4df5cab8.js",
       "static/chunks/pages/setup-ee515d3631961ba1.js"

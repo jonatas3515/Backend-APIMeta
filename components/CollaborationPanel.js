@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getAuthHeaders } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
+import ExportButtons from './ExportButtons';
+import { exportAuditPdf, exportAuditExcel } from '../lib/export';
 
 export default function CollaborationPanel({ conversationId, caseId }) {
   const [activeTab, setActiveTab] = useState('notes');
@@ -212,7 +214,12 @@ export default function CollaborationPanel({ conversationId, caseId }) {
             </div>
           </div>
         ) : activeTab === 'audit' ? (
-          <div className="space-y-2">
+          <div className="space-y-3">
+            <ExportButtons
+              onPdf={() => exportAuditPdf({ auditLogs })}
+              onExcel={() => exportAuditExcel({ auditLogs })}
+              disabled={auditLogs.length === 0}
+            />
             {auditLogs.length === 0 ? (
               <p className="text-xs text-gray-500 text-center py-4">Nenhuma alteração registrada</p>
             ) : (
