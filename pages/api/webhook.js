@@ -625,11 +625,13 @@ async function getOrCreateConversation(phoneNumber, clientName) {
   }
 
   try {
-    // Busca conversa existente
+    // Busca a conversa mais antiga com esse número (DDD + telefone exatos)
     const { data: existing, error: searchError } = await supabase
       .from('conversations')
       .select('*')
       .eq('client_phone', phoneNumber)
+      .order('created_at', { ascending: true })
+      .limit(1)
       .single();
 
     if (existing) {
@@ -653,6 +655,22 @@ async function getOrCreateConversation(phoneNumber, clientName) {
     console.log(`[SUPABASE] Nova conversa criada: ${newConv.id}`);
     return newConv;
   } catch (error) {
+    // Se ocorrer conflito de telefone único, reutiliza a existente
+    if (error.code === '23505') {
+      const { data: existing, error: secondSearchError } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('client_phone', phoneNumber)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .single();
+
+      if (existing) {
+        console.log(`[SUPABASE] Conversa encontrada após conflito: ${existing.id}`);
+        return existing;
+      }
+    }
+
     console.error('[SUPABASE] Erro ao buscar/criar conversa:', error);
     return null;
   }

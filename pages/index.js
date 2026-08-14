@@ -233,42 +233,57 @@ export default function Home() {
 
     setStartingConversation(true);
     try {
-      // Normaliza o telefone (só números)
+      // Normaliza o telefone (só números, incluindo DDD)
       const phone = newPhone.replace(/\D/g, '');
 
-      // Cria conversa no Supabase
-      const { data: conversation, error: convError } = await supabase
+      // Busca conversa existente mais antiga com esse número
+      const { data: existing, error: searchError } = await supabase
         .from('conversations')
-        .insert({
-          client_phone: phone,
-          client_name: newName.trim() || 'Novo contato',
-          status: 'open',
-          mode: 'human',
-          unread: false,
-          archived: false
-        })
-        .select()
-        .single();
+        .select('*')
+        .eq('client_phone', phone)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-      let targetConversation = conversation;
+      let targetConversation = existing;
 
-      if (convError) {
-        // Pode ser conflito de telefone único; busca existente
-        if (convError.code === '23505') {
-          const { data: existing } = await supabase
-            .from('conversations')
-            .select('*')
-            .eq('client_phone', phone)
-            .single();
-          if (existing) {
-            targetConversation = existing;
+      if (searchError) throw searchError;
+
+      if (!targetConversation) {
+        // Cria nova conversa
+        const { data: conversation, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            client_phone: phone,
+            client_name: newName.trim() || 'Novo contato',
+            status: 'open',
+            mode: 'human',
+            unread: false,
+            archived: false
+          })
+          .select()
+          .single();
+
+        if (convError) {
+          // Conflito de telefone único: busca a existente
+          if (convError.code === '23505') {
+            const { data: existingAfter } = await supabase
+              .from('conversations')
+              .select('*')
+              .eq('client_phone', phone)
+              .order('created_at', { ascending: true })
+              .limit(1)
+              .single();
+            targetConversation = existingAfter;
           } else {
             throw convError;
           }
         } else {
-          throw convError;
+          targetConversation = conversation;
         }
       }
+
+      if (!targetConversation) throw new Error('Não foi possível localizar ou criar a conversa');
 
       // Envia mensagem inicial se houver texto
       if (newMessage.trim() && targetConversation?.id) {

@@ -805,6 +805,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
+                  e.stopPropagation();
                   handleSendMessage();
                 }
               }}
