@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { key: 'insights', icon: '💡', label: 'Insights', minRole: 'advogado' },
   { key: 'metrics', icon: '📊', label: 'Métricas', minRole: 'advogado' },
   { key: 'users', icon: '⚙️', label: 'Config.', minRole: 'advogado', href: '/change-password' },
-  { key: 'profile', icon: '🔔', label: 'Perfil', minRole: 'estagiario', href: '/profile' },
+  { key: 'profile', icon: '🔔', label: 'Perfil', minRole: 'estagiario' },
 ];
 
 export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' }) {
