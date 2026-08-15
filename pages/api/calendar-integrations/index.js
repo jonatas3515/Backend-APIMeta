@@ -19,7 +19,7 @@ async function handler(req, res) {
     const [{ data: integrations }, { data: user }] = await Promise.all([
       supabaseAdmin
         .from('user_calendar_integrations')
-        .select('id, provider, email, connected_at, updated_at')
+        .select('id, provider, email, connected_at, updated_at, is_active, expires_at, last_sync_at, last_sync_error')
         .eq('user_id', userId),
       supabaseAdmin
         .from('users')
@@ -34,8 +34,15 @@ async function handler(req, res) {
       ? `${protocol}://${host}/api/calendar-sync/ical?token=${user.ical_token}`
       : null;
 
+    // Marca integrações expiradas como inativas
+    const now = new Date();
+    const activeIntegrations = (integrations || []).map(i => ({
+      ...i,
+      is_active: i.is_active && new Date(i.expires_at) > now
+    }));
+
     return res.status(200).json({
-      integrations: integrations || [],
+      integrations: activeIntegrations,
       icalUrl
     });
   }
@@ -46,14 +53,20 @@ async function handler(req, res) {
       return res.status(400).json({ error: 'Provider não informado' });
     }
 
+    // Marca como inativa ao invés de deletar (preserva auditoria)
     const { error } = await supabaseAdmin
       .from('user_calendar_integrations')
-      .delete()
+      .update({
+        is_active: false,
+        updated_at: new Date().toISOString(),
+        access_token_encrypted: null,
+        refresh_token_encrypted: null
+      })
       .eq('user_id', userId)
       .eq('provider', provider);
 
     if (error) {
-      console.error('[CALENDAR] Erro ao remover integração:', error);
+      console.error('[CALENDAR] Erro ao desativar integração:', error);
       return res.status(500).json({ error: error.message });
     }
 

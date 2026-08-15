@@ -15,7 +15,13 @@ export default function PoliticaDePrivacidade() {
         <p className="text-sm text-gray-600 mb-8">
           <strong>Versão:</strong> 2.0
         </p>
-
+        <p className="text-sm text-gray-600 mb-4">
+          Você pode solicitar a exclusão de seus dados pessoais a qualquer momento. Envie um e-mail para{' '}
+          <a href="mailto:contato@nevesecosta.com.br" className="text-blue-600 hover:underline">
+            contato@nevesecosta.com.br
+          </a>
+          {' '}com o assunto &quot;Direito ao Esquecimento&quot;.
+        </p>
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-3 text-gray-800">1. Introdução</h2>
           <p className="text-gray-700 leading-relaxed mb-3">
