@@ -11,6 +11,26 @@ ALTER TABLE public.cases
   ALTER COLUMN conversation_id DROP NOT NULL;
 
 -- ----------------------------------------------------------------------------
+-- 1.2. Garantir que case_events exista
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.case_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  case_id UUID NOT NULL REFERENCES public.cases(id) ON DELETE CASCADE,
+  event_date DATE NOT NULL,
+  event_time TIME,
+  event_type VARCHAR(100) NOT NULL,
+  description TEXT,
+  priority VARCHAR(20) DEFAULT 'media' CHECK (priority IN ('baixa', 'media', 'alta')),
+  location VARCHAR(255),
+  created_by_user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_case_events_case ON public.case_events(case_id);
+CREATE INDEX IF NOT EXISTS idx_case_events_date ON public.case_events(event_date);
+
+-- ----------------------------------------------------------------------------
 -- 1.5. Garantir que chat_reminders tenha as colunas usadas pela agenda
 -- ----------------------------------------------------------------------------
 ALTER TABLE public.chat_reminders 
