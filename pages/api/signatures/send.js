@@ -2,6 +2,8 @@ import { supabase } from '../../../lib/supabaseClient';
 import { decrypt } from '../../../lib/encryption';
 import FormData from 'form-data';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
@@ -25,6 +27,10 @@ export default async function handler(req, res) {
 
     if (!case_id || !document_type || !signers || !document_url) {
       return res.status(400).json({ error: 'Campos obrigatórios faltando' });
+    }
+
+    if (!UUID_REGEX.test(case_id)) {
+      return res.status(400).json({ error: 'case_id inválido' });
     }
 
     // Verifica se o usuário tem acesso ao caso

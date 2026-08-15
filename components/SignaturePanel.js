@@ -18,6 +18,11 @@ export default function SignaturePanel({ caseId, onClose }) {
   const [success, setSuccess] = useState(null);
 
   useEffect(() => {
+    if (!caseId || caseId === 'undefined') {
+      setLoading(false);
+      setSignatures([]);
+      return;
+    }
     fetchSignatures();
   }, [caseId]);
 
@@ -25,7 +30,7 @@ export default function SignaturePanel({ caseId, onClose }) {
     try {
       setLoading(true);
       const headers = await getAuthHeaders();
-      const { data } = await axios.get(`/api/signatures/status?case_id=${caseId}`, { headers });
+      const { data } = await axios.get(`/api/signatures/status?case_id=${encodeURIComponent(caseId)}`, { headers });
       setSignatures(Array.isArray(data.signatures) ? data.signatures : [data.signatures]);
       setError(null);
     } catch (err) {
