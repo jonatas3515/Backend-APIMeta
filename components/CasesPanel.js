@@ -11,7 +11,7 @@ import { exportCasesExcel } from '../lib/export';
 export default function CasesPanel() {
   const router = useRouter();
   const { profile } = useAuth();
-  const { selectedArea } = useAreaFilter();
+  const { selectedArea, setSelectedArea } = useAreaFilter();
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
