@@ -83,6 +83,9 @@ WHERE ce.event_date >= CURRENT_DATE;
 
 COMMENT ON VIEW agenda_consolidada IS 'View que consolida prazos de cases, lembretes e eventos em uma única agenda (corrigida v2)';
 
+-- Remove a função antiga caso o tipo de retorno tenha mudado
+DROP FUNCTION IF EXISTS get_agenda(DATE, DATE, VARCHAR, VARCHAR, VARCHAR, VARCHAR);
+
 CREATE OR REPLACE FUNCTION get_agenda(
   p_start_date DATE DEFAULT CURRENT_DATE,
   p_end_date DATE DEFAULT CURRENT_DATE + INTERVAL '30 days',
