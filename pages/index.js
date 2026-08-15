@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import axios from 'axios';
 import { useRouter } from 'next/router';
@@ -35,6 +35,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [supabaseReady, setSupabaseReady] = useState(false);
   const [activeTab, setActiveTab] = useState('chat');
+  const queryProcessed = useRef({ tab: false, conversation: false });
   const { authUser, profile, loading: authLoading, signOut, canAccess } = useAuth();
   const { selectedArea, setSelectedArea } = useAreaFilter();
   const [showNewConvModal, setShowNewConvModal] = useState(false);
@@ -170,26 +171,31 @@ export default function Home() {
 
     const { tab, conversation, case: caseId, new: newParam } = router.query;
 
-    if (tab && typeof tab === 'string') {
+    if (tab && typeof tab === 'string' && !queryProcessed.current.tab) {
       setActiveTab(tab);
+      queryProcessed.current.tab = true;
+    }
 
-      if (tab === 'chat' && conversation && conversations.length > 0) {
-        const conv = conversations.find(c => c.id === conversation);
-        if (conv) setSelectedConversation(conv);
+    if (tab === 'chat' && newParam === '1' && !queryProcessed.current.conversation) {
+      setShowNewConvModal(true);
+      setSelectedConversation(null);
+      queryProcessed.current.conversation = true;
+      // Limpa o parâmetro para não reabrir ao voltar
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', '/?tab=chat');
       }
+    }
 
-      if (tab === 'chat' && newParam === '1') {
-        setShowNewConvModal(true);
-        setSelectedConversation(null);
-        // Limpa o parâmetro para não reabrir ao voltar
-        if (typeof window !== 'undefined') {
-          window.history.replaceState(null, '', '/?tab=chat');
-        }
+    if (tab === 'chat' && conversation && conversations.length > 0 && !queryProcessed.current.conversation) {
+      const conv = conversations.find(c => c.id === conversation);
+      if (conv) {
+        setSelectedConversation(conv);
+        queryProcessed.current.conversation = true;
       }
+    }
 
-      if (tab === 'cases' && caseId) {
-        // Caso selecionado será gerenciado pelo CasesPanel via query
-      }
+    if (tab === 'cases' && caseId) {
+      // Caso selecionado será gerenciado pelo CasesPanel via query
     }
   }, [router.isReady, router.query, conversations]);
 

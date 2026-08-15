@@ -1317,6 +1317,7 @@ async function handleConsent(conversation, text, from, req) {
       : `Entendido. Seu não consentimento foi registrado. Entraremos em contato para orientar sobre os próximos passos.\n\nProtocolo: #${protocol}`;
 
     await sendWhatsAppMessage(from, confirmation);
+    await saveMessage(conversation.id, confirmation, 'ai');
     console.log(`[WEBHOOK] ✅ Consentimento ${isAccepted ? 'aceito' : 'rejeitado'} registrado para ${from}. Protocolo: ${protocol}`);
 
     return { handled: true };
