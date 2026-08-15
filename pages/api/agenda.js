@@ -33,14 +33,11 @@ async function handler(req, res) {
 export default withAuth(handler, { minRole: 'estagiario' });
 
 async function handleGet(req, res) {
-  const { action, range = 'today', start_date, end_date, legal_area, municipality, agency, priority } = req.query;
+  const { range = 'today', start_date, end_date, legal_area, municipality, agency, priority } = req.query;
 
   try {
-    console.log('[AGENDA] Iniciando handleGet com range:', range);
-    
     let startDate, endDate;
 
-    // Determina intervalo
     if (range === 'today') {
       const today = new Date();
       startDate = today.toISOString().split('T')[0];
@@ -62,88 +59,53 @@ async function handleGet(req, res) {
       return res.status(400).json({ error: 'Intervalo inválido' });
     }
 
-    console.log('[AGENDA] Intervalo:', startDate, 'a', endDate);
+    const { data: items, error } = await supabase.rpc('get_agenda', {
+      p_start_date: startDate,
+      p_end_date: endDate,
+      p_legal_area: legal_area || null,
+      p_municipality: municipality || null,
+      p_agency: agency || null,
+      p_priority: priority || null
+    });
 
-    // Busca casos com prazos
-    try {
-      let casesQuery = supabase
-        .from('cases')
-        .select('id, conversation_id, legal_area, case_type, municipality, agency, deadline_date, deadline_type, priority, status')
-        .gte('deadline_date', startDate)
-        .lte('deadline_date', endDate);
-
-      if (legal_area) casesQuery = casesQuery.eq('legal_area', legal_area);
-      if (municipality) casesQuery = casesQuery.eq('municipality', municipality);
-      if (agency) casesQuery = casesQuery.eq('agency', agency);
-      if (priority) casesQuery = casesQuery.eq('priority', priority);
-
-      const { data: cases, error: casesError } = await casesQuery;
-      if (casesError) {
-        console.error('[AGENDA] Erro ao buscar cases:', casesError);
-        throw casesError;
-      }
-      console.log('[AGENDA] Cases encontrados:', cases?.length || 0);
-    } catch (e) {
-      console.error('[AGENDA] Erro na busca de cases:', e.message);
-      // Continua mesmo se cases falhar
+    if (error) {
+      console.error('[AGENDA] Erro ao chamar get_agenda:', error);
+      throw error;
     }
 
-    // Busca lembretes
-    try {
-      let remindersQuery = supabase
-        .from('chat_reminders')
-        .select('id, conversation_id, reminder_type, scheduled_for, priority, description, case_id')
-        .gte('scheduled_for', startDate)
-        .lte('scheduled_for', endDate);
-
-      if (priority) remindersQuery = remindersQuery.eq('priority', priority);
-
-      const { data: reminders, error: remindersError } = await remindersQuery;
-      if (remindersError) {
-        console.error('[AGENDA] Erro ao buscar reminders:', remindersError);
-        throw remindersError;
+    const byDay = {};
+    (items || []).forEach((item) => {
+      const dateKey = item.event_date;
+      if (!byDay[dateKey]) {
+        byDay[dateKey] = [];
       }
-      console.log('[AGENDA] Reminders encontrados:', reminders?.length || 0);
-    } catch (e) {
-      console.error('[AGENDA] Erro na busca de reminders:', e.message);
-      // Continua mesmo se reminders falhar
-    }
+      byDay[dateKey].push({
+        item_type: item.item_type || 'evento',
+        title: item.title || 'Sem título',
+        event_type: item.event_type || '',
+        priority: item.priority || 'media',
+        legal_area: item.legal_area || '',
+        case_type: item.case_type || '',
+        municipality: item.municipality || '',
+        agency: item.agency || '',
+        event_time: item.event_time || null,
+        case_id: item.case_id || null,
+        reminder_id: item.reminder_id || null,
+        conversation_id: item.conversation_id || null
+      });
+    });
 
-    // Busca eventos
-    try {
-      let eventsQuery = supabase
-        .from('case_events')
-        .select('id, case_id, event_date, event_type, description, priority, location')
-        .gte('event_date', startDate)
-        .lte('event_date', endDate);
-
-      if (priority) eventsQuery = eventsQuery.eq('priority', priority);
-
-      const { data: events, error: eventsError } = await eventsQuery;
-      if (eventsError) {
-        console.error('[AGENDA] Erro ao buscar events:', eventsError);
-        throw eventsError;
-      }
-      console.log('[AGENDA] Events encontrados:', events?.length || 0);
-    } catch (e) {
-      console.error('[AGENDA] Erro na busca de events:', e.message);
-      // Continua mesmo se events falhar
-    }
-
-    // Retorna resposta vazia se nenhuma tabela existir
     return res.status(200).json({
       range,
       start_date: startDate,
       end_date: endDate,
-      by_day: {},
-      total_items: 0,
-      message: 'Nenhum item agendado para este período'
+      by_day: byDay,
+      total_items: (items || []).length
     });
   } catch (error) {
     console.error('[AGENDA] Erro geral:', error);
-    return res.status(500).json({ 
-      error: error.message || 'Erro ao buscar agenda',
-      details: error.toString()
+    return res.status(500).json({
+      error: error.message || 'Erro ao buscar agenda'
     });
   }
 }
@@ -153,9 +115,8 @@ async function handlePost(req, res) {
 
   try {
     if (action === 'summary') {
-      const { range = 'today', start_date, end_date } = req.body;
+      const { range = 'today', start_date, end_date, legal_area } = req.body;
 
-      // Busca agenda
       let startDate, endDate;
 
       if (range === 'today') {
@@ -167,6 +128,11 @@ async function handlePost(req, res) {
         startDate = today.toISOString().split('T')[0];
         const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
         endDate = nextWeek.toISOString().split('T')[0];
+      } else if (range === 'month') {
+        const today = new Date();
+        startDate = today.toISOString().split('T')[0];
+        const nextMonth = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+        endDate = nextMonth.toISOString().split('T')[0];
       } else if (start_date && end_date) {
         startDate = start_date;
         endDate = end_date;
@@ -174,59 +140,37 @@ async function handlePost(req, res) {
         return res.status(400).json({ error: 'Intervalo inválido' });
       }
 
-      // Busca casos com prazos
-      const { data: cases, error: casesError } = await supabase
-        .from('cases')
-        .select('id, deadline_date, deadline_type, priority, legal_area, municipality')
-        .gte('deadline_date', startDate)
-        .lte('deadline_date', endDate);
+      const { data: items, error } = await supabase.rpc('get_agenda', {
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_legal_area: legal_area || null,
+        p_municipality: null,
+        p_agency: null,
+        p_priority: null
+      });
 
-      if (casesError) throw casesError;
+      if (error) throw error;
 
-      // Busca lembretes
-      const { data: reminders, error: remindersError } = await supabase
-        .from('chat_reminders')
-        .select('id, scheduled_for, description, reminder_type, priority')
-        .gte('scheduled_for', startDate)
-        .lte('scheduled_for', endDate);
-
-      if (remindersError) throw remindersError;
-
-      const agendaData = [
-        ...(cases || []).map(c => ({
-          date: c.deadline_date,
-          title: `Prazo: ${c.deadline_type}`,
-          type: 'case',
-          priority: c.priority,
-          area: c.legal_area,
-          location: c.municipality
-        })),
-        ...(reminders || []).map(r => ({
-          date: r.scheduled_for,
-          title: r.description || r.reminder_type,
-          type: 'reminder',
-          priority: r.priority
-        }))
-      ];
-
-      if (!agendaData || agendaData.length === 0) {
+      if (!items || items.length === 0) {
         return res.status(200).json({
           range,
           summary: 'Nenhum prazo ou lembrete agendado para este período.'
         });
       }
 
-      // Prepara dados para IA
+      const agendaData = items.map(i => ({
+        date: i.event_date,
+        title: i.title,
+        type: i.item_type || 'evento',
+        priority: i.priority,
+        area: i.legal_area || 'Geral',
+        location: i.municipality
+      }));
+
       const agendaText = agendaData
         .map(item => {
-          const date = item.date;
-          const type = item.type || 'evento';
-          const priority = item.priority || 'média';
-          const area = item.area || 'Geral';
-          const title = item.title || 'Sem título';
           const location = item.location ? ` em ${item.location}` : '';
-
-          return `- ${date}: ${title} (${type}, prioridade ${priority}, ${area}${location})`;
+          return `- ${item.date}: ${item.title} (${item.type}, prioridade ${item.priority || 'média'}, ${item.area}${location})`;
         })
         .join('\n');
 

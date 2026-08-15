@@ -2,13 +2,16 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../lib/useAuth';
+import useAreaFilter from '../hooks/useAreaFilter';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { LEGAL_AREAS } from '../lib/legalAreas';
 import ExportButtons from './ExportButtons';
 import { exportCasesExcel } from '../lib/export';
 
 export default function CasesPanel() {
   const router = useRouter();
   const { profile } = useAuth();
+  const { selectedArea } = useAreaFilter();
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
@@ -17,6 +20,11 @@ export default function CasesPanel() {
     legal_area: '',
     document_status: ''
   });
+
+  // Sincroniza filtro local com a área global
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, legal_area: selectedArea }));
+  }, [selectedArea]);
   const [checklistMap, setChecklistMap] = useState({});
   const [showForm, setShowForm] = useState(false);
   const [editingCase, setEditingCase] = useState(null);
@@ -316,13 +324,16 @@ export default function CasesPanel() {
           <option value="complete">Checklist Completo</option>
         </select>
 
-        <input
-          type="text"
-          placeholder="Buscar por área..."
+        <select
           value={filters.legal_area}
-          onChange={(e) => setFilters({ ...filters, legal_area: e.target.value })}
+          onChange={(e) => setSelectedArea(e.target.value)}
           className="px-3 py-2 border rounded"
-        />
+        >
+          <option value="">Todas as áreas</option>
+          {LEGAL_AREAS.map((area) => (
+            <option key={area.value} value={area.value}>{area.label}</option>
+          ))}
+        </select>
       </div>
 
       {/* Formulário */}

@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getAuthHeaders } from '../lib/api';
+import { supabase } from '../lib/supabaseClient';
+import useAreaFilter from '../hooks/useAreaFilter';
+import { LEGAL_AREAS } from '../lib/legalAreas';
 import ExportButtons from './ExportButtons';
 import { exportFunnelPdf, exportFunnelExcel } from '../lib/export';
 
@@ -15,19 +18,11 @@ const FUNNEL_STAGES = [
   { id: 'encerrado', label: '🏁 Encerrado', color: 'bg-gray-200' }
 ];
 
-const LEGAL_AREAS = [
-  { value: '', label: 'Todas as áreas' },
-  { value: 'Direito Trabalhista', label: 'Trabalhista' },
-  { value: 'Direito Previdenciário', label: 'Previdenciário' },
-  { value: 'Direito Civil', label: 'Civil' },
-  { value: 'Direito do Consumidor', label: 'Consumidor' },
-  { value: 'Direito Administrativo', label: 'Administrativo' }
-];
-
 export default function FunnelKanban({ conversations = [], onSelectConversation }) {
+  const { selectedArea, setSelectedArea } = useAreaFilter();
   const [items, setItems] = useState(conversations);
   const [filters, setFilters] = useState({
-    area: '',
+    area: selectedArea,
     search: ''
   });
   const [loading, setLoading] = useState(false);
@@ -35,6 +30,10 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
   useEffect(() => {
     setItems(conversations);
   }, [conversations]);
+
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, area: selectedArea }));
+  }, [selectedArea]);
 
   const handleStageChange = async (conversation, newStage) => {
     if (conversation.funnel_stage === newStage) return;
@@ -149,9 +148,10 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
         <div className="flex gap-3 flex-wrap">
           <select
             value={filters.area}
-            onChange={(e) => setFilters({ ...filters, area: e.target.value })}
+            onChange={(e) => setSelectedArea(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded text-sm"
           >
+            <option value="">Todas as áreas</option>
             {LEGAL_AREAS.map(area => (
               <option key={area.value} value={area.value}>{area.label}</option>
             ))}

@@ -17,8 +17,11 @@ import CaseInsightsPanel from '../components/CaseInsightsPanel';
 import Login from '../components/Login';
 import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
+import useAreaFilter from '../hooks/useAreaFilter';
 import Head from 'next/head';
 import Sidebar from '../components/Sidebar';
+import AreaFilterSelector from '../components/AreaFilterSelector';
+import ActiveFilterBanner from '../components/ActiveFilterBanner';
 import NotificationPermissionPrompt from '../components/NotificationPermissionPrompt';
 import ProfilePanel from '../components/ProfilePanel';
 import { maybeNotify, getPermission, isSupported } from '../lib/notifications';
@@ -33,6 +36,7 @@ export default function Home() {
   const [supabaseReady, setSupabaseReady] = useState(false);
   const [activeTab, setActiveTab] = useState('chat');
   const { authUser, profile, loading: authLoading, signOut, canAccess } = useAuth();
+  const { selectedArea, setSelectedArea } = useAreaFilter();
   const [showNewConvModal, setShowNewConvModal] = useState(false);
   const [newPhone, setNewPhone] = useState('');
   const [newName, setNewName] = useState('');
@@ -100,6 +104,29 @@ export default function Home() {
 
     load();
   }, [authUser, profile]);
+
+  // Aplica a área preferida vinda do perfil quando carrega
+  useEffect(() => {
+    if (profile?.preferred_legal_area && !selectedArea) {
+      setSelectedArea(profile.preferred_legal_area);
+    }
+  }, [profile, selectedArea, setSelectedArea]);
+
+  // Persiste a área selecionada nas preferências do usuário
+  useEffect(() => {
+    if (!authUser || !profile) return;
+
+    const save = async () => {
+      try {
+        const headers = await getAuthHeaders();
+        await axios.patch('/api/user-preferences', { preferred_legal_area: selectedArea }, { headers });
+      } catch (e) {
+        console.error('[AREA-FILTER] Erro ao salvar preferência:', e);
+      }
+    };
+
+    save();
+  }, [selectedArea, authUser, profile]);
 
   // Realtime: novas mensagens (conversations.unread)
   useEffect(() => {
@@ -348,7 +375,13 @@ export default function Home() {
         <Sidebar activeTab={activeTab} onChangeTab={setActiveTab} />
 
         {/* Conteúdo principal */}
-        <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0 pb-16 md:pb-0">
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <header className="flex items-center justify-between md:justify-end px-3 py-2 bg-white border-b border-gray-200 z-10">
+            <h1 className="md:hidden text-base font-bold">N&C</h1>
+            <AreaFilterSelector compact />
+          </header>
+          <ActiveFilterBanner />
+          <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0 pb-16 md:pb-0">
           {activeTab === 'chat' ? (
             <>
               <div
@@ -422,6 +455,7 @@ export default function Home() {
             <UserManagement />
           )}
         </main>
+      </div>
 
         {/* Modal de nova conversa */}
         {showNotifPrompt && (
