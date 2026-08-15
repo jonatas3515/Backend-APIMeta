@@ -4,6 +4,7 @@ import axios from 'axios';
 import { getAuthHeaders } from '../lib/api';
 import { formatPhone } from '../lib/formatters';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { maybeNotify } from '../lib/notifications';
 import LegalClassification from './LegalClassification';
 import RemindersPanel from './RemindersPanel';
 import DocumentGenerator from './DocumentGenerator';
@@ -158,6 +159,19 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
         },
         (payload) => {
           setMessages((prev) => [...prev, payload.new]);
+          
+          // Notificar usuário de nova mensagem
+          const msg = payload.new;
+          if (msg && msg.sender_type === 'client') {
+            maybeNotify({
+              title: `Nova mensagem de ${formatPhone(msg.sender_id)}`,
+              body: msg.text?.slice(0, 100) || 'Mensagem recebida',
+              tag: `msg-${msg.id}`,
+              onClick: () => {
+                window.focus();
+              }
+            });
+          }
         }
       )
       .subscribe();
