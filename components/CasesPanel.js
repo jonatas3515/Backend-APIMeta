@@ -30,6 +30,7 @@ export default function CasesPanel() {
   const [editingCase, setEditingCase] = useState(null);
   const [selectedCase, setSelectedCase] = useState(null);
   const [formData, setFormData] = useState({
+    conversation_id: '',
     title: '',
     legal_area: '',
     case_type: '',
@@ -154,10 +155,15 @@ export default function CasesPanel() {
     }
 
     try {
+      const payload = { ...formData };
+      if (!payload.conversation_id) {
+        delete payload.conversation_id;
+      }
+
       if (editingCase) {
         const { error } = await supabase
           .from('cases')
-          .update(formData)
+          .update(payload)
           .eq('id', editingCase.id);
 
         if (error) throw error;
@@ -165,7 +171,7 @@ export default function CasesPanel() {
       } else {
         const { error } = await supabase
           .from('cases')
-          .insert([formData]);
+          .insert([payload]);
 
         if (error) throw error;
         console.log('[CASES] Caso criado');
@@ -174,6 +180,7 @@ export default function CasesPanel() {
       setShowForm(false);
       setEditingCase(null);
       setFormData({
+        conversation_id: '',
         title: '',
         legal_area: '',
         case_type: '',
@@ -189,7 +196,7 @@ export default function CasesPanel() {
       fetchCases();
     } catch (error) {
       console.error('[CASES] Erro ao salvar caso:', error);
-      alert('Erro ao salvar caso');
+      alert(error.message || 'Erro ao salvar caso. Verifique os dados e tente novamente.');
     }
   };
 
@@ -266,6 +273,7 @@ export default function CasesPanel() {
             setShowForm(true);
             setEditingCase(null);
             setFormData({
+              conversation_id: '',
               title: '',
               legal_area: '',
               case_type: '',
@@ -341,6 +349,13 @@ export default function CasesPanel() {
         <div className="mb-6 p-4 border rounded bg-gray-50">
           <h3 className="text-lg font-bold mb-4">{editingCase ? 'Editar Caso' : 'Novo Caso'}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input
+              type="text"
+              placeholder="ID da conversa (opcional)"
+              value={formData.conversation_id}
+              onChange={(e) => setFormData({ ...formData, conversation_id: e.target.value })}
+              className="px-3 py-2 border rounded"
+            />
             <input
               type="text"
               placeholder="Título do caso"

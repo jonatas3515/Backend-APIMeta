@@ -78,37 +78,46 @@ async function handlePost(req, res) {
     notes
   } = req.body;
 
-  if (!conversation_id || !title) {
-    return res.status(400).json({ error: 'conversation_id e title são obrigatórios' });
+  if (!title) {
+    return res.status(400).json({ error: 'Título do caso é obrigatório' });
   }
 
   try {
+    const insertData = {
+      conversation_id: conversation_id || null,
+      title,
+      legal_area: legal_area || null,
+      case_type: case_type || null,
+      municipality: municipality || null,
+      agency: agency || null,
+      client_role: client_role || null,
+      status: status || 'prospect',
+      priority: priority || 'media',
+      deadline_date: deadline_date || null,
+      deadline_type: deadline_type || null,
+      notes: notes || null
+    };
+
     const { data, error } = await supabase
       .from('cases')
-      .insert({
-        conversation_id,
-        title,
-        legal_area: legal_area || null,
-        case_type: case_type || null,
-        municipality: municipality || null,
-        agency: agency || null,
-        client_role: client_role || null,
-        status: status || 'prospect',
-        priority: priority || 'media',
-        deadline_date: deadline_date || null,
-        deadline_type: deadline_type || null,
-        notes: notes || null
-      })
+      .insert(insertData)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[CASES] Erro no banco:', error);
+      return res.status(400).json({
+        error: 'Não foi possível criar o caso. Verifique os dados e tente novamente.'
+      });
+    }
 
     console.log(`[CASES] Caso criado: ${data.id}`);
     return res.status(201).json(data);
   } catch (error) {
     console.error('[CASES] Erro ao criar caso:', error);
-    return res.status(500).json({ error: 'Erro ao criar caso' });
+    return res.status(500).json({
+      error: 'Erro ao criar caso. Tente novamente em instantes.'
+    });
   }
 }
 
