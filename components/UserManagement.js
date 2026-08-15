@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/useAuth';
+import SignatureSettings from './SignatureSettings';
 
 export default function UserManagement() {
   const { profile, changePassword } = useAuth();
+  const [activeSection, setActiveSection] = useState('users');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -169,7 +171,36 @@ export default function UserManagement() {
   const isAdmin = profile?.role === 'admin';
 
   return (
-    <div className="flex-1 flex flex-col bg-white p-6 overflow-y-auto">
+    <div className="flex-1 flex flex-col bg-white overflow-y-auto">
+      {/* Abas de seção */}
+      <div className="flex border-b border-gray-200 bg-gray-50">
+        <button
+          onClick={() => setActiveSection('users')}
+          className={`px-6 py-3 font-medium text-sm border-b-2 transition ${
+            activeSection === 'users'
+              ? 'text-blue-600 border-blue-600'
+              : 'text-gray-600 border-transparent hover:text-gray-900'
+          }`}
+        >
+          👥 Usuários
+        </button>
+        {isAdmin && (
+          <button
+            onClick={() => setActiveSection('signatures')}
+            className={`px-6 py-3 font-medium text-sm border-b-2 transition ${
+              activeSection === 'signatures'
+                ? 'text-blue-600 border-blue-600'
+                : 'text-gray-600 border-transparent hover:text-gray-900'
+            }`}
+          >
+            ✍️ Assinatura Eletrônica
+          </button>
+        )}
+      </div>
+
+      <div className="flex-1 p-6 overflow-y-auto">
+        {activeSection === 'users' ? (
+          <>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">
           {isAdmin ? '⚙️ Gestão de Usuários' : '🎓 Configurações'}
@@ -368,6 +399,11 @@ export default function UserManagement() {
           </tbody>
         </table>
       )}
+          </>
+        ) : activeSection === 'signatures' ? (
+          <SignatureSettings />
+        ) : null}
+      </div>
     </div>
   );
 }
