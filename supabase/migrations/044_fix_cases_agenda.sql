@@ -81,7 +81,7 @@ SELECT
   cr.case_id,
   cr.id as reminder_id,
   cr.conversation_id,
-  COALESCE(cr.description, 'Lembrete') as title,
+  COALESCE(cr.message, 'Lembrete') as title,
   cr.scheduled_for::DATE as event_date,
   cr.scheduled_for::TIME as event_time,
   cr.reminder_type as event_type,
