@@ -1,9 +1,80 @@
 import { supabase } from '../../../lib/supabaseClient';
 import crypto from 'crypto';
 
+const ZAPSIGN_WEBHOOK_SECRET = process.env.ZAPSIGN_WEBHOOK_SECRET;
+
+function isWebhookAuthentic(req) {
+  // Se não houver segredo configurado, aceita o webhook (fallback para testes)
+  // Em produção, ZAPSIGN_WEBHOOK_SECRET deve ser configurado na Vercel
+  if (!ZAPSIGN_WEBHOOK_SECRET) {
+    console.warn('[SIGNATURE-WEBHOOK] ZAPSIGN_WEBHOOK_SECRET não configurado. Validando sem autenticação (modo não seguro).');
+    return true;
+  }
+
+  // Suporta validação por header X-Zapsign-Secret ou query ?secret=
+  const headerSecret = req.headers['x-zapsign-secret'];
+  const querySecret = req.query?.secret;
+
+  const providedSecret = headerSecret || querySecret;
+  if (!providedSecret) {
+    return false;
+  }
+
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(providedSecret, 'utf8'),
+      Buffer.from(ZAPSIGN_WEBHOOK_SECRET, 'utf8')
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
+function getEventIdempotencyKey(event, data) {
+  // Gera uma chave única para evitar duplicidade de processamento
+  const uuid = data?.uuid || 'unknown';
+  const eventType = event || 'unknown';
+  return `${eventType}:${uuid}`;
+}
+
+async function wasWebhookProcessed(idempotencyKey) {
+  const { data, error } = await supabase
+    .from('signature_webhook_logs')
+    .select('id')
+    .eq('idempotency_key', idempotencyKey)
+    .limit(1);
+
+  if (error) {
+    console.error('[SIGNATURE-WEBHOOK] Erro ao verificar idempotência:', error);
+    return false; // Em caso de erro, permite processar (não bloqueia)
+  }
+
+  return (data || []).length > 0;
+}
+
+async function logWebhook(idempotencyKey, event, status) {
+  try {
+    await supabase
+      .from('signature_webhook_logs')
+      .insert({
+        idempotency_key: idempotencyKey,
+        event_type: event,
+        status: status,
+        created_at: new Date().toISOString()
+      });
+  } catch (e) {
+    console.error('[SIGNATURE-WEBHOOK] Erro ao logar webhook:', e);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
+  }
+
+  // Valida autenticidade do webhook
+  if (!isWebhookAuthentic(req)) {
+    return res.status(401).json({ error: 'Não autorizado' });
   }
 
   try {
@@ -13,20 +84,41 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Dados inválidos' });
     }
 
-    console.log(`[SIGNATURE-WEBHOOK] Evento recebido: ${event}`);
+    // Só loga evento e uuid, nunca tokens, chaves ou dados sensíveis
+    console.log(`[SIGNATURE-WEBHOOK] Evento recebido: ${event}, uuid: ${data?.uuid}`);
+
+    const idempotencyKey = getEventIdempotencyKey(event, data);
+
+    // Idempotência: verifica se já processou
+    if (await wasWebhookProcessed(idempotencyKey)) {
+      console.log(`[SIGNATURE-WEBHOOK] Evento já processado: ${idempotencyKey}`);
+      return res.status(200).json({ message: 'Evento já processado' });
+    }
+
+    // Registra processamento iniciado
+    await logWebhook(idempotencyKey, event, 'processing');
+
+    let result;
 
     // Processa diferentes eventos do Zapsign
     switch (event) {
       case 'document.signed':
-        return handleDocumentSigned(data, res);
+        result = await handleDocumentSigned(data, res);
+        break;
       case 'document.completed':
-        return handleDocumentCompleted(data, res);
+        result = await handleDocumentCompleted(data, res);
+        break;
       case 'document.rejected':
-        return handleDocumentRejected(data, res);
+        result = await handleDocumentRejected(data, res);
+        break;
       default:
         console.log(`[SIGNATURE-WEBHOOK] Evento desconhecido: ${event}`);
-        return res.status(200).json({ message: 'Evento recebido' });
+        result = res.status(200).json({ message: 'Evento recebido' });
     }
+
+    // Marca como concluído
+    await logWebhook(idempotencyKey, event, 'completed');
+    return result;
   } catch (error) {
     console.error('[SIGNATURE-WEBHOOK] Erro:', error);
     return res.status(500).json({ error: 'Erro ao processar webhook' });

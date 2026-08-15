@@ -31,6 +31,17 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Token inválido' });
     }
 
+    // Restrição: apenas admins podem simular webhooks
+    const { data: profile, error: profileError } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || profile?.role !== 'admin') {
+      return res.status(403).json({ error: 'Apenas administradores podem simular webhooks' });
+    }
+
     const { event, signature_id, platform_document_id } = req.body;
 
     if (!event || !signature_id) {
@@ -40,12 +51,23 @@ export default async function handler(req, res) {
     // Busca o document_signature
     const { data: signature, error: findError } = await supabase
       .from('document_signatures')
-      .select('*')
+      .select('id, case_id, document_name, platform_document_id, signers')
       .eq('id', signature_id)
       .single();
 
     if (findError || !signature) {
       return res.status(404).json({ error: 'Documento de assinatura não encontrado' });
+    }
+
+    // Verifica se usuário tem acesso ao caso associado
+    const { data: caseData, error: caseError } = await supabase
+      .from('cases')
+      .select('id')
+      .eq('id', signature.case_id)
+      .single();
+
+    if (caseError || !caseData) {
+      return res.status(403).json({ error: 'Sem acesso ao caso associado' });
     }
 
     // Simula payload do Zapsign
@@ -67,12 +89,17 @@ export default async function handler(req, res) {
       }
     };
 
-    // Chama o webhook internamente
+    // Chama o webhook internamente com o segredo (se configurado)
+    const webhookHeaders = {
+      'Content-Type': 'application/json'
+    };
+    if (process.env.ZAPSIGN_WEBHOOK_SECRET) {
+      webhookHeaders['X-Zapsign-Secret'] = process.env.ZAPSIGN_WEBHOOK_SECRET;
+    }
+
     const webhookRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/signatures/webhook`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: webhookHeaders,
       body: JSON.stringify(payload)
     });
 
@@ -89,7 +116,6 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       message: 'Evento simulado com sucesso',
-      payload,
       webhook_response: responseData
     });
 

@@ -53,7 +53,6 @@ async function handleGet(userId, res) {
     const icalUrl = `${baseUrl}/api/calendar/ical?token=${user.ical_token}`;
 
     return res.status(200).json({
-      token: user.ical_token,
       disabled: user.ical_token_disabled,
       generated_at: user.ical_token_generated_at,
       ical_url: icalUrl,
