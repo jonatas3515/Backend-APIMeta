@@ -18,6 +18,7 @@ import Login from '../components/Login';
 import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
 import useAreaFilter from '../hooks/useAreaFilter';
+import { normalizeLegalArea } from '../lib/legalAreas';
 import Head from 'next/head';
 import Sidebar from '../components/Sidebar';
 import AreaFilterSelector from '../components/AreaFilterSelector';
@@ -106,21 +107,17 @@ export default function Home() {
     load();
   }, [authUser, profile]);
 
-  // Aplica a área preferida vinda do perfil quando carrega
-  useEffect(() => {
-    if (profile?.preferred_legal_area && !selectedArea) {
-      setSelectedArea(profile.preferred_legal_area);
-    }
-  }, [profile, selectedArea, setSelectedArea]);
-
-  // Persiste a área selecionada nas preferências do usuário
+  // O filtro global inicia em "Todas as áreas" (vazio).
+  // A preferência é controlada pelo AreaFilterContext + localStorage.
+  // Aqui salvamos a preferência normalizada no perfil sem forçar um fallback.
   useEffect(() => {
     if (!authUser || !profile) return;
+    if (selectedArea === (profile.preferred_legal_area ? normalizeLegalArea(profile.preferred_legal_area) : '')) return;
 
     const save = async () => {
       try {
         const headers = await getAuthHeaders();
-        await axios.patch('/api/user-preferences', { preferred_legal_area: selectedArea }, { headers });
+        await axios.patch('/api/user-preferences', { preferred_legal_area: normalizeLegalArea(selectedArea) }, { headers });
       } catch (e) {
         console.error('[AREA-FILTER] Erro ao salvar preferência:', e);
       }
