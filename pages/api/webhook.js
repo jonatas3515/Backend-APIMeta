@@ -1247,10 +1247,10 @@ async function processDeliveryStatuses(statuses) {
 // Detecta e registra aceite de consentimento LGPD enviado pelo cliente via WhatsApp
 async function handleConsent(conversation, text, from, req) {
   try {
-    const clean = text.toLowerCase().replace(/[^\p{L}\s]/gu, '').trim();
+    const clean = text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '').trim();
     const firstWord = clean.split(/\s+/)[0];
-    const ACCEPTED_WORDS = ['aceito', 'concordo', 'autorizo', 'aceita'];
-    const REJECTED_WORDS = ['revogo', 'revogar', 'negativo', 'recuso'];
+    const ACCEPTED_WORDS = ['aceito', 'concordo', 'autorizo', 'aceita', '1'];
+    const REJECTED_WORDS = ['revogo', 'revogar', 'negativo', 'recuso', 'nao', 'não', '2'];
 
     if (!ACCEPTED_WORDS.includes(firstWord) && !REJECTED_WORDS.includes(firstWord)) {
       return { handled: false };
@@ -1310,10 +1310,10 @@ async function handleConsent(conversation, text, from, req) {
       console.error('[WEBHOOK] ❌ Erro ao atualizar intake_data:', updateError);
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://backend-apimeta.vercel.app';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chatnevesecosta.vercel.app';
     const policyUrl = `${baseUrl}/politica-de-privacidade`;
     const confirmation = isAccepted
-      ? `Obrigado! Seu consentimento para tratamento de dados pessoais foi registrado em nosso sistema.\n\nProtocolo: #${protocol}\n\nVocê pode revogar a qualquer momento respondendo "REVogo" ou entrando em contato conosco.\n\nSaiba mais: ${policyUrl}`
+      ? `Obrigado! Seu consentimento para tratamento de dados pessoais foi registrado em nosso sistema.\n\nProtocolo: #${protocol}\n\nVocê pode revogar a qualquer momento respondendo *2* (ou REVOGO) ou entrando em contato conosco.\n\nSaiba mais: ${policyUrl}`
       : `Entendido. Seu não consentimento foi registrado. Entraremos em contato para orientar sobre os próximos passos.\n\nProtocolo: #${protocol}`;
 
     await sendWhatsAppMessage(from, confirmation);
