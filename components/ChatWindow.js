@@ -633,9 +633,8 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                       className="max-w-full rounded cursor-pointer hover:opacity-90"
                       onClick={() => window.open(msg.media_url, '_blank')}
                     />
-                  ) : msg.media_type?.startsWith('audio/') ? (
-                    <audio controls className="w-full">
-                      <source src={msg.media_url} type={msg.media_type} />
+                  ) : (msg.media_type?.startsWith('audio/') || msg.content_type === 'audio') ? (
+                    <audio controls className="w-full" src={msg.media_url}>
                       Seu navegador não suporta áudio.
                     </audio>
                   ) : (
