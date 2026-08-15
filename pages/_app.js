@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import '../styles/globals.css';
 import { AuthProvider } from '../lib/useAuth';
+import { AreaFilterProvider } from '../contexts/AreaFilterContext';
 import GlobalSearch from '../components/GlobalSearch';
 import KeyboardShortcuts from '../components/KeyboardShortcuts';
 
@@ -26,7 +27,9 @@ function AppContent({ Component, pageProps }) {
 function MyApp({ Component, pageProps }) {
   return (
     <AuthProvider>
-      <AppContent Component={Component} pageProps={pageProps} />
+      <AreaFilterProvider>
+        <AppContent Component={Component} pageProps={pageProps} />
+      </AreaFilterProvider>
     </AuthProvider>
   );
 }

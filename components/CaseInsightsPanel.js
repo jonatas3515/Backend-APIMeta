@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getAuthHeaders } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
+import useAreaFilter from '../hooks/useAreaFilter';
+import { LEGAL_AREAS } from '../lib/legalAreas';
 
 export default function CaseInsightsPanel({ conversationId, caseId, onClose }) {
   const [activeTab, setActiveTab] = useState('list');
@@ -10,6 +12,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose }) {
   const [loading, setLoading] = useState(false);
   const [generatingProposal, setGeneratingProposal] = useState(false);
   const [proposal, setProposal] = useState(null);
+  const { selectedArea, setSelectedArea } = useAreaFilter();
   const [filters, setFilters] = useState({
     legal_area: '',
     case_type: '',
@@ -17,6 +20,10 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose }) {
     agency: '',
     search: ''
   });
+
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, legal_area: selectedArea }));
+  }, [selectedArea]);
 
   useEffect(() => {
     if (activeTab === 'list') {
@@ -171,13 +178,13 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose }) {
                 />
                 <select
                   value={filters.legal_area}
-                  onChange={(e) => setFilters({ ...filters, legal_area: e.target.value })}
+                  onChange={(e) => setSelectedArea(e.target.value)}
                   className="px-2 py-1 border rounded text-sm"
                 >
                   <option value="">Todas as áreas</option>
-                  <option value="Direito Trabalhista">Direito Trabalhista</option>
-                  <option value="Direito Previdenciário">Direito Previdenciário</option>
-                  <option value="Direito Civil">Direito Civil</option>
+                  {LEGAL_AREAS.map((area) => (
+                    <option key={area.value} value={area.value}>{area.label}</option>
+                  ))}
                 </select>
               </div>
             </div>

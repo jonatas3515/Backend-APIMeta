@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import useAreaFilter from '../hooks/useAreaFilter';
 import ExportButtons from './ExportButtons';
 import { exportMetricsPdf, exportMetricsExcel } from '../lib/export';
 
 export default function MetricsDashboard({ conversations }) {
+  const { selectedArea } = useAreaFilter();
   const [metrics, setMetrics] = useState({
     totalConversations: 0,
     totalLeads: 0,
@@ -17,10 +19,14 @@ export default function MetricsDashboard({ conversations }) {
 
   useEffect(() => {
     calculateMetrics();
-  }, [conversations]);
+  }, [conversations, selectedArea]);
+
+  const filteredConversations = selectedArea
+    ? (conversations || []).filter((c) => c.legal_area === selectedArea)
+    : (conversations || []);
 
   const calculateMetrics = () => {
-    if (!conversations || conversations.length === 0) {
+    if (!filteredConversations || filteredConversations.length === 0) {
       setMetrics({
         totalConversations: 0,
         totalLeads: 0,
@@ -34,16 +40,16 @@ export default function MetricsDashboard({ conversations }) {
       return;
     }
 
-    const total = conversations.length;
-    const leads = conversations.filter(c => c.client_status === 'lead').length;
-    const activeClients = conversations.filter(c => c.client_status === 'cliente_ativo').length;
-    const converted = conversations.filter(c => c.client_status === 'cliente_ativo' || c.client_status === 'cliente_antigo').length;
+    const total = filteredConversations.length;
+    const leads = filteredConversations.filter(c => c.client_status === 'lead').length;
+    const activeClients = filteredConversations.filter(c => c.client_status === 'cliente_ativo').length;
+    const converted = filteredConversations.filter(c => c.client_status === 'cliente_ativo' || c.client_status === 'cliente_antigo').length;
 
     const byArea = {};
     const byFunnel = {};
     const byMunicipality = {};
 
-    conversations.forEach(conv => {
+    filteredConversations.forEach(conv => {
       const area = conv.legal_area || 'Não classificado';
       byArea[area] = (byArea[area] || 0) + 1;
 

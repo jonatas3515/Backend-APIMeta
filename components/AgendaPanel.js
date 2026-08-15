@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { askGemini } from '../lib/ai';
 import { getAuthHeaders } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
+import useAreaFilter from '../hooks/useAreaFilter';
+import { LEGAL_AREAS } from '../lib/legalAreas';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import ExportButtons from './ExportButtons';
 import { exportAgendaPdf, exportAgendaExcel } from '../lib/export';
@@ -15,12 +17,17 @@ export default function AgendaPanel() {
   const [icalUrl, setIcalUrl] = useState(null);
   const [showIcal, setShowIcal] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const { selectedArea, setSelectedArea } = useAreaFilter();
   const [filters, setFilters] = useState({
     legal_area: '',
     municipality: '',
     agency: '',
     priority: ''
   });
+
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, legal_area: selectedArea }));
+  }, [selectedArea]);
 
   useKeyboardShortcuts([
     { keys: ['h'], handler: () => setActiveTab('today') },
@@ -68,7 +75,8 @@ export default function AgendaPanel() {
         headers: await getAuthHeaders(),
         body: JSON.stringify({
           action: 'summary',
-          range: activeTab
+          range: activeTab,
+          legal_area: filters.legal_area
         })
       });
 
@@ -246,13 +254,13 @@ export default function AgendaPanel() {
         <div className="grid grid-cols-2 gap-2 mb-4">
           <select
             value={filters.legal_area}
-            onChange={(e) => setFilters({ ...filters, legal_area: e.target.value })}
+            onChange={(e) => setSelectedArea(e.target.value)}
             className="px-2 py-1 border rounded text-sm"
           >
             <option value="">Todas as áreas</option>
-            <option value="Direito Trabalhista">Direito Trabalhista</option>
-            <option value="Direito Previdenciário">Direito Previdenciário</option>
-            <option value="Direito Civil">Direito Civil</option>
+            {LEGAL_AREAS.map((area) => (
+              <option key={area.value} value={area.value}>{area.label}</option>
+            ))}
           </select>
           <select
             value={filters.priority}
