@@ -11,6 +11,18 @@ ALTER TABLE public.cases
   ALTER COLUMN conversation_id DROP NOT NULL;
 
 -- ----------------------------------------------------------------------------
+-- 1.5. Garantir que chat_reminders tenha as colunas usadas pela agenda
+-- ----------------------------------------------------------------------------
+ALTER TABLE public.chat_reminders 
+  ADD COLUMN IF NOT EXISTS case_id UUID REFERENCES public.cases(id) ON DELETE SET NULL;
+
+ALTER TABLE public.chat_reminders 
+  ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'media' CHECK (priority IN ('baixa', 'media', 'alta'));
+
+ALTER TABLE public.chat_reminders 
+  ADD COLUMN IF NOT EXISTS reminder_type VARCHAR(50) DEFAULT 'lembrete' CHECK (reminder_type IN ('prazo_judicial', 'lembrete_cliente', 'prazo_interno', 'reuniao', 'audiencia', 'outro'));
+
+-- ----------------------------------------------------------------------------
 -- 2. Recriar view agenda_consolidada com alias e colunas corrigidos
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE VIEW agenda_consolidada AS
