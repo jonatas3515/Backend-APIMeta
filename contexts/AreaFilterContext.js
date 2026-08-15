@@ -1,19 +1,42 @@
 import { createContext, useState, useEffect, useCallback } from 'react';
+import { normalizeLegalArea, LEGAL_AREAS } from '../lib/legalAreas';
 
 const AreaFilterContext = createContext();
+
+const STORAGE_KEY = 'nc_global_legal_area_v2';
+const LEGACY_STORAGE_KEY = 'nc_global_legal_area';
+
+function getValidArea(value) {
+  const normalized = normalizeLegalArea(value);
+  if (normalized === '') return '';
+  const valid = LEGAL_AREAS.find((a) => a.value === normalized);
+  return valid ? valid.value : '';
+}
 
 export function AreaFilterProvider({ children, initialArea = '', onChange }) {
   const [selectedArea, setSelectedArea] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Inicializa a partir do localStorage ou valor padrão
+  // Inicializa a partir do localStorage (novo ou legado) ou valor padrão
   useEffect(() => {
     try {
-      const stored = typeof window !== 'undefined' ? localStorage.getItem('nc_global_legal_area') : null;
-      if (stored) {
-        setSelectedArea(stored);
-      } else if (initialArea) {
-        setSelectedArea(initialArea);
+      let stored = null;
+      if (typeof window !== 'undefined') {
+        stored = localStorage.getItem(STORAGE_KEY);
+        if (!stored) {
+          const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+          if (legacy) {
+            stored = legacy;
+            localStorage.removeItem(LEGACY_STORAGE_KEY);
+          }
+        }
+      }
+
+      const validArea = stored ? getValidArea(stored) : getValidArea(initialArea);
+      setSelectedArea(validArea);
+
+      if (validArea && typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, validArea);
       }
     } finally {
       setLoading(false);
@@ -21,14 +44,14 @@ export function AreaFilterProvider({ children, initialArea = '', onChange }) {
   }, [initialArea]);
 
   const changeArea = useCallback((area) => {
-    const value = area || '';
+    const value = getValidArea(area);
     setSelectedArea(value);
     try {
       if (typeof window !== 'undefined') {
         if (value) {
-          localStorage.setItem('nc_global_legal_area', value);
+          localStorage.setItem(STORAGE_KEY, value);
         } else {
-          localStorage.removeItem('nc_global_legal_area');
+          localStorage.removeItem(STORAGE_KEY);
         }
       }
     } catch (e) {

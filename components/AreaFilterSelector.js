@@ -1,8 +1,8 @@
 import { LEGAL_AREAS, getLegalAreaLabel } from '../lib/legalAreas';
 import useAreaFilter from '../hooks/useAreaFilter';
 
-export default function AreaFilterSelector({ compact = false }) {
-  const { selectedArea, setSelectedArea, isActive } = useAreaFilter();
+export default function AreaFilterSelector({ compact = false, showClear = true }) {
+  const { selectedArea, setSelectedArea, clearArea, isActive } = useAreaFilter();
 
   return (
     <div className={`flex items-center gap-2 ${compact ? '' : 'w-full max-w-xs'}`}>
@@ -25,9 +25,21 @@ export default function AreaFilterSelector({ compact = false }) {
         ))}
       </select>
       {isActive && (
-        <span className="hidden sm:inline text-xs font-medium text-blue-700 truncate max-w-[120px]">
-          {getLegalAreaLabel(selectedArea)}
-        </span>
+        <>
+          <span className="hidden sm:inline text-xs font-medium text-blue-700 truncate max-w-[120px]">
+            {getLegalAreaLabel(selectedArea)}
+          </span>
+          {showClear && (
+            <button
+              onClick={clearArea}
+              type="button"
+              className="text-xs text-gray-500 hover:text-red-600 underline"
+              title="Limpar filtro"
+            >
+              Limpar
+            </button>
+          )}
+        </>
       )}
     </div>
   );
