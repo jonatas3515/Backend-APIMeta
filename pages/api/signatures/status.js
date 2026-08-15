@@ -1,5 +1,7 @@
 import { supabase } from '../../../lib/supabaseClient';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Método não permitido' });
@@ -23,8 +25,14 @@ export default async function handler(req, res) {
     let query = supabase.from('document_signatures').select('*');
 
     if (signature_id) {
+      if (!UUID_REGEX.test(signature_id)) {
+        return res.status(400).json({ error: 'signature_id inválido' });
+      }
       query = query.eq('id', signature_id);
     } else if (case_id) {
+      if (!UUID_REGEX.test(case_id) && case_id !== 'undefined') {
+        return res.status(400).json({ error: 'case_id inválido' });
+      }
       query = query.eq('case_id', case_id);
     } else {
       return res.status(400).json({ error: 'case_id ou signature_id obrigatório' });
