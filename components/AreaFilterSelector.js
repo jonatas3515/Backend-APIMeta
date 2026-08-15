@@ -7,16 +7,12 @@ export default function AreaFilterSelector({ compact = false, showClear = true }
   const isActive = filter?.isActive ?? false;
 
   const handleChange = (value) => {
-    console.log('[AreaFilterSelector] onChange', value, typeof filter?.setSelectedArea);
     if (typeof filter?.setSelectedArea === 'function') {
       filter.setSelectedArea(value);
-    } else {
-      console.warn('[AreaFilterSelector] setSelectedArea não disponível', filter);
     }
   };
 
   const handleClear = () => {
-    console.log('[AreaFilterSelector] onClear');
     if (typeof filter?.clearArea === 'function') {
       filter.clearArea();
     }
@@ -35,7 +31,7 @@ export default function AreaFilterSelector({ compact = false, showClear = true }
         }`}
         aria-label="Filtrar por área jurídica"
       >
-        <option value="">Todas as Áreas</option>
+        <option value="">Todas as áreas</option>
         {LEGAL_AREAS.map((area) => (
           <option key={area.value} value={area.value}>
             {area.label}

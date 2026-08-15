@@ -617,7 +617,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
       {/* Painel de Assinatura Eletrônica */}
       {activePanel === 'signatures' && (
         <div className="nc-panel p-4 max-h-80 overflow-y-auto">
-          <SignaturePanel conversation={conversation} />
+          <SignaturePanel conversationId={conversation?.id} />
         </div>
       )}
       </div>

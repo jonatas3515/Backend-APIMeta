@@ -7,6 +7,7 @@ import { LEGAL_AREAS } from '../lib/legalAreas';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import ExportButtons from './ExportButtons';
 import { exportAgendaPdf, exportAgendaExcel } from '../lib/export';
+import CaseCalendarSync from './CaseCalendarSync';
 
 export default function AgendaPanel() {
   const [activeTab, setActiveTab] = useState('today');
@@ -298,7 +299,7 @@ export default function AgendaPanel() {
                 onChange={(e) => setShowIcal(e.target.checked)}
                 className="rounded border-gray-300"
               />
-              Sincronizar com calendário externo
+              Mostrar opções de calendário externo (iCal e Google)
             </label>
           </div>
         </div>
@@ -414,6 +415,26 @@ export default function AgendaPanel() {
                         <div className="text-right ml-4">
                           <div className="text-lg">{getPriorityIcon(item.priority)}</div>
                           <span className="text-xs font-semibold capitalize">{item.priority}</span>
+                          {item.item_type === 'case_deadline' && item.case_id && (
+                            <div className="mt-2">
+                              <CaseCalendarSync
+                                eventId={item.case_id}
+                                table="cases"
+                                deadlineDate={item.event_date}
+                                title={item.title}
+                              />
+                            </div>
+                          )}
+                          {item.item_type === 'case_event' && item.case_id && (
+                            <div className="mt-2">
+                              <CaseCalendarSync
+                                eventId={item.case_id}
+                                table="case_events"
+                                deadlineDate={item.event_date}
+                                title={item.title}
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
