@@ -38,23 +38,29 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'Caso não encontrado' });
     }
 
-    // Busca configuração de assinatura
-    const { data: config, error: configError } = await supabase
-      .from('signature_integration_config')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .single();
+    // Prioridade 1: variável de ambiente ZAPSIGN_API_KEY
+    let api_key = process.env.ZAPSIGN_API_KEY || null;
+    let platform = 'zapsign';
 
-    if (configError || !config) {
-      return res.status(400).json({ error: 'Assinatura eletrônica não configurada' });
+    // Prioridade 2: configuração criptografada no banco (caso env não esteja definida)
+    if (!api_key) {
+      const { data: config, error: configError } = await supabase
+        .from('signature_integration_config')
+        .select('platform, api_key_encrypted')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .single();
+
+      if (configError || !config) {
+        return res.status(400).json({ error: 'Assinatura eletrônica não configurada' });
+      }
+
+      api_key = decrypt(config.api_key_encrypted);
+      platform = config.platform;
     }
 
-    // Descriptografa API Key
-    const api_key = decrypt(config.api_key_encrypted);
-
     // Envia para Zapsign
-    if (config.platform === 'zapsign') {
+    if (platform === 'zapsign') {
       return sendToZapsign(
         api_key,
         case_id,
