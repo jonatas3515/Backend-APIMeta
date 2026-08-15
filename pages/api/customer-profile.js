@@ -213,11 +213,11 @@ async function handlePost(req, res) {
       return res.status(400).json({ error: 'Conversa sem telefone do cliente' });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.host}` || 'https://backend-apimeta.vercel.app';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.host}` || 'https://chatnevesecosta.vercel.app';
     const policyUrl = `${baseUrl}/politica-de-privacidade`;
-    const message = `Neves & Costa - LGPD\n\nPara prosseguir com o atendimento e armazenar seus dados com segurança, precisamos do seu consentimento conforme a LGPD.\n\nLeia nossa política de privacidade: ${policyUrl}\n\nSe concorda com o tratamento dos seus dados pessoais, responda apenas: *ACEITO* (ou CONCORDO).`;
+    const message = `Neves & Costa - LGPD\n\nPara prosseguir com o atendimento e armazenar seus dados com segurança, precisamos do seu consentimento conforme a LGPD.\n\nLeia nossa política de privacidade: ${policyUrl}\n\nSe concorda com o tratamento dos seus dados pessoais, responda apenas: *1* (ou diga ACEITO/CONCORDO).\n\nSe não concorda, responda: *2* (ou diga NÃO ACEITO/RECUSO).`;
 
-    await sendWhatsAppMessage(conversation.client_phone, message);
+    const waMessageId = await sendWhatsAppMessage(conversation.client_phone, message);
 
     const now = new Date().toISOString();
     const updatedIntake = {
@@ -237,7 +237,7 @@ async function handlePost(req, res) {
     }
 
     // Salva a mensagem enviada como outbound/ai
-    await supabase
+    const { error: insertError } = await supabase
       .from('messages')
       .insert({
         conversation_id,
@@ -245,8 +245,14 @@ async function handlePost(req, res) {
         sender_type: 'ai',
         text: message,
         content_type: 'text',
-        status: 'sent'
+        status: 'sent',
+        wa_message_id: waMessageId
       });
+
+    if (insertError) {
+      console.error('[CUSTOMER-PROFILE] ❌ Erro ao salvar mensagem no banco:', insertError);
+      throw insertError;
+    }
 
     return res.status(200).json({ success: true, message: 'Solicitação de consentimento enviada' });
   } catch (error) {
