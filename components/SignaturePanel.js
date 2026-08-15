@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getAuthHeaders } from '../lib/api';
+import { supabase } from '../lib/supabaseClient';
 
-export default function SignaturePanel({ caseId, onClose }) {
+export default function SignaturePanel({ caseId, conversationId, onClose }) {
   const [signatures, setSignatures] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -16,21 +17,65 @@ export default function SignaturePanel({ caseId, onClose }) {
   });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [resolvedCaseId, setResolvedCaseId] = useState(caseId || null);
+  const [caseSearchError, setCaseSearchError] = useState(null);
 
   useEffect(() => {
-    if (!caseId || caseId === 'undefined') {
-      setLoading(false);
+    const resolveCase = async () => {
+      if (caseId && caseId !== 'undefined') {
+        setResolvedCaseId(caseId);
+        setLoading(false);
+        return;
+      }
+
+      if (!conversationId) {
+        setResolvedCaseId(null);
+        setCaseSearchError('Nenhuma conversa vinculada.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error: supaError } = await supabase
+          .from('cases')
+          .select('id')
+          .eq('conversation_id', conversationId)
+          .neq('status', 'encerrado')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (supaError || !data) {
+          setResolvedCaseId(null);
+          setCaseSearchError('Vincule ou crie um caso para esta conversa antes de enviar documentos para assinatura.');
+        } else {
+          setResolvedCaseId(data.id);
+          setCaseSearchError(null);
+        }
+      } catch (err) {
+        setResolvedCaseId(null);
+        setCaseSearchError('Erro ao buscar caso vinculado.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    resolveCase();
+  }, [caseId, conversationId]);
+
+  useEffect(() => {
+    if (!resolvedCaseId) {
       setSignatures([]);
       return;
     }
     fetchSignatures();
-  }, [caseId]);
+  }, [resolvedCaseId]);
 
   const fetchSignatures = async () => {
     try {
       setLoading(true);
       const headers = await getAuthHeaders();
-      const { data } = await axios.get(`/api/signatures/status?case_id=${encodeURIComponent(caseId)}`, { headers });
+      const { data } = await axios.get(`/api/signatures/status?case_id=${encodeURIComponent(resolvedCaseId)}`, { headers });
       setSignatures(Array.isArray(data.signatures) ? data.signatures : [data.signatures]);
       setError(null);
     } catch (err) {
@@ -72,7 +117,7 @@ export default function SignaturePanel({ caseId, onClose }) {
       setSending(true);
       const headers = await getAuthHeaders();
       const { data } = await axios.post('/api/signatures/send', {
-        case_id: caseId,
+        case_id: resolvedCaseId,
         document_type: formData.document_type,
         document_url: formData.document_url,
         signers: signers
@@ -121,11 +166,18 @@ export default function SignaturePanel({ caseId, onClose }) {
         <h2 className="text-2xl font-bold text-nc-text">📝 Assinaturas Eletrônicas</h2>
         <button
           onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-nc-yellow text-nc-text font-medium rounded hover:bg-nc-yellow-700 transition"
+          disabled={!resolvedCaseId}
+          className="px-4 py-2 bg-nc-yellow text-nc-text font-medium rounded hover:bg-nc-yellow-700 transition disabled:opacity-50"
         >
           + Enviar para Assinatura
         </button>
       </div>
+
+      {caseSearchError && (
+        <div className="p-4 bg-yellow-100 border border-yellow-300 rounded text-yellow-900">
+          {caseSearchError}
+        </div>
+      )}
 
       {error && (
         <div className="p-4 bg-red-100 border border-red-300 rounded text-red-800">
@@ -259,7 +311,7 @@ export default function SignaturePanel({ caseId, onClose }) {
               <div className="flex gap-3">
                 <button
                   type="submit"
-                  disabled={sending}
+                  disabled={sending || !resolvedCaseId}
                   className="flex-1 px-4 py-2 bg-nc-yellow text-nc-text font-medium rounded hover:bg-nc-yellow-700 transition disabled:opacity-50"
                 >
                   {sending ? 'Enviando...' : 'Enviar para Assinatura'}

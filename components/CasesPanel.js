@@ -7,6 +7,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { LEGAL_AREAS } from '../lib/legalAreas';
 import ExportButtons from './ExportButtons';
 import { exportCasesExcel } from '../lib/export';
+import CaseCalendarSync from './CaseCalendarSync';
 
 export default function CasesPanel() {
   const router = useRouter();
@@ -506,6 +507,9 @@ export default function CasesPanel() {
                               {daysLeft < 0 ? `${Math.abs(daysLeft)} dias atrasado` : `${daysLeft} dias`}
                             </div>
                           )}
+                          <div className="mt-1">
+                            <CaseCalendarSync eventId={caseItem.id} table="cases" deadlineDate={caseItem.deadline_date} title={caseItem.title} />
+                          </div>
                         </div>
                       ) : (
                         '-'
