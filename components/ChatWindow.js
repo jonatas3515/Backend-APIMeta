@@ -9,6 +9,7 @@ import LegalClassification from './LegalClassification';
 import RemindersPanel from './RemindersPanel';
 import DocumentGenerator from './DocumentGenerator';
 import CustomerProfilePanel from './CustomerProfilePanel';
+import SignaturePanel from './SignaturePanel';
 
 export default function ChatWindow({ conversation, onConversationUpdate, onBack }) {
   const [activePanel, setActivePanel] = useState('');
@@ -535,6 +536,14 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           >
             👤 Perfil
           </button>
+
+          <button
+            onClick={() => setActivePanel(activePanel === 'signatures' ? '' : 'signatures')}
+            className={`nc-btn ${activePanel === 'signatures' ? 'nc-btn-active' : ''}`}
+            title="Assinatura Eletrônica"
+          >
+            ✍️ Assinatura
+          </button>
           
           {showPauseMenu && (
             <div className="absolute left-0 top-12 bg-nc-white border border-nc-gray-300 rounded-nc shadow-card p-2 z-10 w-48">
@@ -602,6 +611,13 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           >
             {savingNotes ? 'Salvando...' : 'Salvar notas'}
           </button>
+        </div>
+      )}
+
+      {/* Painel de Assinatura Eletrônica */}
+      {activePanel === 'signatures' && (
+        <div className="nc-panel p-4 max-h-80 overflow-y-auto">
+          <SignaturePanel conversation={conversation} />
         </div>
       )}
       </div>
