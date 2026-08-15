@@ -301,20 +301,32 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
                   </p>
                 )}
 
-                {customer.intake_data?.consent_request_status === 'pending' ? (
-                  <p className="mt-2 text-xs text-yellow-700">
-                    Solicitação enviada em {formatDate(customer.intake_data.consent_request_sent_at)}
-                  </p>
-                ) : (
-                  !getConsentStatus(data.consents).text.includes('Ativo') && (
+                {!getConsentStatus(data.consents).text.includes('Ativo') && customer.intake_data?.consent_request_status !== 'accepted' && (
+                  <>
+                    {customer.intake_data?.consent_request_status === 'pending' && (
+                      <p className="mt-2 text-xs text-yellow-700">
+                        Solicitação enviada em {formatDate(customer.intake_data.consent_request_sent_at)}
+                      </p>
+                    )}
+                    {customer.intake_data?.consent_request_status === 'rejected' && (
+                      <p className="mt-2 text-xs text-red-700">
+                        Consentimento recusado em {formatDate(customer.intake_data.consent_accepted_at)}
+                      </p>
+                    )}
                     <button
                       onClick={handleRequestConsent}
                       disabled={requestingConsent}
                       className="mt-3 w-full py-1.5 px-3 rounded text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition"
                     >
-                      {requestingConsent ? 'Enviando...' : '📩 Solicitar Consentimento LGPD'}
+                      {requestingConsent
+                        ? 'Enviando...'
+                        : customer.intake_data?.consent_request_status === 'pending'
+                          ? '🔄 Reenviar Solicitação'
+                          : customer.intake_data?.consent_request_status === 'rejected'
+                            ? '📩 Solicitar Novamente'
+                            : '📩 Solicitar Consentimento LGPD'}
                     </button>
-                  )
+                  </>
                 )}
               </section>
 
