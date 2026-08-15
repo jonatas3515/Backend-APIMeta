@@ -7,6 +7,7 @@ export default function AreaFilterSelector({ compact = false, showClear = true }
   const isActive = filter?.isActive ?? false;
 
   const handleChange = (value) => {
+    console.log('[AreaFilterSelector] onChange', value, typeof filter?.setSelectedArea);
     if (typeof filter?.setSelectedArea === 'function') {
       filter.setSelectedArea(value);
     } else {
@@ -15,6 +16,7 @@ export default function AreaFilterSelector({ compact = false, showClear = true }
   };
 
   const handleClear = () => {
+    console.log('[AreaFilterSelector] onClear');
     if (typeof filter?.clearArea === 'function') {
       filter.clearArea();
     }
