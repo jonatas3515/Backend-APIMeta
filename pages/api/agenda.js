@@ -70,7 +70,11 @@ async function handleGet(req, res) {
 
     if (error) {
       console.error('[AGENDA] Erro ao chamar get_agenda:', error);
-      throw error;
+      return res.status(500).json({
+        error: 'Erro ao buscar agenda',
+        details: error.message || error.toString(),
+        code: error.code || null
+      });
     }
 
     const byDay = {};
