@@ -16,11 +16,37 @@ ALTER TABLE public.cases
 ALTER TABLE public.chat_reminders 
   ADD COLUMN IF NOT EXISTS case_id UUID REFERENCES public.cases(id) ON DELETE SET NULL;
 
+-- priority sem constraint para não falhar com dados existentes
 ALTER TABLE public.chat_reminders 
-  ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'media' CHECK (priority IN ('baixa', 'media', 'alta'));
+  ADD COLUMN IF NOT EXISTS priority VARCHAR(20);
+
+UPDATE public.chat_reminders 
+  SET priority = 'media' 
+  WHERE priority IS NULL OR priority = '' OR priority NOT IN ('baixa', 'media', 'alta');
 
 ALTER TABLE public.chat_reminders 
-  ADD COLUMN IF NOT EXISTS reminder_type VARCHAR(50) DEFAULT 'lembrete' CHECK (reminder_type IN ('prazo_judicial', 'lembrete_cliente', 'prazo_interno', 'reuniao', 'audiencia', 'outro'));
+  DROP CONSTRAINT IF EXISTS chat_reminders_priority_check;
+
+ALTER TABLE public.chat_reminders 
+  ADD CONSTRAINT chat_reminders_priority_check 
+  CHECK (priority IN ('baixa', 'media', 'alta'));
+
+-- reminder_type sem constraint para não falhar com dados existentes
+ALTER TABLE public.chat_reminders 
+  ADD COLUMN IF NOT EXISTS reminder_type VARCHAR(50);
+
+UPDATE public.chat_reminders 
+  SET reminder_type = 'outro' 
+  WHERE reminder_type IS NULL 
+     OR reminder_type = '' 
+     OR reminder_type NOT IN ('prazo_judicial', 'lembrete_cliente', 'prazo_interno', 'reuniao', 'audiencia', 'outro');
+
+ALTER TABLE public.chat_reminders 
+  DROP CONSTRAINT IF EXISTS chat_reminders_reminder_type_check;
+
+ALTER TABLE public.chat_reminders 
+  ADD CONSTRAINT chat_reminders_reminder_type_check 
+  CHECK (reminder_type IN ('prazo_judicial', 'lembrete_cliente', 'prazo_interno', 'reuniao', 'audiencia', 'outro'));
 
 -- ----------------------------------------------------------------------------
 -- 2. Recriar view agenda_consolidada com alias e colunas corrigidos
