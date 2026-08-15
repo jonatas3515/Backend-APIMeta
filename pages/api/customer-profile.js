@@ -213,7 +213,7 @@ async function handlePost(req, res) {
       return res.status(400).json({ error: 'Conversa sem telefone do cliente' });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.host}` || 'https://chatnevesecosta.vercel.app';
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chatnevesecosta.vercel.app';
     const policyUrl = `${baseUrl}/politica-de-privacidade`;
     const message = `Neves & Costa - LGPD\n\nPara prosseguir com o atendimento e armazenar seus dados com segurança, precisamos do seu consentimento conforme a LGPD.\n\nLeia nossa política de privacidade: ${policyUrl}\n\nSe concorda com o tratamento dos seus dados pessoais, responda apenas: *1* (ou diga ACEITO/CONCORDO).\n\nSe não concorda, responda: *2* (ou diga NÃO ACEITO/RECUSO).`;
 
