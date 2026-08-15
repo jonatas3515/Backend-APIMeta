@@ -59,22 +59,53 @@ async function handleGet(req, res) {
       return res.status(400).json({ error: 'Intervalo inválido' });
     }
 
-    const { data: items, error } = await supabase.rpc('get_agenda', {
-      p_start_date: startDate,
-      p_end_date: endDate,
-      p_legal_area: legal_area || null,
-      p_municipality: municipality || null,
-      p_agency: agency || null,
-      p_priority: priority || null
-    });
+    let items = null;
+    let rpcError = null;
 
-    if (error) {
-      console.error('[AGENDA] Erro ao chamar get_agenda:', error);
-      return res.status(500).json({
-        error: 'Erro ao buscar agenda',
-        details: error.message || error.toString(),
-        code: error.code || null
+    try {
+      const result = await supabase.rpc('get_agenda', {
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_legal_area: legal_area || null,
+        p_municipality: municipality || null,
+        p_agency: agency || null,
+        p_priority: priority || null
       });
+      if (result.error) throw result.error;
+      items = result.data;
+    } catch (error) {
+      console.error('[AGENDA] get_agenda falhou:', error);
+      rpcError = error;
+    }
+
+    if (items === null) {
+      console.log('[AGENDA] Tentando fallback via agenda_consolidada...');
+      try {
+        const { data, error } = await supabase
+          .from('agenda_consolidada')
+          .select('*')
+          .gte('event_date', startDate)
+          .lte('event_date', endDate);
+
+        if (error) throw error;
+
+        const rawItems = data || [];
+        items = rawItems.filter((item) => {
+          if (legal_area && item.legal_area !== legal_area) return false;
+          if (municipality && item.municipality !== municipality) return false;
+          if (agency && item.agency !== agency) return false;
+          if (priority && item.priority !== priority) return false;
+          return true;
+        });
+      } catch (fallbackError) {
+        console.error('[AGENDA] Fallback falhou:', fallbackError);
+        return res.status(500).json({
+          error: 'Erro ao buscar agenda',
+          rpcError: rpcError ? String(rpcError.message || rpcError) : null,
+          fallbackError: String(fallbackError.message || fallbackError),
+          code: (rpcError && rpcError.code) || (fallbackError && fallbackError.code) || null
+        });
+      }
     }
 
     const byDay = {};
