@@ -2,7 +2,23 @@ import { LEGAL_AREAS, getLegalAreaLabel } from '../lib/legalAreas';
 import useAreaFilter from '../hooks/useAreaFilter';
 
 export default function AreaFilterSelector({ compact = false, showClear = true }) {
-  const { selectedArea, setSelectedArea, clearArea, isActive } = useAreaFilter();
+  const filter = useAreaFilter();
+  const selectedArea = filter?.selectedArea ?? '';
+  const isActive = filter?.isActive ?? false;
+
+  const handleChange = (value) => {
+    if (typeof filter?.setSelectedArea === 'function') {
+      filter.setSelectedArea(value);
+    } else {
+      console.warn('[AreaFilterSelector] setSelectedArea não disponível', filter);
+    }
+  };
+
+  const handleClear = () => {
+    if (typeof filter?.clearArea === 'function') {
+      filter.clearArea();
+    }
+  };
 
   return (
     <div className={`flex items-center gap-2 ${compact ? '' : 'w-full max-w-xs'}`}>
@@ -11,7 +27,7 @@ export default function AreaFilterSelector({ compact = false, showClear = true }
       </span>
       <select
         value={selectedArea}
-        onChange={(e) => setSelectedArea(e.target.value)}
+        onChange={(e) => handleChange(e.target.value)}
         className={`block border border-gray-300 rounded bg-white text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
           compact ? 'px-2 py-1 text-xs w-40' : 'px-3 py-2 text-sm w-full'
         }`}
@@ -31,7 +47,7 @@ export default function AreaFilterSelector({ compact = false, showClear = true }
           </span>
           {showClear && (
             <button
-              onClick={clearArea}
+              onClick={handleClear}
               type="button"
               className="text-xs text-gray-500 hover:text-red-600 underline"
               title="Limpar filtro"
