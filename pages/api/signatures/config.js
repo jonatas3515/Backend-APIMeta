@@ -145,7 +145,8 @@ async function handlePost(userId, body, res) {
 
 async function testZapsignConnection(apiKey, configId, res) {
   try {
-    const response = await fetch('https://api.zapsign.com.br/api/v1/account', {
+    // Endpoint de listagem de documentos: mais estável para validar o token.
+    const response = await fetch('https://api.zapsign.com.br/api/v1/docs/?page=1', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -155,7 +156,11 @@ async function testZapsignConnection(apiKey, configId, res) {
 
     const isSuccess = response.ok;
     const testStatus = isSuccess ? 'success' : 'failed';
-    const testError = isSuccess ? null : `HTTP ${response.status}`;
+    const testError = isSuccess
+      ? null
+      : (response.status === 401 || response.status === 403)
+        ? 'Chave inválida ou sem permissão. Verifique se a chave é de produção (api.zapsign.com.br).'
+        : `HTTP ${response.status}`;
 
     // Atualiza status do teste
     const { error: updateError } = await supabaseAdmin
@@ -174,13 +179,13 @@ async function testZapsignConnection(apiKey, configId, res) {
         message: 'Conexão com Zapsign estabelecida com sucesso',
         status: 'success'
       });
-    } else {
-      return res.status(400).json({
-        message: 'Falha ao conectar com Zapsign',
-        status: 'failed',
-        error: testError
-      });
     }
+
+    return res.status(200).json({
+      message: 'Falha ao conectar com Zapsign',
+      status: 'failed',
+      error: testError
+    });
   } catch (error) {
     console.error('[TEST-ZAPSIGN] Erro:', error);
     return res.status(500).json({
