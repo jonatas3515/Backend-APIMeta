@@ -66,10 +66,10 @@ async function handleGet(req, res) {
       const result = await supabase.rpc('get_agenda', {
         p_start_date: startDate,
         p_end_date: endDate,
-        p_legal_area: legal_area || null,
-        p_municipality: municipality || null,
-        p_agency: agency || null,
-        p_priority: priority || null
+        p_legal_area: legal_area ? legal_area.toLowerCase() : null,
+        p_municipality: municipality ? municipality.toLowerCase() : null,
+        p_agency: agency ? agency.toLowerCase() : null,
+        p_priority: priority ? priority.toLowerCase() : null
       });
       if (result.error) throw result.error;
       items = result.data;
@@ -91,10 +91,10 @@ async function handleGet(req, res) {
 
         const rawItems = data || [];
         items = rawItems.filter((item) => {
-          if (legal_area && item.legal_area !== legal_area) return false;
-          if (municipality && item.municipality !== municipality) return false;
-          if (agency && item.agency !== agency) return false;
-          if (priority && item.priority !== priority) return false;
+          if (legal_area && item.legal_area?.toLowerCase() !== legal_area.toLowerCase()) return false;
+          if (municipality && item.municipality?.toLowerCase() !== municipality.toLowerCase()) return false;
+          if (agency && item.agency?.toLowerCase() !== agency.toLowerCase()) return false;
+          if (priority && item.priority?.toLowerCase() !== priority.toLowerCase()) return false;
           return true;
         });
       } catch (fallbackError) {

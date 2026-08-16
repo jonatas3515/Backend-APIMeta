@@ -18,6 +18,7 @@ export default function AgendaPanel() {
   const [icalUrl, setIcalUrl] = useState(null);
   const [showIcal, setShowIcal] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [apiError, setApiError] = useState(null);
   const { selectedArea, setSelectedArea } = useAreaFilter();
   const [filters, setFilters] = useState({
     legal_area: '',
@@ -48,6 +49,7 @@ export default function AgendaPanel() {
 
   const fetchAgenda = async () => {
     setLoading(true);
+    setApiError(null);
     try {
       const params = new URLSearchParams();
       params.append('range', activeTab);
@@ -60,9 +62,17 @@ export default function AgendaPanel() {
       if (response.ok) {
         const data = await response.json();
         setAgenda(data);
+      } else {
+        let errText = 'Erro ao carregar agenda';
+        try {
+          const data = await response.json();
+          errText = data.error || errText;
+        } catch (e) {}
+        setApiError(errText);
       }
     } catch (error) {
       console.error('[AGENDA] Erro ao buscar:', error);
+      setApiError('Erro de conexão ao carregar agenda');
     } finally {
       setLoading(false);
     }
@@ -218,38 +228,41 @@ export default function AgendaPanel() {
         <div className="flex gap-2 flex-wrap mb-4">
           <button
             onClick={() => setActiveTab('today')}
-            disabled={activeTab !== 'today'}
             className={`px-4 py-2 rounded font-medium transition ${
               activeTab === 'today'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
             📆 Hoje
           </button>
           <button
             onClick={() => setActiveTab('week')}
-            disabled={activeTab !== 'week'}
             className={`px-4 py-2 rounded font-medium transition ${
               activeTab === 'week'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
             📊 Próximos 7 dias
           </button>
           <button
             onClick={() => setActiveTab('month')}
-            disabled={activeTab !== 'month'}
             className={`px-4 py-2 rounded font-medium transition ${
               activeTab === 'month'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
             📈 Próximos 30 dias
           </button>
         </div>
+
+        {apiError && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded text-red-800 text-sm">
+            {apiError}
+          </div>
+        )}
 
         {/* Filtros */}
         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -286,9 +299,23 @@ export default function AgendaPanel() {
           </button>
 
           <ExportButtons
-            disabled={loading || Object.keys(agenda.by_day || {}).length === 0}
-            onPdf={() => exportAgendaPdf({ agenda, filters })}
-            onExcel={() => exportAgendaExcel({ agenda, filters })}
+            disabled={loading}
+            onPdf={() => {
+              if ((agenda.total_items || 0) === 0) {
+                setApiError('Não há eventos para exportar neste período');
+                return;
+              }
+              setApiError(null);
+              exportAgendaPdf({ agenda, filters });
+            }}
+            onExcel={() => {
+              if ((agenda.total_items || 0) === 0) {
+                setApiError('Não há eventos para exportar neste período');
+                return;
+              }
+              setApiError(null);
+              exportAgendaExcel({ agenda, filters });
+            }}
           />
 
           <div className="flex items-center gap-2 ml-auto">
