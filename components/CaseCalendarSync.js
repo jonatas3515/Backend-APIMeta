@@ -38,8 +38,28 @@ export default function CaseCalendarSync({ eventId, table = 'cases', deadlineDat
     return () => { mounted = false; };
   }, [eventId, table]);
 
-  const handleConnect = () => {
-    window.location.href = '/api/calendar-integrations/connect?provider=google';
+  const handleConnect = async () => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const headers = await getAuthHeaders();
+      const { data } = await axios.post(
+        '/api/calendar-integrations/connect',
+        { provider: 'google' },
+        { headers }
+      );
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        setMessage({ type: 'error', text: 'Não foi possível iniciar a conexão com o Google Calendar' });
+      }
+    } catch (err) {
+      const text = err.response?.data?.error || err.message || 'Erro ao conectar Google Calendar';
+      setMessage({ type: 'error', text });
+      console.error('[CASE-CALENDAR-SYNC] Erro ao conectar:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSync = async () => {
