@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import DocumentChecklist from './DocumentChecklist';
+import FeeSimulator from './FeeSimulator';
 
-export default function CaseSidebar({ conversationId }) {
+export default function CaseSidebar({ conversationId, userRole }) {
   const [cases, setCases] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [selectedCaseForChecklist, setSelectedCaseForChecklist] = useState(null);
+  const [selectedCaseForFee, setSelectedCaseForFee] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
     legal_area: '',
@@ -271,6 +273,12 @@ export default function CaseSidebar({ conversationId }) {
                       >
                         📎 Documentos
                       </button>
+                      <button
+                        onClick={() => setSelectedCaseForFee(caseItem)}
+                        className="flex-1 px-2 py-1 bg-white border border-green-300 text-green-700 rounded text-xs hover:bg-green-50"
+                      >
+                        💰 Honorários
+                      </button>
                     </div>
 
                     <select
@@ -299,6 +307,23 @@ export default function CaseSidebar({ conversationId }) {
           caseItem={selectedCaseForChecklist}
           onClose={() => setSelectedCaseForChecklist(null)}
         />
+      )}
+
+      {selectedCaseForFee && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="font-bold text-lg">Simulador de Honorários</h3>
+              <button
+                onClick={() => setSelectedCaseForFee(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <FeeSimulator caseId={selectedCaseForFee.id} caseData={selectedCaseForFee} userRole={userRole} />
+          </div>
+        </div>
       )}
     </div>
   );

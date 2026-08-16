@@ -8,6 +8,7 @@ import { LEGAL_AREAS } from '../lib/legalAreas';
 import ExportButtons from './ExportButtons';
 import { exportCasesExcel } from '../lib/export';
 import CaseCalendarSync from './CaseCalendarSync';
+import FeeSimulator from './FeeSimulator';
 
 export default function CasesPanel() {
   const router = useRouter();
@@ -30,6 +31,7 @@ export default function CasesPanel() {
   const [showForm, setShowForm] = useState(false);
   const [editingCase, setEditingCase] = useState(null);
   const [selectedCase, setSelectedCase] = useState(null);
+  const [feeCase, setFeeCase] = useState(null);
   const [formData, setFormData] = useState({
     conversation_id: '',
     title: '',
@@ -523,6 +525,12 @@ export default function CasesPanel() {
                         Editar
                       </button>
                       <button
+                        onClick={() => setFeeCase(caseItem)}
+                        className="px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                      >
+                        💰 Honorários
+                      </button>
+                      <button
                         onClick={() => handleDeleteCase(caseItem.id)}
                         className="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
                       >
@@ -534,6 +542,18 @@ export default function CasesPanel() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {feeCase && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="font-bold text-lg">Simulador de Honorários</h3>
+              <button onClick={() => setFeeCase(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <FeeSimulator caseId={feeCase.id} caseData={feeCase} userRole={profile?.role} />
+          </div>
         </div>
       )}
     </div>
