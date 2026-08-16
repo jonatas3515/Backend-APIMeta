@@ -38,7 +38,9 @@ export default function CaseCalendarSync({ eventId, table = 'cases', deadlineDat
     return () => { mounted = false; };
   }, [eventId, table]);
 
-  if (!connected) return null;
+  const handleConnect = () => {
+    window.location.href = '/api/calendar-integrations/connect?provider=google';
+  };
 
   const handleSync = async () => {
     if (!eventId) return;
@@ -111,7 +113,15 @@ export default function CaseCalendarSync({ eventId, table = 'cases', deadlineDat
     <div className="inline-flex flex-col gap-1">
       <div className="flex items-center gap-2 text-xs">
         <span className="text-gray-500">📅 {statusLabel}</span>
-        {isSynced ? (
+        {!connected ? (
+          <button
+            onClick={handleConnect}
+            className="text-blue-600 hover:text-blue-800 font-medium"
+            title="Conectar Google Calendar para sincronizar"
+          >
+            Conectar Google Calendar
+          </button>
+        ) : isSynced ? (
           <>
             <button
               onClick={handleSync}
