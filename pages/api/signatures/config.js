@@ -1,6 +1,5 @@
-import { supabase } from '../../../lib/supabaseClient';
+import { supabaseAdmin } from '../../../lib/auth';
 import { encrypt, decrypt } from '../../../lib/encryption';
-import { getAuthHeaders } from '../../../lib/api';
 
 export default async function handler(req, res) {
   try {
@@ -12,28 +11,30 @@ export default async function handler(req, res) {
     }
 
     // Verifica autenticação
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !user) {
       return res.status(401).json({ error: 'Token inválido' });
     }
 
     // Verifica se é admin
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('users')
-      .select('role')
-      .eq('id', user.id)
+      .select('id, role')
+      .eq('auth_user_id', user.id)
       .single();
 
     if (profileError || profile?.role !== 'admin') {
       return res.status(403).json({ error: 'Apenas administradores podem configurar assinatura' });
     }
 
+    const userId = profile.id;
+
     if (req.method === 'GET') {
-      return handleGet(user.id, res);
+      return handleGet(userId, res);
     } else if (req.method === 'PATCH') {
-      return handlePatch(user.id, req.body, res);
+      return handlePatch(userId, req.body, res);
     } else if (req.method === 'POST') {
-      return handlePost(user.id, req.body, res);
+      return handlePost(userId, req.body, res);
     } else {
       return res.status(405).json({ error: 'Método não permitido' });
     }
@@ -45,7 +46,7 @@ export default async function handler(req, res) {
 
 async function handleGet(userId, res) {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('signature_integration_config')
       .select('id, platform, is_active, tested_at, test_status, test_error')
       .eq('user_id', userId)
@@ -76,7 +77,7 @@ async function handlePatch(userId, body, res) {
     const api_secret_encrypted = api_secret ? encrypt(api_secret) : null;
 
     // Atualiza ou insere configuração
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('signature_integration_config')
       .upsert({
         user_id: userId,
@@ -116,7 +117,7 @@ async function handlePost(userId, body, res) {
     }
 
     // Busca configuração
-    const { data: config, error: configError } = await supabase
+    const { data: config, error: configError } = await supabaseAdmin
       .from('signature_integration_config')
       .select('*')
       .eq('user_id', userId)
@@ -157,7 +158,7 @@ async function testZapsignConnection(apiKey, configId, res) {
     const testError = isSuccess ? null : `HTTP ${response.status}`;
 
     // Atualiza status do teste
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('signature_integration_config')
       .update({
         tested_at: new Date().toISOString(),
