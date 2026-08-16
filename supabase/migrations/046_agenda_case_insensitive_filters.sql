@@ -6,9 +6,13 @@
 -- 'trabalhista' no filtro.
 -- ============================================================================
 
+-- View não contém dados próprios; recriar é seguro
+DROP FUNCTION IF EXISTS get_agenda(DATE, DATE, VARCHAR, VARCHAR, VARCHAR, VARCHAR);
+DROP VIEW IF EXISTS agenda_consolidada;
+
 GRANT SELECT ON public.agenda_consolidada TO anon, authenticated;
 
-CREATE OR REPLACE VIEW agenda_consolidada AS
+CREATE VIEW agenda_consolidada AS
 SELECT 
   'case_deadline' as item_type,
   c.id as case_id,
