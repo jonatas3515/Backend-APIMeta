@@ -60,16 +60,20 @@ export default function SignatureSettings() {
       setTesting(integrationId);
       const headers = await getAuthHeaders();
       const integration = integrations.find(i => i.id === integrationId);
-      
-      const { data } = await axios.post('/api/signatures/config', 
-        { platform: integration.platform }, 
+
+      const { data } = await axios.post('/api/signatures/config',
+        { platform: integration.platform },
         { headers }
       );
-      
-      setSuccess(`${integration.platform} conectado com sucesso!`);
+
+      if (data.status === 'success') {
+        setSuccess(data.message || `${integration.platform} conectado com sucesso!`);
+      } else {
+        setError(data.error || data.message || 'Falha ao conectar');
+      }
       fetchIntegrations();
-      
-      setTimeout(() => setSuccess(null), 3000);
+
+      setTimeout(() => { setSuccess(null); setError(null); }, 3000);
     } catch (err) {
       console.error('Erro ao testar:', err);
       setError(err.response?.data?.error || 'Erro ao testar conexão');
