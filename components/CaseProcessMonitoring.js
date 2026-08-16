@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getAuthHeaders } from '../lib/api';
+import { DATAJUD_COURTS, getCourtByCode } from '../lib/datajudCourts';
 
 const FREQUENCY_OPTIONS = [
   { value: 'manual', label: 'Manual' },
@@ -37,12 +38,29 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [courtSearch, setCourtSearch] = useState('');
   const [noteText, setNoteText] = useState('');
   const [eventForm, setEventForm] = useState({ event_date: '', event_time: '', title: '', description: '', priority: 'media' });
   const [activeMovement, setActiveMovement] = useState(null);
 
   const isAdmin = userRole === 'admin';
   const isLawyer = userRole === 'admin' || userRole === 'advogado';
+
+  const filteredByBranch = useMemo(() => {
+    const s = courtSearch.toLowerCase().trim();
+    const filtered = s
+      ? DATAJUD_COURTS.filter((c) =>
+          c.code.toLowerCase().includes(s) ||
+          c.name.toLowerCase().includes(s) ||
+          (c.uf || '').toLowerCase().includes(s)
+        )
+      : DATAJUD_COURTS;
+    return filtered.reduce((acc, c) => {
+      if (!acc[c.branch]) acc[c.branch] = [];
+      acc[c.branch].push(c);
+      return acc;
+    }, {});
+  }, [courtSearch]);
 
   useEffect(() => {
     if (caseId) fetchProcesses();
@@ -245,13 +263,33 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium">Tribunal (sigla, ex: tjsp, trf3, tst)</label>
+              <label className="block text-sm font-medium">Tribunal</label>
               <input
+                value={courtSearch}
+                onChange={(e) => setCourtSearch(e.target.value)}
+                placeholder="Buscar por sigla, nome ou UF"
+                className="w-full px-3 py-2 border rounded mb-1"
+              />
+              <select
                 value={form.court_code}
                 onChange={(e) => setForm({ ...form, court_code: e.target.value })}
-                placeholder="tjsp"
                 className="w-full px-3 py-2 border rounded"
-              />
+                required
+              >
+                <option value="">Selecione o tribunal...</option>
+                {Object.entries(filteredByBranch).map(([branch, courts]) => (
+                  <optgroup key={branch} label={branch}>
+                    {courts.map((c) => (
+                      <option key={c.code} value={c.code}>{c.code} — {c.name}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              {form.court_code && (
+                <p className="text-xs text-green-700 mt-1">
+                  Selecionado: {getCourtByCode(form.court_code)?.code} — {getCourtByCode(form.court_code)?.name}
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium">Polo do cliente</label>
@@ -303,7 +341,7 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
                     <span className="font-mono font-medium">{formatCNJ(p.process_number)}</span>
                     <span className="text-xs px-2 py-0.5 rounded bg-gray-200">{p.monitoring_status}</span>
                   </div>
-                  <div className="text-sm text-gray-600">{p.court_code?.toUpperCase()} {p.is_primary && '• Principal'}</div>
+                  <div className="text-sm text-gray-600">{p.court_name || p.court_code?.toUpperCase()} {p.is_primary && '• Principal'}</div>
                   <div className="text-xs text-gray-500">Última consulta: {p.last_checked_at ? new Date(p.last_checked_at).toLocaleString('pt-BR') : '—'}</div>
                   <div className="mt-2 flex gap-2">
                     <button

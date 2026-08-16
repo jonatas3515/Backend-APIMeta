@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
 import { validateAndNormalizeCNJ, resolveDataJudAlias } from '@/lib/datajudClient';
+import { getCourtByCode } from '@/lib/datajudCourts';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -83,8 +84,8 @@ async function handlePost(req, res) {
     observation
   } = req.body;
 
-  if (!case_id || !process_number) {
-    return res.status(400).json({ error: 'case_id e process_number são obrigatórios' });
+  if (!case_id || !process_number || !court_code) {
+    return res.status(400).json({ error: 'case_id, process_number e court_code são obrigatórios' });
   }
 
   const validation = validateAndNormalizeCNJ(process_number);
@@ -92,10 +93,12 @@ async function handlePost(req, res) {
     return res.status(400).json({ error: validation.error });
   }
 
-  const aliasRes = resolveDataJudAlias(court_code || datajud_alias);
+  const aliasRes = resolveDataJudAlias(court_code);
   if (!aliasRes.ok) {
     return res.status(400).json({ error: aliasRes.error });
   }
+
+  const court = getCourtByCode(court_code);
 
   try {
     const insertData = {
@@ -103,9 +106,9 @@ async function handlePost(req, res) {
       process_number: validation.formatted,
       process_number_normalized: validation.normalized,
       court_code: (court_code || '').toLowerCase(),
-      court_name: court_name || null,
+      court_name: court_name || court?.name || null,
+      branch: branch || court?.branch || null,
       datajud_alias: aliasRes.alias,
-      branch: branch || null,
       instance: instance || null,
       court_unit: court_unit || null,
       case_class: case_class || null,
@@ -151,6 +154,18 @@ async function handlePatch(req, res) {
   const update = {};
   for (const key of allowed) {
     if (req.body[key] !== undefined) update[key] = req.body[key];
+  }
+
+  if (update.court_code !== undefined && update.court_code !== null) {
+    const aliasRes = resolveDataJudAlias(update.court_code);
+    if (!aliasRes.ok) {
+      return res.status(400).json({ error: aliasRes.error });
+    }
+    const court = getCourtByCode(update.court_code);
+    update.court_code = String(update.court_code).toLowerCase();
+    update.datajud_alias = aliasRes.alias;
+    update.court_name = update.court_name !== undefined && update.court_name !== null ? update.court_name : (court?.name || null);
+    update.branch = update.branch !== undefined && update.branch !== null ? update.branch : (court?.branch || null);
   }
 
   if (Object.keys(update).length === 0) {
