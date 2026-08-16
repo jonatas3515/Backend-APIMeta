@@ -14,6 +14,7 @@ import CasesPanel from '../components/CasesPanel';
 import DocumentTemplatesManager from '../components/DocumentTemplatesManager';
 import LegalRoutinesManager from '../components/LegalRoutinesManager';
 import CaseInsightsPanel from '../components/CaseInsightsPanel';
+import FeeServiceAdmin from '../components/FeeServiceAdmin';
 import Login from '../components/Login';
 import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
@@ -452,6 +453,8 @@ export default function Home() {
             <CaseInsightsPanel />
           ) : activeTab === 'metrics' ? (
             <MetricsDashboard conversations={conversations} />
+          ) : activeTab === 'fee-services' ? (
+            <FeeServiceAdmin />
           ) : activeTab === 'profile' ? (
             <ProfilePanel />
           ) : (
