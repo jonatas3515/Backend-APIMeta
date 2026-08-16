@@ -10,8 +10,6 @@
 DROP FUNCTION IF EXISTS get_agenda(DATE, DATE, VARCHAR, VARCHAR, VARCHAR, VARCHAR);
 DROP VIEW IF EXISTS agenda_consolidada;
 
-GRANT SELECT ON public.agenda_consolidada TO anon, authenticated;
-
 CREATE VIEW agenda_consolidada AS
 SELECT 
   'case_deadline' as item_type,
@@ -137,4 +135,5 @@ $$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION get_agenda IS 'Busca itens da agenda com filtros case-insensitive';
 
+GRANT SELECT ON public.agenda_consolidada TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION get_agenda TO anon, authenticated;
