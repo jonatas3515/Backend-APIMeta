@@ -19,6 +19,7 @@ export default function AgendaPanel() {
   const [showIcal, setShowIcal] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [apiError, setApiError] = useState(null);
+  const [selectedItems, setSelectedItems] = useState(new Set());
   const { selectedArea, setSelectedArea } = useAreaFilter();
   const [filters, setFilters] = useState({
     legal_area: '',
@@ -50,6 +51,7 @@ export default function AgendaPanel() {
   const fetchAgenda = async () => {
     setLoading(true);
     setApiError(null);
+    setSelectedItems(new Set());
     try {
       const params = new URLSearchParams();
       params.append('range', activeTab);
@@ -152,27 +154,74 @@ export default function AgendaPanel() {
     }
   };
 
-  const handleSyncAll = async () => {
-    setSyncing(true);
-    try {
-      const response = await fetch('/api/calendar-integrations/sync-batch', {
-        method: 'POST',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({ provider: 'google', days: 90 })
+  const toggleSelectedItem = (item) => {
+    const key = `${item.item_type}:${item.case_id}`;
+    setSelectedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const handleSyncSelected = async () => {
+    if (selectedItems.size === 0) return;
+
+    // Coleta itens selecionados
+    const selected = [];
+    Object.values(agenda.by_day || {}).forEach((dayItems) => {
+      dayItems.forEach((item) => {
+        const key = `${item.item_type}:${item.case_id}`;
+        if (selectedItems.has(key) && item.item_type === 'case_deadline') {
+          selected.push({ eventId: item.case_id, table: 'cases', title: item.title });
+        }
       });
+    });
 
-      const data = await response.json();
+    if (selected.length === 0) {
+      setApiError('Selecione apenas prazos de casos para sincronização em lote.');
+      return;
+    }
 
-      if (!response.ok) {
-        alert(data.error || 'OAuth não configurado. Disponível na Fase 2.');
-      } else {
-        alert(data.message || 'Sincronização iniciada.');
+    setSyncing(true);
+    setApiError(null);
+    let success = 0;
+    let failed = 0;
+
+    for (const { eventId, table, title } of selected) {
+      try {
+        const headers = await getAuthHeaders();
+        const response = await fetch('/api/calendar-integrations/sync-event', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            event_id: eventId,
+            internal_table: table,
+            provider: 'google',
+            action: 'sync'
+          })
+        });
+
+        if (response.ok) {
+          success++;
+        } else {
+          failed++;
+          console.error(`[AGENDA] Falha ao sincronizar ${title}`);
+        }
+      } catch (error) {
+        failed++;
+        console.error(`[AGENDA] Erro ao sincronizar ${title}:`, error);
       }
-    } catch (error) {
-      console.error('[AGENDA] Erro ao sincronizar:', error);
-      alert('Erro ao sincronizar prazos.');
-    } finally {
-      setSyncing(false);
+    }
+
+    setSyncing(false);
+    setSelectedItems(new Set());
+
+    if (failed > 0) {
+      setApiError(`${success} sincronizado(s), ${failed} falha(s). Verifique a conexão com o Google Calendar.`);
+    } else {
+      setApiError(null);
+      alert(`${success} prazo(s) sincronizado(s) com sucesso.`);
     }
   };
 
@@ -355,12 +404,11 @@ export default function AgendaPanel() {
                   Novo link
                 </button>
                 <button
-                  onClick={handleSyncAll}
-                  disabled
-                  title="Sincronização em lote será implementada em versão futura. Use o botão individual por evento."
-                  className="px-3 py-1.5 text-sm bg-gray-300 text-gray-500 rounded disabled:opacity-50 cursor-not-allowed"
+                  onClick={handleSyncSelected}
+                  disabled={syncing || selectedItems.size === 0}
+                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                 >
-                  Sincronização em lote
+                  {syncing ? 'Sincronizando...' : `Sincronizar selecionados (${selectedItems.size})`}
                 </button>
               </div>
             </div>
@@ -441,28 +489,23 @@ export default function AgendaPanel() {
                         </div>
 
                         <div className="text-right ml-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.has(`${item.item_type}:${item.case_id}`)}
+                            onChange={() => toggleSelectedItem(item)}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mb-2"
+                            title="Selecionar para sincronização em lote"
+                          />
                           <div className="text-lg">{getPriorityIcon(item.priority)}</div>
                           <span className="text-xs font-semibold capitalize">{item.priority}</span>
-                          {item.item_type === 'case_deadline' && item.case_id && (
-                            <div className="mt-2">
-                              <CaseCalendarSync
-                                eventId={item.case_id}
-                                table="cases"
-                                deadlineDate={item.event_date}
-                                title={item.title}
-                              />
-                            </div>
-                          )}
-                          {item.item_type === 'case_event' && item.case_id && (
-                            <div className="mt-2">
-                              <CaseCalendarSync
-                                eventId={item.case_id}
-                                table="case_events"
-                                deadlineDate={item.event_date}
-                                title={item.title}
-                              />
-                            </div>
-                          )}
+                          <div className="mt-2">
+                            <CaseCalendarSync
+                              eventId={item.case_id}
+                              table={item.item_type === 'case_deadline' ? 'cases' : 'case_events'}
+                              deadlineDate={item.event_date}
+                              title={item.title}
+                            />
+                          </div>
                         </div>
                       </div>
                     ))}
