@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getAuthHeaders } from '../lib/api';
-import { supabase } from '../lib/supabaseClient';
 
 export default function SignaturePanel({ caseId, conversationId, onClose }) {
   const [signatures, setSignatures] = useState([]);
@@ -36,25 +35,24 @@ export default function SignaturePanel({ caseId, conversationId, onClose }) {
       }
 
       try {
-        const { data, error: supaError } = await supabase
-          .from('cases')
-          .select('id')
-          .eq('conversation_id', conversationId)
-          .neq('status', 'encerrado')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+        const headers = await getAuthHeaders();
+        const { data } = await axios.get(`/api/cases?conversation_id=${encodeURIComponent(conversationId)}`, { headers });
 
-        if (supaError || !data) {
+        const active = Array.isArray(data)
+          ? data.find(c => c.status !== 'encerrado' && c.status !== 'cancelado')
+          : (data && data.status !== 'encerrado' && data.status !== 'cancelado' ? data : null);
+
+        if (!active) {
           setResolvedCaseId(null);
           setCaseSearchError('Vincule ou crie um caso para esta conversa antes de enviar documentos para assinatura.');
         } else {
-          setResolvedCaseId(data.id);
+          setResolvedCaseId(active.id);
           setCaseSearchError(null);
         }
       } catch (err) {
         setResolvedCaseId(null);
         setCaseSearchError('Erro ao buscar caso vinculado.');
+        console.error('[SIGNATURE-PANEL] Erro ao buscar caso:', err);
       } finally {
         setLoading(false);
       }

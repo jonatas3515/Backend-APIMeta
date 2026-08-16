@@ -356,10 +356,11 @@ export default function AgendaPanel() {
                 </button>
                 <button
                   onClick={handleSyncAll}
-                  disabled={syncing}
-                  className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                  disabled
+                  title="Sincronização em lote será implementada em versão futura. Use o botão individual por evento."
+                  className="px-3 py-1.5 text-sm bg-gray-300 text-gray-500 rounded disabled:opacity-50 cursor-not-allowed"
                 >
-                  {syncing ? 'Sincronizando...' : 'Sincronizar todos os prazos'}
+                  Sincronização em lote
                 </button>
               </div>
             </div>
