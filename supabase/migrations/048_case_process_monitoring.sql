@@ -96,8 +96,17 @@ ALTER TABLE public.case_processes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.process_movements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.process_query_logs ENABLE ROW LEVEL SECURITY;
 
+-- Idempotência: remove políticas se existirem
+DROP POLICY IF EXISTS case_processes_select ON public.case_processes;
+DROP POLICY IF EXISTS case_processes_insert ON public.case_processes;
+DROP POLICY IF EXISTS case_processes_update ON public.case_processes;
+DROP POLICY IF EXISTS case_processes_delete ON public.case_processes;
+DROP POLICY IF EXISTS process_movements_select ON public.process_movements;
+DROP POLICY IF EXISTS process_movements_update ON public.process_movements;
+DROP POLICY IF EXISTS process_query_logs_select ON public.process_query_logs;
+
 -- case_processes: usuários veem processos dos casos aos quais têm acesso
-CREATE POLICY IF NOT EXISTS case_processes_select
+CREATE POLICY case_processes_select
   ON public.case_processes
   FOR SELECT
   TO authenticated
@@ -114,7 +123,7 @@ CREATE POLICY IF NOT EXISTS case_processes_select
     )
   );
 
-CREATE POLICY IF NOT EXISTS case_processes_insert
+CREATE POLICY case_processes_insert
   ON public.case_processes
   FOR INSERT
   TO authenticated
@@ -131,7 +140,7 @@ CREATE POLICY IF NOT EXISTS case_processes_insert
     )
   );
 
-CREATE POLICY IF NOT EXISTS case_processes_update
+CREATE POLICY case_processes_update
   ON public.case_processes
   FOR UPDATE
   TO authenticated
@@ -148,7 +157,7 @@ CREATE POLICY IF NOT EXISTS case_processes_update
     )
   );
 
-CREATE POLICY IF NOT EXISTS case_processes_delete
+CREATE POLICY case_processes_delete
   ON public.case_processes
   FOR DELETE
   TO authenticated
@@ -160,7 +169,7 @@ CREATE POLICY IF NOT EXISTS case_processes_delete
   );
 
 -- process_movements
-CREATE POLICY IF NOT EXISTS process_movements_select
+CREATE POLICY process_movements_select
   ON public.process_movements
   FOR SELECT
   TO authenticated
@@ -178,7 +187,7 @@ CREATE POLICY IF NOT EXISTS process_movements_select
     )
   );
 
-CREATE POLICY IF NOT EXISTS process_movements_update
+CREATE POLICY process_movements_update
   ON public.process_movements
   FOR UPDATE
   TO authenticated
@@ -196,7 +205,7 @@ CREATE POLICY IF NOT EXISTS process_movements_update
   );
 
 -- process_query_logs: somente leitura
-CREATE POLICY IF NOT EXISTS process_query_logs_select
+CREATE POLICY process_query_logs_select
   ON public.process_query_logs
   FOR SELECT
   TO authenticated
