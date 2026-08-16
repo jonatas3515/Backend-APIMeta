@@ -9,6 +9,7 @@ import ExportButtons from './ExportButtons';
 import { exportCasesExcel } from '../lib/export';
 import CaseCalendarSync from './CaseCalendarSync';
 import FeeSimulator from './FeeSimulator';
+import CaseProcessMonitoring from './CaseProcessMonitoring';
 
 export default function CasesPanel() {
   const router = useRouter();
@@ -32,6 +33,7 @@ export default function CasesPanel() {
   const [editingCase, setEditingCase] = useState(null);
   const [selectedCase, setSelectedCase] = useState(null);
   const [feeCase, setFeeCase] = useState(null);
+  const [processCase, setProcessCase] = useState(null);
   const [formData, setFormData] = useState({
     conversation_id: '',
     title: '',
@@ -531,6 +533,12 @@ export default function CasesPanel() {
                         💰 Honorários
                       </button>
                       <button
+                        onClick={() => setProcessCase(caseItem)}
+                        className="px-2 py-1 bg-indigo-500 text-white rounded text-sm hover:bg-indigo-600"
+                      >
+                        ⚖️ Processo
+                      </button>
+                      <button
                         onClick={() => handleDeleteCase(caseItem.id)}
                         className="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
                       >
@@ -553,6 +561,18 @@ export default function CasesPanel() {
               <button onClick={() => setFeeCase(null)} className="text-gray-500 hover:text-gray-700">✕</button>
             </div>
             <FeeSimulator caseId={feeCase.id} caseData={feeCase} userRole={profile?.role} />
+          </div>
+        </div>
+      )}
+
+      {processCase && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="font-bold text-lg">Monitoramento Processual</h3>
+              <button onClick={() => setProcessCase(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <CaseProcessMonitoring caseId={processCase.id} userRole={profile?.role} />
           </div>
         </div>
       )}
