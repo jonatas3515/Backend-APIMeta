@@ -262,9 +262,6 @@ CREATE TRIGGER process_movements_updated_at
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.case_processes TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON public.process_movements TO authenticated;
 GRANT SELECT, INSERT ON public.process_query_logs TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE public.case_processes_id_seq TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE public.process_movements_id_seq TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE public.process_query_logs_id_seq TO authenticated;
 
 -- ============================================================================
 -- FIM
