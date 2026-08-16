@@ -234,11 +234,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER IF NOT EXISTS case_processes_updated_at
+DROP TRIGGER IF EXISTS case_processes_updated_at ON public.case_processes;
+CREATE TRIGGER case_processes_updated_at
   BEFORE UPDATE ON public.case_processes
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS process_movements_updated_at
+DROP TRIGGER IF EXISTS process_movements_updated_at ON public.process_movements;
+CREATE TRIGGER process_movements_updated_at
   BEFORE UPDATE ON public.process_movements
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
