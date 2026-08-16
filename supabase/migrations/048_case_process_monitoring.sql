@@ -114,7 +114,10 @@ CREATE POLICY case_processes_select
     EXISTS (
       SELECT 1 FROM public.cases c
       WHERE c.id = case_processes.case_id
-      AND (c.assigned_user_id = auth.uid() OR c.created_by = auth.uid() OR c.responsible_id = auth.uid())
+      AND EXISTS (
+        SELECT 1 FROM public.users u
+        WHERE u.auth_user_id = auth.uid() AND u.id = c.assigned_user_id
+      )
     )
     OR
     EXISTS (
@@ -131,7 +134,10 @@ CREATE POLICY case_processes_insert
     EXISTS (
       SELECT 1 FROM public.cases c
       WHERE c.id = case_processes.case_id
-      AND (c.assigned_user_id = auth.uid() OR c.created_by = auth.uid() OR c.responsible_id = auth.uid())
+      AND EXISTS (
+        SELECT 1 FROM public.users u
+        WHERE u.auth_user_id = auth.uid() AND u.id = c.assigned_user_id
+      )
     )
     OR
     EXISTS (
@@ -178,7 +184,10 @@ CREATE POLICY process_movements_select
       SELECT 1 FROM public.case_processes cp
       JOIN public.cases c ON c.id = cp.case_id
       WHERE cp.id = process_movements.case_process_id
-      AND (c.assigned_user_id = auth.uid() OR c.created_by = auth.uid() OR c.responsible_id = auth.uid())
+      AND EXISTS (
+        SELECT 1 FROM public.users u
+        WHERE u.auth_user_id = auth.uid() AND u.id = c.assigned_user_id
+      )
     )
     OR
     EXISTS (
@@ -214,7 +223,10 @@ CREATE POLICY process_query_logs_select
       SELECT 1 FROM public.case_processes cp
       JOIN public.cases c ON c.id = cp.case_id
       WHERE cp.id = process_query_logs.case_process_id
-      AND (c.assigned_user_id = auth.uid() OR c.created_by = auth.uid() OR c.responsible_id = auth.uid())
+      AND EXISTS (
+        SELECT 1 FROM public.users u
+        WHERE u.auth_user_id = auth.uid() AND u.id = c.assigned_user_id
+      )
     )
     OR
     EXISTS (
