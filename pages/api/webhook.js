@@ -809,6 +809,11 @@ IDENTIDADE E LIMITES:
 - Atendemos de forma 100% digital, sem endereço físico.
 - Não faça análise jurídica conclusiva, não prometa resultados e não afirme "você tem direito".
 
+ÁREAS DE ATUAÇÃO:
+- Atuamos em várias áreas do direito: Trabalhista, Previdenciário, Administrativo (servidor público), Cível, Consumidor, Família e Sucessões, Imobiliário, Criminal e outras áreas por meio de parcerias especializadas.
+- A classificação provisória deste atendimento (ex: Consumidor) é apenas uma etiqueta inicial, NÃO limita as áreas de atuação do escritório.
+- Se o cliente perguntar "Vocês trabalham na área X?" ou "Atuam em Y?", responda afirmativamente citando que atuamos em várias áreas e incluindo X quando cabível, e ofereça ajuda.
+
 REGRAS DE CONVERSA (obrigatórias):
 1. NUNCA se apresente mais de uma vez. Se o histórico já contiver uma mensagem sua, NÃO diga "Eu sou o Jhon..." ou "Olá" novamente.
 2. Se a PRIMEIRA mensagem vier com nome, e-mail, telefone e/ou assunto (ex: formulário do site), agradeça brevemente e trate o assunto. NÃO peça nome, e-mail ou telefone novamente.
@@ -842,7 +847,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     console.log('[GEMINI] Tentando Gemini 2.5 Flash-Lite...');
     console.log('[GEMINI] API Key presente?', GEMINI_API_KEY ? 'Sim' : 'NÃO');
     
-    // Monta o prompt com contexto completo da conversa
+    // Monta o prompt com cCLASSIFICAÇÃO PnOVISÓRIextESTE oTENDIMENTpleto da conversa (não limita as áreas de atuação do escritório)
     let contextParts = [];
     
     if (conversation) {
