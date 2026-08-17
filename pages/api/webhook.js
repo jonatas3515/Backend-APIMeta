@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { detectArea, getNextQuestion, isIntakeComplete, getFlow, getTriageQuestion, TRIAGE_FIELDS } from '../../lib/intakeFlows';
 import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
 import { normalizePhoneForMatch } from '../../lib/formatters';
+import { loadClientMemory, formatClientMemory } from '../../lib/clientMemory';
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
@@ -321,8 +322,12 @@ export default async function handler(req, res) {
         }
       }
 
+      // Carregar memória do cliente para contexto
+      const clientMemory = await loadClientMemory(conversation.id, from);
+      const clientMemoryText = formatClientMemory(clientMemory);
+
       // Chamar Gemini com await (timeout de 15s)
-      const aiReply = await askGemini(promptForAI, conversationHistory, conversation);
+      const aiReply = await askGemini(promptForAI, conversationHistory, conversation, clientMemoryText);
       console.log(`[WEBHOOK] ✅ Resposta da IA: ${aiReply?.substring(0, 100)}`);
 
       // Detectar se precisa de atendimento humano
@@ -823,7 +828,7 @@ LEMBRETE FINAL:
 - Não ofereça nosso telefone sem ser solicitado explicitamente.
 - Responda APENAS ao que foi perguntado, sem informações extras.`;
 
-async function askGemini(prompt, conversationHistory = '', conversation = null) {
+async function askGemini(prompt, conversationHistory = '', conversation = null, clientMemoryText = '') {
   try {
     console.log('[GEMINI] Tentando Gemini 2.5 Flash-Lite...');
     console.log('[GEMINI] API Key presente?', GEMINI_API_KEY ? 'Sim' : 'NÃO');
@@ -850,6 +855,10 @@ async function askGemini(prompt, conversationHistory = '', conversation = null) 
       ? `CONTEXTO ATUAL DO ATENDIMENTO:\n${contextParts.join('\n')}\n\n` 
       : '';
     
+    const memoryBlock = clientMemoryText
+      ? `${clientMemoryText}\n\n`
+      : '';
+    
     const historyBlock = conversationHistory 
       ? `HISTÓRICO DAS ÚLTIMAS 24H (MAIS RECENTES POR ÚLTIMO):\n${conversationHistory}\n\n` 
       : '';
@@ -859,7 +868,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null) 
       ? 'Se possível, agradeça e seja objetivo. Pode usar uma saudação inicial muito breve APENAS se a mensagem não envolver cobrança, boleto, CNPJ ou "Neves Costa".'
       : 'O histórico já existe. NÃO se apresente, NÃO diga "Olá" e NÃO cumprimente novamente.';
 
-    const fullPrompt = `${contextBlock}${historyBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- Se a mensagem mencionar boleto, cobrança, negociação, CNPJ, "Neves Costa" (sem &), consórcio, financiamento, dívida, banco ou "outro escritório", o esclarecimento da confusão é a prioridade máxima, sem passar nosso telefone.\n- Não peça nome, e-mail ou telefone que já estiverem no histórico ou no contexto.\n- Responda como Jhon, 1-3 frases, sem listas, sem telefone a menos que o cliente peça explicitamente.`;
+    const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- Baseie sua resposta APENAS nas informações do contexto e memória. Se a informação não constar, responda "Não tenho essa informação no momento."\n- Se a mensagem mencionar boleto, cobrança, negociação, CNPJ, "Neves Costa" (sem &), consórcio, financiamento, dívida, banco ou "outro escritório", o esclarecimento da confusão é a prioridade máxima, sem passar nosso telefone.\n- Não peça nome, e-mail ou telefone que já estiverem no histórico, contexto ou memória.\n- Responda como Jhon, 1-3 frases, sem listas, sem telefone a menos que o cliente peça explicitamente.`;
     
     const controller = new AbortController();
     const timeout = setTimeout(() => {
@@ -903,8 +912,8 @@ async function askGemini(prompt, conversationHistory = '', conversation = null) 
     console.log('[GEMINI] Tentando Gemini 3.1 Flash-Lite (fallback)...');
     // Fallback recebe o mesmo fullPrompt para manter contexto
     const fullPrompt = conversationHistory 
-      ? `HISTÓRICO DA CONVERSA:\n${conversationHistory}\n\nNOVA MENSAGEM DO CLIENTE: ${prompt}`
-      : prompt;
+      ? `${clientMemoryText ? clientMemoryText + '\n\n' : ''}HISTÓRICO DA CONVERSA:\n${conversationHistory}\n\nNOVA MENSAGEM DO CLIENTE: ${prompt}`
+      : (clientMemoryText ? clientMemoryText + '\n\nNOVA MENSAGEM DO CLIENTE: ' + prompt : prompt);
     
     const response = await fetch(GEMINI_API_URL_FALLBACK, {
       method: 'POST',
