@@ -385,6 +385,15 @@ async function handleIntake(conversation, clientMessage) {
   let triage = intakeData.triage || {};
   let currentStep = parseInt(intakeData.current_step || -1);
 
+  // Ignorar saudações e perguntas que não respondem a triagem/intake
+  const GREETINGS = ['bom dia', 'boa tarde', 'boa noite', 'oi', 'olá', 'ola', 'opa', 'e aí', 'e ai', 'eae', 'tudo bem', 'tudo certo', 'tudo bom', 'tudo joia', 'beleza', 'blz'];
+  const isGreeting = GREETINGS.some(g => msg.startsWith(g));
+  const isQuestion = msg.includes('?');
+  if (isGreeting || isQuestion) {
+    console.log('[INTAKE] Ignorando mensagem fora de contexto:', clientMessage);
+    return null;
+  }
+
   console.log('[INTAKE] Estado:', {
     conversationId: conversation.id,
     legal_area: currentArea,
