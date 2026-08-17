@@ -281,12 +281,14 @@ export default async function handler(req, res) {
       if (conversation && supabase) {
         // Pega mensagens das últimas 24h ou até 50 mensagens (o que for maior)
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { data: messages } = await supabase
+        const { data: messages, error: historyError } = await supabase
           .from('messages')
           .select('text, sender_type, created_at')
           .eq('conversation_id', conversation.id)
-          .or(`created_at.gte.${oneDayAgo}, and()`)  // mensagens das últimas 24h
+          .gte('created_at', oneDayAgo)  // mensagens das últimas 24h
           .order('created_at', { ascending: true });
+        
+        if (historyError) console.error('[WEBHOOK] Erro ao buscar histórico:', historyError);
         
         // Limita a 50 mensagens mais recentes se houver muitas
         const recentMessages = messages?.slice(-50) || [];
@@ -839,6 +841,8 @@ ENCAMINHAMENTO HUMANO:
 
 LEMBRETE FINAL:
 - Não se apresente se já houver resposta sua no histórico.
+- NUNCA diga "Olá", "Oi" ou "Bom dia" após a primeira mensagem. Responda diretamente ao assunto.
+- Fale sempre como Jhon, em primeira pessoa. Use "posso", "nosso escritório". Evite "podemos" genérico.
 - Não ofereça nosso telefone sem ser solicitado explicitamente.
 - Responda APENAS ao que foi perguntado, sem informações extras.`;
 
@@ -876,8 +880,8 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     
     const firstTurn = !conversationHistory || conversationHistory.trim() === '';
     const noRepeatRule = firstTurn
-      ? 'Se possível, agradeça e seja objetivo. Pode usar uma saudação inicial muito breve APENAS se a mensagem não envolver cobrança, boleto, CNPJ ou "Neves Costa".'
-      : 'O histórico já existe. NÃO se apresente, NÃO diga "Olá" e NÃO cumprimente novamente.';
+      ? 'Seja objetivo. Só cumprimente se a PRIMEIRA mensagem do cliente for uma saudação (oi, olá, bom dia). Se ela já perguntar ou apresentar um caso, NÃO diga "Olá" nem "Em que posso ajudar?".'
+      : 'O histórico já existe. NÃO se apresente, NÃO diga "Olá", "Oi" ou "Bom dia" em nenhuma circunstância. Responda DIRETAMENTE ao assunto.';
 
     const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- Responda DIRETAMENTE à NOVA MENSAGEM do cliente, usando o contexto e a memória apenas como referência. Não fique preso a uma informação anterior se o cliente mudou de assunto.\n- Se a mensagem mencionar boleto, cobrança, negociação, CNPJ, "Neves Costa" (sem &), consórcio, financiamento, dívida, banco ou "outro escritório", o esclarecimento da confusão é a prioridade máxima, sem passar nosso telefone.\n- Não peça nome, e-mail ou telefone que já estiverem no histórico, contexto ou memória.\n- Responda como Jhon, 1-3 frases, sem listas, sem telefone a menos que o cliente peça explicitamente.`;
     
