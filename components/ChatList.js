@@ -195,7 +195,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
                     </div>
                   )}
                   <p className="text-xs text-nc-text-secondary truncate">
-                    {conv.messages?.[0]?.text || 'Sem mensagens'}
+                    {conv.messages?.[conv.messages?.length - 1]?.text || 'Sem mensagens'}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
