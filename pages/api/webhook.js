@@ -100,6 +100,7 @@ export default async function handler(req, res) {
 
       const message = messages[0];
       const from = message.from;
+      const waMessageId = message.id;
       const messageType = message.type;
       const clientName = value.contacts?.[0]?.profile?.name || 'Cliente';
       
@@ -127,6 +128,21 @@ export default async function handler(req, res) {
       }
 
       console.log(`[WEBHOOK] De: ${from}, Tipo: ${messageType}, Texto: ${textBody}, Nome: ${clientName}`);
+
+      // Evitar reprocessar mensagem já processada (retentativas do WhatsApp)
+      if (supabase && waMessageId) {
+        const { data: existing } = await supabase
+          .from('messages')
+          .select('id')
+          .eq('wa_message_id', waMessageId)
+          .eq('direction', 'inbound')
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          console.log(`[WEBHOOK] ⚠️ Mensagem ${waMessageId} já processada, ignorando.`);
+          return res.status(200).json({ success: true, duplicate: true });
+        }
+      }
 
       if (!from) {
         console.log('[WEBHOOK] ⚠️ Mensagem sem "from"');
@@ -225,7 +241,7 @@ export default async function handler(req, res) {
 
       // Salvar mensagem do cliente (mídia vai para processamento assíncrono)
       if (conversation) {
-        const savedMessage = await saveMessage(conversation.id, textBody, 'client', messageType, publicUrl, '', { media_status: mediaStatus || undefined });
+        const savedMessage = await saveMessage(conversation.id, textBody, 'client', messageType, publicUrl, '', { media_status: mediaStatus || undefined }, waMessageId);
         
         // Sugerir marcação de documento no checklist
         if (publicUrl && (messageType === 'image' || messageType === 'document' || messageType === 'video' || messageType === 'audio')) {
@@ -697,7 +713,7 @@ async function getOrCreateConversation(phoneNumber, clientName) {
 }
 
 // Função para salvar mensagem
-async function saveMessage(conversationId, text, sender, messageType = 'text', mediaUrl = '', mediaSummary = '', extraData = {}) {
+async function saveMessage(conversationId, text, sender, messageType = 'text', mediaUrl = '', mediaSummary = '', extraData = {}, waMessageId = null) {
   if (!supabase || !conversationId) {
     console.warn('[SUPABASE] Cliente não configurado ou conversa inválida');
     return null;
@@ -713,7 +729,8 @@ async function saveMessage(conversationId, text, sender, messageType = 'text', m
       text,
       sender_type: senderType,
       direction: direction,
-      content_type: messageType
+      content_type: messageType,
+      wa_message_id: waMessageId || undefined
     };
 
     if (mediaUrl) insertData.media_url = mediaUrl;
