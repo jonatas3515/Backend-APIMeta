@@ -847,13 +847,10 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     console.log('[GEMINI] Tentando Gemini 2.5 Flash-Lite...');
     console.log('[GEMINI] API Key presente?', GEMINI_API_KEY ? 'Sim' : 'NÃO');
     
-    // Monta o prompt com cCLASSIFICAÇÃO PnOVISÓRIextESTE oTENDIMENTpleto da conversa (não limita as áreas de atuação do escritório)
+    // Monta o prompt com contexto completo da conversa
     let contextParts = [];
     
     if (conversation) {
-      if (conversation.legal_area) {
-        contextParts.push(`ÁREA DO CASO: ${conversation.legal_area}`);
-      }
       if (conversation.case_summary) {
         contextParts.push(`RESUMO DO CASO: ${conversation.case_summary}`);
       }
@@ -882,7 +879,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
       ? 'Se possível, agradeça e seja objetivo. Pode usar uma saudação inicial muito breve APENAS se a mensagem não envolver cobrança, boleto, CNPJ ou "Neves Costa".'
       : 'O histórico já existe. NÃO se apresente, NÃO diga "Olá" e NÃO cumprimente novamente.';
 
-    const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- Baseie sua resposta APENAS nas informações do contexto e memória. Se a informação não constar, responda "Não tenho essa informação no momento."\n- Se a mensagem mencionar boleto, cobrança, negociação, CNPJ, "Neves Costa" (sem &), consórcio, financiamento, dívida, banco ou "outro escritório", o esclarecimento da confusão é a prioridade máxima, sem passar nosso telefone.\n- Não peça nome, e-mail ou telefone que já estiverem no histórico, contexto ou memória.\n- Responda como Jhon, 1-3 frases, sem listas, sem telefone a menos que o cliente peça explicitamente.`;
+    const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- Responda DIRETAMENTE à NOVA MENSAGEM do cliente, usando o contexto e a memória apenas como referência. Não fique preso a uma informação anterior se o cliente mudou de assunto.\n- Se a mensagem mencionar boleto, cobrança, negociação, CNPJ, "Neves Costa" (sem &), consórcio, financiamento, dívida, banco ou "outro escritório", o esclarecimento da confusão é a prioridade máxima, sem passar nosso telefone.\n- Não peça nome, e-mail ou telefone que já estiverem no histórico, contexto ou memória.\n- Responda como Jhon, 1-3 frases, sem listas, sem telefone a menos que o cliente peça explicitamente.`;
     
     const controller = new AbortController();
     const timeout = setTimeout(() => {
