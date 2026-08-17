@@ -388,7 +388,7 @@ async function handleIntake(conversation, clientMessage) {
   let currentStep = parseInt(intakeData.current_step || -1);
 
   // Ignorar saudações e perguntas que não respondem a triagem/intake
-  const GREETINGS = ['bom dia', 'boa tarde', 'boa noite', 'oi', 'olá', 'ola', 'opa', 'e aí', 'e ai', 'eae', 'tudo bem', 'tudo certo', 'tudo bom', 'tudo joia', 'beleza', 'blz'];
+  const GREETINGS = ['bom dia', 'boa tarde', 'boa noite', 'oi', 'olá', 'ola', 'opa', 'e aí', 'e ai', 'eae', 'tudo bem', 'tudo certo', 'tudo bom', 'tudo joia'];
   const isGreeting = GREETINGS.some(g => msg.startsWith(g));
   const isQuestion = msg.includes('?');
   if (isGreeting || isQuestion) {
@@ -467,18 +467,14 @@ async function handleIntake(conversation, clientMessage) {
   }
 
   // ========== TRIAGEM ESTRUTURADA ==========
-  // Etapa 0 a 3: pergunta municipality, agency, client_role e case_type
+  // Salva a resposta da pergunta de triagem atual e, se terminou, inicia o intake detalhado
   if (currentArea && triageStep >= 0 && triageStep < TRIAGE_FIELDS.length) {
-    const previousField = triageStep > 0 ? TRIAGE_FIELDS[triageStep - 1].field : null;
-    if (previousField) {
-      triage[previousField] = clientMessage;
-      intakeData.triage = triage;
-    }
+    const currentField = TRIAGE_FIELDS[triageStep].field;
+    triage[currentField] = clientMessage;
+    intakeData.triage = triage;
 
-    const nextIndex = triageStep;
-    const nextField = TRIAGE_FIELDS[nextIndex].field;
-    const question = getTriageQuestion(currentArea, nextField);
-    intakeData.triage_step = triageStep + 1;
+    const nextIndex = triageStep + 1;
+    intakeData.triage_step = nextIndex;
 
     const { error: triageError } = await supabase
       .from('conversations')
@@ -496,6 +492,41 @@ async function handleIntake(conversation, clientMessage) {
       return null;
     }
 
+    // Se terminou a triagem, inicia o intake detalhado
+    if (nextIndex >= TRIAGE_FIELDS.length) {
+      const nextIntakeData = {
+        ...intakeData,
+        triage,
+        triage_completed: true,
+        current_step: 0,
+        answers: {},
+        started_at: new Date().toISOString()
+      };
+
+      const { error: finishTriageError } = await supabase
+        .from('conversations')
+        .update({
+          intake_data: nextIntakeData,
+          municipality: triage.municipality || null,
+          agency: triage.agency || null,
+          client_role: triage.client_role || null,
+          case_type: triage.case_type || null,
+          funnel_stage: 'intake'
+        })
+        .eq('id', conversation.id);
+
+      if (finishTriageError) {
+        console.error('[INTAKE] Erro ao finalizar triagem e iniciar intake:', finishTriageError);
+        return null;
+      }
+
+      const firstQuestion = getNextQuestion(currentArea, 0);
+      return { reply: `Entendi. Vamos agora aos detalhes: ${firstQuestion.question}` };
+    }
+
+    // Ainda há perguntas de triagem
+    const nextField = TRIAGE_FIELDS[nextIndex].field;
+    const question = getTriageQuestion(currentArea, nextField);
     return { reply: question };
   }
 
@@ -534,24 +565,29 @@ async function handleIntake(conversation, clientMessage) {
   }
 
   // ========== DETECÇÃO INICIAL DE ÁREA ==========
+  // Usa a própria mensagem do cliente como case_type e já inicia o intake detalhado
   const detectedArea = detectArea(clientMessage);
   
   if (detectedArea) {
     const flow = getFlow(detectedArea);
-    const firstField = TRIAGE_FIELDS[0].field;
-    const firstQuestion = getTriageQuestion(detectedArea, firstField);
+    const firstQuestion = getNextQuestion(detectedArea, 0);
+
+    const nextIntakeData = {
+      triage_step: TRIAGE_FIELDS.length,
+      triage: { case_type: clientMessage },
+      triage_completed: true,
+      current_step: 0,
+      answers: {},
+      started_at: new Date().toISOString()
+    };
 
     const { error: startError } = await supabase
       .from('conversations')
       .update({
         legal_area: detectedArea,
-        intake_data: {
-          triage_step: 0,
-          triage: {},
-          triage_completed: false,
-          started_at: new Date().toISOString()
-        },
-        funnel_stage: 'triage'
+        case_type: clientMessage,
+        intake_data: nextIntakeData,
+        funnel_stage: 'intake'
       })
       .eq('id', conversation.id);
 
@@ -560,7 +596,7 @@ async function handleIntake(conversation, clientMessage) {
       return null;
     }
 
-    return { reply: `Entendi que pode ser um caso de ${flow.displayName}. Vou fazer algumas perguntas rápidas para organizar as informações. ${firstQuestion}` };
+    return { reply: `Entendi que pode ser um caso de ${flow.displayName}. Vamos aos detalhes: ${firstQuestion.question}` };
   }
 
   return null;
@@ -842,6 +878,7 @@ ENCAMINHAMENTO HUMANO:
 LEMBRETE FINAL:
 - Não se apresente se já houver resposta sua no histórico.
 - NUNCA diga "Olá", "Oi" ou "Bom dia" após a primeira mensagem. Responda diretamente ao assunto.
+- Se a PRIMEIRA mensagem for uma saudação, responda apenas a saudação. NÃO pergunte "Em que posso ajudar?" ou "O que gostaria de tratar?". Aguarde o cliente falar.
 - Fale sempre como Jhon, em primeira pessoa. Use "posso", "nosso escritório". Evite "podemos" genérico.
 - Não ofereça nosso telefone sem ser solicitado explicitamente.
 - Responda APENAS ao que foi perguntado, sem informações extras.`;
@@ -880,7 +917,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     
     const firstTurn = !conversationHistory || conversationHistory.trim() === '';
     const noRepeatRule = firstTurn
-      ? 'Seja objetivo. Só cumprimente se a PRIMEIRA mensagem do cliente for uma saudação (oi, olá, bom dia). Se ela já perguntar ou apresentar um caso, NÃO diga "Olá" nem "Em que posso ajudar?".'
+      ? 'Se a primeira mensagem for uma saudação (oi, olá, bom dia), responda APENAS a saudação e NÃO pergunte nada. Se a mensagem já apresentar um caso ou pergunta, responda diretamente e NÃO diga "Olá".'
       : 'O histórico já existe. NÃO se apresente, NÃO diga "Olá", "Oi" ou "Bom dia" em nenhuma circunstância. Responda DIRETAMENTE ao assunto.';
 
     const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- Responda DIRETAMENTE à NOVA MENSAGEM do cliente, usando o contexto e a memória apenas como referência. Não fique preso a uma informação anterior se o cliente mudou de assunto.\n- Se a mensagem mencionar boleto, cobrança, negociação, CNPJ, "Neves Costa" (sem &), consórcio, financiamento, dívida, banco ou "outro escritório", o esclarecimento da confusão é a prioridade máxima, sem passar nosso telefone.\n- Não peça nome, e-mail ou telefone que já estiverem no histórico, contexto ou memória.\n- Responda como Jhon, 1-3 frases, sem listas, sem telefone a menos que o cliente peça explicitamente.`;
