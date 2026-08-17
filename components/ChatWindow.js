@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import axios from 'axios';
 import { getAuthHeaders } from '../lib/api';
@@ -10,6 +10,22 @@ import RemindersPanel from './RemindersPanel';
 import DocumentGenerator from './DocumentGenerator';
 import CustomerProfilePanel from './CustomerProfilePanel';
 import SignaturePanel from './SignaturePanel';
+
+function isSameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+}
+
+function formatDateLabel(date) {
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  if (isSameDay(date, today)) return 'Hoje';
+  if (isSameDay(date, yesterday)) return 'Ontem';
+  return date.toLocaleDateString('pt-BR');
+}
 
 export default function ChatWindow({ conversation, onConversationUpdate, onBack }) {
   const [activePanel, setActivePanel] = useState('');
@@ -419,6 +435,22 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
     }
   };
 
+  const visibleMessages = useMemo(() => {
+    let lastDate = null;
+    return messages
+      .filter(msg => !searchTerm || (
+        msg.text?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        msg.media_transcript?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        msg.media_summary?.toLowerCase().includes(searchTerm.toLowerCase())
+      ))
+      .map(msg => {
+        const current = new Date(msg.created_at);
+        const showDate = !lastDate || !isSameDay(lastDate, current);
+        lastDate = current;
+        return { ...msg, showDate, date: current };
+      });
+  }, [messages, searchTerm]);
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-nc-surface">
@@ -631,19 +663,23 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
         }}
         className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4"
       >
-        {messages
-          .filter(msg => !searchTerm || (
-            msg.text?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            msg.media_transcript?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            msg.media_summary?.toLowerCase().includes(searchTerm.toLowerCase())
-          ))
-          .map((msg) => (
+        {visibleMessages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex ${
-              msg.direction === 'inbound' ? 'justify-start' : 'justify-end'
-            }`}
+            className="flex flex-col"
           >
+            {msg.showDate && (
+              <div className="flex justify-center my-2">
+                <span className="text-xs px-3 py-1 rounded-full bg-nc-gray-200 text-nc-text-secondary">
+                  {formatDateLabel(msg.date)}
+                </span>
+              </div>
+            )}
+            <div
+              className={`flex ${
+                msg.direction === 'inbound' ? 'justify-start' : 'justify-end'
+              }`}
+            >
             <div
               className={`max-w-md px-4 py-2.5 rounded-nc shadow-soft ${
                 msg.direction === 'inbound'
@@ -788,6 +824,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
               {msg.sender_type === 'human' && (
                 <p className="text-[10px] font-semibold uppercase tracking-wide mt-1.5 text-nc-text-muted">👤 Você</p>
               )}
+            </div>
             </div>
           </div>
         ))}
