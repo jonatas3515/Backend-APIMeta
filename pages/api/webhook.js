@@ -566,10 +566,10 @@ async function handleIntake(conversation, clientMessage) {
   }
 
   // ========== DETECÇÃO INICIAL DE ÁREA ==========
-  // Usa a própria mensagem do cliente como case_type e já inicia o intake detalhado
+  // Só detecta a área na primeira mensagem do fluxo (quando ainda não há área definida)
   const detectedArea = detectArea(clientMessage);
   
-  if (detectedArea) {
+  if (!currentArea && detectedArea) {
     const flow = getFlow(detectedArea);
     const firstQuestion = getNextQuestion(detectedArea, 0);
 
