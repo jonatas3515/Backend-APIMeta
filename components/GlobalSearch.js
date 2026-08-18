@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/router';
+import { useAuth } from '../lib/useAuth';
 import axios from 'axios';
 import { getAuthHeaders } from '../lib/api';
 
@@ -13,6 +14,7 @@ const CATEGORIES = [
 const HISTORY_KEY = 'nc_global_search_history';
 
 export default function GlobalSearch() {
+  const { authUser } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -106,6 +108,8 @@ export default function GlobalSearch() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
+  if (!authUser) return null;
+
   const allItems = results
     ? [
         ...(results.conversations || []),
@@ -166,7 +170,7 @@ export default function GlobalSearch() {
   if (!open) return (
     <button
       onClick={() => setOpen(true)}
-      className="fixed bottom-4 right-4 z-40 bg-nc-yellow text-nc-black p-3 rounded-full shadow-card hover:bg-nc-yellow-600 transition"
+      className="fixed bottom-20 right-4 md:bottom-4 z-50 bg-nc-yellow text-nc-black p-3 rounded-full shadow-card hover:bg-nc-yellow-600 transition"
       title={`Busca global (${shortcut})`}
     >
       <span className="text-xl">🔍</span>

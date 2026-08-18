@@ -385,7 +385,7 @@ export default function Home() {
             <AreaFilterSelector compact />
           </header>
           <ActiveFilterBanner />
-          <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0 pb-16 md:pb-0">
+          <main className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0 pb-16 md:pb-0">
           {activeTab === 'chat' ? (
             <>
               <div
