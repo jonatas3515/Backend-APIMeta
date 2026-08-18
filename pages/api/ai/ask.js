@@ -1,6 +1,7 @@
 import { supabaseServer } from '../../../lib/supabaseServer';
 import { searchKnowledge } from '../../../lib/knowledgeSearch';
 import { askRag } from '../../../lib/aiRag';
+import { anonymizeText } from '../../../lib/anonymize';
 
 async function getUserFromToken(req) {
   const authHeader = req.headers.authorization || '';
@@ -15,7 +16,7 @@ async function canUseAssistant(userId) {
   const { data } = await supabaseServer
     .from('users')
     .select('role')
-    .eq('id', userId)
+    .eq('auth_user_id', userId)
     .single();
   return data && ['admin', 'advogado', 'estagiario'].includes(data.role);
 }
@@ -68,7 +69,7 @@ export default async function handler(req, res) {
       .from('knowledge_query_logs')
       .insert({
         user_id: user.id,
-        query: query.trim(),
+        query: anonymizeText(query.trim()),
         area_filter: area,
         tribunal_filter: tribunal,
         type_filter: type,

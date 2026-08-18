@@ -15,7 +15,7 @@ async function canIngest(userId) {
   const { data } = await supabaseServer
     .from('users')
     .select('role')
-    .eq('id', userId)
+    .eq('auth_user_id', userId)
     .single();
   return data && ['admin', 'advogado'].includes(data.role);
 }
@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: 'Permissão negada' });
     }
 
-    const { title, type, area, tribunal, tags, content, status = 'rascunho', version = 'v1.0' } = req.body || {};
+    const { title, type, area, tribunal, tags, content, version = 'v1.0' } = req.body || {};
     if (!title || !type || !content) {
       return res.status(400).json({ error: 'Campos obrigatórios: title, type, content' });
     }
@@ -57,7 +57,7 @@ export default async function handler(req, res) {
         area: area || null,
         tribunal: tribunal || null,
         tags: Array.isArray(tags) ? tags : [],
-        status,
+        status: 'rascunho',
         version,
         content: anonContent,
         created_by: user.id
