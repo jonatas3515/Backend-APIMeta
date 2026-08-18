@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { key: 'templates', icon: '📄', label: 'Docs', minRole: 'estagiario' },
   { key: 'routines', icon: '🔄', label: 'Rotinas', minRole: 'estagiario' },
   { key: 'insights', icon: '💡', label: 'Insights', minRole: 'advogado' },
+  { key: 'ai_assistant', icon: '🧠', label: 'IA', minRole: 'estagiario' },
   { key: 'metrics', icon: '📊', label: 'Métricas', minRole: 'advogado' },
   { key: 'fee-services', icon: '💰', label: 'Honorários', minRole: 'admin' },
   { key: 'users', icon: '⚙️', label: 'Config.', minRole: 'advogado' },
@@ -76,6 +77,7 @@ export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' })
           { key: 'chat', icon: '💬', label: 'Chat', minRole: 'estagiario' },
           { key: 'clients', icon: '👥', label: 'Clientes', minRole: 'estagiario' },
           { key: 'cases', icon: '⚖️', label: 'Casos', minRole: 'estagiario' },
+          { key: 'ai_assistant', icon: '🧠', label: 'IA', minRole: 'estagiario' },
           { key: 'agenda', icon: '📅', label: 'Agenda', minRole: 'advogado' },
           { key: 'users', icon: '⚙️', label: 'Config.', minRole: 'advogado' },
         ]

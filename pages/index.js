@@ -15,6 +15,7 @@ import DocumentTemplatesManager from '../components/DocumentTemplatesManager';
 import LegalRoutinesManager from '../components/LegalRoutinesManager';
 import CaseInsightsPanel from '../components/CaseInsightsPanel';
 import FeeServiceAdmin from '../components/FeeServiceAdmin';
+import OfficeAIAssistant from '../components/OfficeAIAssistant';
 import Login from '../components/Login';
 import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
@@ -451,6 +452,8 @@ export default function Home() {
             <LegalRoutinesManager />
           ) : activeTab === 'insights' ? (
             <CaseInsightsPanel />
+          ) : activeTab === 'ai_assistant' ? (
+            <OfficeAIAssistant />
           ) : activeTab === 'metrics' ? (
             <MetricsDashboard conversations={conversations} />
           ) : activeTab === 'fee-services' ? (
