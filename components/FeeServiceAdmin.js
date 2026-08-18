@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getAuthHeaders } from '../lib/api';
+import FeeTablesManager from './FeeTablesManager';
 
 const BILLING_MODELS = ['fixo', 'percentual', 'entrada_parcelas', 'por_etapa', 'sob_consulta'];
 const RULE_TYPES = ['complexidade', 'urgencia', 'etapa', 'volume_documental', 'deslocamento', 'desconto'];
@@ -249,6 +250,8 @@ export default function FeeServiceAdmin() {
           )}
         </div>
       </div>
+
+      <FeeTablesManager />
     </div>
   );
 }
