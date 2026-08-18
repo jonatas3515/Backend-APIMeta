@@ -154,7 +154,7 @@ export default function FeeServiceAdmin() {
   };
 
   return (
-    <div className="p-4 space-y-4 h-full overflow-y-auto">
+    <div className="p-4 space-y-4 h-full w-full overflow-y-auto min-w-0">
       <h2 className="font-bold text-xl">💰 Tabela de Honorários</h2>
 
       {message && (
