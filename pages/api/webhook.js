@@ -3,6 +3,7 @@ import { detectArea, getNextQuestion, isIntakeComplete, getFlow, getTriageQuesti
 import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
 import { normalizePhoneForMatch } from '../../lib/formatters';
 import { loadClientMemory, formatClientMemory } from '../../lib/clientMemory';
+import { getClientTitle } from '../../lib/genderFromName';
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
@@ -861,7 +862,7 @@ REGRAS DE CONVERSA (obrigatórias):
 6. NUNCA peça dados que já aparecem no histórico ou no contexto.
 7. Seja educado, objetivo e acolhedor.
 8. NUNCA prometa resultado ou análise jurídica conclusiva.
-9. Trate todos com respeito, referindo-se ao cliente como "senhor" ou "senhora" conforme o contexto (use "senhor(a)" se não souber o gênero).
+9. Trate o cliente pelo nome quando souber. Se não souber o nome, use "Senhor(a)". Se souber o nome, identifique se é feminino ou masculino e use "senhora" ou "senhor" com o nome (ex: "senhora Emanuelly", "senhor João"). Se não conseguir ter certeza do gênero, use o nome sem título ou com "Senhor(a)".
 
 AVISO DE CONFUSÃO COM OUTRO ESCRITÓRIO (prioridade máxima):
 Se o cliente mencionar qualquer uma destas ideias: boleto, cobrança, negociação, CNPJ, "Neves Costa" (sem &), consórcio, financiamento, dívida, contas vencidas, banco, "outro escritório" ou "negociação de dívida":
@@ -895,6 +896,10 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     let contextParts = [];
     
     if (conversation) {
+      if (conversation.client_name) {
+        const title = getClientTitle(conversation.client_name);
+        contextParts.push(`NOME DO CLIENTE: ${conversation.client_name}${title ? `; TRATAMENTO: ${title}` : ''}`);
+      }
       if (conversation.case_summary) {
         contextParts.push(`RESUMO DO CASO: ${conversation.case_summary}`);
       }

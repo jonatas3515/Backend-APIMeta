@@ -9,6 +9,7 @@ export default function ClientsList() {
   const [letterFilter, setLetterFilter] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState('');
+  const [expandedId, setExpandedId] = useState(null);
 
   useEffect(() => {
     fetchClients();
@@ -140,11 +141,11 @@ export default function ClientsList() {
             {/* Header da tabela */}
             <div className="sticky top-0 bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-700 grid grid-cols-12 gap-2 border-b border-gray-300">
               <div className="col-span-1">#</div>
-              <div className="col-span-3">Nome</div>
-              <div className="col-span-2">Telefone</div>
-              <div className="col-span-2">Primeiro Contato</div>
-              <div className="col-span-2">Último Contato</div>
-              <div className="col-span-1">Mensagens</div>
+              <div className="col-span-5 md:col-span-3">Nome</div>
+              <div className="col-span-5 md:col-span-2">Telefone</div>
+              <div className="hidden md:col-span-2 md:block">Primeiro Contato</div>
+              <div className="hidden md:col-span-2 md:block">Último Contato</div>
+              <div className="hidden md:col-span-1 md:block">Mensagens</div>
               <div className="col-span-1">Ações</div>
             </div>
 
@@ -155,8 +156,8 @@ export default function ClientsList() {
                 className="px-4 py-2 hover:bg-blue-50 transition grid grid-cols-12 gap-2 items-center text-sm"
               >
                 <div className="col-span-1 font-semibold text-gray-600">{index + 1}</div>
-                
-                <div className="col-span-3">
+
+                <div className="col-span-5 md:col-span-3">
                   {editingId === client.id ? (
                     <input
                       type="text"
@@ -170,28 +171,33 @@ export default function ClientsList() {
                       className="w-full px-2 py-1 border border-blue-500 rounded text-sm"
                     />
                   ) : (
-                    <span className="text-gray-900">{client.client_name || 'Sem nome'}</span>
+                    <span
+                      className="text-gray-900 cursor-pointer md:cursor-default"
+                      onClick={() => setExpandedId(expandedId === client.id ? null : client.id)}
+                    >
+                      {client.client_name || 'Sem nome'}
+                    </span>
                   )}
                 </div>
-                
-                <div className="col-span-2 text-gray-600">
+
+                <div className="col-span-5 md:col-span-2 text-gray-600">
                   📱 {formatPhone(client.client_phone)}
                 </div>
-                
-                <div className="col-span-2 text-gray-600 text-xs">
+
+                <div className="hidden md:col-span-2 md:block text-gray-600 text-xs">
                   {new Date(client.created_at).toLocaleDateString('pt-BR')}
                 </div>
-                
-                <div className="col-span-2 text-gray-600 text-xs">
+
+                <div className="hidden md:col-span-2 md:block text-gray-600 text-xs">
                   {new Date(client.updated_at).toLocaleDateString('pt-BR')}
                 </div>
-                
-                <div className="col-span-1 text-center">
+
+                <div className="hidden md:col-span-1 md:block text-center">
                   <span className="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">
                     {client.messages?.length || 0}
                   </span>
                 </div>
-                
+
                 <div className="col-span-1">
                   <button
                     onClick={() => {
@@ -204,6 +210,27 @@ export default function ClientsList() {
                     ✏️
                   </button>
                 </div>
+
+                {expandedId === client.id && (
+                  <div className="col-span-12 md:hidden bg-gray-50 rounded p-2 mt-1">
+                    <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                      <div>
+                        <span className="block text-gray-400 text-[10px]">Primeiro Contato</span>
+                        {new Date(client.created_at).toLocaleDateString('pt-BR')}
+                      </div>
+                      <div>
+                        <span className="block text-gray-400 text-[10px]">Último Contato</span>
+                        {new Date(client.updated_at).toLocaleDateString('pt-BR')}
+                      </div>
+                      <div>
+                        <span className="block text-gray-400 text-[10px]">Mensagens</span>
+                        <span className="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">
+                          {client.messages?.length || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
