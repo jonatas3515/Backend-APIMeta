@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { getAuthHeaders } from '../lib/api';
-
+import { supabase } from '../lib/supabaseClient';
 const TABLE_TYPES = [
   { key: 'oab', label: 'Tabela da OAB' },
   { key: 'escritorio', label: 'Tabela do Escritório' }
@@ -16,6 +16,7 @@ export default function FeeTablesManager() {
   const [name, setName] = useState('');
   const [preview, setPreview] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [isPdf, setIsPdf] = useState(false);
 
   useEffect(() => {
     fetchTables();
@@ -57,17 +58,51 @@ export default function FeeTablesManager() {
   const handleFileChange = async (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
+    const isPdfFile = selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf');
+    setIsPdf(isPdfFile);
     setMessage(null);
     setFile(selectedFile);
     if (!name) setName(selectedFile.name);
+
+    if (isPdfFile) {
+      setPreview([]);
+      return;
+    }
 
     try {
       const data = await parseFile(selectedFile);
       setPreview(Array.isArray(data) ? data.slice(0, 10) : []);
     } catch (err) {
-      setMessage({ type: 'error', text: 'Erro ao ler o arquivo. Use CSV ou Excel (.xlsx).' });
+      setMessage({ type: 'error', text: 'Erro ao ler o arquivo. Use CSV, Excel (.xlsx) ou PDF.' });
       setPreview([]);
     }
+  };
+
+  const uploadPdf = async (pdfFile) => {
+    const headers = await getAuthHeaders();
+    const { data: signedData } = await axios.post('/api/upload-file', {
+      fileName: pdfFile.name,
+      fileType: pdfFile.type || 'application/pdf',
+      conversationId: 'fee-tables'
+    }, { headers });
+
+    const uploadResponse = await fetch(signedData.signedUrl, {
+      method: 'PUT',
+      body: pdfFile,
+      headers: {
+        'Content-Type': pdfFile.type || 'application/pdf'
+      }
+    });
+
+    if (!uploadResponse.ok) {
+      throw new Error(`Erro no upload: ${uploadResponse.statusText}`);
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('chat-files')
+      .getPublicUrl(signedData.filePath);
+
+    return urlData.publicUrl;
   };
 
   const handleUpload = async () => {
@@ -84,19 +119,29 @@ export default function FeeTablesManager() {
     setMessage(null);
 
     try {
-      const data = await parseFile(file);
+      let fileUrl = null;
+      let tableData = [];
+
+      if (isPdf) {
+        fileUrl = await uploadPdf(file);
+      } else {
+        tableData = await parseFile(file);
+      }
+
       const headers = await getAuthHeaders();
       await axios.post('/api/fee-tables', {
         name: name.trim(),
         table_type: selectedType,
         source_file_name: file.name,
-        table_data: data
+        table_data: tableData,
+        file_url: fileUrl
       }, { headers });
 
       setMessage({ type: 'success', text: 'Tabela salva com sucesso.' });
       setFile(null);
       setName('');
       setPreview([]);
+      setIsPdf(false);
       fetchTables();
     } catch (err) {
       const text = err.response?.data?.error || 'Erro ao salvar tabela';
@@ -129,8 +174,13 @@ export default function FeeTablesManager() {
               <div>
                 <p className="font-medium">{item.name}</p>
                 <p className="text-xs text-gray-500">
-                  {item.source_file_name} • {Array.isArray(item.table_data) ? item.table_data.length : 0} linhas • {new Date(item.created_at).toLocaleDateString('pt-BR')}
+                  {item.source_file_name} • {item.file_url ? 'PDF' : `${Array.isArray(item.table_data) ? item.table_data.length : 0} linhas`} • {new Date(item.created_at).toLocaleDateString('pt-BR')}
                 </p>
+                {item.file_url && (
+                  <a href={item.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs hover:underline">
+                    Ver PDF
+                  </a>
+                )}
               </div>
               <button
                 onClick={() => handleDelete(item.id)}
@@ -187,10 +237,10 @@ export default function FeeTablesManager() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Arquivo (CSV ou Excel)</label>
+            <label className="block text-sm font-medium text-gray-700">Arquivo (CSV, Excel ou PDF)</label>
             <input
               type="file"
-              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, .pdf, application/pdf"
               onChange={handleFileChange}
               className="w-full mt-1 text-sm"
             />
