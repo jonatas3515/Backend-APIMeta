@@ -73,11 +73,11 @@ export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' })
       {/* Mobile bottom nav */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-nc-black border-t border-nc-gray-800 z-50 flex items-center justify-around px-1 overflow-x-auto">
         {[
-          { key: 'chat', icon: '💬', label: 'Chat' },
-          { key: 'clients', icon: '👥', label: 'Clientes' },
-          { key: 'cases', icon: '⚖️', label: 'Casos' },
-          { key: 'agenda', icon: '📅', label: 'Agenda' },
-          { key: 'users', icon: '⚙️', label: 'Config.' },
+          { key: 'chat', icon: '💬', label: 'Chat', minRole: 'estagiario' },
+          { key: 'clients', icon: '👥', label: 'Clientes', minRole: 'estagiario' },
+          { key: 'cases', icon: '⚖️', label: 'Casos', minRole: 'estagiario' },
+          { key: 'agenda', icon: '📅', label: 'Agenda', minRole: 'advogado' },
+          { key: 'users', icon: '⚙️', label: 'Config.', minRole: 'advogado' },
         ]
           .filter((item) => canAccess(item.minRole))
           .map((item) => (
