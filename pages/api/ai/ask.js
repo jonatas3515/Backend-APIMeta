@@ -62,6 +62,18 @@ export default async function handler(req, res) {
       limit: 8
     });
 
+    console.log('[RAG] ask handler:', {
+      queryLength: query?.length,
+      status: 'aprovado',
+      area,
+      tribunal,
+      type,
+      resultsCount: results?.length,
+      documentsCount: documents?.length,
+      documentTitles: documents?.map(d => d.title),
+      contextLength: (results || []).reduce((acc, r) => acc + (r.content?.length || 0), 0)
+    });
+
     const context = buildContext(results, 5000);
     const answer = await askRag(query, context);
 
