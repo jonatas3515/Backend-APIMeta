@@ -16,6 +16,7 @@ import LegalRoutinesManager from '../components/LegalRoutinesManager';
 import CaseInsightsPanel from '../components/CaseInsightsPanel';
 import FeeServiceAdmin from '../components/FeeServiceAdmin';
 import OfficeAIAssistant from '../components/OfficeAIAssistant';
+import KnowledgeBaseManager from '../components/KnowledgeBaseManager';
 import Login from '../components/Login';
 import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
@@ -458,6 +459,8 @@ export default function Home() {
             <MetricsDashboard conversations={conversations} />
           ) : activeTab === 'fee-services' ? (
             <FeeServiceAdmin />
+          ) : activeTab === 'knowledge' ? (
+            <KnowledgeBaseManager />
           ) : activeTab === 'profile' ? (
             <ProfilePanel />
           ) : (
