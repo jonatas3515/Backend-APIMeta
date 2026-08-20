@@ -203,10 +203,11 @@ export default async function handler(req, res) {
       // ================= PROCESSAMENTO DE MÍDIA (SÓ UPLOAD, PROCESSAMENTO ASSÍNCRONO) =================
       let publicUrl = '';
       let mediaStatus = 'pending';
+      let mediaBuffer = null;
       
       if (mediaId && (messageType === 'audio' || messageType === 'image' || messageType === 'document' || messageType === 'video')) {
         try {
-          const mediaBuffer = await downloadWhatsAppMedia(mediaId);
+          mediaBuffer = await downloadWhatsAppMedia(mediaId);
           
           if (mediaBuffer && mediaBuffer.buffer) {
             // Fazer upload da mídia para o Supabase Storage
