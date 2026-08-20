@@ -1,5 +1,6 @@
 import { supabase } from '../../../lib/supabaseClient';
 import crypto from 'crypto';
+import { sanitizeError } from '../../../lib/webhookLog';
 
 const ZAPSIGN_WEBHOOK_SECRET = process.env.ZAPSIGN_WEBHOOK_SECRET;
 
@@ -45,7 +46,7 @@ async function wasWebhookProcessed(idempotencyKey) {
     .limit(1);
 
   if (error) {
-    console.error('[SIGNATURE-WEBHOOK] Erro ao verificar idempotência:', error);
+    console.error('[SIGNATURE-WEBHOOK] Erro ao verificar idempotência:', sanitizeError(error));
     return false; // Em caso de erro, permite processar (não bloqueia)
   }
 
@@ -63,7 +64,7 @@ async function logWebhook(idempotencyKey, event, status) {
         created_at: new Date().toISOString()
       });
   } catch (e) {
-    console.error('[SIGNATURE-WEBHOOK] Erro ao logar webhook:', e);
+    console.error('[SIGNATURE-WEBHOOK] Erro ao logar webhook:', sanitizeError(e));
   }
 }
 
@@ -120,7 +121,7 @@ export default async function handler(req, res) {
     await logWebhook(idempotencyKey, event, 'completed');
     return result;
   } catch (error) {
-    console.error('[SIGNATURE-WEBHOOK] Erro:', error);
+    console.error('[SIGNATURE-WEBHOOK] Erro:', sanitizeError(error));
     return res.status(500).json({ error: 'Erro ao processar webhook' });
   }
 }
@@ -176,7 +177,7 @@ async function handleDocumentSigned(data, res) {
     console.log(`[SIGNATURE-WEBHOOK] Documento atualizado: ${uuid}`);
     return res.status(200).json({ message: 'Documento atualizado com sucesso' });
   } catch (error) {
-    console.error('[SIGNATURE-WEBHOOK-SIGNED] Erro:', error);
+    console.error('[SIGNATURE-WEBHOOK-SIGNED] Erro:', sanitizeError(error));
     return res.status(500).json({ error: 'Erro ao processar assinatura' });
   }
 }
@@ -219,7 +220,7 @@ async function handleDocumentCompleted(data, res) {
     console.log(`[SIGNATURE-WEBHOOK] Documento concluído: ${uuid}`);
     return res.status(200).json({ message: 'Documento concluído com sucesso' });
   } catch (error) {
-    console.error('[SIGNATURE-WEBHOOK-COMPLETED] Erro:', error);
+    console.error('[SIGNATURE-WEBHOOK-COMPLETED] Erro:', sanitizeError(error));
     return res.status(500).json({ error: 'Erro ao processar conclusão' });
   }
 }
@@ -257,7 +258,7 @@ async function handleDocumentRejected(data, res) {
     console.log(`[SIGNATURE-WEBHOOK] Documento rejeitado: ${uuid}`);
     return res.status(200).json({ message: 'Documento rejeitado registrado' });
   } catch (error) {
-    console.error('[SIGNATURE-WEBHOOK-REJECTED] Erro:', error);
+    console.error('[SIGNATURE-WEBHOOK-REJECTED] Erro:', sanitizeError(error));
     return res.status(500).json({ error: 'Erro ao processar rejeição' });
   }
 }
@@ -285,7 +286,7 @@ async function updateCaseStage(caseId, documentType) {
     if (error) throw error;
     console.log(`[SIGNATURE-WEBHOOK] Caso atualizado para ${nextStage}`);
   } catch (error) {
-    console.error('[UPDATE-CASE-STAGE] Erro:', error);
+    console.error('[UPDATE-CASE-STAGE] Erro:', sanitizeError(error));
   }
 }
 
@@ -323,6 +324,6 @@ async function notifySignatureUpdate(caseId, status, signers) {
 
     console.log(`[NOTIFY] Notificação enviada para conversa ${conversationId}`);
   } catch (error) {
-    console.error('[NOTIFY-SIGNATURE] Erro:', error);
+    console.error('[NOTIFY-SIGNATURE] Erro:', sanitizeError(error));
   }
 }

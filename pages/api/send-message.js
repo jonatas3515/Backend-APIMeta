@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
+import { sanitizeError } from '@/lib/webhookLog';
 import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '@/lib/whatsapp';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -59,7 +60,7 @@ async function handler(req, res) {
         : 'document';
 
       try {
-        console.log('[SEND-MESSAGE] Baixando mídia do Supabase:', media_url);
+        console.log('[SEND-MESSAGE] Baixando mídia do Supabase');
         const mediaResponse = await axios.get(media_url, { responseType: 'arraybuffer' });
         const fileBuffer = Buffer.from(mediaResponse.data);
         console.log('[SEND-MESSAGE] Mídia baixada:', fileBuffer.length, 'bytes');
@@ -67,7 +68,7 @@ async function handler(req, res) {
         console.log('[SEND-MESSAGE] Fazendo upload para Meta:', contentType, media_type);
         const mediaId = await uploadMediaToWhatsApp(fileBuffer, media_type);
 
-        console.log('[SEND-MESSAGE] Enviando mídia por media_id:', mediaId);
+        console.log('[SEND-MESSAGE] Enviando mídia por media_id');
         waMessageId = await sendWhatsAppMediaMessage(conversation.client_phone, mediaId, contentType, text);
       } catch (mediaError) {
         console.error('[SEND-MESSAGE] ❌ Erro ao enviar mídia:', mediaError.message);
@@ -98,7 +99,7 @@ async function handler(req, res) {
       }]);
 
     if (msgError) {
-      console.error('Erro ao salvar mensagem:', msgError);
+      console.error('Erro ao salvar mensagem:', sanitizeError(msgError));
     }
 
     res.json({ 
@@ -107,7 +108,7 @@ async function handler(req, res) {
       wa_message_id: waMessageId || null
     });
   } catch (error) {
-    console.error('Erro ao enviar mensagem:', error);
+    console.error('Erro ao enviar mensagem:', sanitizeError(error));
     res.status(500).json({ error: error.message });
   }
 }

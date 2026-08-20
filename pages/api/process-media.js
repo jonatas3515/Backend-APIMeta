@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
+import { sanitizeError } from '../../lib/webhookLog';
 import { askGemini } from '../../lib/ai';
 import { sendWhatsAppMessage } from '../../lib/whatsapp';
 
@@ -44,7 +45,7 @@ export default async function handler(req, res) {
       .limit(BATCH_SIZE);
 
     if (fetchError) {
-      console.error('[MEDIA_PROCESS] Erro ao buscar mídias pendentes:', fetchError);
+      console.error('[MEDIA_PROCESS] Erro ao buscar mídias pendentes:', sanitizeError(fetchError));
       return res.status(500).json({ error: 'Erro ao buscar mídias' });
     }
 
@@ -75,15 +76,15 @@ export default async function handler(req, res) {
 
       try {
         if (content_type === 'audio' || content_type === 'video') {
-          console.log(`[MEDIA_PROCESS] Transcrevendo mensagem ${id}: ${media_url}`);
+          console.log(`[MEDIA_PROCESS] Transcrevendo mensagem ${id}`);
           transcript = await transcribeAudio(media_url, mimeType);
-          console.log(`[TRANSCRIPTION] Mensagem ${id}: ${transcript?.substring(0, 80)}`);
+          console.log(`[TRANSCRIPTION] Mensagem ${id}, comprimento: ${transcript?.length || 0}`);
 
           if (transcript) {
             summary = await generateBriefSummary(transcript);
           }
         } else if (content_type === 'image' || content_type === 'document') {
-          console.log(`[MEDIA_PROCESS] Resumindo mensagem ${id}: ${media_url}`);
+          console.log(`[MEDIA_PROCESS] Resumindo mensagem ${id}`);
           summary = await summarizeMedia(media_url, mimeType);
         }
       } catch (processError) {
@@ -110,7 +111,7 @@ export default async function handler(req, res) {
         .eq('id', id);
 
       if (updateError) {
-        console.error(`[MEDIA_PROCESS] Erro ao salvar mensagem ${id}:`, updateError);
+        console.error(`[MEDIA_PROCESS] Erro ao salvar mensagem ${id}:`, sanitizeError(updateError));
       } else {
         console.log(`[MEDIA_PROCESS] Mensagem ${id} processada: status=${status}`);
         results.push({ id, content_type, status });
@@ -219,7 +220,7 @@ async function replyToClient(message, transcript, summary) {
     }
 
     // Envia resposta via WhatsApp
-    console.log(`[MEDIA_PROCESS] Enviando resposta automática para ${clientPhone}`);
+    console.log('[MEDIA_PROCESS] Enviando resposta automática');
     await sendWhatsAppMessage(clientPhone, aiReply);
   } catch (error) {
     console.error('[MEDIA_PROCESS] Erro na resposta automática:', error.message);
@@ -257,7 +258,7 @@ async function generateBriefSummary(transcript) {
 
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    console.log('[SUMMARY] Resumo gerado:', text?.substring(0, 120));
+    console.log('[SUMMARY] Resumo gerado, comprimento:', text?.length || 0);
     return text?.trim() || null;
   } catch (error) {
     console.error('[SUMMARY] Erro ao gerar resumo:', error.message);

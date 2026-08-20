@@ -35,7 +35,7 @@ export default async function handler(req, res) {
 
     console.log('[DEBUG] Usuário na DB:', dbUsers?.length > 0 ? 'ENCONTRADO' : 'NÃO ENCONTRADO');
     if (dbUsers?.length > 0) {
-      console.log('[DEBUG] DB User:', JSON.stringify(dbUsers[0], null, 2));
+      // console.log('[DEBUG] DB User: [REDACTED]');
     }
 
     // 3. Verificar se auth_user_id está vinculado
@@ -57,7 +57,7 @@ export default async function handler(req, res) {
       status: authUser && dbUsers?.length > 0 ? 'OK' : 'PROBLEMA'
     });
   } catch (error) {
-    console.error('[DEBUG] Erro:', error);
+    console.error('[DEBUG] Erro:', error.message);
     return res.status(500).json({ error: error.message });
   }
 }

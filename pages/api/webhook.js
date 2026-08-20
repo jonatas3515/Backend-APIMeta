@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { createLogger, hashPhone, sanitizeError } from '../../lib/webhookLog';
 import { detectArea, getNextQuestion, isIntakeComplete, getFlow, getTriageQuestion, TRIAGE_FIELDS } from '../../lib/intakeFlows';
 import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
 import { normalizePhoneForMatch } from '../../lib/formatters';
@@ -24,14 +25,8 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
   : null;
 
-// Variável global para debug (temporário)
-global.lastWebhookPost = null;
-
 export default async function handler(req, res) {
-  console.log(`[WEBHOOK] ${req.method} ${req.url}`);
-  console.log(`[WEBHOOK] Full URL:`, `${req.headers['x-forwarded-proto']}://${req.headers['host']}${req.url}`);
-  console.log(`[WEBHOOK] Headers:`, JSON.stringify(req.headers, null, 2));
-  console.log(`[WEBHOOK] Body:`, JSON.stringify(req.body).substring(0, 200));
+  const { log } = createLogger(req);
 
   // GET - Verificação do webhook pela Meta
   if (req.method === 'GET') {
@@ -39,28 +34,16 @@ export default async function handler(req, res) {
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
 
-    console.log(`[WEBHOOK] GET - mode: ${mode}, token: ${token}, challenge: ${challenge}`);
-    console.log(`[WEBHOOK] VERIFY_TOKEN configurado: ${VERIFY_TOKEN ? '✅ Sim' : '❌ Não'}`);
-    console.log(`[WEBHOOK] Token recebido: "${token}"`);
-    console.log(`[WEBHOOK] Token esperado: "${VERIFY_TOKEN}"`);
-    console.log(`[WEBHOOK] Tokens iguais? ${token === VERIFY_TOKEN}`);
+    log('verify_request', { mode, tokenPresent: !!token, challenge: !!challenge, configured: !!VERIFY_TOKEN, match: token === VERIFY_TOKEN });
 
     if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-      console.log('[WEBHOOK] ✅ Webhook verificado com sucesso.');
+      log('verify_success');
       res.setHeader('Content-Type', 'text/plain');
       return res.status(200).send(challenge);
     }
 
-    console.log('[WEBHOOK] ❌ Falha na verificação do webhook.');
-    return res.status(403).json({ 
-      error: 'Falha na verificação',
-      debug: {
-        mode,
-        tokenRecebido: token,
-        tokenEsperado: VERIFY_TOKEN,
-        iguais: token === VERIFY_TOKEN
-      }
-    });
+    log('verify_failed');
+    return res.status(403).json({ error: 'Falha na verificação' });
   }
 
   // POST - Recebe mensagens do WhatsApp
@@ -68,17 +51,6 @@ export default async function handler(req, res) {
     // Responde o mais rápido possível em rotinas de status/keep-alive
     const ack = () => res.status(200).json({ success: true, processed: false });
     
-    // Salva para debug
-    global.lastWebhookPost = {
-      timestamp: new Date().toISOString(),
-      body: req.body,
-      headers: req.headers,
-    };
-    
-    console.error('[WEBHOOK] ========== INÍCIO POST ==========');
-    console.error('[WEBHOOK] 📦 Body completo:', JSON.stringify(req.body, null, 2));
-    console.error('[WEBHOOK] ========== FIM BODY ==========');
-
     try {
       const entry = req.body.entry?.[0];
       const changes = entry?.changes?.[0];
@@ -86,11 +58,7 @@ export default async function handler(req, res) {
       const messages = value?.messages;
       const statuses = value?.statuses;
 
-      console.log(`[WEBHOOK] Entry:`, entry ? 'existe' : 'null');
-      console.log(`[WEBHOOK] Changes:`, changes ? 'existe' : 'null');
-      console.log(`[WEBHOOK] Value:`, value ? 'existe' : 'null');
-      console.log(`[WEBHOOK] Mensagens recebidas:`, messages?.length || 0);
-      console.log(`[WEBHOOK] Statuses recebidos:`, statuses?.length || 0);
+      log('post_parsed', { messageCount: messages?.length || 0, statusCount: statuses?.length || 0 });
 
       // Processar atualizações de status de entrega (sent, delivered, read, failed)
       if (statuses && statuses.length > 0) {
@@ -98,7 +66,7 @@ export default async function handler(req, res) {
       }
 
       if (!messages || messages.length === 0) {
-        console.log('[WEBHOOK] Nenhuma mensagem para processar');
+        log('no_message_to_process');
         return ack();
       }
 
@@ -131,7 +99,7 @@ export default async function handler(req, res) {
         textBody = `[Mensagem do tipo: ${messageType}]`;
       }
 
-      console.log(`[WEBHOOK] De: ${from}, Tipo: ${messageType}, Texto: ${textBody}, Nome: ${clientName}`);
+      log('message_received', { phoneHash: hashPhone(from), messageType, textLength: textBody?.length || 0, hasMedia: !!mediaId });
 
       // Evitar reprocessar mensagem já processada (retentativas do WhatsApp)
       if (supabase && waMessageId) {
@@ -143,23 +111,23 @@ export default async function handler(req, res) {
           .limit(1);
 
         if (existing && existing.length > 0) {
-          console.log(`[WEBHOOK] ⚠️ Mensagem ${waMessageId} já processada, ignorando.`);
+          log('duplicate_ignored', { waMessageId });
           return res.status(200).json({ success: true, duplicate: true });
         }
       }
 
       if (!from) {
-        console.log('[WEBHOOK] ⚠️ Mensagem sem "from"');
+        log('missing_from');
         return ack();
       }
 
-      console.log(`[WEBHOOK] ✅ Mensagem recebida de ${from}: ${textBody}`);
+      log('message_validated', { phoneHash: hashPhone(from), textLength: textBody?.length || 0 });
 
       // Buscar ou criar conversa no Supabase
       const conversation = await getOrCreateConversation(from, clientName);
       
       if (!conversation || !conversation.id) {
-        console.error('[WEBHOOK] ❌ Conversa inválida, abortando processamento');
+        log.error('invalid_conversation');
         return res.status(200).json({ success: false, error: 'Conversa inválida' });
       }
       
@@ -172,7 +140,7 @@ export default async function handler(req, res) {
         
         if (diffMinutes >= 30) {
           // Reativar bot automaticamente após 30 minutos
-          console.log(`[WEBHOOK] ⏰ 30 minutos passaram - reativando bot automaticamente`);
+          log('bot_reactivated');
           await supabase
             .from('conversations')
             .update({ mode: 'bot' })
@@ -180,7 +148,7 @@ export default async function handler(req, res) {
           
           conversation.mode = 'bot'; // Atualiza localmente para continuar processamento
         } else {
-          console.log(`[WEBHOOK] 🤖 Bot pausado - modo humano ativo (${Math.round(diffMinutes)} min)`);
+          log('bot_human_mode', { diffMinutes: Math.round(diffMinutes) });
           
           // Salvar mensagem do cliente mesmo com bot pausado
           if (conversation) {
@@ -220,14 +188,14 @@ export default async function handler(req, res) {
               });
 
             if (uploadError) {
-              console.error('[WEBHOOK] Erro upload mídia:', uploadError);
+              log.error('media_upload_failed', { error: sanitizeError(uploadError) });
               mediaStatus = 'failed';
             } else {
               const { data: publicUrlData } = await supabase.storage
                 .from('chat-files')
                 .getPublicUrl(fileName);
               publicUrl = publicUrlData?.publicUrl || '';
-              console.log(`[WEBHOOK] ✅ Mídia salva: ${publicUrl}`);
+              log('media_uploaded', { mediaId, mimeType: mediaBuffer?.mimeType, size: mediaBuffer?.buffer?.length });
 
               if (messageType === 'audio' || messageType === 'video') {
                 textBody = textBody || `[Áudio/vídeo enviado - processando transcrição...]`;
@@ -275,7 +243,7 @@ export default async function handler(req, res) {
           // Enviar próxima pergunta do intake
           await saveMessage(conversation.id, intakeResult.reply, 'ai');
           await sendWhatsAppMessage(from, intakeResult.reply);
-          console.log(`[WEBHOOK] ✅ Resposta de intake enviada para ${from}`);
+          log('intake_replied', { phoneHash: hashPhone(from), replyLength: intakeResult.reply?.length || 0 });
           return res.status(200).json({ success: true, intake: true });
         }
       }
@@ -292,7 +260,7 @@ export default async function handler(req, res) {
           .gte('created_at', oneDayAgo)  // mensagens das últimas 24h
           .order('created_at', { ascending: true });
         
-        if (historyError) console.error('[WEBHOOK] Erro ao buscar histórico:', historyError);
+        if (historyError) console.error('[WEBHOOK] Erro ao buscar histórico:', sanitizeError(historyError));
         
         // Limita a 50 mensagens mais recentes se houver muitas
         const recentMessages = messages?.slice(-50) || [];
@@ -303,13 +271,13 @@ export default async function handler(req, res) {
             const time = new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             return `[${time}] ${role}: ${m.text}`;
           }).join('\n');
-          console.log(`[WEBHOOK] 📜 Histórico com ${recentMessages.length} mensagens`);
+          log('history_loaded', { messageCount: recentMessages.length });
         }
       }
 
       // === Resposta com imagem: confusão Neves Costa ===
       if (messageType === 'text' && isNevesCostaConfusion(textBody)) {
-        console.log(`[WEBHOOK] 🖼️ Confusão Neves Costa detectada para ${from}`);
+        log('neves_costa_confusion', { phoneHash: hashPhone(from) });
         const protocol = req.headers['x-forwarded-proto'] || 'https';
         const imageUrl = `${protocol}://${req.headers.host}/Aviso.jpg`;
         const imageSent = await sendNevesCostaImage(from, conversation.id, imageUrl);
@@ -322,13 +290,13 @@ export default async function handler(req, res) {
       if (messageType === 'text') {
         const specialReply = getSpecialReply(textBody, clientName, conversationHistory);
         if (specialReply === 'NO_REPLY') {
-          console.log(`[WEBHOOK] 🛑 Mensagem de marketing detectada para ${from}, encerrando resposta.`);
+          log('marketing_detected', { phoneHash: hashPhone(from) });
           return res.status(200).json({ success: true, marketing: true });
         }
         if (specialReply) {
           await saveMessage(conversation.id, specialReply, 'ai');
           await sendWhatsAppMessage(from, specialReply);
-          console.log(`[WEBHOOK] ✅ Resposta especial enviada para ${from}`);
+          log('special_replied', { phoneHash: hashPhone(from), replyLength: specialReply?.length || 0 });
           return res.status(200).json({ success: true, special: true });
         }
       }
@@ -360,7 +328,7 @@ export default async function handler(req, res) {
 
       // Chamar Gemini com await (timeout de 15s)
       const aiReply = await askGemini(promptForAI, conversationHistory, conversation, clientMemoryText);
-      console.log(`[WEBHOOK] ✅ Resposta da IA: ${aiReply?.substring(0, 100)}`);
+      log('ai_reply_generated', { length: aiReply?.length || 0 });
 
       // Detectar se precisa de atendimento humano
       const intakeCompleted = conversation?.intake_data?.completed === true;
@@ -377,32 +345,31 @@ export default async function handler(req, res) {
             .update({ mode: 'human' })
             .eq('id', conversation.id);
           
-          console.log(`[WEBHOOK] 🔔 Conversa marcada como mode=human`);
+          log('human_mode_marked');
           
           // Enviar notificação para o WhatsApp pessoal configurado
           try {
             const notificationMessage = `🔔 *Atendimento Humano Solicitado*\n\nCliente: ${clientName}\nTelefone: ${from}\nÚltima mensagem: "${textBody}"\n\nAcesse: https://backend-apimeta.vercel.app/`;
             if (!ADMIN_WHATSAPP_NUMBER) {
-              console.warn('[WEBHOOK] ⚠️ ADMIN_WHATSAPP_NUMBER não configurado. Notificação não enviada.');
+              log.warn('admin_notif_unconfigured');
             } else {
               await sendWhatsAppMessage(ADMIN_WHATSAPP_NUMBER, notificationMessage);
-              console.log(`[WEBHOOK] 📲 Notificação enviada para ${ADMIN_WHATSAPP_NUMBER}`);
+              log('admin_notified');
             }
           } catch (notifError) {
-            console.error(`[WEBHOOK] ❌ Erro ao enviar notificação:`, notifError);
+            log.error('admin_notify_failed', { error: sanitizeError(notifError) });
           }
         }
       }
 
       // Enviar resposta via WhatsApp
       await sendWhatsAppMessage(from, aiReply);
-      console.log(`[WEBHOOK] ✅ Resposta enviada para ${from}`);
+      log('reply_sent', { phoneHash: hashPhone(from) });
       
       // Retorna sucesso após processar tudo
       res.status(200).json({ success: true });
     } catch (error) {
-      console.error('[WEBHOOK] ❌ Erro ao processar mensagem:', error.message);
-      console.error('[WEBHOOK] Stack:', error.stack);
+      log.error('handler_exception', { error: sanitizeError(error), stack: error.stack });
       res.status(200).json({ success: false, error: error.message });
     }
   }
@@ -422,18 +389,8 @@ async function handleIntake(conversation, clientMessage) {
   const isGreeting = GREETINGS.some(g => msg.startsWith(g));
   const isQuestion = msg.includes('?');
   if (isGreeting || isQuestion) {
-    console.log('[INTAKE] Ignorando mensagem fora de contexto:', clientMessage);
     return null;
   }
-
-  console.log('[INTAKE] Estado:', {
-    conversationId: conversation.id,
-    legal_area: currentArea,
-    triage_step: triageStep,
-    current_step: currentStep,
-    triage_completed: !!intakeData.triage_completed,
-    message: clientMessage.substring(0, 50)
-  });
 
   // ========== INTAKE DETALHADO ==========
   // Sempre prioriza o fluxo de intake se ele já começou (currentStep >= 0).
@@ -465,7 +422,7 @@ async function handleIntake(conversation, clientMessage) {
         .eq('id', conversation.id);
 
       if (finalError) {
-        console.error('[INTAKE] Erro ao finalizar intake:', finalError);
+        console.error('[INTAKE] Erro ao finalizar intake:', sanitizeError(finalError));
         return null;
       }
 
@@ -488,7 +445,7 @@ async function handleIntake(conversation, clientMessage) {
         .eq('id', conversation.id);
 
       if (stepError) {
-        console.error('[INTAKE] Erro ao avançar intake:', stepError);
+        console.error('[INTAKE] Erro ao avançar intake:', sanitizeError(stepError));
         return null;
       }
 
@@ -518,7 +475,7 @@ async function handleIntake(conversation, clientMessage) {
       .eq('id', conversation.id);
 
     if (triageError) {
-      console.error('[INTAKE] Erro ao atualizar triagem:', triageError);
+      console.error('[INTAKE] Erro ao atualizar triagem:', sanitizeError(triageError));
       return null;
     }
 
@@ -546,7 +503,7 @@ async function handleIntake(conversation, clientMessage) {
         .eq('id', conversation.id);
 
       if (finishTriageError) {
-        console.error('[INTAKE] Erro ao finalizar triagem e iniciar intake:', finishTriageError);
+        console.error('[INTAKE] Erro ao finalizar triagem e iniciar intake:', sanitizeError(finishTriageError));
         return null;
       }
 
@@ -586,7 +543,7 @@ async function handleIntake(conversation, clientMessage) {
       .eq('id', conversation.id);
 
     if (finishTriageError) {
-      console.error('[INTAKE] Erro ao finalizar triagem e iniciar intake:', finishTriageError);
+      console.error('[INTAKE] Erro ao finalizar triagem e iniciar intake:', sanitizeError(finishTriageError));
       return null;
     }
 
@@ -622,7 +579,7 @@ async function handleIntake(conversation, clientMessage) {
       .eq('id', conversation.id);
 
     if (startError) {
-      console.error('[INTAKE] Erro ao iniciar triagem:', startError);
+      console.error('[INTAKE] Erro ao iniciar triagem:', sanitizeError(startError));
       return null;
     }
 
@@ -789,7 +746,7 @@ async function getOrCreateConversation(phoneNumber, clientName) {
       }
     }
 
-    console.error('[SUPABASE] Erro ao buscar/criar conversa:', error);
+    console.error('[SUPABASE] Erro ao buscar/criar conversa:', sanitizeError(error));
     return null;
   }
 }
@@ -865,7 +822,7 @@ async function saveMessage(conversationId, text, sender, messageType = 'text', m
     console.log(`[SUPABASE] Mensagem salva: ${data.id}`);
     return data;
   } catch (error) {
-    console.error('[SUPABASE] Erro ao salvar mensagem:', error);
+    console.error('[SUPABASE] Erro ao salvar mensagem:', sanitizeError(error));
     return null;
   }
 }
@@ -945,7 +902,7 @@ async function sendNevesCostaImage(to, conversationId, imageUrl = NEVES_COSTA_IM
 
     await saveMessage(conversationId, caption, 'ai', 'image', imageUrl, '', { media_type: 'image/jpeg' });
 
-    console.log(`[WEBHOOK] ✅ Imagem Neves Costa enviada para ${to}`);
+    console.log('[WEBHOOK] ✅ Imagem Neves Costa enviada');
     return true;
   } catch (error) {
     console.error('[WEBHOOK] ❌ Erro ao enviar imagem Neves Costa:', error.message);
@@ -1115,7 +1072,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     if (response.ok) {
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      console.log('[GEMINI] ✅ Resposta do Gemini 2.5:', text?.substring(0, 100));
+      console.log('[GEMINI] ✅ Resposta do Gemini 2.5, comprimento:', text?.length || 0);
       return text || 'Desculpe, não consegui gerar uma resposta.';
     }
 
@@ -1149,13 +1106,13 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     if (!response.ok) {
       const errorBody = await response.text();
       console.error(`[GEMINI] ❌ Erro na API Gemini 3.1: status ${response.status} ${response.statusText}`);
-      console.error(`[GEMINI] Corpo: ${errorBody}`);
+      // console.error('[GEMINI] Corpo omitido');
       throw new Error(`Erro na API Gemini: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    console.log('[GEMINI] ✅ Resposta do Gemini 3.1:', text?.substring(0, 100));
+    console.log('[GEMINI] ✅ Resposta do Gemini 3.1, comprimento:', text?.length || 0);
     return text || 'Desculpe, não consegui gerar uma resposta.';
   } catch (error) {
     console.error(`[GEMINI] ❌ Erro em ambos os modelos Gemini: ${error.message}`);
@@ -1165,7 +1122,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
 
 async function sendWhatsAppMessage(to, text) {
   try {
-    console.log(`[WHATSAPP] Enviando para ${to}...`);
+    console.log('[WHATSAPP] Enviando mensagem de texto');
     console.log(`[WHATSAPP] URL: ${WHATSAPP_API_URL}`);
     console.log(`[WHATSAPP] Token: ${WHATSAPP_TOKEN ? '***' : 'NÃO CONFIGURADO'}`);
 
@@ -1189,8 +1146,8 @@ async function sendWhatsAppMessage(to, text) {
     if (!response.ok) {
       const errorBody = await response.text();
       console.error(`[WHATSAPP] ❌ Erro ao enviar mensagem: status ${response.status} ${response.statusText}`);
-      console.error(`[WHATSAPP] Corpo: ${errorBody}`);
-      throw new Error(`Erro ao enviar mensagem WhatsApp: ${response.status} ${response.statusText} - ${errorBody}`);
+      // console.error('[WHATSAPP] Corpo omitido');
+      throw new Error(`Erro ao enviar mensagem WhatsApp: ${response.status} ${response.statusText}`);
     }
 
     const data = await response.json();
@@ -1214,7 +1171,7 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType) {
       return;
     }
 
-    console.log(`[WEBHOOK] ✅ Áudio transcrito: ${transcript.substring(0, 100)}`);
+    console.log('[WEBHOOK] ✅ Áudio transcrito, comprimento:', transcript?.length || 0);
 
     // Busca a conversa e histórico para gerar resposta
     const { data: conversation, error: convError } = await supabase
@@ -1266,7 +1223,7 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType) {
       });
 
     if (saveError) {
-      console.error('[WEBHOOK] Erro ao salvar resposta de áudio:', saveError);
+      console.error('[WEBHOOK] Erro ao salvar resposta de áudio:', sanitizeError(saveError));
       return;
     }
 
@@ -1291,7 +1248,7 @@ async function downloadWhatsAppMedia(mediaId) {
 
     if (!metaResponse.ok) {
       const errorBody = await metaResponse.text();
-      throw new Error(`Erro ao obter URL da mídia: ${metaResponse.status} - ${errorBody}`);
+      throw new Error(`Erro ao obter URL da mídia: ${metaResponse.status}`);
     }
 
     const metaData = await metaResponse.json();
@@ -1415,7 +1372,7 @@ async function suggestDocumentChecklist(conversationId, publicUrl, messageType, 
           .eq('id', item.id);
 
         if (updateError) {
-          console.error('[WEBHOOK] ❌ Erro ao sugerir documento:', updateError);
+          console.error('[WEBHOOK] ❌ Erro ao sugerir documento:', sanitizeError(updateError));
         } else {
           console.log(`[WEBHOOK] 📎 Documento sugerido como enviado: ${itemName}`);
         }
@@ -1425,7 +1382,7 @@ async function suggestDocumentChecklist(conversationId, publicUrl, messageType, 
 
     console.log('[WEBHOOK] ℹ️ Nenhum documento do checklist correspondente encontrado');
   } catch (error) {
-    console.error('[WEBHOOK] ❌ Erro ao sugerir checklist:', error);
+    console.error('[WEBHOOK] ❌ Erro ao sugerir checklist:', sanitizeError(error));
   }
 }
 
@@ -1447,7 +1404,7 @@ async function processDeliveryStatuses(statuses) {
         .limit(1);
 
       if (findError) {
-        console.error(`[WEBHOOK] ❌ Erro ao buscar mensagem por wa_message_id:`, findError);
+        console.error(`[WEBHOOK] ❌ Erro ao buscar mensagem por wa_message_id:`, sanitizeError(findError));
         continue;
       }
 
@@ -1476,12 +1433,12 @@ async function processDeliveryStatuses(statuses) {
         .eq('id', messages[0].id);
 
       if (updateError) {
-        console.error(`[WEBHOOK] ❌ Erro ao atualizar status da mensagem:`, updateError);
+        console.error(`[WEBHOOK] ❌ Erro ao atualizar status da mensagem:`, sanitizeError(updateError));
       } else {
         console.log(`[WEBHOOK] ✅ Status da mensagem ${messages[0].id} atualizado para ${deliveryStatus}`);
       }
     } catch (statusError) {
-      console.error(`[WEBHOOK] ❌ Erro ao processar status:`, statusError);
+      console.error(`[WEBHOOK] ❌ Erro ao processar status:`, sanitizeError(statusError));
     }
   }
 }
@@ -1531,7 +1488,7 @@ async function handleConsent(conversation, text, from, req) {
       .single();
 
     if (insertError) {
-      console.error('[WEBHOOK] ❌ Erro ao registrar consentimento:', insertError);
+      console.error('[WEBHOOK] ❌ Erro ao registrar consentimento:', sanitizeError(insertError));
       return { handled: false };
     }
 
@@ -1549,7 +1506,7 @@ async function handleConsent(conversation, text, from, req) {
       .eq('id', conversation.id);
 
     if (updateError) {
-      console.error('[WEBHOOK] ❌ Erro ao atualizar intake_data:', updateError);
+      console.error('[WEBHOOK] ❌ Erro ao atualizar intake_data:', sanitizeError(updateError));
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chatnevesecosta.vercel.app';
@@ -1560,11 +1517,11 @@ async function handleConsent(conversation, text, from, req) {
 
     await sendWhatsAppMessage(from, confirmation);
     await saveMessage(conversation.id, confirmation, 'ai');
-    console.log(`[WEBHOOK] ✅ Consentimento ${isAccepted ? 'aceito' : 'rejeitado'} registrado para ${from}. Protocolo: ${protocol}`);
+    console.log(`[WEBHOOK] ✅ Consentimento ${isAccepted ? 'aceito' : 'rejeitado'} registrado. Protocolo: ${protocol}`);
 
     return { handled: true };
   } catch (error) {
-    console.error('[WEBHOOK] ❌ Erro no handleConsent:', error);
+    console.error('[WEBHOOK] ❌ Erro no handleConsent:', sanitizeError(error));
     return { handled: false };
   }
 }
