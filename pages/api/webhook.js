@@ -309,7 +309,9 @@ export default async function handler(req, res) {
       // === Resposta com imagem: confusão Neves Costa ===
       if (messageType === 'text' && isNevesCostaConfusion(textBody)) {
         console.log(`[WEBHOOK] 🖼️ Confusão Neves Costa detectada para ${from}`);
-        const imageSent = await sendNevesCostaImage(from, conversation.id);
+        const protocol = req.headers['x-forwarded-proto'] || 'https';
+        const imageUrl = `${protocol}://${req.headers.host}/Aviso.jpg`;
+        const imageSent = await sendNevesCostaImage(from, conversation.id, imageUrl);
         if (imageSent) {
           return res.status(200).json({ success: true, neves_costa: true });
         }
@@ -920,14 +922,14 @@ function isNevesCostaConfusion(text) {
   return hasNevesCosta && !isCorrectFirm;
 }
 
-async function sendNevesCostaImage(to, conversationId) {
+async function sendNevesCostaImage(to, conversationId, imageUrl = NEVES_COSTA_IMAGE_URL) {
   try {
-    if (!NEVES_COSTA_IMAGE_URL) {
+    if (!imageUrl) {
       console.warn('[WEBHOOK] URL da imagem Neves Costa não configurada');
       return false;
     }
-    console.log(`[WEBHOOK] Baixando imagem Neves Costa: ${NEVES_COSTA_IMAGE_URL}`);
-    const imageRes = await fetch(NEVES_COSTA_IMAGE_URL);
+    console.log(`[WEBHOOK] Baixando imagem Neves Costa: ${imageUrl}`);
+    const imageRes = await fetch(imageUrl);
     if (!imageRes.ok) {
       throw new Error(`Erro ao baixar imagem: ${imageRes.status}`);
     }
@@ -940,7 +942,7 @@ async function sendNevesCostaImage(to, conversationId) {
     const caption = 'Aviso importante: o escritório Neves & Costa não possui relação com a entidade "Neves Costa".';
     await sendWhatsAppMediaMessage(to, mediaId, 'image', caption);
 
-    await saveMessage(conversationId, caption, 'ai', 'image', NEVES_COSTA_IMAGE_URL, '', { media_type: 'image/jpeg' });
+    await saveMessage(conversationId, caption, 'ai', 'image', imageUrl, '', { media_type: 'image/jpeg' });
 
     console.log(`[WEBHOOK] ✅ Imagem Neves Costa enviada para ${to}`);
     return true;
