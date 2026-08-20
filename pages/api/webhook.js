@@ -304,6 +304,21 @@ export default async function handler(req, res) {
         }
       }
 
+      // === Respostas especiais: identidade, confirmação e marketing ===
+      if (messageType === 'text') {
+        const specialReply = getSpecialReply(textBody, clientName, conversationHistory);
+        if (specialReply === 'NO_REPLY') {
+          console.log(`[WEBHOOK] 🛑 Mensagem de marketing detectada para ${from}, encerrando resposta.`);
+          return res.status(200).json({ success: true, marketing: true });
+        }
+        if (specialReply) {
+          await saveMessage(conversation.id, specialReply, 'ai');
+          await sendWhatsAppMessage(from, specialReply);
+          console.log(`[WEBHOOK] ✅ Resposta especial enviada para ${from}`);
+          return res.status(200).json({ success: true, special: true });
+        }
+      }
+
       // Resposta da IA para mídia
       let promptForAI = textBody;
       let isMediaAudio = messageType === 'audio' || messageType === 'video';
@@ -839,6 +854,90 @@ async function saveMessage(conversationId, text, sender, messageType = 'text', m
   }
 }
 
+function normalizeForCheck(text) {
+  return (text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+const POSITIVE_EMOJIS = [
+  '👍','👌','🤝','👏','🙌','👐','☺','😊','🙂','😉','😄','😁','✅','🙏','💙','💖','❤','🤗','🥰','😍','🥳','😎','✌️','🫶','🤙'
+];
+
+function isConfirmationMessage(text) {
+  if (!text || !text.trim()) return false;
+  const trimmed = text.trim();
+  const affirmatives = ['ok','sim','entendi','obrigado','obrigada','certo','combinado','fechado','blz','beleza','perfeito','ótimo','otimo','show','valeu'];
+  const plain = normalizeForCheck(trimmed).replace(/[^a-z0-9\s]/g, '').trim();
+  if (affirmatives.includes(plain)) return true;
+  const hasPositive = POSITIVE_EMOJIS.some(e => trimmed.includes(e));
+  if (hasPositive && trimmed.length <= 25) return true;
+  return false;
+}
+
+const MARKETING_TERMS = [
+  'oferta', 'imperdivel', 'imperdível', 'promocao', 'promoção', 'desconto',
+  'plano controle', 'plano de', 'combo', 'internet todo', 'ligações ilimitadas',
+  'gb de', 'gb por', 'fatura online', 'assine', 'contrate', 'portabilidade',
+  'recarga', 'cashback', 'empréstimo', 'emprestimo', 'cartão de crédito',
+  'credito pessoal', 'sua fatura', 'meu tim', 'meu vivo', 'meu claro', 'meu oi',
+  'receba', 'exclusivo', 'por apenas r$', 'r$/mes', 'r$/mês', 'saiba mais',
+  'acesse agora', 'aproveite', 'vamos retirar seu numero', 'vamos retirar seu número'
+];
+
+function isMarketingMessage(text) {
+  const lower = normalizeForCheck(text);
+  let hits = 0;
+  for (const term of MARKETING_TERMS) {
+    if (lower.includes(term)) hits++;
+  }
+  return hits >= 2;
+}
+
+function getClientGreeting(clientName) {
+  if (!clientName || clientName === 'Cliente') return 'Senhor(a)';
+  const title = getClientTitle(clientName);
+  const cap = title ? title[0].toUpperCase() + title.slice(1) : 'Senhor(a)';
+  return title ? `${cap} ${clientName}` : `${cap} ${clientName}`;
+}
+
+const IDENTITY_KEYWORDS = [
+  'cnpj', 'boleto', 'advocacia neves costa', 'neves costa', 'qual o cnpj',
+  'cnpj de vocês', 'cnpj de vcs', 'seu cnpj', 'vocês cobram', 'me cobraram',
+  'cobrança de vocês', 'cobranca de voces', 'cobrança de vcs', 'emitir boleto',
+  'boleto de vocês', 'boleto de vcs', 'outro escritorio', 'outro escritório',
+  'negociação de dívida', 'negociacao de divida'
+];
+
+const IDENTITY_ALREADY_SAID = [
+  'não possuímos cnpj', 'não possuimos cnpj', 'não emitimos boletos',
+  'não emite boletos', 'não fazemos cobranças', 'não temos relação',
+  'sem relação com a', 'não temos relacao'
+];
+
+function getSpecialReply(text, clientName, history = '') {
+  const lower = normalizeForCheck(text);
+  const historyLower = normalizeForCheck(history);
+
+  if (isMarketingMessage(text)) return 'NO_REPLY';
+
+  const isIdentity = IDENTITY_KEYWORDS.some(k => lower.includes(k));
+  const alreadySaid = IDENTITY_ALREADY_SAID.some(s => historyLower.includes(s));
+
+  if (isIdentity) {
+    const name = getClientGreeting(clientName);
+    if (alreadySaid) {
+      return `${name}, entendido. Se houver outra dúvida, estamos à disposição.`;
+    }
+    return `${name}, somos a Neves & Costa Advocacia (com &). Informamos que não emitimos boletos, e nem fazemos cobranças, além de não possuirmos CNPJ. Não temos relação nenhuma com a "Advocacia Neves Costa".`;
+  }
+
+  if (alreadySaid && isConfirmationMessage(text)) {
+    const name = getClientGreeting(clientName);
+    return `${name}, entendido. Estamos à disposição.`;
+  }
+
+  return null;
+}
+
 const SYSTEM_PROMPT = `Você é o Jhon, assistente virtual da Neves & Costa Advocacia e Consultoria.
 
 IDENTIDADE E LIMITES:
@@ -864,15 +963,17 @@ REGRAS DE CONVERSA (obrigatórias):
 8. NUNCA prometa resultado ou análise jurídica conclusiva.
 9. Trate o cliente pelo nome quando souber. Se não souber o nome, use "Senhor(a)". Se souber o nome, identifique se é feminino ou masculino e use "senhora" ou "senhor" com o nome (ex: "senhora Emanuelly", "senhor João"). Se não conseguir ter certeza do gênero, use o nome sem título ou com "Senhor(a)".
 
-AVISO DE CONFUSÃO COM OUTRO ESCRITÓRIO (prioridade máxima):
-Se o cliente mencionar qualquer uma destas ideias: boleto, cobrança, negociação, CNPJ, "Neves Costa" (sem &), consórcio, financiamento, dívida, contas vencidas, banco, "outro escritório" ou "negociação de dívida":
-1. Responda IMEDIATAMENTE com o esclarecimento: a Neves & Costa Advocacia (com &) não emite boletos, não faz cobranças e não possui CNPJ.
+AVISO DE CONFUSÃO COM OUTRO ESCRITÓRIO:
+Apenas trate como confusão com outro escritório quando o cliente mencionar CNPJ, boleto, "Neves Costa" (sem &), "outro escritório" ou cobrança/boleto atribuídos a nós.
+Palavras como "financiamento", "consórcio", "banco" ou "dívida" sozinhas, sem relação a CNPJ/boleto do nosso escritório, são tipos de caso e NÃO devem gerar esclarecimento.
+Se houver confusão:
+1. Responda IMEDIATAMENTE e ENXUTO: a Neves & Costa Advocacia (com &) não emite boletos, não faz cobranças e não possui CNPJ.
 2. Deixe claro que NÃO temos relação com a "Advocacia Neves Costa".
 3. NÃO repasse nosso telefone/contato nesse esclarecimento.
-4. Oriente o cliente a buscar a empresa responsável pelo boleto/cobrança, preferencialmente pelo banco ou CNPJ constante no documento.
+4. Oriente o cliente a buscar a empresa responsável pelo boleto/cobrança, preferencialmente pelo CNPJ constante no documento.
 5. Se perguntarem se conhecemos o outro escritório, diga: "Não conhecemos e não temos relação. A única informação que sabemos é que, segundo relatos de clientes, eles são de São Paulo."
-6. Depois do esclarecimento, NÃO ofereça outros serviços e NÃO liste áreas de atuação. Só responda se o cliente perguntar algo específico sobre o próprio assunto. Se não houver pergunta, finalize com uma frase curta de despedida.
-7. Se o histórico já contiver o esclarecimento sobre boleto/cobrança/Neves Costa e o cliente apenas pedir ajuda sem trazer uma nova dúvida jurídica, NÃO repita o esclarecimento. Respeitosamente, diga que não podemos intervir porque não somos a empresa do boleto, e se ofereça a ouvir caso haja outro assunto jurídico — mas NÃO liste áreas de atuação.
+6. Depois do esclarecimento, NÃO ofereça outros serviços e NÃO liste áreas de atuação.
+7. Se o esclarecimento já tiver sido dito e o cliente apenas confirmar, responda apenas "Entendido. Estamos à disposição." e NÃO repita o esclarecimento.
 
 ENCAMINHAMENTO HUMANO:
 - Encaminhe para a equipe quando o cliente pedir advogado/atendimento humano, prazo processual, audiência, contratação, urgência ou situação complexa.
@@ -928,7 +1029,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
       ? 'Se a primeira mensagem for uma saudação (oi, olá, bom dia), responda APENAS a saudação e NÃO pergunte nada. Se a mensagem já apresentar um caso ou pergunta, responda diretamente e NÃO diga "Olá".'
       : 'O histórico já existe. NÃO se apresente, NÃO diga "Olá", "Oi" ou "Bom dia" em nenhuma circunstância. Responda DIRETAMENTE ao assunto.';
 
-    const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- Responda DIRETAMENTE à NOVA MENSAGEM do cliente, usando o contexto e a memória apenas como referência. Não fique preso a uma informação anterior se o cliente mudou de assunto.\n- Se a mensagem mencionar boleto, cobrança, negociação, CNPJ, "Neves Costa" (sem &), consórcio, financiamento, dívida, banco ou "outro escritório" e o esclarecimento ainda NÃO tiver sido dito no histórico, então o esclarecimento da confusão é a prioridade máxima, sem passar nosso telefone. Depois de esclarecer, NÃO ofereça outros serviços e NÃO liste áreas de atuação.
+    const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- Responda DIRETAMENTE à NOVA MENSAGEM do cliente, usando o contexto e a memória apenas como referência. Não fique preso a uma informação anterior se o cliente mudou de assunto.\n- Se a mensagem mencionar CNPJ, boleto, "Neves Costa" (sem &), "outro escritório" ou cobrança atribuída a nós e o esclarecimento ainda NÃO tiver sido dito no histórico, o esclarecimento ENXUTO é a prioridade máxima. NUNCA trate "financiamento", "consórcio", "banco" ou "dívida" sozinhos como confusão — são tipos de caso. Depois de esclarecer, NÃO ofereça outros serviços.
 - Se o esclarecimento sobre boleto/cobrança/Neves Costa JÁ tiver sido dito no histórico e o cliente apenas pedir ajuda sem apresentar uma nova dúvida jurídica, NÃO repita o esclarecimento. Diga respeitosamente que não podemos intervir, pois não somos a empresa do boleto, e ofereça-se a ouvir caso haja outro assunto jurídico — sem listar áreas de atuação.\n- Não peça nome, e-mail ou telefone que já estiverem no histórico, contexto ou memória.\n- Responda como Jhon, 1-3 frases, sem listas, sem telefone a menos que o cliente peça explicitamente.`;
     
     const controller = new AbortController();
