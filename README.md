@@ -1,3 +1,12 @@
+# Neves & Costa Chat System
+
+Plataforma completa de atendimento, gestão de casos e automação jurídica para o escritório **Neves & Costa Advocacia e Consultoria**, integrando WhatsApp, IA (Gemini), base de conhecimento RAG, agenda de prazos, DataJud, métricas e controles de LGPD.
+
+**URL de produção:** `https://chatnevesecosta.vercel.app`  
+**Relatório de status atualizado:** [`PROJECT_STATUS_REPORT.md`](./PROJECT_STATUS_REPORT.md)
+
+---
+
 # WhatsApp Cloud API + Google AI Studio (Gemini) na Vercel
 
 Este projeto é um backend serverless feito em Node.js + Express para integrar a **WhatsApp Cloud API** da Meta com o **Google AI Studio (Gemini)**.
