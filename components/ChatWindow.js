@@ -693,44 +693,48 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
               {/* Renderizar mídia se existir */}
               {msg.media_url && (
                 <div className="mb-2">
-                  {msg.media_type?.startsWith('image/') ? (
-                    <img 
-                      src={msg.media_url} 
-                      alt="Imagem" 
+                  {msg.content_type === 'image' || msg.media_type?.startsWith('image/') || msg.media_url?.toLowerCase().match(/\.(jpg|jpeg|png|webp|gif)(\?.*)?$/) ? (
+                    <img
+                      src={msg.media_url}
+                      alt="Imagem"
                       className="max-w-40 max-h-40 object-cover rounded cursor-pointer hover:opacity-90 border border-nc-gray-200"
                       onClick={() => setExpandedMedia(msg.media_url)}
                     />
-                  ) : (msg.media_type?.startsWith('audio/') || msg.content_type === 'audio') ? (
+                  ) : msg.content_type === 'audio' || msg.media_type?.startsWith('audio/') ? (
                     <audio controls className="w-full" src={msg.media_url}>
                       Seu navegador não suporta áudio.
                     </audio>
-                  ) : (msg.media_type === 'application/pdf' || msg.media_url?.toLowerCase().endsWith('.pdf')) ? (
-                    <div className="w-full">
-                      <div className="border border-nc-gray-200 rounded overflow-hidden bg-nc-gray-50">
-                        <object
-                          data={msg.media_url}
-                          type="application/pdf"
-                          className="w-full h-72"
-                        >
-                          <p className="text-sm text-nc-text p-2">
-                            Não foi possível exibir o PDF. Use o botão abaixo.
-                          </p>
-                        </object>
-                      </div>
-                      <a
-                        href={msg.media_url}
-                        download
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 mt-2 text-sm text-nc-text hover:text-nc-yellow hover:underline transition"
+                  ) : msg.content_type === 'document' || msg.media_type === 'application/pdf' || msg.media_url?.toLowerCase().match(/\.pdf(\?.*)?$/) ? (
+                    <div className="w-full rounded border border-nc-gray-200 overflow-hidden bg-nc-gray-50 p-2">
+                      <object
+                        data={msg.media_url}
+                        type="application/pdf"
+                        className="w-full h-40 rounded bg-white"
                       >
-                        📎 Baixar PDF
-                      </a>
+                        <p className="text-xs text-nc-text p-2">Pré-visualização indisponível.</p>
+                      </object>
+                      <div className="flex items-center gap-3 mt-2">
+                        <button
+                          onClick={() => setExpandedMedia(msg.media_url)}
+                          className="inline-flex items-center gap-1 text-sm text-nc-text hover:text-nc-yellow transition"
+                        >
+                          👁 Ver
+                        </button>
+                        <a
+                          href={msg.media_url}
+                          download
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-sm text-nc-text hover:text-nc-yellow hover:underline transition"
+                        >
+                          ⬇ Baixar
+                        </a>
+                      </div>
                     </div>
                   ) : (
-                    <a 
-                      href={msg.media_url} 
-                      download 
+                    <a
+                      href={msg.media_url}
+                      download
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 text-nc-text hover:text-nc-yellow hover:underline transition"
@@ -855,25 +859,53 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Overlay de imagem expandida */}
+      {/* Overlay de mídia expandida */}
       {expandedMedia && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-4"
           onClick={() => setExpandedMedia(null)}
         >
-          <img
-            src={expandedMedia}
-            alt="Imagem expandida"
-            className="max-w-full max-h-[90vh] rounded shadow-lg object-contain"
+          <div
+            className="relative w-full max-w-6xl h-[90vh] flex items-center justify-center"
             onClick={(e) => e.stopPropagation()}
-          />
-          <button
-            onClick={() => setExpandedMedia(null)}
-            className="absolute top-4 right-4 text-white text-2xl hover:text-nc-yellow"
-            title="Fechar"
           >
-            ✕
-          </button>
+            {expandedMedia.toLowerCase().match(/\.pdf(\?.*)?$/) ? (
+              <object
+                data={expandedMedia}
+                type="application/pdf"
+                className="w-full h-full rounded bg-white shadow-lg"
+              >
+                <p className="text-white p-4">Não foi possível exibir o PDF.</p>
+              </object>
+            ) : (
+              <img
+                src={expandedMedia}
+                alt="Mídia expandida"
+                className="max-w-full max-h-full rounded shadow-lg object-contain"
+              />
+            )}
+          </div>
+          <div className="absolute top-4 right-4 flex items-center gap-2">
+            {expandedMedia.toLowerCase().match(/\.pdf(\?.*)?$/) && (
+              <a
+                href={expandedMedia}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sm text-nc-black bg-nc-yellow-200 hover:bg-nc-yellow-300 px-3 py-1.5 rounded"
+                onClick={(e) => e.stopPropagation()}
+              >
+                ⬇ Baixar
+              </a>
+            )}
+            <button
+              onClick={() => setExpandedMedia(null)}
+              className="text-white text-2xl hover:text-nc-yellow p-1"
+              title="Fechar"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 
