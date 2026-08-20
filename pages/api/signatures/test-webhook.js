@@ -120,7 +120,7 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('[SIGNATURE-TEST-WEBHOOK] Erro:', error);
+    console.error('[SIGNATURE-TEST-WEBHOOK] Erro:', error.message);
     return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }
