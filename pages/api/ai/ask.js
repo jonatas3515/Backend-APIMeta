@@ -92,16 +92,17 @@ export default async function handler(req, res) {
       console.error('[RAG] Erro ao registrar log:', logError);
     }
 
+    const sourceDocs = documents.map(d => ({
+      title: d.title,
+      type: d.type,
+      area: d.area,
+      tribunal: d.tribunal,
+      tags: d.tags
+    }));
+
     return res.status(200).json({
       answer,
-      sources: documents.map(d => ({
-        id: d.document_id,
-        title: d.title,
-        type: d.type,
-        area: d.area,
-        tribunal: d.tribunal,
-        tags: d.tags
-      }))
+      sources: sourceDocs
     });
   } catch (error) {
     console.error('[RAG] Erro:', error);

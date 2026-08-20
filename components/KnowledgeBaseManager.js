@@ -57,18 +57,26 @@ export default function KnowledgeBaseManager() {
     setShowForm(true);
   };
 
-  const openEdit = (doc) => {
-    setEditing(doc);
-    setForm({
-      title: doc.title || '',
-      type: doc.type || 'modelo_peca',
-      area: doc.area || '',
-      tribunal: doc.tribunal || '',
-      tags: Array.isArray(doc.tags) ? doc.tags.join(', ') : '',
-      version: doc.version || 'v1.0',
-      content: doc.content || ''
-    });
-    setShowForm(true);
+  const openEdit = async (doc) => {
+    try {
+      const headers = await getAuthHeaders();
+      const { data } = await axios.get(`/api/knowledge/documents?id=${doc.id}`, { headers });
+      const full = data.document || doc;
+      setEditing(full);
+      setForm({
+        title: full.title || '',
+        type: full.type || 'modelo_peca',
+        area: full.area || '',
+        tribunal: full.tribunal || '',
+        tags: Array.isArray(full.tags) ? full.tags.join(', ') : '',
+        version: full.version || 'v1.0',
+        content: full.content || ''
+      });
+      setShowForm(true);
+    } catch (error) {
+      console.error('[KNOWLEDGE] Erro ao abrir documento:', error);
+      alert('Erro ao carregar documento para revisão');
+    }
   };
 
   const closeForm = () => {
@@ -108,7 +116,17 @@ export default function KnowledgeBaseManager() {
   };
 
   const handleStatusChange = async (id, newStatus) => {
-    if (!confirm(`Alterar status para ${newStatus}?`)) return;
+    if (newStatus === 'aprovado') {
+      const ok = window.confirm(
+        'Aprovar este documento?\n\n' +
+        '⚠️ Revise anonimização, artigos e jurisprudência antes de aprovar.\n' +
+        'Após a aprovação, ele passará a ser utilizado pelo Assistente IA.'
+      );
+      if (!ok) return;
+    } else {
+      const ok = window.confirm(`Alterar status para ${newStatus}?`);
+      if (!ok) return;
+    }
     try {
       const headers = await getAuthHeaders();
       await axios.patch('/api/knowledge/documents', { id, status: newStatus }, { headers });
@@ -140,8 +158,13 @@ export default function KnowledgeBaseManager() {
 
   return (
     <div className="p-6 bg-nc-surface min-h-full">
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
-        <h2 className="text-2xl font-bold">📚 Base de Conhecimento (RAG)</h2>
+      <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold">📚 Base de Conhecimento (RAG)</h2>
+          <p className="text-sm text-yellow-600 mt-1">
+            ⚠️ Revise anonimização, artigos e jurisprudência antes de aprovar.
+          </p>
+        </div>
         <div className="flex flex-wrap gap-2">
           <input
             type="text"
@@ -172,7 +195,7 @@ export default function KnowledgeBaseManager() {
       {showForm && (
         <div className="mb-6 p-4 border rounded bg-nc-black text-nc-white">
           <h3 className="text-lg font-bold mb-4">
-            {editing ? 'Editar Documento' : 'Novo Documento (será salvo como rascunho)'}
+            {editing ? 'Revisar versão anonimizada' : 'Novo Documento (será salvo como rascunho)'}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <input
@@ -263,6 +286,7 @@ export default function KnowledgeBaseManager() {
                     {doc.area && <span>· {doc.area}</span>}
                     {doc.tribunal && <span>· {doc.tribunal}</span>}
                     {doc.version && <span>· {doc.version}</span>}
+                    {doc.chunk_count !== undefined && <span>· {doc.chunk_count} chunks</span>}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">

@@ -141,8 +141,8 @@ export default function OfficeAIAssistant() {
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-2">Fontes consultadas</h2>
             <ul className="space-y-2">
-              {sources.map((s) => (
-                <li key={s.id} className="text-xs text-gray-600 border-l-2 border-blue-300 pl-2">
+              {sources.map((s, i) => (
+                <li key={`${s.title}-${s.type}-${i}`} className="text-xs text-gray-600 border-l-2 border-blue-300 pl-2">
                   <strong>{s.title}</strong>
                   <span className="block text-gray-500">
                     {s.type} {s.area ? `· ${s.area}` : ''} {s.tribunal ? `· ${s.tribunal}` : ''}
