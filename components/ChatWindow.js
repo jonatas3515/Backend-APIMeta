@@ -50,6 +50,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   const [uploadProgress, setUploadProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedTranscript, setExpandedTranscript] = useState(null);
+  const [expandedMedia, setExpandedMedia] = useState(null);
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const isAtBottomRef = useRef(true);
@@ -696,13 +697,36 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                     <img 
                       src={msg.media_url} 
                       alt="Imagem" 
-                      className="max-w-full rounded cursor-pointer hover:opacity-90"
-                      onClick={() => window.open(msg.media_url, '_blank')}
+                      className="max-w-40 max-h-40 object-cover rounded cursor-pointer hover:opacity-90 border border-nc-gray-200"
+                      onClick={() => setExpandedMedia(msg.media_url)}
                     />
                   ) : (msg.media_type?.startsWith('audio/') || msg.content_type === 'audio') ? (
                     <audio controls className="w-full" src={msg.media_url}>
                       Seu navegador não suporta áudio.
                     </audio>
+                  ) : (msg.media_type === 'application/pdf' || msg.media_url?.toLowerCase().endsWith('.pdf')) ? (
+                    <div className="w-full">
+                      <div className="border border-nc-gray-200 rounded overflow-hidden bg-nc-gray-50">
+                        <object
+                          data={msg.media_url}
+                          type="application/pdf"
+                          className="w-full h-72"
+                        >
+                          <p className="text-sm text-nc-text p-2">
+                            Não foi possível exibir o PDF. Use o botão abaixo.
+                          </p>
+                        </object>
+                      </div>
+                      <a
+                        href={msg.media_url}
+                        download
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 mt-2 text-sm text-nc-text hover:text-nc-yellow hover:underline transition"
+                      >
+                        📎 Baixar PDF
+                      </a>
+                    </div>
                   ) : (
                     <a 
                       href={msg.media_url} 
@@ -830,6 +854,28 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
         ))}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Overlay de imagem expandida */}
+      {expandedMedia && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setExpandedMedia(null)}
+        >
+          <img
+            src={expandedMedia}
+            alt="Imagem expandida"
+            className="max-w-full max-h-[90vh] rounded shadow-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setExpandedMedia(null)}
+            className="absolute top-4 right-4 text-white text-2xl hover:text-nc-yellow"
+            title="Fechar"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <div className="bg-nc-white border-t border-nc-gray-200 p-4">
         <div className="relative">
