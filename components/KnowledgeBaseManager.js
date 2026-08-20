@@ -157,7 +157,7 @@ export default function KnowledgeBaseManager() {
   };
 
   return (
-    <div className="p-6 bg-nc-surface min-h-full">
+    <div className="p-6 bg-nc-surface min-h-full max-h-screen overflow-y-auto">
       <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold">📚 Base de Conhecimento (RAG)</h2>
@@ -171,12 +171,12 @@ export default function KnowledgeBaseManager() {
             placeholder="Buscar documento..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="px-3 py-2 border rounded text-sm bg-nc-black text-nc-white"
+            className="px-3 py-2 border rounded text-sm bg-white text-gray-900"
           />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border rounded text-sm bg-nc-black text-nc-white"
+            className="px-3 py-2 border rounded text-sm bg-white text-gray-900"
           >
             <option value="all">Todos</option>
             <option value="rascunho">Rascunho</option>
@@ -193,7 +193,7 @@ export default function KnowledgeBaseManager() {
       </div>
 
       {showForm && (
-        <div className="mb-6 p-4 border rounded bg-nc-black text-nc-white">
+        <div className="mb-6 p-4 border rounded bg-white text-gray-900 shadow-sm">
           <h3 className="text-lg font-bold mb-4">
             {editing ? 'Revisar versão anonimizada' : 'Novo Documento (será salvo como rascunho)'}
           </h3>
@@ -277,11 +277,11 @@ export default function KnowledgeBaseManager() {
       ) : (
         <div className="space-y-4">
           {filteredDocs.map(doc => (
-            <div key={doc.id} className="p-4 border rounded-lg bg-nc-black text-nc-white">
+            <div key={doc.id} className="p-4 border rounded-lg bg-white text-gray-900 shadow-sm">
               <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2 mb-2">
                 <div>
                   <h4 className="font-bold text-lg">{doc.title}</h4>
-                  <div className="flex flex-wrap gap-2 mt-1 text-sm text-gray-300">
+                  <div className="flex flex-wrap gap-2 mt-1 text-sm text-gray-600">
                     <span>{doc.type}</span>
                     {doc.area && <span>· {doc.area}</span>}
                     {doc.tribunal && <span>· {doc.tribunal}</span>}
@@ -318,17 +318,17 @@ export default function KnowledgeBaseManager() {
               <div className="flex gap-2 mb-2">
                 {statusBadge(doc.status)}
                 {Array.isArray(doc.tags) && doc.tags.map(tag => (
-                  <span key={tag} className="text-xs px-2 py-1 bg-gray-700 text-gray-200 rounded">
+                  <span key={tag} className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded">
                     {tag}
                   </span>
                 ))}
               </div>
 
-              <p className="text-sm text-gray-400 mb-2">
+              <p className="text-sm text-gray-500 mb-2">
                 Última atualização: {new Date(doc.updated_at).toLocaleString('pt-BR')}
               </p>
 
-              <div className="bg-nc-surface p-3 rounded border border-nc-gray-800 text-sm text-gray-300 max-h-32 overflow-y-auto whitespace-pre-line">
+              <div className="bg-gray-50 p-3 rounded border border-gray-200 text-sm text-gray-700 max-h-32 overflow-y-auto whitespace-pre-line">
                 {doc.preview || 'Sem prévia'}
               </div>
             </div>
