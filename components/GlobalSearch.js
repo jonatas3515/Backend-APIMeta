@@ -170,7 +170,7 @@ export default function GlobalSearch() {
   if (!open) return (
     <button
       onClick={() => setOpen(true)}
-      className="fixed bottom-20 right-4 md:bottom-4 z-50 bg-nc-yellow text-nc-black p-3 rounded-full shadow-card hover:bg-nc-yellow-600 transition"
+      className="fixed bottom-20 right-4 md:bottom-4 z-50 bg-nc-yellow-200 text-nc-black p-3 rounded-full shadow-card hover:bg-nc-yellow-300 transition"
       title={`Busca global (${shortcut})`}
     >
       <span className="text-xl">🔍</span>

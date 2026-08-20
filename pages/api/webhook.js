@@ -243,7 +243,7 @@ export default async function handler(req, res) {
 
       // Salvar mensagem do cliente (mídia vai para processamento assíncrono)
       if (conversation) {
-        const savedMessage = await saveMessage(conversation.id, textBody, 'client', messageType, publicUrl, '', { media_status: mediaStatus || undefined }, waMessageId);
+        const savedMessage = await saveMessage(conversation.id, textBody, 'client', messageType, publicUrl, '', { media_status: mediaStatus || undefined, media_type: mediaBuffer?.mimeType }, waMessageId);
         
         // Sugerir marcação de documento no checklist
         if (publicUrl && (messageType === 'image' || messageType === 'document' || messageType === 'video' || messageType === 'audio')) {
@@ -803,6 +803,7 @@ async function saveMessage(conversationId, text, sender, messageType = 'text', m
 
     if (mediaUrl) insertData.media_url = mediaUrl;
     if (mediaSummary) insertData.media_summary = mediaSummary;
+    if (extraData.media_type) insertData.media_type = extraData.media_type;
     if (extraData.media_status) insertData.media_status = extraData.media_status;
     if (extraData.media_transcript) insertData.media_transcript = extraData.media_transcript;
 
@@ -831,6 +832,7 @@ async function saveMessage(conversationId, text, sender, messageType = 'text', m
         };
         if (mediaUrl) minimalInsertData.media_url = mediaUrl;
         if (mediaSummary) minimalInsertData.media_summary = mediaSummary;
+        if (extraData.media_type) minimalInsertData.media_type = extraData.media_type;
 
         const { data: fallbackData, error: fallbackError } = await supabase
           .from('messages')
