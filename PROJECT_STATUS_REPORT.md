@@ -44,7 +44,7 @@
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `ADMIN_SETUP_KEY`
-- `DATAJUD_API_KEY` (usada em código, **não consta no `.env.example` nem no `.env.local` revisado**)
+- `DATAJUD_API_KEY` (configurada em Vercel Production/Preview; teste de consulta em 20/08/2026 retornou 401 — autenticação rejeitada)
 - `ZAPSIGN_API_KEY` (referenciada em auditoria, não confirmada como ativa em `.env.local`)
 - `CALENDAR_ENCRYPTION_KEY` (referenciada em auditoria, não confirmada como ativa em `.env.local`)
 
@@ -69,7 +69,7 @@
 | **Filtro global por área jurídica** | Preferência do usuário e índices em `users`, `cases`, `conversations`, `case_insights` | `AreaFilterSelector.js`, `ActiveFilterBanner.js` | n/a (preferência em `users.preferred_legal_area`) | todos | Funcional |
 | **LGPD e consentimento** | Política de privacidade, logs de consentimento, anonimização | `CollaborationPanel.js`, fluxo no `webhook.js` | `GET/POST/PATCH /api/lgpd` | admin, advogado | Funcional |
 | **Player de áudio no chat** | Exibe áudio transcrito e player para mídias | `ChatWindow.js` | `POST /api/process-media` | todos | Funcional |
-| **DataJud** | Cadastro de processos e consulta pública de movimentações | `CaseProcessMonitoring.js` | `GET/POST/PATCH/DELETE /api/case-processes`, `POST /api/process-movements/[id]/review`, `POST /api/process-movements/[id]/create-agenda-event` | advogado/admin (edição); estagiario (leitura) | **Funcional com ressalva: API key não configurada em `.env.local`** |
+| **DataJud** | Cadastro de processos e consulta pública de movimentações | `CaseProcessMonitoring.js` | `GET/POST/PATCH/DELETE /api/case-processes`, `POST /api/process-movements/[id]/review`, `POST /api/process-movements/[id]/create-agenda-event` | advogado/admin (edição); estagiario (leitura) | **Teste real em 20/08/2026 retornou HTTP 401 — falha de autenticação** |
 | **Assistente IA / RAG** | Respostas no chat e assistente jurídico baseado em documentos aprovados | `OfficeAIAssistant.js`, `KnowledgeBaseManager.js` | `POST /api/ai/ask`, `GET/POST/PATCH/PUT /api/knowledge/documents` | admin, advogado, estagiario (uso); admin/advogado (gestão) | Funcional |
 | **Base de Conhecimento** | Gestão de documentos anonimizados e aprovação | `KnowledgeBaseManager.js` | `GET/POST/PATCH/PUT /api/knowledge/documents` | admin, advogado (inserir/editar/aprovar); estagiario (consulta via IA) | Funcional |
 
@@ -105,10 +105,21 @@ A fonte canônica é `lib/datajudCourts.js`:
 5. `pages/api/case-processes.js` armazena os metadados em `case_processes`.
 6. `pages/api/process-movements/[id]/review.js` permite revisar a movimentação e convertê-la em nota ou evento de agenda.
 
+### Teste real em 20/08/2026
+
+- Tribunal: TRF1 (1ª Região Federal).
+- Número de processo: não registrado (utilizado exemplo público do tutorial da CNJ).
+- HTTP: 401 Unauthorized.
+- Autenticação: não funcionou.
+- Movimentações retornadas: 0.
+- Erro sanitizado: a DataJud rejeitou a chave/credencial em todos os esquemas testados (`APIKey` e `Basic`).
+- Causa: falha de autenticação (não foi alias, formato, timeout, rate limit ou erro 5xx).
+- Nota: o deploy de produção já possui a variável, mas a chave em si não foi aceita pela API pública do DataJud.
+
 ### Limitações
 
-- **API Key não configurada em `.env.local`:** sem `DATAJUD_API_KEY` a consulta retorna erro.  
-- Verificação em produção: nenhuma consulta DataJud confirmada com sucesso no período analisado.  
+- **Autenticação pendente:** a variável `DATAJUD_API_KEY` está no Vercel, porém a consulta real retorna 401. A causa é a credencial, não a rede ou o tribunal.  
+- A DataJud/CNJ documenta o uso de `Basic` auth; o código atual envia `Authorization: APIKey <chave>`. O formato da credencial no Vercel precisa ser conferido.  
 - Apenas tribunais da whitelist respondem; STF não habilitado.  
 - Processos com `sigilo === 'Sigiloso'/'Restrito'` retornam erro e exigem acompanhamento em fonte oficial.  
 - Prazos, intimações e alterações urgentes devem sempre ser confirmadas nos sistemas oficiais do tribunal. A consulta DataJud é auxiliar, não substitui fontes oficiais.
@@ -184,7 +195,7 @@ Consulta realizada em produção em 20/08/2026:
 
 ### Logs
 
-- Logs de webhook incluem headers e corpo completos no console; cuidado com PII nos logs do Vercel.
+- **Confirmação:** `pages/api/webhook.js` imprime no console o body completo, headers, telefone (`from`), nome do cliente (`clientName`) e texto da mensagem (`textBody`). Esses logs são capturados nos logs do Vercel e expõem PII (telefone, nome, conteúdo de mensagens). Recomendação: remover/suprimir logs detalhados em produção ou configurar nível de log.
 - `knowledge_query_logs` guarda a consulta anonimizada, filtros e IDs de documentos; não armazena a resposta completa.
 
 ### Proteção contra URL/endpoint arbitrário no DataJud
@@ -276,23 +287,30 @@ Foram identificadas **52 migrations** em `supabase/migrations/`, numeradas de 00
 - RAG com 4 documentos aprovados; busca e geração via `POST /api/ai/ask` confirmadas no código.
 - Supabase com 52 migrations aplicadas e RLS ativo.
 
+### Smoke tests (produção, 20/08/2026)
+
+- `GET /` → HTTP 200 (ok).
+- `GET /api/webhook-test` → HTTP 200 (ok).
+- `GET /api/webhook` (sem verify token) → HTTP 403 (protegido).
+- `POST /api/ai/ask` (sem autenticação) → HTTP 400 (não autenticado).
+
 ### O que ainda depende de teste manual
 
 - Envio de mídia via WhatsApp em múltiplos formatos (áudio longo, PDF, imagem em alta resolução).
 - Assinatura eletrônica (Zapsign) — requer `ZAPSIGN_API_KEY` ativa e testes em sandbox.
 - Integração Google Calendar OAuth — requer chaves e teste de sincronização.
-- DataJud — requer `DATAJUD_API_KEY` e número de processo em tribunal habilitado.
+- DataJud — autenticação com a API pública ainda falha (HTTP 401) mesmo com a variável no Vercel; requer revisão da chave/credencial.
 - Carga com 1000+ conversas — performance projetada, não testada em produção.
 
 ### Erros/limitações atuais
 
-- `DataJud API key` não configurada em `.env.local` — a funcionalidade de consulta pública está sem autenticação.
+- `DataJud` — a variável `DATAJUD_API_KEY` está em Vercel Production/Preview, mas a consulta real retorna HTTP 401 (autenticação rejeitada). Causa: chave/credencial inválida ou esquema de autorização incorreto (código usa `APIKey`, documentação DataJud/CNJ indica `Basic`).
 - Anonimização não cobre nomes de pessoas — exige revisão manual dos documentos RAG.
 - Build local com 1024 MB de memória (`vercel.json`) pode causar OOM em máquinas com menos RAM; em produção a Vercel ignora o parâmetro `memory` devido ao billing de CPU ativo.
 
 ### Fato vs suposição
 
-- **Fatos:** 52 migrations, 4 documentos RAG aprovados, `DATAJUD_API_KEY` ausente em `.env.local`, build ok, deploy ativo.
+- **Fatos:** 52 migrations, 4 documentos RAG aprovados, `DATAJUD_API_KEY` presente no Vercel, teste DataJud retornou 401, logs do webhook expõem PII, build ok, deploy ativo.
 - **Suposições:** tempo real de resposta <2 s, capacidade de 1000+ conversas, DataJud funcionando com a chave (não testado).
 
 ---
@@ -301,13 +319,13 @@ Foram identificadas **52 migrations** em `supabase/migrations/`, numeradas de 00
 
 ### Crítico
 
-1. **Configurar `DATAJUD_API_KEY`** em Vercel para que a consulta de movimentações funcione; adicionar a variável no `.env.example`.
+1. **Revisar `DATAJUD_API_KEY`:** a variável está no Vercel, mas a API pública rejeitou a chave (HTTP 401). Verificar se o valor está ativo e se o esquema de autenticação (`APIKey` vs `Basic`) está correto; adicionar a variável no `.env.example`.
 2. **Revisar e anonimizar nomes de pessoas** nos documentos RAG aprovados ou inserir um passo manual obrigatório antes da aprovação.
 3. **Remover/rotacionar chaves temporárias** (`ZAPSIGN_API_KEY`, `CALENDAR_ENCRYPTION_KEY`) antes de ativar assinaturas/calendário em produção.
 
 ### Alto
 
-4. **Adicionar `DATAJUD_API_KEY` no `.env.example`.**
+4. **Adicionar `DATAJUD_API_KEY` no `.env.example` e documentar o formato esperado (ex.: `usuario:senha` para `Basic`).**
 5. **Testar DataJud com processo real** em tribunal habilitado e registrar os primeiros `process_movements`.
 6. **Revisar logs de webhook** para evitar vazamento de PII nos logs do Vercel.
 7. **Criar testes de fumaça** (smoke tests) para as rotas críticas (`/api/webhook`, `/api/send-message`, `/api/ai/ask`).
@@ -333,4 +351,4 @@ Foram identificadas **52 migrations** em `supabase/migrations/`, numeradas de 00
 
 ## 10. Resumo executivo
 
-O **Neves & Costa Chat System** é uma plataforma Next.js + Supabase + Vercel já em produção, com chat WhatsApp, gestão de casos, agenda, templates, insights, métricas, base de conhecimento RAG e módulo de acompanhamento processual DataJud. O sistema possui **52 migrations**, autenticação baseada em JWT/Supabase, RLS e fluxo de consentimento LGPD. Atualmente há **4 documentos RAG aprovados** e ativos. A principal ressalva técnica é a **ausência da variável `DATAJUD_API_KEY`**, que impede a consulta real de movimentações até que seja configurada. Outros pontos críticos: revisão manual de anonimização de nomes, rotação de chaves temporárias e acompanhamento das vulnerabilidades de dependências documentadas. Não há testes automatizados identificados; o build e o deploy estão funcionando.
+O **Neves & Costa Chat System** é uma plataforma Next.js + Supabase + Vercel já em produção, com chat WhatsApp, gestão de casos, agenda, templates, insights, métricas, base de conhecimento RAG e módulo de acompanhamento processual DataJud. O sistema possui **52 migrations**, autenticação baseada em JWT/Supabase, RLS e fluxo de consentimento LGPD. Atualmente há **4 documentos RAG aprovados** e ativos. A principal ressalva técnica é o **DataJud com autenticação rejeitada (HTTP 401)**: a variável `DATAJUD_API_KEY` existe no Vercel, mas a API pública não aceitou a chave em nenhum dos esquemas testados (`APIKey` e `Basic`). Também confirmou-se **exposição de PII nos logs do webhook** (`pages/api/webhook.js` imprime body, headers, telefone, nome e texto). Outros pontos críticos: revisão manual de anonimização de nomes, rotação de chaves temporárias e acompanhamento das vulnerabilidades de dependências documentadas. Não há testes automatizados identificados; o build e o deploy estão funcionando.
