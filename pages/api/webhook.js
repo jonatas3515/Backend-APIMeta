@@ -4,6 +4,7 @@ import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
 import { normalizePhoneForMatch } from '../../lib/formatters';
 import { loadClientMemory, formatClientMemory } from '../../lib/clientMemory';
 import { getClientTitle } from '../../lib/genderFromName';
+import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '../../lib/whatsapp.js';
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
@@ -12,6 +13,7 @@ const GEMINI_API_KEY = process.env.GOOGLE_AI_API_KEY;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ADMIN_WHATSAPP_NUMBER = process.env.ADMIN_WHATSAPP_NUMBER || '557399348552';
+const NEVES_COSTA_IMAGE_URL = process.env.NEVES_COSTA_IMAGE_URL || 'https://backend-apimeta.vercel.app/Aviso.jpg';
 
 const WHATSAPP_API_URL = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
 const GEMINI_API_URL_PRIMARY = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
@@ -301,6 +303,15 @@ export default async function handler(req, res) {
             return `[${time}] ${role}: ${m.text}`;
           }).join('\n');
           console.log(`[WEBHOOK] 📜 Histórico com ${recentMessages.length} mensagens`);
+        }
+      }
+
+      // === Resposta com imagem: confusão Neves Costa ===
+      if (messageType === 'text' && isNevesCostaConfusion(textBody)) {
+        console.log(`[WEBHOOK] 🖼️ Confusão Neves Costa detectada para ${from}`);
+        const imageSent = await sendNevesCostaImage(from, conversation.id);
+        if (imageSent) {
+          return res.status(200).json({ success: true, neves_costa: true });
         }
       }
 
@@ -899,6 +910,44 @@ function getClientGreeting(clientName) {
   const title = getClientTitle(clientName);
   const cap = title ? title[0].toUpperCase() + title.slice(1) : 'Senhor(a)';
   return title ? `${cap} ${clientName}` : `${cap} ${clientName}`;
+}
+
+function isNevesCostaConfusion(text) {
+  if (!text || !text.trim()) return false;
+  const t = text.toLowerCase();
+  const hasNevesCosta = /neves\s*costa|nevescosta/.test(t);
+  const isCorrectFirm = /neves\s*([&e])\s*costa/.test(t);
+  return hasNevesCosta && !isCorrectFirm;
+}
+
+async function sendNevesCostaImage(to, conversationId) {
+  try {
+    if (!NEVES_COSTA_IMAGE_URL) {
+      console.warn('[WEBHOOK] URL da imagem Neves Costa não configurada');
+      return false;
+    }
+    console.log(`[WEBHOOK] Baixando imagem Neves Costa: ${NEVES_COSTA_IMAGE_URL}`);
+    const imageRes = await fetch(NEVES_COSTA_IMAGE_URL);
+    if (!imageRes.ok) {
+      throw new Error(`Erro ao baixar imagem: ${imageRes.status}`);
+    }
+    const arrayBuffer = await imageRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const mediaId = await uploadMediaToWhatsApp(buffer, 'image/jpeg');
+    if (!mediaId) throw new Error('Media ID não retornado');
+
+    const caption = 'Aviso importante: o escritório Neves & Costa não possui relação com a entidade "Neves Costa".';
+    await sendWhatsAppMediaMessage(to, mediaId, 'image', caption);
+
+    await saveMessage(conversationId, caption, 'ai', 'image', NEVES_COSTA_IMAGE_URL, '', { media_type: 'image/jpeg' });
+
+    console.log(`[WEBHOOK] ✅ Imagem Neves Costa enviada para ${to}`);
+    return true;
+  } catch (error) {
+    console.error('[WEBHOOK] ❌ Erro ao enviar imagem Neves Costa:', error.message);
+    return false;
+  }
 }
 
 const IDENTITY_KEYWORDS = [
