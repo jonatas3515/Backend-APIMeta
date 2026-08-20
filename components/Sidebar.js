@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { key: 'routines', icon: '🔄', label: 'Rotinas', minRole: 'estagiario' },
   { key: 'insights', icon: '💡', label: 'Insights', minRole: 'advogado' },
   { key: 'ai_assistant', icon: '🧠', label: 'IA', minRole: 'estagiario' },
+  { key: 'knowledge', icon: '📚', label: 'Base', minRole: 'advogado' },
   { key: 'metrics', icon: '📊', label: 'Métricas', minRole: 'advogado' },
   { key: 'fee-services', icon: '💰', label: 'Honorários', minRole: 'admin' },
   { key: 'users', icon: '⚙️', label: 'Config.', minRole: 'advogado' },
