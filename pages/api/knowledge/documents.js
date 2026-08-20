@@ -90,7 +90,30 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'GET') {
-    const { status = 'aprovado', type, area, tribunal } = req.query;
+    const { id, status = 'aprovado', type, area, tribunal } = req.query;
+
+    if (id) {
+      const { data: doc, error } = await supabaseServer
+        .from('knowledge_documents')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !doc) {
+        return res.status(404).json({ error: 'Documento não encontrado' });
+      }
+
+      const { count, error: countError } = await supabaseServer
+        .from('knowledge_chunks')
+        .select('id', { count: 'exact', head: true })
+        .eq('document_id', id);
+
+      if (countError) {
+        console.error('[KNOWLEDGE] Erro ao contar chunks:', countError);
+      }
+
+      return res.status(200).json({ document: { ...doc, chunk_count: count || 0 } });
+    }
 
     let q = supabaseServer
       .from('knowledge_documents')
@@ -109,10 +132,29 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Erro ao listar documentos' });
     }
 
+    const docIds = (data || []).map(d => d.id);
+    const chunkCounts = {};
+
+    if (docIds.length > 0) {
+      const { data: chunks, error: chunksError } = await supabaseServer
+        .from('knowledge_chunks')
+        .select('document_id')
+        .in('document_id', docIds);
+
+      if (chunksError) {
+        console.error('[KNOWLEDGE] Erro ao carregar chunks:', chunksError);
+      } else {
+        for (const c of chunks || []) {
+          chunkCounts[c.document_id] = (chunkCounts[c.document_id] || 0) + 1;
+        }
+      }
+    }
+
     const documents = (data || []).map(d => ({
       ...d,
       preview: d.content ? `${d.content.slice(0, 300)}${d.content.length > 300 ? '...' : ''}` : '',
-      content: undefined
+      content: undefined,
+      chunk_count: chunkCounts[d.id] || 0
     }));
 
     return res.status(200).json({ documents });
@@ -126,6 +168,55 @@ export default async function handler(req, res) {
     const { id, status: newStatus } = req.body || {};
     if (!id || !newStatus) {
       return res.status(400).json({ error: 'id e status obrigatórios' });
+    }
+
+    if (newStatus === 'aprovado') {
+      const { data: existing, error: existingError } = await supabaseServer
+        .from('knowledge_documents')
+        .select('content')
+        .eq('id', id)
+        .single();
+
+      if (existingError || !existing) {
+        return res.status(404).json({ error: 'Documento não encontrado' });
+      }
+
+      const anonContent = anonymizeText(existing.content);
+      const chunks = chunkText(anonContent, 1200, 120);
+
+      await supabaseServer.from('knowledge_chunks').delete().eq('document_id', id);
+
+      if (chunks.length > 0) {
+        const chunkRows = chunks.map((text, idx) => ({
+          document_id: id,
+          chunk_index: idx,
+          content: text
+        }));
+
+        const { error: chunkError } = await supabaseServer
+          .from('knowledge_chunks')
+          .insert(chunkRows);
+
+        if (chunkError) {
+          console.error('[KNOWLEDGE] Erro ao inserir chunks:', chunkError);
+          return res.status(500).json({ error: 'Erro ao reindexar chunks' });
+        }
+      }
+
+      const { error } = await supabaseServer
+        .from('knowledge_documents')
+        .update({
+          status: 'aprovado',
+          content: anonContent,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) {
+        return res.status(500).json({ error: 'Erro ao aprovar documento' });
+      }
+
+      return res.status(200).json({ ok: true, chunks: chunks.length });
     }
 
     const { error } = await supabaseServer

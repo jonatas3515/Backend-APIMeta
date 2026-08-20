@@ -1,5 +1,6 @@
 -- Ajusta a busca RAG para usar OR entre palavras-chave,
 -- evitando que perguntas longas sejam descartadas por falta de um termo no mesmo chunk.
+-- Sempre filtra apenas documentos com status 'aprovado'.
 CREATE OR REPLACE FUNCTION search_knowledge(
   search_query TEXT,
   filter_status TEXT DEFAULT 'aprovado',
@@ -54,7 +55,7 @@ BEGIN
   JOIN knowledge_documents kd ON kd.id = kc.document_id
   WHERE
     kc.content_fts @@ tsq
-    AND kd.status = filter_status
+    AND kd.status = 'aprovado'
     AND (filter_area IS NULL OR kd.area = filter_area)
     AND (filter_tribunal IS NULL OR kd.tribunal = filter_tribunal)
     AND (filter_type IS NULL OR kd.type = filter_type)
