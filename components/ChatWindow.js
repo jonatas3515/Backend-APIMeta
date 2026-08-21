@@ -961,19 +961,20 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
         ))}
         <div ref={messagesEndRef} />
 
-        {/* Botão flutuante: Ir ao final */}
-        {showScrollButton && (
-          <button
-            onClick={scrollToBottom}
-            className="absolute bottom-20 right-4 w-10 h-10 bg-nc-white/90 backdrop-blur-sm text-nc-text-secondary border border-nc-gray-300 rounded-full shadow-sm hover:bg-nc-white hover:text-nc-text transition z-10 flex items-center justify-center"
-            title="Ir ao final"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-          </button>
-        )}
       </div>
+
+      {/* Botão flutuante: Ir ao final */}
+      {showScrollButton && (
+        <button
+          onClick={scrollToBottom}
+          className="fixed bottom-24 right-6 w-10 h-10 bg-nc-white/90 backdrop-blur-sm text-nc-text-secondary border border-nc-gray-300 rounded-full shadow-sm hover:bg-nc-white hover:text-nc-text transition z-10 flex items-center justify-center"
+          title="Ir ao final"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      )}
 
       {/* Overlay de mídia expandida */}
       {expandedMedia && (
