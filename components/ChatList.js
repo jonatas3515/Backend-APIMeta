@@ -199,9 +199,12 @@ export default function ChatList({ conversations, selectedConversation, onSelect
                   </p>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  {/* Status de leitura: ✓✓ azul = lido, ✓ cinza = enviado */}
-                  <span className="text-xs" title={conv.unread ? 'Não lido' : 'Lido'}>
-                    {conv.unread ? '✓' : '✓✓'}
+                  {/* Status de leitura: ✓✓ azul = lido, ✓✓ verde = não lido */}
+                  <span
+                    className={`text-xs font-bold ${conv.unread ? 'text-green-500' : 'text-blue-500'}`}
+                    title={conv.unread ? 'Não lido' : 'Lido'}
+                  >
+                    ✓✓
                   </span>
                   <button
                     onClick={(e) => {
