@@ -44,7 +44,7 @@
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `ADMIN_SETUP_KEY`
-- `DATAJUD_API_KEY` (configurada em Vercel Production/Preview; teste de consulta em 20/08/2026 retornou 401 — autenticação rejeitada)
+- `DATAJUD_API_KEY` (configurada em Vercel Production/Preview; validada em produção para TJBA em 20/08/2026; teste TRF1 retornou 401 e continua pendente de investigação)
 - `ZAPSIGN_API_KEY` (referenciada em auditoria, não confirmada como ativa em `.env.local`)
 - `CALENDAR_ENCRYPTION_KEY` (referenciada em auditoria, não confirmada como ativa em `.env.local`)
 
@@ -69,7 +69,7 @@
 | **Filtro global por área jurídica** | Preferência do usuário e índices em `users`, `cases`, `conversations`, `case_insights` | `AreaFilterSelector.js`, `ActiveFilterBanner.js` | n/a (preferência em `users.preferred_legal_area`) | todos | Funcional |
 | **LGPD e consentimento** | Política de privacidade, logs de consentimento, anonimização | `CollaborationPanel.js`, fluxo no `webhook.js` | `GET/POST/PATCH /api/lgpd` | admin, advogado | Funcional |
 | **Player de áudio no chat** | Exibe áudio transcrito e player para mídias | `ChatWindow.js` | `POST /api/process-media` | todos | Funcional |
-| **DataJud** | Cadastro de processos e consulta pública de movimentações | `CaseProcessMonitoring.js` | `GET/POST/PATCH/DELETE /api/case-processes`, `POST /api/process-movements/[id]/review`, `POST /api/process-movements/[id]/create-agenda-event` | advogado/admin (edição); estagiario (leitura) | **Teste real em 20/08/2026 retornou HTTP 401 — falha de autenticação** |
+| **DataJud** | Cadastro de processos e consulta pública de movimentações | `CaseProcessMonitoring.js` | `GET/POST/PATCH/DELETE /api/case-processes`, `POST /api/process-movements/[id]/review`, `POST /api/process-movements/[id]/create-agenda-event` | advogado/admin (edição); estagiario (leitura) | **Validado em produção para TJBA em 20/08/2026; TRF1 permanece com 401 e pendente de investigação** |
 | **Assistente IA / RAG** | Respostas no chat e assistente jurídico baseado em documentos aprovados | `OfficeAIAssistant.js`, `KnowledgeBaseManager.js` | `POST /api/ai/ask`, `GET/POST/PATCH/PUT /api/knowledge/documents` | admin, advogado, estagiario (uso); admin/advogado (gestão) | Funcional |
 | **Base de Conhecimento** | Gestão de documentos anonimizados e aprovação | `KnowledgeBaseManager.js` | `GET/POST/PATCH/PUT /api/knowledge/documents` | admin, advogado (inserir/editar/aprovar); estagiario (consulta via IA) | Funcional |
 
@@ -105,21 +105,33 @@ A fonte canônica é `lib/datajudCourts.js`:
 5. `pages/api/case-processes.js` armazena os metadados em `case_processes`.
 6. `pages/api/process-movements/[id]/review.js` permite revisar a movimentação e convertê-la em nota ou evento de agenda.
 
-### Teste real em 20/08/2026
+### Testes reais em 20/08/2026
+
+#### TJBA — sucesso
+
+- Tribunal: TJBA (Tribunal de Justiça da Bahia).
+- Resultado: consulta funcionou.
+- Movimentações retornadas: 30 novas movimentações.
+- Ação: painel registrou as movimentações para revisão jurídica.
+- Atualização: “Última consulta” registrada em 20/08/2026 às 20:43:40.
+- Status: `DATAJUD_API_KEY` está sendo lida e aceita pelo TJBA.
+- Próximos passos: revisão jurídica pode gerar nota ou evento de agenda via `pages/api/process-movements/[id]/review.js` e `pages/api/process-movements/[id]/create-agenda-event.js`.
+
+#### TRF1 — pendente
 
 - Tribunal: TRF1 (1ª Região Federal).
 - Número de processo: não registrado (utilizado exemplo público do tutorial da CNJ).
 - HTTP: 401 Unauthorized.
-- Autenticação: não funcionou.
+- Autenticação: não funcionou no teste isolado.
 - Movimentações retornadas: 0.
-- Erro sanitizado: a DataJud rejeitou a chave/credencial em todos os esquemas testados (`APIKey` e `Basic`).
-- Causa: falha de autenticação (não foi alias, formato, timeout, rate limit ou erro 5xx).
-- Nota: o deploy de produção já possui a variável, mas a chave em si não foi aceita pela API pública do DataJud.
+- Causa: falha de autenticação ainda não esclarecida (não foi alias, formato, timeout, rate limit ou erro 5xx).
+- Nota: investigação específica do TRF1 ainda é necessária; DataJud não está bloqueado globalmente.
 
 ### Limitações
 
-- **Autenticação pendente:** a variável `DATAJUD_API_KEY` está no Vercel, porém a consulta real retorna 401. A causa é a credencial, não a rede ou o tribunal.  
-- A DataJud/CNJ documenta o uso de `Basic` auth; o código atual envia `Authorization: APIKey <chave>`. O formato da credencial no Vercel precisa ser conferido.  
+- **TRF1 pendente:** teste isolado na 1ª Região Federal retornou 401. A causa específica do TRF1 ainda não foi esclarecida (credencial, formato de autorização ou permissão de tribunal). Não se trata de bloqueio global da DataJud.  
+- TJBA validado: a variável `DATAJUD_API_KEY` está no Vercel e foi aceita pelo TJBA em 20/08/2026.  
+- A DataJud/CNJ documenta o uso de `Basic` auth; o código atual envia `Authorization: APIKey <chave>`. O formato da credencial no Vercel precisa ser conferido para os casos que ainda falham.  
 - Apenas tribunais da whitelist respondem; STF não habilitado.  
 - Processos com `sigilo === 'Sigiloso'/'Restrito'` retornam erro e exigem acompanhamento em fonte oficial.  
 - Prazos, intimações e alterações urgentes devem sempre ser confirmadas nos sistemas oficiais do tribunal. A consulta DataJud é auxiliar, não substitui fontes oficiais.
@@ -195,7 +207,8 @@ Consulta realizada em produção em 20/08/2026:
 
 ### Logs
 
-- **Confirmação:** `pages/api/webhook.js` imprime no console o body completo, headers, telefone (`from`), nome do cliente (`clientName`) e texto da mensagem (`textBody`). Esses logs são capturados nos logs do Vercel e expõem PII (telefone, nome, conteúdo de mensagens). Recomendação: remover/suprimir logs detalhados em produção ou configurar nível de log.
+- **Confirmação (webhook):** `pages/api/webhook.js` imprimia no console o body completo, headers, telefone (`from`), nome do cliente (`clientName`) e texto da mensagem (`textBody`). Corrigido: os logs sensíveis foram removidos e substituídos por log sanitizado com `correlationId`, `phoneHash` (HMAC/SHA-256), `textLength`, `event` e `duration`.
+- **Nota (sem alteração agora):** console de produção contém logs repetitivos do frontend, como `"[FRONTEND] Buscando conversas..."`, `"[FRONTEND] Conversas encontradas: 31"` e `"[API] Sessão autenticada"`. Depois da correção de logs sensíveis no backend, podemos avaliar a remoção/condicionamento desses logs e se há polling excessivo.
 - `knowledge_query_logs` guarda a consulta anonimizada, filtros e IDs de documentos; não armazena a resposta completa.
 
 ### Proteção contra URL/endpoint arbitrário no DataJud
