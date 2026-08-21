@@ -47,7 +47,7 @@ export default async function handler(req, res) {
 
       if (error) throw error;
 
-      console.log('[CHANGE-PASSWORD] Senha atualizada para:', username);
+      console.log('[CHANGE-PASSWORD] password_change_success');
       return res.status(200).json({ 
         success: true, 
         message: 'Senha atualizada com sucesso!' 
@@ -65,14 +65,14 @@ export default async function handler(req, res) {
 
       if (error) throw error;
 
-      console.log('[CHANGE-PASSWORD] Novo usuário criado:', username);
+      console.log('[CHANGE-PASSWORD] user_created');
       return res.status(200).json({ 
         success: true, 
         message: 'Usuário criado com sucesso!' 
       });
     }
   } catch (error) {
-    console.error('[CHANGE-PASSWORD] Erro:', error);
+    console.error('[CHANGE-PASSWORD] operation_failed:', error.message);
     return res.status(500).json({ error: error.message });
   }
 }
