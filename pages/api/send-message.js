@@ -2,6 +2,7 @@ import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
 import { sanitizeError } from '@/lib/webhookLog';
+import { convertAudioToOgg } from '@/lib/audio';
 import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '@/lib/whatsapp';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -62,11 +63,26 @@ async function handler(req, res) {
       try {
         console.log('[SEND-MESSAGE] Baixando mídia do Supabase');
         const mediaResponse = await axios.get(media_url, { responseType: 'arraybuffer' });
-        const fileBuffer = Buffer.from(mediaResponse.data);
+        let fileBuffer = Buffer.from(mediaResponse.data);
+        let uploadMime = media_type;
         console.log('[SEND-MESSAGE] Mídia baixada:', fileBuffer.length, 'bytes');
 
-        console.log('[SEND-MESSAGE] Fazendo upload para Meta:', contentType, media_type);
-        const mediaId = await uploadMediaToWhatsApp(fileBuffer, media_type);
+        if (contentType === 'audio') {
+          try {
+            console.log('[SEND-MESSAGE] Convertendo áudio para Ogg/Opus');
+            const converted = await convertAudioToOgg(fileBuffer, media_type);
+            if (converted) {
+              fileBuffer = converted.buffer;
+              uploadMime = converted.mime;
+              console.log('[SEND-MESSAGE] Áudio convertido:', fileBuffer.length, 'bytes');
+            }
+          } catch (convertError) {
+            console.warn('[SEND-MESSAGE] Conversão de áudio falhou, usando original:', convertError.message);
+          }
+        }
+
+        console.log('[SEND-MESSAGE] Fazendo upload para Meta:', contentType, uploadMime);
+        const mediaId = await uploadMediaToWhatsApp(fileBuffer, uploadMime);
 
         console.log('[SEND-MESSAGE] Enviando mídia por media_id');
         waMessageId = await sendWhatsAppMediaMessage(conversation.client_phone, mediaId, contentType, text);
