@@ -568,12 +568,44 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
         </div>
 
         <div className="relative flex flex-wrap items-center gap-1.5 md:gap-2">
+          {!selectionMode ? (
+            <button
+              onClick={() => setSelectionMode(true)}
+              className="nc-btn"
+              title="Selecionar mensagens"
+            >
+              ✓ Selecionar
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => {
+                  setSelectionMode(false);
+                  setSelectedMessages(new Set());
+                }}
+                className="nc-btn"
+                title="Cancelar seleção"
+              >
+                ✗ Cancelar
+              </button>
+              {selectedMessages.size > 0 && (
+                <button
+                  onClick={deleteSelectedMessages}
+                  className="nc-btn bg-red-100 text-red-700 border-red-200 hover:bg-red-200"
+                  title="Excluir mensagens selecionadas"
+                >
+                  🗑️ Excluir ({selectedMessages.size})
+                </button>
+              )}
+            </>
+          )}
+          
           <button
             onClick={() => setActivePanel(activePanel === 'classification' ? '' : 'classification')}
             className={`nc-btn ${activePanel === 'classification' ? 'nc-btn-active' : ''}`}
             title="Classificação Jurídica"
           >
-            � Classificar
+            ⚖️ Classificar
           </button>
           
           <button
@@ -933,44 +965,13 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
         {showScrollButton && (
           <button
             onClick={scrollToBottom}
-            className="fixed bottom-24 right-6 bg-nc-yellow text-white p-3 rounded-full shadow-lg hover:bg-nc-yellow-dark transition z-10"
+            className="absolute bottom-20 right-4 w-10 h-10 bg-nc-white/90 backdrop-blur-sm text-nc-text-secondary border border-nc-gray-300 rounded-full shadow-sm hover:bg-nc-white hover:text-nc-text transition z-10 flex items-center justify-center"
             title="Ir ao final"
           >
-            ↓
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
           </button>
-        )}
-
-        {/* Botões de seleção */}
-        {!selectionMode && (
-          <button
-            onClick={() => setSelectionMode(true)}
-            className="fixed bottom-24 left-6 bg-nc-gray-600 text-white px-4 py-2 rounded-full shadow-lg hover:bg-nc-gray-700 transition z-10 text-sm"
-            title="Selecionar mensagens"
-          >
-            ✓ Selecionar
-          </button>
-        )}
-
-        {selectionMode && (
-          <div className="fixed bottom-24 left-6 flex gap-2 z-10">
-            <button
-              onClick={() => {
-                setSelectionMode(false);
-                setSelectedMessages(new Set());
-              }}
-              className="bg-nc-gray-600 text-white px-4 py-2 rounded-full shadow-lg hover:bg-nc-gray-700 transition text-sm"
-            >
-              Cancelar
-            </button>
-            {selectedMessages.size > 0 && (
-              <button
-                onClick={deleteSelectedMessages}
-                className="bg-red-600 text-white px-4 py-2 rounded-full shadow-lg hover:bg-red-700 transition text-sm"
-              >
-                🗑️ Excluir ({selectedMessages.size})
-              </button>
-            )}
-          </div>
         )}
       </div>
 
