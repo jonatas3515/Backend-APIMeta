@@ -69,12 +69,12 @@ async function handler(req, res) {
 
         if (contentType === 'audio') {
           try {
-            console.log('[SEND-MESSAGE] Convertendo áudio para Ogg/Opus');
+            console.log('[SEND-MESSAGE] Convertendo áudio para AAC (M4A)');
             const converted = await convertAudioToOgg(fileBuffer, media_type);
             if (converted) {
               fileBuffer = converted.buffer;
               uploadMime = converted.mime;
-              console.log('[SEND-MESSAGE] Áudio convertido:', fileBuffer.length, 'bytes');
+              console.log('[SEND-MESSAGE] Áudio convertido para AAC:', fileBuffer.length, 'bytes');
             }
           } catch (convertError) {
             console.warn('[SEND-MESSAGE] Conversão de áudio falhou, usando original:', convertError.message);
