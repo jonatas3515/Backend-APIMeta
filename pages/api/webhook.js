@@ -1395,6 +1395,9 @@ async function processDeliveryStatuses(statuses) {
       const error = status.errors?.[0] || null;
 
       console.log(`[WEBHOOK] 📬 Status de entrega: ${waMessageId} -> ${deliveryStatus}`);
+      if (error) {
+        console.log(`[WEBHOOK] 📬 Erro de entrega: ${error.code} - ${error.title}`);
+      }
 
       // Buscar mensagem pelo wa_message_id
       const { data: messages, error: findError } = await supabase
