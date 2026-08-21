@@ -51,6 +51,9 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedTranscript, setExpandedTranscript] = useState(null);
   const [expandedMedia, setExpandedMedia] = useState(null);
+  const [selectedMessages, setSelectedMessages] = useState(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const isAtBottomRef = useRef(true);
@@ -390,6 +393,50 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
     }
   };
 
+  const toggleMessageSelection = (msgId) => {
+    setSelectedMessages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(msgId)) {
+        newSet.delete(msgId);
+      } else {
+        newSet.add(msgId);
+      }
+      return newSet;
+    });
+  };
+
+  const deleteSelectedMessages = async () => {
+    if (selectedMessages.size === 0) return;
+    if (!confirm(`Deseja excluir ${selectedMessages.size} mensagem(ns)?`)) return;
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .in('id', Array.from(selectedMessages));
+
+      if (error) throw error;
+
+      setMessages(prev => prev.filter(m => !selectedMessages.has(m.id)));
+      setSelectedMessages(new Set());
+      setSelectionMode(false);
+    } catch (err) {
+      console.error('[CHAT] Erro ao excluir mensagens:', err);
+      alert('Erro ao excluir mensagens');
+    }
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+    setShowScrollButton(!isNearBottom);
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -661,8 +708,9 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           if (!scrollContainerRef.current) return;
           const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
           isAtBottomRef.current = scrollHeight - scrollTop - clientHeight < 80;
+          handleScroll();
         }}
-        className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4"
+        className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 relative"
       >
         {visibleMessages.map((msg) => (
           <div
@@ -677,10 +725,18 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
               </div>
             )}
             <div
-              className={`flex ${
+              className={`flex items-start gap-2 ${
                 msg.direction === 'inbound' ? 'justify-start' : 'justify-end'
               }`}
             >
+            {selectionMode && (
+              <input
+                type="checkbox"
+                checked={selectedMessages.has(msg.id)}
+                onChange={() => toggleMessageSelection(msg.id)}
+                className="mt-2 w-4 h-4 cursor-pointer"
+              />
+            )}
             <div
               className={`max-w-md px-4 py-2.5 rounded-nc shadow-soft ${
                 msg.direction === 'inbound'
@@ -701,9 +757,24 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                       onClick={() => setExpandedMedia(msg.media_url)}
                     />
                   ) : msg.content_type === 'audio' || msg.media_type?.startsWith('audio/') ? (
-                    <audio controls className="w-full" src={msg.media_url}>
-                      Seu navegador não suporta áudio.
-                    </audio>
+                    msg.status === 'failed' || msg.media_status === 'failed' ? (
+                      <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                        ❌ Áudio não disponível (falha no envio)
+                      </div>
+                    ) : (
+                      <audio 
+                        controls 
+                        className="w-full" 
+                        src={msg.media_url}
+                        onError={(e) => {
+                          console.warn('[CHAT] Erro ao carregar áudio:', msg.media_url);
+                          e.target.style.display = 'none';
+                          e.target.parentElement.innerHTML = '<div class="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">⚠️ Erro ao carregar áudio</div>';
+                        }}
+                      >
+                        Seu navegador não suporta áudio.
+                      </audio>
+                    )
                   ) : msg.content_type === 'document' || msg.media_type === 'application/pdf' || msg.media_url?.toLowerCase().match(/\.pdf(\?.*)?$/) ? (
                     <div className="w-full rounded border border-nc-gray-200 overflow-hidden bg-nc-gray-50 p-2">
                       <object
@@ -857,6 +928,50 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           </div>
         ))}
         <div ref={messagesEndRef} />
+
+        {/* Botão flutuante: Ir ao final */}
+        {showScrollButton && (
+          <button
+            onClick={scrollToBottom}
+            className="fixed bottom-24 right-6 bg-nc-yellow text-white p-3 rounded-full shadow-lg hover:bg-nc-yellow-dark transition z-10"
+            title="Ir ao final"
+          >
+            ↓
+          </button>
+        )}
+
+        {/* Botões de seleção */}
+        {!selectionMode && (
+          <button
+            onClick={() => setSelectionMode(true)}
+            className="fixed bottom-24 left-6 bg-nc-gray-600 text-white px-4 py-2 rounded-full shadow-lg hover:bg-nc-gray-700 transition z-10 text-sm"
+            title="Selecionar mensagens"
+          >
+            ✓ Selecionar
+          </button>
+        )}
+
+        {selectionMode && (
+          <div className="fixed bottom-24 left-6 flex gap-2 z-10">
+            <button
+              onClick={() => {
+                setSelectionMode(false);
+                setSelectedMessages(new Set());
+              }}
+              className="bg-nc-gray-600 text-white px-4 py-2 rounded-full shadow-lg hover:bg-nc-gray-700 transition text-sm"
+            >
+              Cancelar
+            </button>
+            {selectedMessages.size > 0 && (
+              <button
+                onClick={deleteSelectedMessages}
+                className="bg-red-600 text-white px-4 py-2 rounded-full shadow-lg hover:bg-red-700 transition text-sm"
+              >
+                🗑️ Excluir ({selectedMessages.size})
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Overlay de mídia expandida */}
