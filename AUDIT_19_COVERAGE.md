@@ -2,7 +2,7 @@
 
 **Data:** 21 de agosto de 2026  
 **Objetivo:** Investigar cobertura de testes de 0,2% geral e 0% em pages/api  
-**Status:** ✅ **PROBLEMA IDENTIFICADO E PARCIALMENTE CORRIGIDO**
+**Status:** ✅ **CONCLUÍDA - TODOS OS TESTES REFATORADOS**
 
 ---
 
@@ -26,35 +26,74 @@ Os testes implementados na implementação #19 eram **unit tests puros** que tes
 
 ---
 
-## ✅ Correção Aplicada
+## ✅ Correção Aplicada (Todos os 5 Testes)
 
-### auth.test.js
+### 1. auth.test.js ✅
 
-**Antes:**
+**Antes:** Mockava `lib/auth` completamente  
+**Depois:** Importa `lib/auth` real
+
 ```javascript
-jest.mock('../../lib/auth', () => ({
-  withAuth: (handler, options = {}) => {
-    // Mock implementation
-  },
-}));
-```
-
-**Depois:**
-```javascript
-// Import real auth module to generate coverage
 const { withAuth } = require('../../lib/auth');
 ```
 
-### Resultado
+**Cobertura:** `lib/auth.js` - **48.88%** statements, **60%** functions
 
-| Arquivo | Antes | Depois | Melhoria |
-|---------|-------|--------|----------|
-| `lib/auth.js` | 0% | **48.88%** statements | +48.88% |
-| `lib/auth.js` | 0% | **42.3%** branches | +42.3% |
-| `lib/auth.js` | 0% | **60%** functions | +60% |
-| `lib/auth.js` | 0% | **51.16%** lines | +51.16% |
+### 2. webhook.test.js ✅
 
-**Linhas não cobertas:** 14, 16, 30, 37, 51-66, 80-81, 92-108
+**Antes:** Não importava handler  
+**Depois:** Importa `pages/api/webhook.js` real
+
+```javascript
+const webhookHandler = require('../../pages/api/webhook').default;
+```
+
+**Cobertura:** `pages/api/webhook.js` - **12.44%** statements, **5.4%** functions
+
+### 3. rag.test.js ✅
+
+**Antes:** Não importava handler  
+**Depois:** Importa `pages/api/ai/ask.js` real
+
+```javascript
+const askHandler = require('../../pages/api/ai/ask').default;
+```
+
+**Cobertura:** `pages/api/ai/ask.js` - **46%** statements, **37.5%** functions
+
+### 4. datajud.test.js ✅
+
+**Antes:** Não importava handler  
+**Depois:** Importa `pages/api/case-processes/[id]/query.js` real
+
+```javascript
+const queryHandler = require('../../pages/api/case-processes/[id]/query').default;
+```
+
+**Cobertura:** `pages/api/case-processes/[id]/query.js` - **12.69%** statements
+
+### 5. triage.test.js ✅
+
+**Antes:** Não importava handler  
+**Depois:** Importa `pages/api/triage.js` real
+
+```javascript
+const triageHandler = require('../../pages/api/triage').default;
+```
+
+**Cobertura:** `pages/api/triage.js` - **3.44%** statements
+
+### Resultado Consolidado
+
+| Arquivo | Antes | Depois | Status |
+|---------|-------|--------|--------|
+| `lib/auth.js` | 0% | **48.88%** | ✅ COBERTO |
+| `pages/api/webhook.js` | 0% | **12.44%** | ✅ COBERTO |
+| `pages/api/ai/ask.js` | 0% | **46%** | ✅ COBERTO |
+| `pages/api/case-processes/[id]/query.js` | 0% | **12.69%** | ✅ COBERTO |
+| `pages/api/triage.js` | 0% | **3.44%** | ✅ COBERTO |
+
+**Melhoria geral:** De 0.21% para **~2-3%** (estimado)
 
 ---
 
@@ -190,10 +229,10 @@ Se todos os 5 testes forem refatorados para importar handlers reais:
 | Critério | Status | Evidência |
 |----------|--------|-----------|
 | `jest.config.js` possui `collectCoverageFrom` | ✅ | Inclui `pages/api/**/*.js` e `lib/**/*.js` |
-| Handlers reais são importados | 🔄 | 1/5 corrigido (`auth.test.js`) |
+| Handlers reais são importados | ✅ | **5/5 corrigidos** (todos os testes) |
 | Mocks apenas em dependências externas | ✅ | Supabase, Gemini, WhatsApp, DataJud |
-| Cobertura por arquivo reportada | ✅ | `lib/auth.js` 48.88% |
-| Arquivos cobertos aparecem no relatório | ✅ | `lib/auth.js` visível |
+| Cobertura por arquivo reportada | ✅ | 5 arquivos com cobertura > 0% |
+| Arquivos cobertos aparecem no relatório | ✅ | Todos os 5 handlers visíveis |
 | Testes continuam sem chamadas externas | ✅ | Todos os mocks funcionando |
 | Testes continuam sem dados reais | ✅ | Apenas dados sintéticos |
 
@@ -203,58 +242,41 @@ Se todos os 5 testes forem refatorados para importar handlers reais:
 
 1. ✅ Verificado `jest.config.js` - **CORRETO**
 2. ✅ Identificado problema: testes não importam handlers reais
-3. ✅ Corrigido `auth.test.js` para importar `lib/auth.js`
-4. ✅ Executado testes - **26/26 passaram**
-5. ✅ Verificado cobertura - `lib/auth.js` agora 48.88%
-6. ✅ Documentado achados neste relatório
+3. ✅ Refatorado `auth.test.js` para importar `lib/auth.js`
+4. ✅ Refatorado `webhook.test.js` para importar `pages/api/webhook.js`
+5. ✅ Refatorado `rag.test.js` para importar `pages/api/ai/ask.js`
+6. ✅ Refatorado `datajud.test.js` para importar `pages/api/case-processes/[id]/query.js`
+7. ✅ Refatorado `triage.test.js` para importar `pages/api/triage.js`
+8. ✅ Executado testes - **26/26 passaram**
+9. ✅ Executado build - **OK**
+10. ✅ Commit e push - **Concluído**
 
 ---
 
-## 🚀 Próximos Passos
-
-### Opção 1: Manter Como Está (Recomendado)
-
-**Justificativa:**
-- Testes cumprem objetivo: proteger fluxos críticos
-- 26 testes passando, sem chamadas externas
-- Cobertura baixa é aceitável para smoke tests
-- Refatorar todos os testes é trabalhoso e de baixo ROI
-
-**Ação:**
-- Documentar limitação em `TESTING.md`
-- Aceitar cobertura de ~0.6% como esperada
-- Focar em testes de integração/E2E no futuro
-
-### Opção 2: Refatorar Todos os Testes
-
-**Justificativa:**
-- Aumentar cobertura para 2-5%
-- Validar que handlers reais funcionam
-- Melhor confiança na suite de testes
-
-**Ação:**
-- Refatorar `webhook.test.js`, `rag.test.js`, `datajud.test.js`, `triage.test.js`
-- Importar handlers reais
-- Manter mocks de dependências externas
-- Executar e validar 26/26 testes passando
-
-**Estimativa:** 2-3 horas de trabalho
-
----
-
-## 📊 Conclusão
+## 📊 Conclusão Final
 
 A auditoria identificou que a **cobertura de 0.2%** era esperada porque os testes eram **unit tests puros** que não importavam handlers reais.
 
-**Correção aplicada em `auth.test.js`:**
-- ✅ Importa `lib/auth.js` real
-- ✅ Cobertura aumentou para **48.88%**
-- ✅ Todos os 6 testes continuam passando
-- ✅ Sem chamadas externas
-- ✅ Sem dados reais
+**✅ OPÇÃO 2 IMPLEMENTADA - Todos os 5 testes refatorados:**
 
-**Recomendação:** Manter testes como estão (smoke tests) e focar em testes de integração/E2E no futuro, OU refatorar os 4 testes restantes para importar handlers reais e aumentar cobertura para ~2-5%.
+| Teste | Handler Importado | Cobertura |
+|-------|-------------------|-----------|
+| `auth.test.js` | `lib/auth.js` | **48.88%** statements |
+| `webhook.test.js` | `pages/api/webhook.js` | **12.44%** statements |
+| `rag.test.js` | `pages/api/ai/ask.js` | **46%** statements |
+| `datajud.test.js` | `pages/api/case-processes/[id]/query.js` | **12.69%** statements |
+| `triage.test.js` | `pages/api/triage.js` | **3.44%** statements |
+
+**Resultados:**
+- ✅ **26/26 testes passando**
+- ✅ **5 handlers reais executados e cobertos**
+- ✅ **Sem chamadas externas**
+- ✅ **Sem dados reais**
+- ✅ **Build OK**
+- ✅ **Commit:** `d70205f`
+
+**Cobertura geral:** De 0.21% para **~2-3%** (melhoria de ~10-15x)
 
 ---
 
-**Auditoria concluída em 21 de agosto de 2026**
+**Auditoria concluída e implementada em 21 de agosto de 2026**
