@@ -22,8 +22,8 @@ export default async function handler(req, res) {
 
     console.log('[DEBUG] Usuário no Auth:', authUser ? 'ENCONTRADO' : 'NÃO ENCONTRADO');
     if (authUser) {
-      console.log('[DEBUG] Auth User ID:', authUser.id);
-      console.log('[DEBUG] Email confirmado:', authUser.email_confirmed_at ? 'SIM' : 'NÃO');
+      console.log('[DEBUG] Auth user localizado');
+      console.log('[DEBUG] Conta confirmada:', authUser.email_confirmed_at ? 'SIM' : 'NÃO');
     }
 
     // 2. Buscar usuário na tabela users
@@ -41,8 +41,8 @@ export default async function handler(req, res) {
     // 3. Verificar se auth_user_id está vinculado
     if (authUser && dbUsers?.length > 0) {
       const dbUser = dbUsers[0];
-      console.log('[DEBUG] Auth User ID:', authUser.id);
-      console.log('[DEBUG] DB auth_user_id:', dbUser.auth_user_id);
+      console.log('[DEBUG] Auth user localizado');
+      console.log('[DEBUG] Vinculação presente no DB');
       console.log('[DEBUG] Vinculados:', authUser.id === dbUser.auth_user_id ? 'SIM' : 'NÃO');
     }
 

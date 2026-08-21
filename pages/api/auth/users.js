@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Método não permitido' });
     }
   } catch (error) {
-    console.error('[USERS] Erro:', error);
+    console.error('[USERS] request_failed:', error.message);
     return res.status(401).json({ error: error.message });
   }
 }
@@ -144,7 +144,7 @@ async function handlePost(req, res, profile) {
       }
     });
   } catch (error) {
-    console.error('[USERS] Erro ao criar usuário:', error);
+    console.error('[USERS] create_user_failed:', error.message);
     return res.status(500).json({ error: error.message });
   }
 }
@@ -206,7 +206,7 @@ async function handlePatch(req, res, profile) {
 
     return res.status(200).json(data);
   } catch (error) {
-    console.error('[USERS] Erro ao atualizar usuário:', error);
+    console.error('[USERS] update_user_failed:', error.message);
     return res.status(500).json({ error: error.message });
   }
 }
@@ -249,7 +249,7 @@ async function handleDelete(req, res, profile) {
       user: data
     });
   } catch (error) {
-    console.error('[USERS] Erro ao desativar usuário:', error);
+    console.error('[USERS] disable_user_failed:', error.message);
     return res.status(500).json({ error: error.message });
   }
 }

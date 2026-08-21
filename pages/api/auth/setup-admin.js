@@ -160,7 +160,7 @@ export default async function handler(req, res) {
       temporary_password: password
     });
   } catch (error) {
-    console.error('[SETUP-ADMIN] Erro:', error);
+    console.error('[SETUP-ADMIN] setup_failed:', error.message);
     return res.status(500).json({ error: error.message });
   }
 }

@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     });
 
     if (error) {
-      console.log('[AUTH] Erro no login:', error.message);
+      console.log('[AUTH] login_failed reason=invalid_credentials');
       return res.status(401).json({ error: 'Email ou senha incorretos' });
     }
 
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       .single();
 
     if (profileError || !profile) {
-      console.log('[AUTH] Perfil não encontrado para:', authUser.email);
+      console.log('[AUTH] profile_not_found');
       return res.status(403).json({
         error: 'Perfil não encontrado. Entre em contato com o administrador.'
       });
@@ -63,7 +63,7 @@ export default async function handler(req, res) {
       .update({ updated_at: new Date().toISOString() })
       .eq('id', profile.id);
 
-    console.log('[AUTH] Login bem-sucedido:', email, 'Role:', profile.role);
+    console.log('[AUTH] login_success role=' + profile.role);
 
     return res.status(200).json({
       success: true,
@@ -79,7 +79,7 @@ export default async function handler(req, res) {
       }
     });
   } catch (error) {
-    console.error('[AUTH] Erro:', error);
+    console.error('[AUTH] authentication_failed reason=internal_error:', error.message);
     return res.status(500).json({ error: error.message });
   }
 }
