@@ -357,8 +357,9 @@ Foram identificadas **52 migrations** em `supabase/migrations/`, numeradas de 00
 ### Melhoria futura
 
 13. Integrar embeddings vetoriais para RAG se o volume de documentos crescer.
-14. Sincronização automática de prazos DataJud → agenda.
-15. Painel executivo consolidado de OKRs do escritório.
+14. **Investigar chamadas repetitivas a `/api/notification-preferences` e `/api/case-processes` no frontend** — mesmo quando retornam HTTP 304, elas geram polling, re-renderizações e ruído de logs (`[FRONTEND] Buscando conversas...`, `[FRONTEND] Conversas encontradas: 31`, `[API] Sessão autenticada`). Avaliar cache, debounce, intervalo e condicionamento/eliminação desses logs após a correção de PII no backend.
+15. Sincronização automática de prazos DataJud → agenda.
+16. Painel executivo consolidado de OKRs do escritório.
 
 ---
 
