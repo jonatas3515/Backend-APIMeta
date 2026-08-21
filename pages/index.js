@@ -14,6 +14,7 @@ import CasesPanel from '../components/CasesPanel';
 import DocumentTemplatesManager from '../components/DocumentTemplatesManager';
 import LegalRoutinesManager from '../components/LegalRoutinesManager';
 import CaseInsightsPanel from '../components/CaseInsightsPanel';
+import ProcessTriagePanel from '../components/ProcessTriagePanel';
 import FeeServiceAdmin from '../components/FeeServiceAdmin';
 import OfficeAIAssistant from '../components/OfficeAIAssistant';
 import KnowledgeBaseManager from '../components/KnowledgeBaseManager';
@@ -440,6 +441,8 @@ export default function Home() {
             />
           ) : activeTab === 'agenda' ? (
             <AgendaPanel />
+          ) : activeTab === 'triage' ? (
+            <ProcessTriagePanel />
           ) : activeTab === 'collaboration' ? (
             <CollaborationPanel conversationId={selectedConversation?.id} caseId={null} />
           ) : activeTab === 'cases' ? (

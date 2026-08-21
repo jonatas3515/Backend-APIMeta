@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { key: 'cases', icon: '⚖️', label: 'Casos', minRole: 'estagiario' },
   { key: 'funnel', icon: '🎯', label: 'Funil', minRole: 'advogado' },
   { key: 'agenda', icon: '📅', label: 'Agenda', minRole: 'advogado' },
+  { key: 'triage', icon: '⏱️', label: 'Triagem', minRole: 'advogado' },
   { key: 'collaboration', icon: '🤝', label: 'Colab.', minRole: 'advogado' },
   { key: 'templates', icon: '📄', label: 'Docs', minRole: 'estagiario' },
   { key: 'routines', icon: '🔄', label: 'Rotinas', minRole: 'estagiario' },
