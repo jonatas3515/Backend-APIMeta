@@ -227,11 +227,22 @@ export default async function handler(req, res) {
           .update({ unread: true })
           .eq('id', conversation.id);
 
-        // Verifica se o cliente está aceitando termos LGPD
+        // Envia pedido de consentimento LGPD, se ainda não tiver sido enviado ou decidido
         if (messageType === 'text') {
+          const { sent } = await requestConsentIfNeeded(conversation, from, req);
+          if (sent) {
+            return res.status(200).json({ success: true, consent_request: true });
+          }
+
           const { handled } = await handleConsent(conversation, textBody, from, req);
           if (handled) {
             return res.status(200).json({ success: true, consent: true });
+          }
+
+          // Se ainda não consentiu e não houve resposta de consentimento, não prossegue com a IA
+          const consentStatus = conversation.intake_data?.consent_request_status;
+          if (consentStatus !== 'accepted' && consentStatus !== 'rejected') {
+            return res.status(200).json({ success: true, consent_required: true });
           }
         }
       }
@@ -721,7 +732,8 @@ async function getOrCreateConversation(phoneNumber, clientName) {
         client_phone_normalized: normalizedPhone,
         client_name: clientName || 'Cliente',
         status: 'open',
-        mode: 'bot'
+        mode: 'bot',
+        intake_data: { consent_request_status: 'pending', consent_request_sent_at: null }
       })
       .select()
       .single();
@@ -1443,6 +1455,54 @@ async function processDeliveryStatuses(statuses) {
     } catch (statusError) {
       console.error(`[WEBHOOK] ❌ Erro ao processar status:`, sanitizeError(statusError));
     }
+  }
+}
+
+// Envia pedido de consentimento LGPD caso ainda não tenha sido solicitado ou esteja pendente
+async function requestConsentIfNeeded(conversation, from, req) {
+  try {
+    const now = new Date().toISOString();
+    const intake = conversation.intake_data || {};
+    const status = intake.consent_request_status;
+    const sentAt = intake.consent_request_sent_at;
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://chatnevesecosta.vercel.app';
+    const policyUrl = `${baseUrl}/politica-de-privacidade`;
+
+    // Já decidiu (aceito ou revogado), não solicita novamente
+    if (status === 'accepted' || status === 'rejected') {
+      return { sent: false };
+    }
+
+    // Se já enviou e está dentro de 24h, não reenvia
+    if (status === 'pending' && sentAt) {
+      const age = Date.now() - new Date(sentAt).getTime();
+      if (age < 24 * 60 * 60 * 1000) {
+        return { sent: false };
+      }
+    }
+
+    const message = `Olá! Para que possamos prosseguir com o atendimento de forma adequada, precisamos do seu consentimento para tratar os dados pessoais que forem eventualmente compartilhados nesta conversa, conforme a Lei Geral de Proteção de Dados (LGPD).\n\nLeia nossa Política de Privacidade: ${policyUrl}\n\nPor favor, responda com uma das opções abaixo:\n1 - *ACEITO* o tratamento dos meus dados\n2 - *REVOGO* o consentimento`;
+
+    await sendWhatsAppMessage(from, message);
+    await saveMessage(conversation.id, message, 'ai');
+
+    const updatedIntake = {
+      ...intake,
+      consent_request_status: 'pending',
+      consent_request_sent_at: now
+    };
+
+    await supabase
+      .from('conversations')
+      .update({ intake_data: updatedIntake })
+      .eq('id', conversation.id);
+
+    conversation.intake_data = updatedIntake;
+
+    return { sent: true };
+  } catch (error) {
+    console.error('[WEBHOOK] ❌ Erro ao enviar solicitação de consentimento:', sanitizeError(error));
+    return { sent: false };
   }
 }
 
