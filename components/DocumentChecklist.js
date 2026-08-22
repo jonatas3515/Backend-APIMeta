@@ -2,39 +2,28 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../lib/useAuth';
 import { getAuthHeaders } from '../lib/api';
+import { DOCUMENT_STATUS_LABELS, DOCUMENT_STATUS_COLORS } from '../lib/documentChecklists';
 
-const STATUS_LABELS = {
-  pending: 'Pendente',
-  sent: 'Enviado',
-  received: 'Recebido',
-  verified: 'Verificado'
-};
-
-const STATUS_COLORS = {
-  pending: 'bg-gray-100 text-gray-800 border-gray-200',
-  sent: 'bg-blue-100 text-blue-800 border-blue-200',
-  received: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  verified: 'bg-green-100 text-green-800 border-green-200'
-};
+const ALL_STATUSES = Object.keys(DOCUMENT_STATUS_LABELS);
 
 export default function DocumentChecklist({ caseItem, onClose }) {
   const { profile } = useAuth();
-  const isAdmin = profile?.role === 'admin';
+  const isPrivileged = profile?.role === 'admin' || profile?.role === 'advogado';
 
   const [items, setItems] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState({});
   const [adminOpen, setAdminOpen] = useState(false);
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newItemName, setNewItemName] = useState('');
 
   useEffect(() => {
     fetchChecklist();
-    if (isAdmin) {
+    if (isPrivileged) {
       fetchTemplates();
     }
-  }, [caseItem.id, isAdmin]);
+  }, [caseItem.id, isPrivileged]);
 
   const fetchChecklist = async () => {
     try {
@@ -67,7 +56,7 @@ export default function DocumentChecklist({ caseItem, onClose }) {
 
   const handleStatusChange = async (itemId, newStatus) => {
     try {
-      setSaving(true);
+      setSaving(prev => ({ ...prev, [itemId]: true }));
       const headers = await getAuthHeaders();
       await axios.patch(
         `/api/document-checklists?id=${itemId}`,
@@ -77,9 +66,23 @@ export default function DocumentChecklist({ caseItem, onClose }) {
       await fetchChecklist();
     } catch (error) {
       console.error('[DOCUMENT_CHECKLIST] Erro ao atualizar status:', error);
-      alert('Erro ao atualizar status');
+      alert(error.response?.data?.error || 'Erro ao atualizar status');
     } finally {
-      setSaving(false);
+      setSaving(prev => ({ ...prev, [itemId]: false }));
+    }
+  };
+
+  const handleObservacaoChange = async (itemId, observacao) => {
+    try {
+      const headers = await getAuthHeaders();
+      await axios.patch(
+        `/api/document-checklists?id=${itemId}`,
+        { observacao },
+        { headers }
+      );
+      await fetchChecklist();
+    } catch (error) {
+      console.error('[DOCUMENT_CHECKLIST] Erro ao salvar observacao:', error);
     }
   };
 
@@ -92,7 +95,7 @@ export default function DocumentChecklist({ caseItem, onClose }) {
         {
           case_type: caseItem.case_type,
           document_name: newTemplateName.trim(),
-          required: true
+          title: newTemplateName.trim()
         },
         { headers }
       );
@@ -114,7 +117,8 @@ export default function DocumentChecklist({ caseItem, onClose }) {
         {
           case_id: caseItem.id,
           document_name: newItemName.trim(),
-          status: 'pending'
+          title: newItemName.trim(),
+          status: 'pendente'
         },
         { headers }
       );
@@ -139,20 +143,19 @@ export default function DocumentChecklist({ caseItem, onClose }) {
   };
 
   const handleDeleteTemplate = async (templateId) => {
-    if (!confirm('Remover este template?')) return;
+    if (!confirm('Desativar este template?')) return;
     try {
       const headers = await getAuthHeaders();
       await axios.delete(`/api/document-checklist-templates?id=${templateId}`, { headers });
       await fetchTemplates();
-      await fetchChecklist();
     } catch (error) {
-      console.error('[DOCUMENT_CHECKLIST] Erro ao remover template:', error);
-      alert('Erro ao remover template');
+      console.error('[DOCUMENT_CHECKLIST] Erro ao desativar template:', error);
+      alert('Erro ao desativar template');
     }
   };
 
   const total = items.length;
-  const done = items.filter(i => i.status === 'received' || i.status === 'verified').length;
+  const done = items.filter(i => i.status === 'revisado' || i.status === 'dispensado').length;
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
   return (
@@ -170,13 +173,12 @@ export default function DocumentChecklist({ caseItem, onClose }) {
           {caseItem.case_type ? (
             <p className="text-sm text-gray-600 mb-4">Tipo: <span className="font-medium">{caseItem.case_type}</span></p>
           ) : (
-            <p className="text-sm text-red-600 mb-4">Caso sem tipo definido. O checklist não pode ser sincronizado automaticamente.</p>
+            <p className="text-sm text-red-600 mb-4">Caso sem tipo definido. O checklist nao pode ser sincronizado automaticamente.</p>
           )}
 
-          {/* Progresso */}
           <div className="mb-6">
             <div className="flex justify-between text-sm mb-1">
-              <span className="font-medium">{done} de {total} documentos recebidos</span>
+              <span className="font-medium">{done} de {total} documentos concluidos</span>
               <span className="font-bold">{percent}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3">
@@ -198,76 +200,83 @@ export default function DocumentChecklist({ caseItem, onClose }) {
               ) : (
                 items.map((item) => (
                   <div key={item.id} className="border rounded p-3 bg-gray-50">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
                       <div className="flex-1">
-                        <p className="font-medium text-sm">{item.document_name}</p>
-                        {item.received_at && (
-                          <p className="text-xs text-gray-500">
-                            {new Date(item.received_at).toLocaleString('pt-BR')} {item.received_by && '• ' + item.received_by}
-                          </p>
+                        <p className="font-medium text-sm">{item.title || item.document_name}</p>
+                        {item.description && (
+                          <p className="text-xs text-gray-600 mt-1">{item.description}</p>
                         )}
-                        {item.media_url && (
-                          <a
-                            href={item.media_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-blue-600 hover:underline break-all"
-                          >
-                            Ver anexo
-                          </a>
+                        {item.is_sensitive && (
+                          <span className="text-xs text-red-600 font-bold">SENSIVEL</span>
+                        )}
+                        {item.observacao && (
+                          <p className="text-xs text-gray-500 mt-1">Obs: {item.observacao}</p>
                         )}
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className={`px-2 py-1 rounded text-xs border ${STATUS_COLORS[item.status]}`}>
-                          {STATUS_LABELS[item.status]}
+                        <span className={`px-2 py-1 rounded text-xs border ${DOCUMENT_STATUS_COLORS[item.status] || 'bg-gray-100'}`}>
+                          {DOCUMENT_STATUS_LABELS[item.status] || item.status}
                         </span>
 
                         <select
                           value={item.status}
                           onChange={(e) => handleStatusChange(item.id, e.target.value)}
-                          disabled={saving}
+                          disabled={saving[item.id]}
                           className="text-xs border rounded px-2 py-1"
                         >
-                          <option value="pending">Pendente</option>
-                          <option value="sent">Enviado</option>
-                          <option value="received">Recebido</option>
-                          <option value="verified">Verificado</option>
+                          {ALL_STATUSES.map(s => (
+                            <option key={s} value={s}>{DOCUMENT_STATUS_LABELS[s]}</option>
+                          ))}
                         </select>
 
-                        <button
-                          onClick={() => handleDeleteItem(item.id)}
-                          className="text-red-500 hover:text-red-700 text-xs"
-                        >
-                          ✕
-                        </button>
+                        {isPrivileged && (
+                          <button
+                            onClick={() => {
+                              const obs = prompt('Observacao interna:', item.observacao || '');
+                              if (obs !== null) handleObservacaoChange(item.id, obs);
+                            }}
+                            className="text-blue-600 hover:text-blue-800 text-xs"
+                          >
+                            Obs
+                          </button>
+                        )}
+
+                        {isPrivileged && (
+                          <button
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="text-red-500 hover:text-red-700 text-xs"
+                          >
+                            ✕
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
                 ))
               )}
 
-              {/* Adicionar item manual */}
-              <div className="flex gap-2 pt-2">
-                <input
-                  type="text"
-                  placeholder="Novo documento..."
-                  value={newItemName}
-                  onChange={(e) => setNewItemName(e.target.value)}
-                  className="flex-1 px-3 py-2 border rounded text-sm"
-                />
-                <button
-                  onClick={handleAddItem}
-                  className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-                >
-                  + Adicionar
-                </button>
-              </div>
+              {isPrivileged && (
+                <div className="flex gap-2 pt-2">
+                  <input
+                    type="text"
+                    placeholder="Novo documento..."
+                    value={newItemName}
+                    onChange={(e) => setNewItemName(e.target.value)}
+                    className="flex-1 px-3 py-2 border rounded text-sm"
+                  />
+                  <button
+                    onClick={handleAddItem}
+                    className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                  >
+                    + Adicionar
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
-          {/* Administração de templates */}
-          {isAdmin && (
+          {isPrivileged && (
             <div className="mt-6 border-t pt-4">
               <button
                 onClick={() => setAdminOpen(!adminOpen)}
@@ -281,7 +290,7 @@ export default function DocumentChecklist({ caseItem, onClose }) {
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="Nome do documento padrão..."
+                      placeholder="Nome do documento padrao..."
                       value={newTemplateName}
                       onChange={(e) => setNewTemplateName(e.target.value)}
                       className="flex-1 px-3 py-2 border rounded text-sm"
@@ -298,12 +307,12 @@ export default function DocumentChecklist({ caseItem, onClose }) {
                     <ul className="space-y-2">
                       {templates.map((t) => (
                         <li key={t.id} className="flex justify-between items-center text-sm border rounded p-2 bg-white">
-                          <span>{t.document_name}</span>
+                          <span>{t.title || t.document_name}</span>
                           <button
                             onClick={() => handleDeleteTemplate(t.id)}
                             className="text-red-500 hover:text-red-700 text-xs"
                           >
-                            ✕
+                            desativar
                           </button>
                         </li>
                       ))}
