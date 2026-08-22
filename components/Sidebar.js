@@ -3,7 +3,6 @@ import { useAuth } from '../lib/useAuth';
 const NAV_ITEMS = [
   { key: 'dashboard', icon: '📊', label: 'Dashboard', minRole: 'advogado', href: '/dashboard' },
   { key: 'chat', icon: '💬', label: 'Chat', minRole: 'estagiario' },
-  { key: 'clients', icon: '👥', label: 'Clientes', minRole: 'estagiario' },
   { key: 'cases', icon: '⚖️', label: 'Casos', minRole: 'estagiario' },
   { key: 'funnel', icon: '🎯', label: 'Funil', minRole: 'advogado' },
   { key: 'agenda', icon: '📅', label: 'Agenda', minRole: 'advogado' },
@@ -76,7 +75,6 @@ export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' })
       <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-nc-black border-t border-nc-gray-800 z-50 flex items-center justify-around px-1 overflow-x-auto">
         {[
           { key: 'chat', icon: '💬', label: 'Chat', minRole: 'estagiario' },
-          { key: 'clients', icon: '👥', label: 'Clientes', minRole: 'estagiario' },
           { key: 'cases', icon: '⚖️', label: 'Casos', minRole: 'estagiario' },
           { key: 'ai_assistant', icon: '🧠', label: 'IA', minRole: 'estagiario' },
           { key: 'agenda', icon: '📅', label: 'Agenda', minRole: 'advogado' },
