@@ -41,7 +41,7 @@ async function handleGet(req, res) {
   try {
     if (action === 'generate') {
       // Gera documento a partir de template
-      const { template_id, conversation_id } = req.query;
+      const { template_id, conversation_id, case_id } = req.query;
 
       if (!template_id || !conversation_id) {
         return res.status(400).json({ error: 'template_id e conversation_id são obrigatórios' });
@@ -94,6 +94,7 @@ async function handleGet(req, res) {
         .from('generated_documents')
         .insert({
           conversation_id,
+          case_id: case_id || null,
           template_id,
           title: template.name,
           content,

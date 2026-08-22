@@ -10,8 +10,7 @@ import FunnelKanban from '../components/FunnelKanban';
 import UserManagement from '../components/UserManagement';
 import AgendaPanel from '../components/AgendaPanel';
 import CasesPanel from '../components/CasesPanel';
-import DocumentTemplatesManager from '../components/DocumentTemplatesManager';
-import LegalRoutinesManager from '../components/LegalRoutinesManager';
+import ModelsAndRoutinesPanel from '../components/ModelsAndRoutinesPanel';
 import ProcessTriagePanel from '../components/ProcessTriagePanel';
 import FeeServiceAdmin from '../components/FeeServiceAdmin';
 import OfficeAIAssistant from '../components/OfficeAIAssistant';
@@ -40,6 +39,7 @@ export default function Home() {
   const [supabaseReady, setSupabaseReady] = useState(false);
   const [activeTab, setActiveTab] = useState('chat');
   const [chatView, setChatView] = useState('conversas');
+  const [modelsRoutinesView, setModelsRoutinesView] = useState('templates');
   const [selectedClient, setSelectedClient] = useState(null);
   const [isClientProfileOpen, setIsClientProfileOpen] = useState(false);
   const [casesNotice, setCasesNotice] = useState(null);
@@ -186,6 +186,20 @@ export default function Home() {
         url.searchParams.set('view', 'clientes');
         url.searchParams.delete('conversation');
         window.history.replaceState(null, '', url.toString());
+      }
+    } else if ((tab === 'templates' || tab === 'documents') && !queryProcessed.current.tab) {
+      setActiveTab('models-routines');
+      setModelsRoutinesView('templates');
+      queryProcessed.current.tab = true;
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', '/?tab=models-routines&view=templates');
+      }
+    } else if (tab === 'routines' && !queryProcessed.current.tab) {
+      setActiveTab('models-routines');
+      setModelsRoutinesView('routines');
+      queryProcessed.current.tab = true;
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', '/?tab=models-routines&view=routines');
       }
     } else if ((tab === 'collaboration' || tab === 'insights') && !queryProcessed.current.tab) {
       const resolved = resolveCaseView({ tab, caseId: caseId || null, caseView: caseView || null });
@@ -523,10 +537,8 @@ export default function Home() {
             <ProcessTriagePanel />
           ) : activeTab === 'cases' ? (
             <CasesPanel notice={casesNotice} />
-          ) : activeTab === 'templates' ? (
-            <DocumentTemplatesManager />
-          ) : activeTab === 'routines' ? (
-            <LegalRoutinesManager />
+          ) : activeTab === 'models-routines' ? (
+            <ModelsAndRoutinesPanel userRole={profile?.role} />
           ) : activeTab === 'ai_assistant' ? (
             <OfficeAIAssistant />
           ) : activeTab === 'knowledge' ? (

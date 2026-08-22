@@ -1,11 +1,14 @@
 import CollaborationPanel from './CollaborationPanel';
 import CaseInsightsPanel from './CaseInsightsPanel';
 import CaseProcessMonitoring from './CaseProcessMonitoring';
+import CaseRoutinesPanel from './CaseRoutinesPanel';
+import GeneratedDocumentsPanel from './GeneratedDocumentsPanel';
 
 const TABS = [
   { key: 'visao-geral', label: 'Visão Geral' },
   { key: 'processos', label: 'Processos' },
   { key: 'documentos-checklist', label: 'Documentos e Checklist' },
+  { key: 'rotinas', label: 'Rotinas Aplicadas' },
   { key: 'colaboracao', label: 'Colaboração' },
   { key: 'insights', label: 'Insights' },
 ];
@@ -213,23 +216,42 @@ export default function CaseDetailPanel({
 
         {caseView === 'documentos-checklist' && (
           <div className="space-y-6 max-w-3xl">
-            <p className="text-sm text-gray-600">
-              Documentos e checklist são gerenciados em modais para preservar a experiência e permissões atuais.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={onOpenChecklist}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                📎 Abrir Checklist
-              </button>
-              <button
-                onClick={onOpenDocuments}
-                className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
-              >
-                📄 Abrir Documentos
-              </button>
+            <div>
+              <h3 className="font-semibold text-lg mb-3">📋 Checklist e Documentos Recebidos</h3>
+              <p className="text-sm text-gray-600 mb-3">
+                Gerencie o checklist de documentos e arquivos recebidos do cliente.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={onOpenChecklist}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  📎 Abrir Checklist
+                </button>
+                <button
+                  onClick={onOpenDocuments}
+                  className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
+                >
+                  📄 Abrir Documentos
+                </button>
+              </div>
             </div>
+            
+            <div className="border-t pt-6">
+              <GeneratedDocumentsPanel 
+                caseId={caseItem.id} 
+                conversationId={caseItem.conversation_id}
+              />
+            </div>
+          </div>
+        )}
+
+        {caseView === 'rotinas' && (
+          <div className="max-w-3xl">
+            <CaseRoutinesPanel 
+              caseId={caseItem.id} 
+              conversationId={caseItem.conversation_id}
+            />
           </div>
         )}
 
