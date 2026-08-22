@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Head from 'next/head';
 import Sidebar from '@/components/Sidebar';
 import MetricsDashboard from '@/components/MetricsDashboard';
+import { AreaFilterProvider } from '@/contexts/AreaFilterContext';
 
 const priorityColors = {
   alta: 'bg-red-100 text-red-800 border-red-200',
@@ -168,6 +169,7 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row h-screen bg-nc-surface overflow-hidden">
         <Sidebar activeTab="dashboard" />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+          <AreaFilterProvider>
           <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
             <div>
@@ -342,6 +344,7 @@ export default function DashboardPage() {
           </div>
 
           </div>
+          </AreaFilterProvider>
         </main>
       </div>
     </>
