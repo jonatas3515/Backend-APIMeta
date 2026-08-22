@@ -39,11 +39,11 @@ function extractReferences(tableData) {
       return null;
     };
 
-    const legal_area = find(['area', 'area_juridica', 'area juridica', 'legal_area', 'areajuridica', 'area_juridica']) || '';
+    const legal_area = find(['area', 'area_juridica', 'area juridica', 'legal_area', 'areajuridica', 'indicativo']) || '';
     const case_type = find(['tipo', 'case_type', 'tipo_caso', 'tipo caso', 'tipocaso']) || '';
-    const service = find(['servico', 'service', 'nome', 'item', 'descricao', 'descrição', 'descricao']) || '';
-    const min_amount = parseAmount(find(['minimo', 'mínimo', 'min', 'min_amount', 'valor_minimo', 'valor minimo']));
-    const suggested_amount = parseAmount(find(['sugerido', 'suggested', 'sugestao', 'sugestão', 'suggested_amount', 'valor_sugerido', 'valor sugerido']));
+    const service = find(['servico', 'service', 'nome', 'item', 'descricao', 'descrição', 'atividades', 'atividade']) || '';
+    const min_amount = parseAmount(find(['minimo', 'mínimo', 'min', 'min_amount', 'valor_minimo', 'valor minimo', 'valor urh', 'urh']));
+    const suggested_amount = parseAmount(find(['sugerido', 'suggested', 'sugestao', 'sugestão', 'suggested_amount', 'valor_sugerido', 'valor sugerido', 'r$', 'rs', 'valores']));
     const max_amount = parseAmount(find(['maximo', 'máximo', 'max', 'max_amount', 'valor_maximo', 'valor maximo']));
     const unit = find(['unidade', 'unit', 'por', 'und']) || '';
     const region = find(['regiao', 'região', 'estado', 'uf', 'region']) || '';
