@@ -4,8 +4,8 @@ import { supabase } from '../lib/supabaseClient';
 import useAreaFilter from '../hooks/useAreaFilter';
 import { LEGAL_AREAS } from '../lib/legalAreas';
 
-export default function CaseInsightsPanel({ conversationId, caseId, onClose }) {
-  const [activeTab, setActiveTab] = useState('list');
+export default function CaseInsightsPanel({ conversationId, caseId, onClose, initialTab = 'list' }) {
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [insights, setInsights] = useState([]);
   const [similarInsights, setSimilarInsights] = useState([]);
   const [selectedInsight, setSelectedInsight] = useState(null);

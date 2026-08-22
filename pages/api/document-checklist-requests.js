@@ -182,7 +182,7 @@ async function handleSend(req, res, user, action) {
       .in('id', request.items || [])
       .eq('case_id', request.case_id);
 
-    const { message } = buildDocumentRequestMessage(itemDetails || []);
+    const message = req.body.message || buildDocumentRequestMessage(itemDetails || []).message;
 
     const waMessageId = await sendWhatsAppMessage(conversation.client_phone, message);
 

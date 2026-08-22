@@ -8,12 +8,17 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState([]);
   const [draft, setDraft] = useState(null);
+  const [customMessage, setCustomMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
     fetchItems();
   }, [caseItem.id]);
+
+  useEffect(() => {
+    setCustomMessage(draft?.message || '');
+  }, [draft]);
 
   const fetchItems = async () => {
     try {
@@ -68,7 +73,8 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
     try {
       const headers = await getAuthHeaders();
       await axios.post('/api/document-checklist-requests?action=send', {
-        id: draft.id
+        id: draft.id,
+        message: customMessage
       }, { headers });
       alert('Solicitacao enviada com sucesso');
       onClose();
@@ -138,10 +144,13 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
             </>
           ) : (
             <>
-              <p className="text-sm font-medium mb-2">Mensagem a ser enviada:</p>
-              <pre className="whitespace-pre-wrap bg-gray-100 p-3 rounded text-sm mb-4 border">
-                {draft.message}
-              </pre>
+              <p className="text-sm font-medium mb-2">Mensagem a ser enviada (edite se desejar):</p>
+              <textarea
+                value={customMessage}
+                onChange={(e) => setCustomMessage(e.target.value)}
+                rows={8}
+                className="w-full border rounded p-3 text-sm mb-4"
+              />
 
               <div className="flex gap-2">
                 <button

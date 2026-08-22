@@ -120,34 +120,31 @@ export default function CollaborationPanel({ conversationId, caseId }) {
         <div className="flex gap-2">
           <button
             onClick={() => setActiveTab('notes')}
-            disabled={activeTab !== 'notes'}
             className={`px-3 py-1 rounded text-sm font-medium transition ${
               activeTab === 'notes'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            }`}
           >
             📝 Notas
           </button>
           <button
             onClick={() => setActiveTab('audit')}
-            disabled={activeTab !== 'audit'}
             className={`px-3 py-1 rounded text-sm font-medium transition ${
               activeTab === 'audit'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            }`}
           >
             📋 Auditoria
           </button>
           <button
             onClick={() => setActiveTab('assign')}
-            disabled={activeTab !== 'assign'}
             className={`px-3 py-1 rounded text-sm font-medium transition ${
               activeTab === 'assign'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            }`}
           >
             👤 Atribuir
           </button>
