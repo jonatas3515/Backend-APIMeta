@@ -89,18 +89,25 @@ async function handler(req, res) {
         }
       }
 
+      console.log('[FEE-REFERENCE] Total referencias extraidas:', all.length);
+      console.log('[FEE-REFERENCE] Primeiras 3 referencias:', all.slice(0, 3).map(r => ({ area: r.legal_area, service: r.service })));
+      console.log('[FEE-REFERENCE] Filtros:', { legal_area, case_type, service });
+
       let filtered = all;
       if (legal_area) {
         const norm = normalizeText(legal_area);
         filtered = filtered.filter((r) => normalizeText(r.legal_area).includes(norm));
+        console.log('[FEE-REFERENCE] Apos filtro area:', filtered.length);
       }
       if (case_type) {
         const norm = normalizeText(case_type);
         filtered = filtered.filter((r) => normalizeText(r.case_type).includes(norm));
+        console.log('[FEE-REFERENCE] Apos filtro tipo:', filtered.length);
       }
       if (service) {
         const norm = normalizeText(service);
         filtered = filtered.filter((r) => normalizeText(r.service).includes(norm));
+        console.log('[FEE-REFERENCE] Apos filtro servico:', filtered.length);
       }
 
       const withSuggestion = filtered.map((r) => ({
