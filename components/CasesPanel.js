@@ -391,6 +391,14 @@ export default function CasesPanel({ notice }) {
           onOpenConversationSelector={() => setShowConversationSelector(true)}
           onUnlinkConversation={handleUnlinkConversation}
         />
+
+        {showConversationSelector && (
+          <ConversationSelectorModal
+            caseItem={selectedCase}
+            onSelect={handleLinkConversation}
+            onClose={() => setShowConversationSelector(false)}
+          />
+        )}
       </div>
     );
   }
