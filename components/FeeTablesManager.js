@@ -96,6 +96,8 @@ export default function FeeTablesManager({ viewMode = null }) {
 
     if (isPdfFile) {
       setPreview([]);
+      setPreviewValidation(null);
+      setMessage({ type: 'info', text: 'PDF selecionado. A tabela será extraída ao salvar.' });
       return;
     }
 
@@ -157,21 +159,31 @@ export default function FeeTablesManager({ viewMode = null }) {
     setUploading(true);
     setMessage(null);
 
+    const headers = await getAuthHeaders();
+
     try {
       let fileUrl = null;
       let tableData = [];
 
       if (isPdf) {
-        fileUrl = await uploadPdf(file);
+        const buffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
+        const { data: parsed } = await axios.post('/api/parse-pdf', { file: base64 }, { headers });
+        tableData = parsed.tableData;
       } else {
         tableData = await parseFile(file);
-        const validation = validatePreview(tableData);
-        if (!validation.valid) {
-          throw new Error(`Colunas ausentes: ${validation.missing.join(', ')}`);
-        }
       }
 
-      const headers = await getAuthHeaders();
+      const validation = validatePreview(tableData);
+      if (!validation.valid) {
+        throw new Error(`Colunas ausentes: ${validation.missing.join(', ')}`);
+      }
+
       await axios.post('/api/fee-tables', {
         name: name.trim(),
         table_type: selectedType,
