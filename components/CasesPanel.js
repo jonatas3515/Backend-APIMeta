@@ -13,8 +13,10 @@ import CaseProcessMonitoring from './CaseProcessMonitoring';
 import DocumentChecklist from './DocumentChecklist';
 import CaseDocumentsPanel from './CaseDocumentsPanel';
 import DocumentRequestModal from './DocumentRequestModal';
+import CaseDetailPanel from './CaseDetailPanel';
+import CaseInsightsPanel from './CaseInsightsPanel';
 
-export default function CasesPanel() {
+export default function CasesPanel({ notice }) {
   const router = useRouter();
   const { profile } = useAuth();
   const { selectedArea, setSelectedArea } = useAreaFilter();
@@ -35,6 +37,8 @@ export default function CasesPanel() {
   const [showForm, setShowForm] = useState(false);
   const [editingCase, setEditingCase] = useState(null);
   const [selectedCase, setSelectedCase] = useState(null);
+  const [caseView, setCaseView] = useState('list');
+  const [dismissed, setDismissed] = useState(false);
   const [feeCase, setFeeCase] = useState(null);
   const [processCase, setProcessCase] = useState(null);
   const [checklistCase, setChecklistCase] = useState(null);
@@ -54,6 +58,39 @@ export default function CasesPanel() {
     deadline_type: '',
     notes: ''
   });
+
+  // Sincroniza com query string (caseId, caseView) e carrega aba de detalhe
+  useEffect(() => {
+    if (router.isReady && router.query.caseId && cases.length > 0) {
+      const found = cases.find((c) => c.id === router.query.caseId);
+      if (found) {
+        setSelectedCase(found);
+        const view = router.query.caseView || 'visao-geral';
+        setCaseView(view);
+      }
+    }
+  }, [router.isReady, router.query, cases]);
+
+  const openCase = (caseItem, view = 'visao-geral') => {
+    setSelectedCase(caseItem);
+    setCaseView(view);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('caseId', caseItem.id);
+      url.searchParams.set('caseView', view);
+      window.history.replaceState(null, '', url.toString());
+    }
+  };
+
+  const updateCaseView = (view) => {
+    setCaseView(view);
+    if (selectedCase && typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('caseId', selectedCase.id);
+      url.searchParams.set('caseView', view);
+      window.history.replaceState(null, '', url.toString());
+    }
+  };
 
   useEffect(() => {
     fetchCases();
@@ -270,8 +307,76 @@ export default function CasesPanel() {
     return diff;
   };
 
+  if (selectedCase && caseView !== 'list' && caseView !== 'insights') {
+    return (
+      <div className="p-4 md:p-6 h-full w-full flex flex-col">
+        <CaseDetailPanel
+          caseItem={selectedCase}
+          caseView={caseView}
+          onChangeView={updateCaseView}
+          onBack={() => {
+            setSelectedCase(null);
+            setCaseView('list');
+            if (typeof window !== 'undefined') {
+              const url = new URL(window.location.href);
+              url.searchParams.delete('caseId');
+              url.searchParams.delete('caseView');
+              window.history.replaceState(null, '', url.toString());
+            }
+          }}
+          onOpenChecklist={() => setChecklistCase(selectedCase)}
+          onOpenDocuments={() => setDocsCase(selectedCase)}
+          onOpenFee={() => setFeeCase(selectedCase)}
+          userRole={profile?.role}
+        />
+      </div>
+    );
+  }
+
+  if (caseView === 'insights') {
+    return (
+      <div className="p-4 md:p-6 bg-white rounded-lg shadow w-full h-full overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold">Insights gerais</h2>
+          <button
+            onClick={() => setCaseView('list')}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            ← Voltar para Casos
+          </button>
+        </div>
+        <CaseInsightsPanel />
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg shadow w-full h-full overflow-y-auto">
+      {notice && !dismissed && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 flex justify-between items-center">
+          <span>{notice}</span>
+          <button
+            onClick={() => setDismissed(true)}
+            className="text-yellow-600 hover:text-yellow-900 font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={() => setCaseView('list')}
+          className={`px-3 py-1.5 rounded text-sm font-medium ${caseView === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+        >
+          Casos
+        </button>
+        <button
+          onClick={() => setCaseView('insights')}
+          className={`px-3 py-1.5 rounded text-sm font-medium ${caseView === 'insights' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+        >
+          Insights gerais
+        </button>
+      </div>
       <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <h2 className="text-2xl font-bold">Casos Jurídicos</h2>
         <div className="flex flex-wrap gap-2 items-center">
@@ -484,7 +589,7 @@ export default function CasesPanel() {
                 return (
                 <tr
                   key={caseItem.id}
-                  onClick={() => setSelectedCase(caseItem)}
+                  onClick={() => openCase(caseItem)}
                   className={`border-b hover:bg-gray-50 text-xs md:text-sm cursor-pointer ${
                     selectedCase?.id === caseItem.id ? 'bg-blue-50 ring-2 ring-inset ring-blue-200' : ''
                   }`}
@@ -527,43 +632,43 @@ export default function CasesPanel() {
                     </td>
                     <td className="border p-3 flex gap-2">
                       <button
-                        onClick={() => handleEditCase(caseItem)}
+                        onClick={(e) => { e.stopPropagation(); handleEditCase(caseItem); }}
                         className="px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
                       >
                         Editar
                       </button>
                       <button
-                        onClick={() => setChecklistCase(caseItem)}
+                        onClick={(e) => { e.stopPropagation(); setChecklistCase(caseItem); }}
                         className="px-2 py-1 bg-teal-500 text-white rounded text-sm hover:bg-teal-600"
                       >
                         Checklist
                       </button>
                       <button
-                        onClick={() => setDocsCase(caseItem)}
+                        onClick={(e) => { e.stopPropagation(); setDocsCase(caseItem); }}
                         className="px-2 py-1 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600"
                       >
                         Documentos
                       </button>
                       <button
-                        onClick={() => setRequestCase(caseItem)}
+                        onClick={(e) => { e.stopPropagation(); setRequestCase(caseItem); }}
                         className="px-2 py-1 bg-cyan-500 text-white rounded text-sm hover:bg-cyan-600"
                       >
                         Solicitar
                       </button>
                       <button
-                        onClick={() => setFeeCase(caseItem)}
+                        onClick={(e) => { e.stopPropagation(); setFeeCase(caseItem); }}
                         className="px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
                       >
                         Honorarios
                       </button>
                       <button
-                        onClick={() => setProcessCase(caseItem)}
+                        onClick={(e) => { e.stopPropagation(); setProcessCase(caseItem); }}
                         className="px-2 py-1 bg-indigo-500 text-white rounded text-sm hover:bg-indigo-600"
                       >
                         Processo
                       </button>
                       <button
-                        onClick={() => handleDeleteCase(caseItem.id)}
+                        onClick={(e) => { e.stopPropagation(); handleDeleteCase(caseItem.id); }}
                         className="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
                       >
                         Deletar
