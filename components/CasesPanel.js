@@ -10,6 +10,9 @@ import { exportCasesExcel } from '../lib/export';
 import CaseCalendarSync from './CaseCalendarSync';
 import FeeSimulator from './FeeSimulator';
 import CaseProcessMonitoring from './CaseProcessMonitoring';
+import DocumentChecklist from './DocumentChecklist';
+import CaseDocumentsPanel from './CaseDocumentsPanel';
+import DocumentRequestModal from './DocumentRequestModal';
 
 export default function CasesPanel() {
   const router = useRouter();
@@ -34,6 +37,9 @@ export default function CasesPanel() {
   const [selectedCase, setSelectedCase] = useState(null);
   const [feeCase, setFeeCase] = useState(null);
   const [processCase, setProcessCase] = useState(null);
+  const [checklistCase, setChecklistCase] = useState(null);
+  const [docsCase, setDocsCase] = useState(null);
+  const [requestCase, setRequestCase] = useState(null);
   const [formData, setFormData] = useState({
     conversation_id: '',
     title: '',
@@ -527,16 +533,34 @@ export default function CasesPanel() {
                         Editar
                       </button>
                       <button
+                        onClick={() => setChecklistCase(caseItem)}
+                        className="px-2 py-1 bg-teal-500 text-white rounded text-sm hover:bg-teal-600"
+                      >
+                        Checklist
+                      </button>
+                      <button
+                        onClick={() => setDocsCase(caseItem)}
+                        className="px-2 py-1 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600"
+                      >
+                        Documentos
+                      </button>
+                      <button
+                        onClick={() => setRequestCase(caseItem)}
+                        className="px-2 py-1 bg-cyan-500 text-white rounded text-sm hover:bg-cyan-600"
+                      >
+                        Solicitar
+                      </button>
+                      <button
                         onClick={() => setFeeCase(caseItem)}
                         className="px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
                       >
-                        💰 Honorários
+                        Honorarios
                       </button>
                       <button
                         onClick={() => setProcessCase(caseItem)}
                         className="px-2 py-1 bg-indigo-500 text-white rounded text-sm hover:bg-indigo-600"
                       >
-                        ⚖️ Processo
+                        Processo
                       </button>
                       <button
                         onClick={() => handleDeleteCase(caseItem.id)}
@@ -575,6 +599,21 @@ export default function CasesPanel() {
             <CaseProcessMonitoring caseId={processCase.id} userRole={profile?.role} />
           </div>
         </div>
+      )}
+
+      {checklistCase && (
+        <DocumentChecklist caseItem={checklistCase} onClose={() => setChecklistCase(null)} />
+      )}
+
+      {docsCase && (
+        <CaseDocumentsPanel
+          caseItem={docsCase}
+          onClose={() => setDocsCase(null)}
+        />
+      )}
+
+      {requestCase && (
+        <DocumentRequestModal caseItem={requestCase} onClose={() => setRequestCase(null)} />
       )}
     </div>
   );
