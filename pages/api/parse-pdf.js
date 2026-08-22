@@ -30,8 +30,9 @@ async function handler(req, res) {
 
     return res.status(200).json({ tableData });
   } catch (error) {
-    console.error('[PARSE-PDF] Erro:', error.message);
-    return res.status(500).json({ error: 'Erro ao processar PDF' });
+    console.error('[PARSE-PDF] Erro completo:', error);
+    console.error('[PARSE-PDF] Stack:', error.stack);
+    return res.status(500).json({ error: `Erro ao processar PDF: ${error.message}` });
   }
 }
 
