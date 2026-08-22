@@ -47,9 +47,13 @@ export default function CaseDetailPanel({
   onOpenChecklist,
   onOpenDocuments,
   onOpenFee,
-  userRole
+  userRole,
+  conversations = [],
+  onOpenConversationSelector,
+  onUnlinkConversation
 }) {
   const daysLeft = daysUntilDeadline(caseItem.deadline_date);
+  const linkedConversation = conversations.find((c) => c.id === caseItem.conversation_id);
 
   return (
     <div className="flex-1 h-full flex flex-col bg-white rounded-lg shadow overflow-hidden">
@@ -135,6 +139,42 @@ export default function CaseDetailPanel({
                 <p className="text-xs text-gray-500">Tipo de prazo</p>
                 <p className="text-sm font-medium">{caseItem.deadline_type || '-'}</p>
               </div>
+            </div>
+
+            <div className="p-3 bg-gray-50 rounded border">
+              <p className="text-xs text-gray-500 mb-1">Conversa vinculada</p>
+              {linkedConversation ? (
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium">{linkedConversation.client_name || 'Sem nome'}</p>
+                    <p className="text-xs text-gray-500">{linkedConversation.client_phone || 'Sem telefone'}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={onOpenConversationSelector}
+                      className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                    >
+                      Trocar
+                    </button>
+                    <button
+                      onClick={onUnlinkConversation}
+                      className="px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
+                  <p className="text-sm text-gray-600">Nenhuma conversa vinculada.</p>
+                  <button
+                    onClick={onOpenConversationSelector}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                  >
+                    Vincular conversa
+                  </button>
+                </div>
+              )}
             </div>
 
             {caseItem.notes && (

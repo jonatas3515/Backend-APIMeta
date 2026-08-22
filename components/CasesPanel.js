@@ -15,6 +15,7 @@ import CaseDocumentsPanel from './CaseDocumentsPanel';
 import DocumentRequestModal from './DocumentRequestModal';
 import CaseDetailPanel from './CaseDetailPanel';
 import CaseInsightsPanel from './CaseInsightsPanel';
+import ConversationSelectorModal from './ConversationSelectorModal';
 
 export default function CasesPanel({ notice }) {
   const router = useRouter();
@@ -44,6 +45,8 @@ export default function CasesPanel({ notice }) {
   const [checklistCase, setChecklistCase] = useState(null);
   const [docsCase, setDocsCase] = useState(null);
   const [requestCase, setRequestCase] = useState(null);
+  const [showConversationSelector, setShowConversationSelector] = useState(false);
+  const [conversations, setConversations] = useState([]);
   const [formData, setFormData] = useState({
     conversation_id: '',
     title: '',
@@ -95,6 +98,7 @@ export default function CasesPanel({ notice }) {
   useEffect(() => {
     fetchCases();
     fetchChecklists();
+    fetchConversations();
   }, [filters]);
 
   // Atalho N: abre formulário de novo caso via query string
@@ -193,6 +197,20 @@ export default function CasesPanel({ notice }) {
       setChecklistMap(map);
     } catch (error) {
       console.error('[CASES] Erro ao buscar checklists:', error);
+    }
+  };
+
+  const fetchConversations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('id, client_name, client_phone, client_status, legal_area, updated_at')
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+      setConversations(data || []);
+    } catch (error) {
+      console.error('[CASES] Erro ao buscar conversas:', error);
     }
   };
 
@@ -307,6 +325,47 @@ export default function CasesPanel({ notice }) {
     return diff;
   };
 
+  const handleLinkConversation = async (conversation) => {
+    if (!selectedCase || !conversation) return;
+    try {
+      const { data, error } = await supabase
+        .from('cases')
+        .update({ conversation_id: conversation.id })
+        .eq('id', selectedCase.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setSelectedCase(data);
+      setCases((prev) => prev.map((c) => (c.id === data.id ? data : c)));
+      setShowConversationSelector(false);
+    } catch (error) {
+      console.error('[CASES] Erro ao vincular conversa:', error);
+      alert(error.message || 'Erro ao vincular conversa');
+    }
+  };
+
+  const handleUnlinkConversation = async () => {
+    if (!selectedCase) return;
+    try {
+      const { data, error } = await supabase
+        .from('cases')
+        .update({ conversation_id: null })
+        .eq('id', selectedCase.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setSelectedCase(data);
+      setCases((prev) => prev.map((c) => (c.id === data.id ? data : c)));
+    } catch (error) {
+      console.error('[CASES] Erro ao desvincular conversa:', error);
+      alert(error.message || 'Erro ao desvincular conversa');
+    }
+  };
+
   if (selectedCase && caseView !== 'list' && caseView !== 'insights') {
     return (
       <div className="p-4 md:p-6 h-full w-full flex flex-col">
@@ -328,6 +387,9 @@ export default function CasesPanel({ notice }) {
           onOpenDocuments={() => setDocsCase(selectedCase)}
           onOpenFee={() => setFeeCase(selectedCase)}
           userRole={profile?.role}
+          conversations={conversations}
+          onOpenConversationSelector={() => setShowConversationSelector(true)}
+          onUnlinkConversation={handleUnlinkConversation}
         />
       </div>
     );
@@ -650,7 +712,7 @@ export default function CasesPanel({ notice }) {
                         Documentos
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); setRequestCase(caseItem); }}
+                        onClick={(e) => { e.stopPropagation(); if (!caseItem.conversation_id) { alert('Caso sem conversa vinculada. Vincule uma conversa antes de solicitar documentos.'); return; } setRequestCase(caseItem); }}
                         className="px-2 py-1 bg-cyan-500 text-white rounded text-sm hover:bg-cyan-600"
                       >
                         Solicitar
@@ -719,6 +781,14 @@ export default function CasesPanel({ notice }) {
 
       {requestCase && (
         <DocumentRequestModal caseItem={requestCase} onClose={() => setRequestCase(null)} />
+      )}
+
+      {showConversationSelector && selectedCase && (
+        <ConversationSelectorModal
+          caseItem={selectedCase}
+          onSelect={handleLinkConversation}
+          onClose={() => setShowConversationSelector(false)}
+        />
       )}
     </div>
   );
