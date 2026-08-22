@@ -72,6 +72,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   };
 
   const fetchSimulations = async () => {
+    if (!caseId) return;
     try {
       const headers = await getAuthHeaders();
       const { data } = await axios.get(`/api/fee-simulations?case_id=${caseId}`, { headers });
@@ -127,6 +128,10 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
 
   const handleSave = async (status = 'rascunho') => {
     if (!result) return;
+    if (!caseId) {
+      setMessage({ type: 'error', text: 'Selecione um caso para salvar a simulação.' });
+      return;
+    }
     setSaving(true);
     try {
       const headers = await getAuthHeaders();

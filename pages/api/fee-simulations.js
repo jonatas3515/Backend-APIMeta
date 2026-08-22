@@ -29,7 +29,7 @@ async function handler(req, res) {
         .from('fee_simulations')
         .select('*, fee_service_catalog(name, legal_area, case_type)');
       if (id) query = query.eq('id', id).single();
-      if (case_id) query = query.eq('case_id', case_id);
+      if (case_id && case_id !== 'undefined' && case_id !== 'null') query = query.eq('case_id', case_id);
       if (status) query = query.eq('status', status);
 
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -40,6 +40,10 @@ async function handler(req, res) {
     if (method === 'POST') {
       if (req.body.action === 'calculate') {
         return calculate(req, res);
+      }
+
+      if (!req.body.case_id || req.body.case_id === 'undefined' || req.body.case_id === 'null') {
+        return res.status(400).json({ error: 'case_id é obrigatório' });
       }
 
       const { simulation, calculated } = await buildSimulation(req, user);
