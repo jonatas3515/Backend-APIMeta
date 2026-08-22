@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import ChatList from '../components/ChatList';
 import ChatWindow from '../components/ChatWindow';
 import ClientsList from '../components/ClientsList';
+import CustomerProfilePanel from '../components/CustomerProfilePanel';
 import FunnelKanban from '../components/FunnelKanban';
 import UserManagement from '../components/UserManagement';
 import AgendaPanel from '../components/AgendaPanel';
@@ -39,6 +40,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [supabaseReady, setSupabaseReady] = useState(false);
   const [activeTab, setActiveTab] = useState('chat');
+  const [chatView, setChatView] = useState('conversas');
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [isClientProfileOpen, setIsClientProfileOpen] = useState(false);
   const queryProcessed = useRef({ tab: false, conversation: false });
   const { authUser, profile, loading: authLoading, signOut, canAccess } = useAuth();
   const { selectedArea, setSelectedArea } = useAreaFilter();
@@ -165,15 +169,35 @@ export default function Home() {
     };
   }, [authUser, profile, notifPrefs]);
 
-  // Interpreta query string vindas de busca global e atalhos
+  // Interpreta query string e mantém compatibilidade com tab=clients
   useEffect(() => {
     if (!router.isReady) return;
 
-    const { tab, conversation, case: caseId, new: newParam } = router.query;
+    const { tab, view, conversation, case: caseId, new: newParam } = router.query;
+    const isClientesView = view === 'clientes' || tab === 'clients';
 
-    if (tab && typeof tab === 'string' && !queryProcessed.current.tab) {
+    if (tab === 'clients' && typeof tab === 'string' && !queryProcessed.current.tab) {
+      setActiveTab('chat');
+      setChatView('clientes');
+      queryProcessed.current.tab = true;
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', 'chat');
+        url.searchParams.set('view', 'clientes');
+        url.searchParams.delete('conversation');
+        window.history.replaceState(null, '', url.toString());
+      }
+    } else if (tab && typeof tab === 'string' && !queryProcessed.current.tab) {
       setActiveTab(tab);
       queryProcessed.current.tab = true;
+    }
+
+    if (view === 'clientes') {
+      setChatView('clientes');
+    } else if (view === 'conversas') {
+      setChatView('conversas');
+    } else if (tab === 'clients') {
+      setChatView('clientes');
     }
 
     if (tab === 'chat' && newParam === '1' && !queryProcessed.current.conversation) {
@@ -182,11 +206,14 @@ export default function Home() {
       queryProcessed.current.conversation = true;
       // Limpa o parâmetro para não reabrir ao voltar
       if (typeof window !== 'undefined') {
-        window.history.replaceState(null, '', '/?tab=chat');
+        const url = new URL(window.location.href);
+        url.searchParams.delete('new');
+        url.searchParams.set('tab', 'chat');
+        window.history.replaceState(null, '', url.toString());
       }
     }
 
-    if (tab === 'chat' && conversation && conversations.length > 0 && !queryProcessed.current.conversation) {
+    if (!isClientesView && tab === 'chat' && conversation && conversations.length > 0 && !queryProcessed.current.conversation) {
       const conv = conversations.find(c => c.id === conversation);
       if (conv) {
         setSelectedConversation(conv);
@@ -379,57 +406,101 @@ export default function Home() {
 
         {/* Conteúdo principal */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <header className="flex items-center justify-between md:justify-end px-3 py-2 bg-white border-b border-gray-200 z-10">
-            <h1 className="md:hidden text-base font-bold">N&C</h1>
+          <header className="flex items-center justify-between px-3 py-2 bg-white border-b border-gray-200 z-10 gap-2">
+            <h1 className="md:hidden text-base font-bold flex-shrink-0">N&C</h1>
+            {activeTab === 'chat' && (
+              <div className="flex gap-1 bg-nc-gray-100 p-1 rounded text-xs font-medium">
+                <button
+                  onClick={() => setChatView('conversas')}
+                  className={`px-3 py-1 rounded transition ${
+                    chatView === 'conversas'
+                      ? 'bg-white shadow text-nc-text-title'
+                      : 'text-nc-text-secondary hover:text-nc-text'
+                  }`}
+                >
+                  💬 Conversas
+                </button>
+                <button
+                  onClick={() => setChatView('clientes')}
+                  className={`px-3 py-1 rounded transition ${
+                    chatView === 'clientes'
+                      ? 'bg-white shadow text-nc-text-title'
+                      : 'text-nc-text-secondary hover:text-nc-text'
+                  }`}
+                >
+                  👥 Clientes
+                </button>
+              </div>
+            )}
+            <div className="flex-1 md:hidden" />
             <AreaFilterSelector compact />
           </header>
           <ActiveFilterBanner />
           <main className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0 pb-16 md:pb-0">
           {activeTab === 'chat' ? (
             <>
-              <div
-                className={`${
-                  selectedConversation ? 'hidden md:flex' : 'flex'
-                } w-full md:w-80 flex-shrink-0 h-full`}
-              >
-                <ChatList
-                  conversations={conversations}
-                  selectedConversation={selectedConversation}
-                  onSelectConversation={async (conv) => {
-                    setSelectedConversation(conv);
-                    if (conv.unread) {
-                      const { error } = await supabase
-                        .from('conversations')
-                        .update({ unread: false })
-                        .eq('id', conv.id);
+              {chatView === 'conversas' ? (
+                <>
+                  <div
+                    className={`${
+                      selectedConversation ? 'hidden md:flex' : 'flex'
+                    } w-full md:w-80 flex-shrink-0 h-full`}
+                  >
+                    <ChatList
+                      conversations={conversations}
+                      selectedConversation={selectedConversation}
+                      onSelectConversation={async (conv) => {
+                        setSelectedConversation(conv);
+                        if (conv.unread) {
+                          const { error } = await supabase
+                            .from('conversations')
+                            .update({ unread: false })
+                            .eq('id', conv.id);
 
-                      if (error) {
-                        console.error('[FRONTEND] Erro ao marcar como lida:', error);
-                      } else {
-                        setConversations(prev => prev.map(c =>
-                          c.id === conv.id ? { ...c, unread: false } : c
-                        ));
-                      }
-                    }
-                  }}
-                  loading={loading}
-                  onNewConversation={() => setShowNewConvModal(true)}
-                  onDeleteConversation={handleDeleteConversation}
-                  deletingId={deletingId}
-                />
-              </div>
-              {selectedConversation && (
-                <div className="w-full md:flex-1 h-full flex flex-col">
-                  <ChatWindow
-                    conversation={selectedConversation}
-                    onConversationUpdate={fetchConversations}
-                    onBack={() => setSelectedConversation(null)}
+                          if (error) {
+                            console.error('[FRONTEND] Erro ao marcar como lida:', error);
+                          } else {
+                            setConversations(prev => prev.map(c =>
+                              c.id === conv.id ? { ...c, unread: false } : c
+                            ));
+                          }
+                        }
+                      }}
+                      loading={loading}
+                      onNewConversation={() => setShowNewConvModal(true)}
+                      onDeleteConversation={handleDeleteConversation}
+                      deletingId={deletingId}
+                    />
+                  </div>
+                  {selectedConversation && (
+                    <div className="w-full md:flex-1 h-full flex flex-col">
+                      <ChatWindow
+                        conversation={selectedConversation}
+                        onConversationUpdate={fetchConversations}
+                        onBack={() => setSelectedConversation(null)}
+                      />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex-1 h-full flex flex-col overflow-hidden bg-white">
+                  <ClientsList
+                    onSelectClient={(client) => {
+                      setSelectedClient(client);
+                      setIsClientProfileOpen(true);
+                    }}
                   />
                 </div>
               )}
+              {isClientProfileOpen && selectedClient && (
+                <CustomerProfilePanel
+                  conversation={selectedClient}
+                  isOpen={isClientProfileOpen}
+                  onClose={() => setIsClientProfileOpen(false)}
+                  onConversationUpdate={fetchConversations}
+                />
+              )}
             </>
-          ) : activeTab === 'clients' ? (
-            <ClientsList />
           ) : activeTab === 'funnel' ? (
             <FunnelKanban
               conversations={conversations}

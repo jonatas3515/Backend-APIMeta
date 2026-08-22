@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { formatPhone } from '../lib/formatters';
 
-export default function ClientsList() {
+export default function ClientsList({ onSelectClient }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -153,27 +153,33 @@ export default function ClientsList() {
             {filteredClients.map((client, index) => (
               <div
                 key={client.id}
-                className="px-4 py-2 hover:bg-blue-50 transition grid grid-cols-12 gap-2 items-center text-sm"
+                onClick={() => onSelectClient && onSelectClient(client)}
+                className="px-4 py-2 hover:bg-blue-50 transition grid grid-cols-12 gap-2 items-center text-sm cursor-pointer"
               >
                 <div className="col-span-1 font-semibold text-gray-600">{index + 1}</div>
 
                 <div className="col-span-5 md:col-span-3">
                   {editingId === client.id ? (
-                    <input
-                      type="text"
-                      value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      onBlur={() => updateClientName(client.id, editingName)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') updateClientName(client.id, editingName);
-                      }}
-                      autoFocus
-                      className="w-full px-2 py-1 border border-blue-500 rounded text-sm"
-                    />
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="text"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onBlur={() => updateClientName(client.id, editingName)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') updateClientName(client.id, editingName);
+                        }}
+                        autoFocus
+                        className="w-full px-2 py-1 border border-blue-500 rounded text-sm"
+                      />
+                    </div>
                   ) : (
                     <span
                       className="text-gray-900 cursor-pointer md:cursor-default"
-                      onClick={() => setExpandedId(expandedId === client.id ? null : client.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedId(expandedId === client.id ? null : client.id);
+                      }}
                     >
                       {client.client_name || 'Sem nome'}
                     </span>
@@ -200,7 +206,8 @@ export default function ClientsList() {
 
                 <div className="col-span-1">
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setEditingId(client.id);
                       setEditingName(client.client_name || '');
                     }}
@@ -212,7 +219,10 @@ export default function ClientsList() {
                 </div>
 
                 {expandedId === client.id && (
-                  <div className="col-span-12 md:hidden bg-gray-50 rounded p-2 mt-1">
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="col-span-12 md:hidden bg-gray-50 rounded p-2 mt-1"
+                  >
                     <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
                       <div>
                         <span className="block text-gray-400 text-[10px]">Primeiro Contato</span>
