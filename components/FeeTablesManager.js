@@ -199,8 +199,8 @@ export default function FeeTablesManager({ viewMode = null }) {
       setIsPdf(false);
       fetchTables();
     } catch (err) {
-      const text = err.response?.data?.error || 'Erro ao salvar tabela';
-      setMessage({ type: 'error', text });
+      const raw = err.response?.data?.error || err.response?.data?.message || err.message || 'Erro ao salvar tabela';
+      setMessage({ type: 'error', text: String(raw) });
     } finally {
       setUploading(false);
     }
