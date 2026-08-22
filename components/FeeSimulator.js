@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getAuthHeaders } from '../lib/api';
 
-export default function FeeSimulator({ caseId, caseData, userRole }) {
+import { calculateRegionalSuggestion, calculateOabDiscount } from '../lib/feeSuggestion';
+
+export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawyer = null, showTracking = false, hideForm = false }) {
   const [services, setServices] = useState([]);
   const [simulations, setSimulations] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -10,6 +12,7 @@ export default function FeeSimulator({ caseId, caseData, userRole }) {
   const [result, setResult] = useState(null);
   const [message, setMessage] = useState(null);
   const [selectedService, setSelectedService] = useState('');
+  const [oabReference, setOabReference] = useState(null);
   const [form, setForm] = useState({
     complexity: 'media',
     urgency: 'normal',
@@ -21,6 +24,8 @@ export default function FeeSimulator({ caseId, caseData, userRole }) {
     out_of_range_justification: '',
     proposal_valid_until: ''
   });
+
+  const isAdminOrLawyerFinal = isAdminOrLawyer !== null ? isAdminOrLawyer : (userRole === 'admin' || userRole === 'advogado');
 
   useEffect(() => {
     fetchServices();
@@ -51,6 +56,21 @@ export default function FeeSimulator({ caseId, caseData, userRole }) {
     }
   };
 
+  const fetchOabReference = async (serviceName) => {
+    try {
+      const headers = await getAuthHeaders();
+      const params = new URLSearchParams();
+      if (caseData?.legal_area) params.set('legal_area', caseData.legal_area);
+      if (caseData?.case_type) params.set('case_type', caseData.case_type);
+      if (serviceName) params.set('service', serviceName);
+      const { data } = await axios.get(`/api/fee-reference?${params.toString()}`, { headers });
+      setOabReference(data && data.length > 0 ? data[0] : null);
+    } catch (err) {
+      console.error('[FEE-SIMULATOR] Erro ao buscar referência OAB:', err);
+      setOabReference(null);
+    }
+  };
+
   const fetchSimulations = async () => {
     try {
       const headers = await getAuthHeaders();
@@ -78,13 +98,23 @@ export default function FeeSimulator({ caseId, caseData, userRole }) {
         urgency: form.urgency,
         service_stage: form.service_stage,
         document_volume: form.document_volume,
-        estimated_economic_value: form.estimated_economic_value ? parseFloat(form.estimated_economic_value) : null
+        estimated_economic_value: form.estimated_economic_value ? parseFloat(form.estimated_economic_value) : null,
+        oab_reference: oabReference ? {
+          min_amount: oabReference.min_amount,
+          suggested_amount: oabReference.suggested_amount,
+          max_amount: oabReference.max_amount,
+          regional_suggestion: oabReference.regional_suggestion
+        } : null
       }, { headers });
 
+      const selected = services.find((s) => s.id === selectedService);
+      await fetchOabReference(selected?.name);
+
       setResult(data);
+      const defaultFinal = oabReference?.regional_suggestion || data.suggested_amount;
       setForm((prev) => ({
         ...prev,
-        final_amount: data.suggested_amount,
+        final_amount: defaultFinal,
         proposal_valid_until: ''
       }));
     } catch (err) {
@@ -100,6 +130,7 @@ export default function FeeSimulator({ caseId, caseData, userRole }) {
     setSaving(true);
     try {
       const headers = await getAuthHeaders();
+      const final = form.final_amount ? parseFloat(form.final_amount) : (oabReference?.regional_suggestion || result.suggested_amount);
       const payload = {
         case_id: caseId,
         service_id: selectedService,
@@ -109,18 +140,26 @@ export default function FeeSimulator({ caseId, caseData, userRole }) {
         document_volume: form.document_volume,
         estimated_economic_value: form.estimated_economic_value ? parseFloat(form.estimated_economic_value) : null,
         internal_notes: form.internal_notes,
-        final_amount: form.final_amount ? parseFloat(form.final_amount) : result.suggested_amount,
+        base_amount: result.base_amount,
+        suggested_amount: result.suggested_amount,
+        min_amount_snapshot: result.min_amount,
+        max_amount_snapshot: result.max_amount,
+        final_amount: final,
+        oab_reference: oabReference ? {
+          min_amount: oabReference.min_amount,
+          suggested_amount: oabReference.suggested_amount,
+          max_amount: oabReference.max_amount,
+          regional_suggestion: oabReference.regional_suggestion,
+          discount_percent: calculateOabDiscount(oabReference.suggested_amount, final)
+        } : null,
         out_of_range_justification: form.out_of_range_justification,
-        proposal_valid_until: form.proposal_valid_until || null
+        proposal_valid_until: form.proposal_valid_until || null,
+        status
       };
 
       const { data } = await axios.post('/api/fee-simulations', payload, { headers });
 
-      if (status !== 'rascunho') {
-        await axios.patch(`/api/fee-simulations?id=${data.id}`, { status }, { headers });
-      }
-
-      setMessage({ type: 'success', text: status === 'rascunho' ? 'Rascunho salvo' : 'Simulação enviada para aprovação' });
+      setMessage({ type: 'success', text: status === 'rascunho' ? 'Rascunho salvo' : 'Proposta salva' });
       setResult(null);
       setForm({
         complexity: 'media',
@@ -156,7 +195,6 @@ export default function FeeSimulator({ caseId, caseData, userRole }) {
     }
   };
 
-  const isAdminOrLawyer = userRole === 'admin' || userRole === 'advogado';
   const selected = services.find((s) => s.id === selectedService);
 
   return (
@@ -292,17 +330,32 @@ export default function FeeSimulator({ caseId, caseData, userRole }) {
             </p>
           </div>
 
+          {oabReference && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded space-y-1">
+              <p className="text-xs font-semibold text-blue-700 uppercase">Referência OAB</p>
+              <p className="text-sm"><strong>Serviço:</strong> {oabReference.service}</p>
+              <p className="text-sm text-gray-700">
+                Valor OAB: mín. R$ {Number(oabReference.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | sugerido R$ {Number(oabReference.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | máx. R$ {Number(oabReference.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-sm font-semibold text-green-700">
+                Sugestão regional (70-80%): R$ {Number(oabReference.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+              {form.final_amount && <p className="text-xs text-gray-600">Desconto vs OAB: {calculateOabDiscount(oabReference.suggested_amount, form.final_amount) !== null ? `${calculateOabDiscount(oabReference.suggested_amount, form.final_amount)}%` : '-'}</p>}
+            </div>
+          )}
+
           <div className="p-2 bg-yellow-100 text-yellow-800 rounded text-xs">
             Sugestão interna. O valor final depende de revisão e aprovação de advogado ou administrador.
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Valor final (R$)</label>
+            <label className="block text-sm font-medium text-gray-700">Valor proposto (R$)</label>
             <input
               type="number"
               value={form.final_amount}
               onChange={(e) => setForm({ ...form, final_amount: e.target.value })}
               className="w-full mt-1 border rounded p-2 text-sm"
+              placeholder={oabReference ? 'Sugestão regional preenchida' : 'Valor sugerido preenchido'}
             />
           </div>
 
@@ -329,7 +382,7 @@ export default function FeeSimulator({ caseId, caseData, userRole }) {
             />
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => handleSave('rascunho')}
               disabled={saving}
@@ -337,14 +390,23 @@ export default function FeeSimulator({ caseId, caseData, userRole }) {
             >
               Salvar rascunho
             </button>
-            {isAdminOrLawyer && (
-              <button
-                onClick={() => handleSave('aguardando_aprovacao')}
-                disabled={saving}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
-              >
-                Enviar para aprovação
-              </button>
+            {isAdminOrLawyerFinal && (
+              <>
+                <button
+                  onClick={() => handleSave('enviada')}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm"
+                >
+                  Enviar proposta
+                </button>
+                <button
+                  onClick={() => handleSave('convertida_em_proposta')}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
+                >
+                  Gerar proposta
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -367,7 +429,7 @@ export default function FeeSimulator({ caseId, caseData, userRole }) {
                       <p className="text-gray-600">Final: R$ {Number(sim.final_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                     )}
                   </div>
-                  {isAdminOrLawyer && sim.status === 'aguardando_aprovacao' && (
+                  {isAdminOrLawyerFinal && sim.status === 'aguardando_aprovacao' && (
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleApprove(sim.id, 'approve')}

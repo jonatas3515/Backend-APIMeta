@@ -6,6 +6,30 @@ const AREAS = ['', 'civel', 'trabalhista', 'previdenciario', 'administrativo', '
 const TIPOS = ['', 'modelo_peca', 'clausula', 'tese', 'checklist', 'jurisprudencia'];
 const TRIBUNAIS = ['', 'TJBA', 'TRF1', 'TRT5', 'TRF5', 'STJ', 'STF'];
 
+const fetchTemplates = async (area, caseType) => {
+  try {
+    const params = new URLSearchParams();
+    if (area) params.set('legal_area', area);
+    if (caseType) params.set('case_type', caseType);
+    const { data } = await axios.get(`/api/templates?${params.toString()}`);
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error('[AI] Erro ao buscar templates:', err);
+    return [];
+  }
+};
+
+const buildEnrichedPrompt = async (query, area, caseType, docType) => {
+  const templates = await fetchTemplates(area, caseType);
+  const templateNames = templates.map((t) => `- ${t.name}: ${t.description || 'sem descrição'}`).join('\n');
+
+  let prompt = query;
+  if (docType === 'modelo_peca' && templates.length > 0) {
+    prompt = `${query}\n\nUtilize preferencialmente a estrutura dos seguintes modelos cadastrados, quando compatíveis:\n${templateNames}\n\nGere apenas o esqueleto da peça com as seções: cabeçalho/endereçamento, qualificação das partes, fatos, fundamentos jurídicos, pedidos e requerimentos. Não invente dados pessoais, fatos ou valores. Deixe marcadores claros [PREENCHER] onde o advogado deve inserir informações.`;
+  }
+  return prompt;
+};
+
 export default function OfficeAIAssistant() {
   const [query, setQuery] = useState('');
   const [area, setArea] = useState('');
@@ -27,8 +51,9 @@ export default function OfficeAIAssistant() {
 
     try {
       const headers = await getAuthHeaders();
+      const enriched = await buildEnrichedPrompt(query.trim(), area, '', type);
       const { data } = await axios.post('/api/ai/ask', {
-        query: query.trim(),
+        query: enriched,
         area: area || null,
         tribunal: tribunal || null,
         type: type || null

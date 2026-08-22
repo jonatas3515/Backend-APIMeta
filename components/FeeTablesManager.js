@@ -8,8 +8,10 @@ const TABLE_TYPES = [
   { key: 'escritorio', label: 'Tabela do Escritório' }
 ];
 
-export default function FeeTablesManager() {
+export default function FeeTablesManager({ viewMode = null }) {
   const [tables, setTables] = useState({ oab: [], escritorio: [] });
+  const [referenceItems, setReferenceItems] = useState([]);
+  const [referenceLoading, setReferenceLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const [selectedType, setSelectedType] = useState('oab');
   const [file, setFile] = useState(null);
@@ -17,10 +19,36 @@ export default function FeeTablesManager() {
   const [preview, setPreview] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [isPdf, setIsPdf] = useState(false);
+  const [filters, setFilters] = useState({ legal_area: '', case_type: '', service: '' });
 
   useEffect(() => {
     fetchTables();
+    fetchReferenceItems();
   }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchReferenceItems();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filters.legal_area, filters.case_type, filters.service]);
+
+  const fetchReferenceItems = async () => {
+    setReferenceLoading(true);
+    try {
+      const headers = await getAuthHeaders();
+      const params = new URLSearchParams();
+      if (filters.legal_area) params.set('legal_area', filters.legal_area);
+      if (filters.case_type) params.set('case_type', filters.case_type);
+      if (filters.service) params.set('service', filters.service);
+      const { data } = await axios.get(`/api/fee-reference?${params.toString()}`, { headers });
+      setReferenceItems(data || []);
+    } catch (err) {
+      console.error('[FEE-TABLES] Erro ao buscar referências:', err);
+    } finally {
+      setReferenceLoading(false);
+    }
+  };
 
   const fetchTables = async () => {
     try {
@@ -207,6 +235,65 @@ export default function FeeTablesManager() {
           {message.text}
         </div>
       )}
+
+      <div className="space-y-3">
+        <h4 className="font-semibold text-sm">🔍 Itens da Tabela da OAB</h4>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input
+            placeholder="Área jurídica"
+            value={filters.legal_area}
+            onChange={(e) => setFilters({ ...filters, legal_area: e.target.value })}
+            className="border rounded p-2 text-sm"
+          />
+          <input
+            placeholder="Tipo de caso"
+            value={filters.case_type}
+            onChange={(e) => setFilters({ ...filters, case_type: e.target.value })}
+            className="border rounded p-2 text-sm"
+          />
+          <input
+            placeholder="Serviço"
+            value={filters.service}
+            onChange={(e) => setFilters({ ...filters, service: e.target.value })}
+            className="border rounded p-2 text-sm"
+          />
+        </div>
+
+        <div className="border rounded bg-white p-2 overflow-x-auto">
+          {referenceLoading ? (
+            <p className="text-sm text-gray-500 p-2">Carregando referências...</p>
+          ) : referenceItems.length === 0 ? (
+            <p className="text-sm text-gray-500 p-2">Nenhum item encontrado na tabela da OAB.</p>
+          ) : (
+            <table className="min-w-full text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="p-2 text-left">Área</th>
+                  <th className="p-2 text-left">Tipo</th>
+                  <th className="p-2 text-left">Serviço</th>
+                  <th className="p-2 text-left">Mínimo</th>
+                  <th className="p-2 text-left">Sugerido OAB</th>
+                  <th className="p-2 text-left">Regional (70-80%)</th>
+                  <th className="p-2 text-left">Máximo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {referenceItems.map((item, idx) => (
+                  <tr key={idx} className="border-t">
+                    <td className="p-2">{item.legal_area}</td>
+                    <td className="p-2">{item.case_type}</td>
+                    <td className="p-2">{item.service}</td>
+                    <td className="p-2">R$ {Number(item.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td className="p-2">R$ {Number(item.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td className="p-2 font-semibold text-blue-700">R$ {Number(item.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td className="p-2">R$ {Number(item.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="border rounded p-3 bg-gray-50 space-y-3">

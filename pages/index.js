@@ -12,7 +12,7 @@ import AgendaPanel from '../components/AgendaPanel';
 import CasesPanel from '../components/CasesPanel';
 import ModelsAndRoutinesPanel from '../components/ModelsAndRoutinesPanel';
 import ProcessTriagePanel from '../components/ProcessTriagePanel';
-import FeeServiceAdmin from '../components/FeeServiceAdmin';
+import FeeAdminPanel from '../components/FeeAdminPanel';
 import OfficeAIAssistant from '../components/OfficeAIAssistant';
 import KnowledgeBaseManager from '../components/KnowledgeBaseManager';
 import { resolveCaseView } from '../lib/caseView';
@@ -40,6 +40,7 @@ export default function Home() {
   const [chatView, setChatView] = useState('conversas');
   const [modelsRoutinesView, setModelsRoutinesView] = useState('templates');
   const [configView, setConfigView] = useState('users');
+  const [feeView, setFeeView] = useState('services');
   const [selectedClient, setSelectedClient] = useState(null);
   const [isClientProfileOpen, setIsClientProfileOpen] = useState(false);
   const [casesNotice, setCasesNotice] = useState(null);
@@ -231,6 +232,10 @@ export default function Home() {
 
     if (tab === 'users' && view) {
       setConfigView(view);
+    }
+
+    if (tab === 'fee-services' && view) {
+      setFeeView(view);
     }
 
     if (tab === 'chat' && newParam === '1' && !queryProcessed.current.conversation) {
@@ -555,7 +560,7 @@ export default function Home() {
           ) : activeTab === 'knowledge' ? (
             <KnowledgeBaseManager />
           ) : activeTab === 'fee-services' ? (
-            <FeeServiceAdmin />
+            <FeeAdminPanel initialView={feeView} />
           ) : activeTab === 'users' ? (
             <SettingsPanel initialView={configView} />
           ) : null}

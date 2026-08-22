@@ -7,7 +7,7 @@ const BILLING_MODELS = ['fixo', 'percentual', 'entrada_parcelas', 'por_etapa', '
 const RULE_TYPES = ['complexidade', 'urgencia', 'etapa', 'volume_documental', 'deslocamento', 'desconto'];
 const ADJUSTMENT_KINDS = ['percentual', 'valor_fixo'];
 
-export default function FeeServiceAdmin() {
+export default function FeeServiceAdmin({ viewMode = null }) {
   const [services, setServices] = useState([]);
   const [selected, setSelected] = useState(null);
   const [rules, setRules] = useState([]);
@@ -251,7 +251,7 @@ export default function FeeServiceAdmin() {
         </div>
       </div>
 
-      <FeeTablesManager />
+      {!viewMode && <FeeTablesManager />}
     </div>
   );
 }
