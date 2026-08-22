@@ -7,7 +7,7 @@ import ChatWindow from '../components/ChatWindow';
 import ClientsList from '../components/ClientsList';
 import CustomerProfilePanel from '../components/CustomerProfilePanel';
 import FunnelKanban from '../components/FunnelKanban';
-import UserManagement from '../components/UserManagement';
+import SettingsPanel from '../components/SettingsPanel';
 import AgendaPanel from '../components/AgendaPanel';
 import CasesPanel from '../components/CasesPanel';
 import ModelsAndRoutinesPanel from '../components/ModelsAndRoutinesPanel';
@@ -26,7 +26,6 @@ import Sidebar from '../components/Sidebar';
 import AreaFilterSelector from '../components/AreaFilterSelector';
 import ActiveFilterBanner from '../components/ActiveFilterBanner';
 import NotificationPermissionPrompt from '../components/NotificationPermissionPrompt';
-import ProfilePanel from '../components/ProfilePanel';
 import { maybeNotify, getPermission, isSupported } from '../lib/notifications';
 import { getAuthHeaders } from '../lib/api';
 import { normalizePhoneForMatch } from '../lib/formatters';
@@ -40,6 +39,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('chat');
   const [chatView, setChatView] = useState('conversas');
   const [modelsRoutinesView, setModelsRoutinesView] = useState('templates');
+  const [configView, setConfigView] = useState('users');
   const [selectedClient, setSelectedClient] = useState(null);
   const [isClientProfileOpen, setIsClientProfileOpen] = useState(false);
   const [casesNotice, setCasesNotice] = useState(null);
@@ -201,6 +201,13 @@ export default function Home() {
       if (typeof window !== 'undefined') {
         window.history.replaceState(null, '', '/?tab=models-routines&view=routines');
       }
+    } else if (tab === 'profile' && !queryProcessed.current.tab) {
+      setActiveTab('users');
+      setConfigView('profile');
+      queryProcessed.current.tab = true;
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', '/?tab=users&view=profile');
+      }
     } else if ((tab === 'collaboration' || tab === 'insights') && !queryProcessed.current.tab) {
       const resolved = resolveCaseView({ tab, caseId: caseId || null, caseView: caseView || null });
       setActiveTab(resolved.activeTab);
@@ -220,6 +227,10 @@ export default function Home() {
       setChatView('conversas');
     } else if (tab === 'clients') {
       setChatView('clientes');
+    }
+
+    if (tab === 'users' && view) {
+      setConfigView(view);
     }
 
     if (tab === 'chat' && newParam === '1' && !queryProcessed.current.conversation) {
@@ -545,11 +556,9 @@ export default function Home() {
             <KnowledgeBaseManager />
           ) : activeTab === 'fee-services' ? (
             <FeeServiceAdmin />
-          ) : activeTab === 'profile' ? (
-            <ProfilePanel />
-          ) : (
-            <UserManagement />
-          )}
+          ) : activeTab === 'users' ? (
+            <SettingsPanel initialView={configView} />
+          ) : null}
         </main>
       </div>
 

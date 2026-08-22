@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/useAuth';
 import SignatureSettings from './SignatureSettings';
 
-export default function UserManagement() {
+export default function UserManagement({ viewMode = null }) {
   const { profile, changePassword } = useAuth();
-  const [activeSection, setActiveSection] = useState('users');
+  const [activeSection, setActiveSection] = useState(viewMode || 'users');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -172,31 +172,33 @@ export default function UserManagement() {
 
   return (
     <div className="flex-1 flex flex-col bg-white overflow-y-auto">
-      {/* Abas de seção */}
-      <div className="flex border-b border-gray-200 bg-gray-50">
-        <button
-          onClick={() => setActiveSection('users')}
-          className={`px-6 py-3 font-medium text-sm border-b-2 transition ${
-            activeSection === 'users'
-              ? 'text-blue-600 border-blue-600'
-              : 'text-gray-600 border-transparent hover:text-gray-900'
-          }`}
-        >
-          👥 Usuários
-        </button>
-        {isAdmin && (
+      {/* Abas de seção - oculta quando viewMode está definido */}
+      {!viewMode && (
+        <div className="flex border-b border-gray-200 bg-gray-50">
           <button
-            onClick={() => setActiveSection('signatures')}
+            onClick={() => setActiveSection('users')}
             className={`px-6 py-3 font-medium text-sm border-b-2 transition ${
-              activeSection === 'signatures'
+              activeSection === 'users'
                 ? 'text-blue-600 border-blue-600'
                 : 'text-gray-600 border-transparent hover:text-gray-900'
             }`}
           >
-            ✍️ Assinatura Eletrônica
+            👥 Usuários
           </button>
-        )}
-      </div>
+          {isAdmin && (
+            <button
+              onClick={() => setActiveSection('signatures')}
+              className={`px-6 py-3 font-medium text-sm border-b-2 transition ${
+                activeSection === 'signatures'
+                  ? 'text-blue-600 border-blue-600'
+                  : 'text-gray-600 border-transparent hover:text-gray-900'
+              }`}
+            >
+              ✍️ Assinatura Eletrônica
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex-1 p-6 overflow-y-auto">
         {activeSection === 'users' ? (
