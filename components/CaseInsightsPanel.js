@@ -31,7 +31,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose }) {
     } else if (activeTab === 'similar' && conversationId) {
       fetchSimilarInsights();
     }
-  }, [activeTab, filters]);
+  }, [activeTab, filters, caseId]);
 
   const fetchInsights = async () => {
     setLoading(true);
@@ -42,6 +42,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose }) {
       if (filters.municipality) params.append('municipality', filters.municipality);
       if (filters.agency) params.append('agency', filters.agency);
       if (filters.search) params.append('search', filters.search);
+      if (caseId) params.append('case_id', caseId);
 
       const response = await fetch(`/api/insights?${params.toString()}`, { headers: await getAuthHeaders() });
       if (response.ok) {

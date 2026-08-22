@@ -9,15 +9,14 @@ import CustomerProfilePanel from '../components/CustomerProfilePanel';
 import FunnelKanban from '../components/FunnelKanban';
 import UserManagement from '../components/UserManagement';
 import AgendaPanel from '../components/AgendaPanel';
-import CollaborationPanel from '../components/CollaborationPanel';
 import CasesPanel from '../components/CasesPanel';
 import DocumentTemplatesManager from '../components/DocumentTemplatesManager';
 import LegalRoutinesManager from '../components/LegalRoutinesManager';
-import CaseInsightsPanel from '../components/CaseInsightsPanel';
 import ProcessTriagePanel from '../components/ProcessTriagePanel';
 import FeeServiceAdmin from '../components/FeeServiceAdmin';
 import OfficeAIAssistant from '../components/OfficeAIAssistant';
 import KnowledgeBaseManager from '../components/KnowledgeBaseManager';
+import { resolveCaseView } from '../lib/caseView';
 import Login from '../components/Login';
 import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
@@ -43,6 +42,7 @@ export default function Home() {
   const [chatView, setChatView] = useState('conversas');
   const [selectedClient, setSelectedClient] = useState(null);
   const [isClientProfileOpen, setIsClientProfileOpen] = useState(false);
+  const [casesNotice, setCasesNotice] = useState(null);
   const queryProcessed = useRef({ tab: false, conversation: false });
   const { authUser, profile, loading: authLoading, signOut, canAccess } = useAuth();
   const { selectedArea, setSelectedArea } = useAreaFilter();
@@ -169,11 +169,11 @@ export default function Home() {
     };
   }, [authUser, profile, notifPrefs]);
 
-  // Interpreta query string e mantém compatibilidade com tab=clients
+  // Interpreta query string e mantém compatibilidade com tabs removidas
   useEffect(() => {
     if (!router.isReady) return;
 
-    const { tab, view, conversation, case: caseId, new: newParam } = router.query;
+    const { tab, view, conversation, case: caseId, new: newParam, caseView } = router.query;
     const isClientesView = view === 'clientes' || tab === 'clients';
 
     if (tab === 'clients' && typeof tab === 'string' && !queryProcessed.current.tab) {
@@ -186,6 +186,14 @@ export default function Home() {
         url.searchParams.set('view', 'clientes');
         url.searchParams.delete('conversation');
         window.history.replaceState(null, '', url.toString());
+      }
+    } else if ((tab === 'collaboration' || tab === 'insights') && !queryProcessed.current.tab) {
+      const resolved = resolveCaseView({ tab, caseId: caseId || null, caseView: caseView || null });
+      setActiveTab(resolved.activeTab);
+      setCasesNotice(resolved.notice);
+      queryProcessed.current.tab = true;
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', resolved.redirectUrl || '/?tab=cases');
       }
     } else if (tab && typeof tab === 'string' && !queryProcessed.current.tab) {
       setActiveTab(tab);
@@ -222,7 +230,7 @@ export default function Home() {
     }
 
     if (tab === 'cases' && caseId) {
-      // Caso selecionado será gerenciado pelo CasesPanel via query
+      // Caso e aba serão gerenciados pelo CasesPanel via query
     }
   }, [router.isReady, router.query, conversations]);
 
@@ -513,16 +521,12 @@ export default function Home() {
             <AgendaPanel />
           ) : activeTab === 'triage' ? (
             <ProcessTriagePanel />
-          ) : activeTab === 'collaboration' ? (
-            <CollaborationPanel conversationId={selectedConversation?.id} caseId={null} />
           ) : activeTab === 'cases' ? (
-            <CasesPanel />
+            <CasesPanel notice={casesNotice} />
           ) : activeTab === 'templates' ? (
             <DocumentTemplatesManager />
           ) : activeTab === 'routines' ? (
             <LegalRoutinesManager />
-          ) : activeTab === 'insights' ? (
-            <CaseInsightsPanel />
           ) : activeTab === 'ai_assistant' ? (
             <OfficeAIAssistant />
           ) : activeTab === 'knowledge' ? (

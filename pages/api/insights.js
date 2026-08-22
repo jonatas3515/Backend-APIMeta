@@ -37,7 +37,7 @@ async function handler(req, res) {
 export default withAuth(handler, { minRole: 'estagiario' });
 
 async function handleGet(req, res) {
-  const { action, id, conversation_id, legal_area, case_type, municipality, agency, search, limit = 50 } = req.query;
+  const { action, id, conversation_id, case_id, legal_area, case_type, municipality, agency, search, limit = 50 } = req.query;
 
   try {
     if (action === 'generate_proposal') {
@@ -118,6 +118,7 @@ async function handleGet(req, res) {
         users(name), conversations(client_name)
       `);
 
+      if (case_id) query = query.eq('case_id', case_id);
       if (legal_area) query = query.eq('legal_area', legal_area);
       if (case_type) query = query.eq('case_type', case_type);
       if (municipality) query = query.eq('municipality', municipality);
