@@ -30,8 +30,22 @@ export default function FeeSimulator({ caseId, caseData, userRole }) {
   const fetchServices = async () => {
     try {
       const headers = await getAuthHeaders();
-      const { data } = await axios.get(`/api/fee-services?active=true&legal_area=${encodeURIComponent(caseData?.legal_area || '')}`, { headers });
-      setServices(data || []);
+      
+      // Tenta buscar serviços da área jurídica do caso
+      let url = `/api/fee-services?active=true`;
+      if (caseData?.legal_area) {
+        url += `&legal_area=${encodeURIComponent(caseData.legal_area)}`;
+      }
+      
+      const { data } = await axios.get(url, { headers });
+      
+      // Se não encontrou serviços com filtro de área, busca todos ativos
+      if ((!data || data.length === 0) && caseData?.legal_area) {
+        const { data: allServices } = await axios.get(`/api/fee-services?active=true`, { headers });
+        setServices(allServices || []);
+      } else {
+        setServices(data || []);
+      }
     } catch (err) {
       console.error('[FEE-SIMULATOR] Erro ao buscar serviços:', err);
     }
@@ -151,7 +165,13 @@ export default function FeeSimulator({ caseId, caseData, userRole }) {
 
       {services.length === 0 && (
         <div className="p-3 bg-yellow-50 text-yellow-800 rounded text-sm">
-          Não existe serviço ativo configurado para este tipo de demanda. Solicite ao administrador a inclusão na tabela interna de honorários.
+          <p className="font-semibold mb-1">⚠️ Nenhum serviço ativo encontrado</p>
+          <p className="text-xs">
+            Verifique se há serviços cadastrados na aba <strong>Honorários</strong> e se estão marcados como <strong>Ativos</strong>.
+            {caseData?.legal_area && (
+              <span> Área do caso: <strong>{caseData.legal_area}</strong>.</span>
+            )}
+          </p>
         </div>
       )}
 
