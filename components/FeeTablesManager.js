@@ -3,6 +3,7 @@ import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { getAuthHeaders } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
+import { validatePreview } from '../lib/feeTableValidation';
 const TABLE_TYPES = [
   { key: 'oab', label: 'Tabela da OAB' },
   { key: 'escritorio', label: 'Tabela do Escritório' }
@@ -20,6 +21,7 @@ export default function FeeTablesManager({ viewMode = null }) {
   const [uploading, setUploading] = useState(false);
   const [isPdf, setIsPdf] = useState(false);
   const [filters, setFilters] = useState({ legal_area: '', case_type: '', service: '' });
+  const [previewValidation, setPreviewValidation] = useState(null);
 
   useEffect(() => {
     fetchTables();
@@ -99,10 +101,19 @@ export default function FeeTablesManager({ viewMode = null }) {
 
     try {
       const data = await parseFile(selectedFile);
-      setPreview(Array.isArray(data) ? data.slice(0, 10) : []);
+      const parsedData = Array.isArray(data) ? data : [];
+      setPreview(parsedData.slice(0, 10));
+      const validation = validatePreview(parsedData);
+      setPreviewValidation(validation);
+      if (!validation.valid) {
+        setMessage({ type: 'error', text: `Colunas ausentes: ${validation.missing.join(', ')}` });
+      } else {
+        setMessage({ type: 'success', text: `${validation.rowCount} linhas reconhecidas. Colunas: ${Object.entries(validation.recognized).filter(([, v]) => v).map(([k, v]) => `${k} (${v})`).join(', ')}` });
+      }
     } catch (err) {
       setMessage({ type: 'error', text: 'Erro ao ler o arquivo. Use CSV, Excel (.xlsx) ou PDF.' });
       setPreview([]);
+      setPreviewValidation(null);
     }
   };
 
@@ -154,6 +165,10 @@ export default function FeeTablesManager({ viewMode = null }) {
         fileUrl = await uploadPdf(file);
       } else {
         tableData = await parseFile(file);
+        const validation = validatePreview(tableData);
+        if (!validation.valid) {
+          throw new Error(`Colunas ausentes: ${validation.missing.join(', ')}`);
+        }
       }
 
       const headers = await getAuthHeaders();
@@ -333,17 +348,33 @@ export default function FeeTablesManager({ viewMode = null }) {
             />
           </div>
 
-          {preview.length > 0 && (
-            <div className="border rounded bg-white p-2 text-xs overflow-x-auto">
-              <p className="font-semibold mb-1">Pré-visualização (até 10 linhas):</p>
-              <table className="min-w-full">
-                <thead>
-                  <tr className="bg-gray-100">
-                    {Object.keys(preview[0]).map((k) => (
-                      <th key={k} className="p-1 border text-left">{k}</th>
-                    ))}
-                  </tr>
-                </thead>
+          {preview.length > 0 && previewValidation && (
+            <div className="border rounded bg-white p-2 text-xs space-y-2">
+              <div className="flex gap-2 flex-wrap">
+                <span className="font-semibold">Linhas: {previewValidation.rowCount}</span>
+                <span className={`px-2 rounded ${previewValidation.valid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  {previewValidation.valid ? 'Colunas válidas' : 'Colunas inválidas'}
+                </span>
+              </div>
+              <p className="text-gray-700">
+                <span className="font-semibold">Reconhecidas:</span>{' '}
+                {Object.entries(previewValidation.recognized).filter(([, v]) => v).map(([k, v]) => `${k} (${v})`).join(', ') || 'nenhuma'}
+              </p>
+              {previewValidation.missing.length > 0 && (
+                <p className="text-red-700">
+                  <span className="font-semibold">Ausentes:</span>{' '}
+                  {previewValidation.missing.join(', ')}
+                </p>
+              )}
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      {Object.keys(preview[0]).map((k) => (
+                        <th key={k} className="p-1 border text-left">{k}</th>
+                      ))}
+                    </tr>
+                  </thead>
                 <tbody>
                   {preview.map((row, i) => (
                     <tr key={i}>
@@ -355,7 +386,8 @@ export default function FeeTablesManager({ viewMode = null }) {
                 </tbody>
               </table>
             </div>
-          )}
+          </div>
+        )}
 
           <button
             onClick={handleUpload}

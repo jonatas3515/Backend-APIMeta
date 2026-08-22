@@ -13,6 +13,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   const [message, setMessage] = useState(null);
   const [selectedService, setSelectedService] = useState('');
   const [oabReference, setOabReference] = useState(null);
+  const [useOabBase, setUseOabBase] = useState(false);
   const [form, setForm] = useState({
     complexity: 'media',
     urgency: 'normal',
@@ -56,20 +57,53 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
     }
   };
 
-  const fetchOabReference = async (serviceName) => {
+  const fetchOabReference = async (service, caseInfo = caseData) => {
+    if (!service?.name) return null;
     try {
       const headers = await getAuthHeaders();
-      const params = new URLSearchParams();
-      if (caseData?.legal_area) params.set('legal_area', caseData.legal_area);
-      if (caseData?.case_type) params.set('case_type', caseData.case_type);
-      if (serviceName) params.set('service', serviceName);
-      const { data } = await axios.get(`/api/fee-reference?${params.toString()}`, { headers });
-      setOabReference(data && data.length > 0 ? data[0] : null);
+      const buildParams = (extra = {}) => {
+        const params = new URLSearchParams();
+        if (caseInfo?.legal_area) params.set('legal_area', caseInfo.legal_area);
+        if (caseInfo?.case_type) params.set('case_type', caseInfo.case_type);
+        if (extra.service) params.set('service', extra.service);
+        return params;
+      };
+
+      let { data } = await axios.get(`/api/fee-reference?${buildParams({ service: service.name }).toString()}`, { headers });
+
+      if (!data || data.length === 0) {
+        const fallbackParams = buildParams();
+        const fallback = await axios.get(`/api/fee-reference?${fallbackParams.toString()}`, { headers });
+        const normServiceName = String(service.name).toLowerCase().trim();
+        data = (fallback.data || []).filter((r) =>
+          String(r.service).toLowerCase().trim().includes(normServiceName) ||
+          normServiceName.includes(String(r.service).toLowerCase().trim())
+        );
+      }
+
+      return data && data.length > 0 ? data[0] : null;
     } catch (err) {
       console.error('[FEE-SIMULATOR] Erro ao buscar referência OAB:', err);
-      setOabReference(null);
+      return null;
     }
   };
+
+  const loadOabReference = async (service) => {
+    const ref = await fetchOabReference(service);
+    setOabReference(ref);
+    return ref;
+  };
+
+  useEffect(() => {
+    if (!selectedService) {
+      setOabReference(null);
+      return;
+    }
+    const selected = services.find((s) => s.id === selectedService);
+    if (selected) {
+      loadOabReference(selected);
+    }
+  }, [selectedService, caseData?.legal_area, caseData?.case_type]);
 
   const fetchSimulations = async () => {
     if (!caseId) return;
@@ -82,37 +116,66 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
     }
   };
 
+  const buildResultFromOab = (ref, service) => {
+    const range = calculateSuggestionRange(ref);
+    const installments = service?.default_installments || 1;
+    const down = parseFloat((range.suggested * 0.3).toFixed(2));
+    const remaining = parseFloat((range.suggested - down).toFixed(2));
+    const installmentAmount = installments > 1 ? parseFloat((remaining / installments).toFixed(2)) : remaining;
+
+    return {
+      base_amount: Number(ref?.suggested_amount || 0),
+      suggested_amount: range.suggested,
+      min_amount: range.min,
+      max_amount: range.max,
+      applied_rules: [],
+      billing_model: service?.billing_model || 'fixo',
+      down_payment: down,
+      installments_count: installments,
+      installment_amount: installmentAmount,
+      estimated_economic_value: form.estimated_economic_value ? parseFloat(form.estimated_economic_value) : null,
+      oab_factor: range.factor
+    };
+  };
+
   const handleCalculate = async () => {
     if (!selectedService) {
       setMessage({ type: 'error', text: 'Selecione um serviço da tabela interna.' });
       return;
     }
+    const selected = services.find((s) => s.id === selectedService);
+    const ref = await fetchOabReference(selected);
+    setOabReference(ref);
+
+    if (useOabBase && !ref) {
+      setMessage({ type: 'error', text: 'Referência OAB não encontrada para este serviço.' });
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
     setResult(null);
-    try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.post('/api/fee-simulations', {
-        action: 'calculate',
-        service_id: selectedService,
-        complexity: form.complexity,
-        urgency: form.urgency,
-        service_stage: form.service_stage,
-        document_volume: form.document_volume,
-        estimated_economic_value: form.estimated_economic_value ? parseFloat(form.estimated_economic_value) : null,
-        oab_reference: oabReference ? {
-          min_amount: oabReference.min_amount,
-          suggested_amount: oabReference.suggested_amount,
-          max_amount: oabReference.max_amount,
-          regional_suggestion: oabReference.regional_suggestion
-        } : null
-      }, { headers });
 
-      const selected = services.find((s) => s.id === selectedService);
-      await fetchOabReference(selected?.name);
+    try {
+      let data;
+      if (useOabBase) {
+        data = buildResultFromOab(ref, selected);
+      } else {
+        const headers = await getAuthHeaders();
+        const { data: calc } = await axios.post('/api/fee-simulations', {
+          action: 'calculate',
+          service_id: selectedService,
+          complexity: form.complexity,
+          urgency: form.urgency,
+          service_stage: form.service_stage,
+          document_volume: form.document_volume,
+          estimated_economic_value: form.estimated_economic_value ? parseFloat(form.estimated_economic_value) : null
+        }, { headers });
+        data = calc;
+      }
 
       setResult(data);
-      const defaultFinal = oabReference?.regional_suggestion || data.suggested_amount;
+      const defaultFinal = ref?.regional_suggestion || data.suggested_amount;
       setForm((prev) => ({
         ...prev,
         final_amount: defaultFinal,
@@ -240,6 +303,28 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
             ))}
           </select>
         </div>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={useOabBase}
+            onChange={(e) => setUseOabBase(e.target.checked)}
+          />
+          Usar tabela OAB como base (70–80% do sugerido)
+        </label>
+
+        {oabReference && (
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded space-y-1">
+            <p className="text-xs font-semibold text-blue-700 uppercase">Referência OAB</p>
+            <p className="text-sm"><strong>Serviço:</strong> {oabReference.service}</p>
+            <p className="text-sm text-gray-700">
+              Valor OAB: mín. R$ {Number(oabReference.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | sugerido R$ {Number(oabReference.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | máx. R$ {Number(oabReference.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-sm font-semibold text-green-700">
+              Sugestão regional (70-80%): R$ {Number(oabReference.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
