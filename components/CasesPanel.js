@@ -392,7 +392,30 @@ export default function CasesPanel({ notice }) {
           onUnlinkConversation={handleUnlinkConversation}
         />
 
-        {showConversationSelector && (
+        {feeCase && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+              <div className="p-4 border-b flex justify-between items-center">
+                <h3 className="font-bold text-lg">Simulador de Honorários</h3>
+                <button onClick={() => setFeeCase(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+              </div>
+              <FeeSimulator caseId={feeCase.id} caseData={feeCase} userRole={profile?.role} />
+            </div>
+          </div>
+        )}
+
+        {checklistCase && (
+          <DocumentChecklist caseItem={checklistCase} onClose={() => setChecklistCase(null)} />
+        )}
+
+        {docsCase && (
+          <CaseDocumentsPanel
+            caseItem={docsCase}
+            onClose={() => setDocsCase(null)}
+          />
+        )}
+
+        {showConversationSelector && selectedCase && (
           <ConversationSelectorModal
             caseItem={selectedCase}
             onSelect={handleLinkConversation}

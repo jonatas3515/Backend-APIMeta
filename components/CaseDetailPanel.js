@@ -238,7 +238,7 @@ export default function CaseDetailPanel({
         )}
 
         {caseView === 'insights' && (
-          <CaseInsightsPanel conversationId={caseItem.conversation_id} caseId={caseItem.id} />
+          <CaseInsightsPanel conversationId={caseItem.conversation_id} caseId={caseItem.id} initialTab="similar" />
         )}
       </div>
     </div>
