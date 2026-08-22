@@ -72,12 +72,31 @@ async function handleGet(req, res) {
       if (error) throw error;
 
       return res.status(200).json(data || []);
+    } else if (action === 'executions') {
+      // Busca execuções de rotinas para uma conversa
+      if (!conversation_id) {
+        return res.status(400).json({ error: 'conversation_id é obrigatório' });
+      }
+
+      const { data, error } = await supabase
+        .from('routine_executions')
+        .select('*, legal_routines(name, description)')
+        .eq('conversation_id', conversation_id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return res.status(200).json(data || []);
     } else if (action === 'execute') {
       // Executa uma rotina para uma conversa
-      const { routine_id, conversation_id: convId, case_id } = req.query;
+      const { routine_id, conversation_id: convId, case_id, confirmed } = req.query;
 
       if (!routine_id || !convId) {
         return res.status(400).json({ error: 'routine_id e conversation_id são obrigatórios' });
+      }
+
+      if (confirmed !== 'true') {
+        return res.status(400).json({ error: 'Execucao de rotina requer confirmacao explicita (confirmed=true)' });
       }
 
       // Busca rotina
@@ -110,7 +129,8 @@ async function handleGet(req, res) {
       if (routine.documents_to_generate && routine.documents_to_generate.length > 0) {
         for (const templateId of routine.documents_to_generate) {
           try {
-            const docRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/templates?action=generate&template_id=${templateId}&conversation_id=${convId}`, {
+            const caseIdParam = case_id ? `&case_id=${case_id}` : '';
+            const docRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/templates?action=generate&template_id=${templateId}&conversation_id=${convId}${caseIdParam}`, {
               method: 'GET',
               headers: { 'Content-Type': 'application/json' }
             });
@@ -137,6 +157,7 @@ async function handleGet(req, res) {
               .from('chat_reminders')
               .insert({
                 conversation_id: convId,
+                case_id: case_id || null,
                 type: reminder.type || 'routine',
                 title: reminder.title,
                 message: reminder.message,
