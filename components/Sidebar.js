@@ -1,21 +1,5 @@
 import { useAuth } from '../lib/useAuth';
-
-const NAV_ITEMS = [
-  { key: 'dashboard', icon: '📊', label: 'Dashboard', minRole: 'advogado', href: '/dashboard' },
-  { key: 'chat', icon: '💬', label: 'Chat', minRole: 'estagiario' },
-  { key: 'cases', icon: '⚖️', label: 'Casos', minRole: 'estagiario' },
-  { key: 'funnel', icon: '🎯', label: 'Funil', minRole: 'advogado' },
-  { key: 'agenda', icon: '📅', label: 'Agenda', minRole: 'advogado' },
-  { key: 'triage', icon: '⏱️', label: 'Triagem', minRole: 'advogado' },
-  { key: 'templates', icon: '📄', label: 'Docs', minRole: 'estagiario' },
-  { key: 'routines', icon: '🔄', label: 'Rotinas', minRole: 'estagiario' },
-  { key: 'insights', icon: '💡', label: 'Insights', minRole: 'advogado' },
-  { key: 'ai_assistant', icon: '🧠', label: 'IA', minRole: 'estagiario' },
-  { key: 'knowledge', icon: '📚', label: 'Base', minRole: 'advogado' },
-  { key: 'fee-services', icon: '💰', label: 'Honorários', minRole: 'admin' },
-  { key: 'users', icon: '⚙️', label: 'Config.', minRole: 'advogado' },
-  { key: 'profile', icon: '🔔', label: 'Perfil', minRole: 'estagiario' },
-];
+import { NAV_ITEMS } from '../lib/tabResolver';
 
 export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' }) {
   const { canAccess, signOut } = useAuth();

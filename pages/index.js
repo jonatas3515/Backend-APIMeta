@@ -531,6 +531,8 @@ export default function Home() {
             <OfficeAIAssistant />
           ) : activeTab === 'knowledge' ? (
             <KnowledgeBaseManager />
+          ) : activeTab === 'fee-services' ? (
+            <FeeServiceAdmin />
           ) : activeTab === 'profile' ? (
             <ProfilePanel />
           ) : (
