@@ -84,6 +84,21 @@ export default function DashboardPage() {
     }
   };
 
+  const fetchConversations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('client_status, legal_area, funnel_stage, municipality')
+        .order('updated_at', { ascending: false });
+
+      if (error) throw error;
+      setConversations(data || []);
+    } catch (err) {
+      console.error('[DASHBOARD] Erro ao buscar conversas:', err);
+      setConversations([]);
+    }
+  };
+
   const completeTask = async (taskId) => {
     try {
       const { error } = await supabase
