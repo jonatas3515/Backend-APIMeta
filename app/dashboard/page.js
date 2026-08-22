@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import Head from 'next/head';
 import Sidebar from '@/components/Sidebar';
+import MetricsDashboard from '@/components/MetricsDashboard';
 
 const priorityColors = {
   alta: 'bg-red-100 text-red-800 border-red-200',
@@ -40,6 +41,7 @@ export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [conversations, setConversations] = useState([]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -49,6 +51,7 @@ export default function DashboardPage() {
     }
 
     fetchDashboard();
+    fetchConversations();
   }, [authUser, authLoading]);
 
   const fetchDashboard = async () => {
@@ -318,6 +321,11 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+
+          <div className="mt-8">
+            <MetricsDashboard conversations={conversations} />
+          </div>
+
           </div>
         </main>
       </div>

@@ -133,7 +133,7 @@ export default function MetricsDashboard({ conversations }) {
   };
 
   return (
-    <div className="h-full w-full overflow-y-auto p-4 md:p-6 bg-nc-surface">
+    <div className="w-full p-4 md:p-6 bg-nc-surface">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h2 className="text-2xl font-bold text-nc-text-title">📊 Métricas do Escritório</h2>
         <ExportButtons

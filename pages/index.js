@@ -6,7 +6,6 @@ import ChatList from '../components/ChatList';
 import ChatWindow from '../components/ChatWindow';
 import ClientsList from '../components/ClientsList';
 import FunnelKanban from '../components/FunnelKanban';
-import MetricsDashboard from '../components/MetricsDashboard';
 import UserManagement from '../components/UserManagement';
 import AgendaPanel from '../components/AgendaPanel';
 import CollaborationPanel from '../components/CollaborationPanel';
@@ -455,10 +454,6 @@ export default function Home() {
             <CaseInsightsPanel />
           ) : activeTab === 'ai_assistant' ? (
             <OfficeAIAssistant />
-          ) : activeTab === 'metrics' ? (
-            <MetricsDashboard conversations={conversations} />
-          ) : activeTab === 'fee-services' ? (
-            <FeeServiceAdmin />
           ) : activeTab === 'knowledge' ? (
             <KnowledgeBaseManager />
           ) : activeTab === 'profile' ? (
