@@ -97,7 +97,8 @@ export default function FeeTablesManager({ viewMode = null }) {
     if (isPdfFile) {
       setPreview([]);
       setPreviewValidation(null);
-      setMessage({ type: 'info', text: 'PDF selecionado. A tabela será extraída ao salvar.' });
+      setFile(null);
+      setMessage({ type: 'error', text: 'PDFs não são suportados. Converta para Excel (.xlsx) ou CSV usando https://www.ilovepdf.com/pt/pdf_para_excel' });
       return;
     }
 
@@ -162,23 +163,8 @@ export default function FeeTablesManager({ viewMode = null }) {
     const headers = await getAuthHeaders();
 
     try {
-      let fileUrl = null;
-      let tableData = [];
-
-      if (isPdf) {
-        const buffer = await file.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i++) {
-          binary += String.fromCharCode(bytes[i]);
-        }
-        const base64 = btoa(binary);
-        const { data: parsed } = await axios.post('/api/parse-pdf', { file: base64 }, { headers });
-        tableData = parsed.tableData;
-      } else {
-        tableData = await parseFile(file);
-      }
-
+      // PDF nao suportado - usuario deve converter para Excel/CSV
+      const tableData = await parseFile(file);
       const validation = validatePreview(tableData);
       if (!validation.valid) {
         throw new Error(`Colunas ausentes: ${validation.missing.join(', ')}`);
@@ -188,8 +174,7 @@ export default function FeeTablesManager({ viewMode = null }) {
         name: name.trim(),
         table_type: selectedType,
         source_file_name: file.name,
-        table_data: tableData,
-        file_url: fileUrl
+        table_data: tableData
       }, { headers });
 
       setMessage({ type: 'success', text: 'Tabela salva com sucesso.' });
