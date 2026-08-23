@@ -39,12 +39,20 @@ function extractReferences(tableData) {
       return null;
     };
 
-    const legal_area = find(['indicativo']) || (keys[0] ? row[keys[0]] : '') || '';
+    // Tenta encontrar colunas especificas, senao usa primeira coluna para servico
+    const firstCol = keys[0] ? row[keys[0]] : '';
+    const legal_area = find(['indicativo']) || 'Geral';
     const case_type = find(['tipo', 'case']) || '';
-    const service = find(['atividade']) || (keys[0] ? row[keys[0]] : '') || '';
+    const service = find(['atividade']) || firstCol || '';
     const min_amount = parseAmount(find(['urh']));
     const suggested_amount = parseAmount(find(['r$', '276']));
     const max_amount = parseAmount(find(['maximo', 'max']));
+    
+    // Log primeira linha para debug
+    if (idx === 0) {
+      console.log('[EXTRACT] Primeira linha - keys:', keys);
+      console.log('[EXTRACT] Primeira linha - area:', legal_area, 'servico:', service);
+    }
     const unit = find(['unidade', 'unit', 'por', 'und']) || '';
     const region = find(['regiao', 'região', 'estado', 'uf', 'region']) || '';
 
@@ -59,7 +67,12 @@ function extractReferences(tableData) {
       unit: String(unit).trim(),
       region: String(region).trim()
     };
-  }).filter((r) => r.legal_area || r.service);
+  }).filter((r) => {
+    // Filtra linhas com servico valido e pelo menos um valor
+    const hasService = r.service && r.service.length > 0;
+    const hasValue = r.min_amount != null || r.suggested_amount != null || r.max_amount != null;
+    return hasService && hasValue;
+  });
 }
 
 async function handler(req, res) {
