@@ -22,6 +22,7 @@ export default function FeeTablesManager({ viewMode = null }) {
   const [isPdf, setIsPdf] = useState(false);
   const [filters, setFilters] = useState({ legal_area: '', case_type: '', service: '' });
   const [previewValidation, setPreviewValidation] = useState(null);
+  const [selectedArea, setSelectedArea] = useState('');
 
   useEffect(() => {
     fetchTables();
@@ -34,6 +35,14 @@ export default function FeeTablesManager({ viewMode = null }) {
     }, 300);
     return () => clearTimeout(timer);
   }, [filters.legal_area, filters.case_type, filters.service]);
+
+  // Seleciona a primeira area automaticamente ao carregar
+  useEffect(() => {
+    const uniqueAreas = [...new Set(referenceItems.map((item) => item.legal_area).filter(Boolean))];
+    if (uniqueAreas.length > 0 && !selectedArea) {
+      setSelectedArea(uniqueAreas[0]);
+    }
+  }, [referenceItems]);
 
   const fetchReferenceItems = async () => {
     setReferenceLoading(true);
@@ -282,32 +291,70 @@ export default function FeeTablesManager({ viewMode = null }) {
           ) : referenceItems.length === 0 ? (
             <p className="text-sm text-gray-500 p-2">Nenhum item encontrado na tabela da OAB.</p>
           ) : (
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="p-2 text-left">Área</th>
-                  <th className="p-2 text-left">Tipo</th>
-                  <th className="p-2 text-left">Serviço</th>
-                  <th className="p-2 text-left">Mínimo</th>
-                  <th className="p-2 text-left">Sugerido OAB</th>
-                  <th className="p-2 text-left">Regional (70-80%)</th>
-                  <th className="p-2 text-left">Máximo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {referenceItems.map((item, idx) => (
-                  <tr key={idx} className="border-t">
-                    <td className="p-2">{item.legal_area}</td>
-                    <td className="p-2">{item.case_type}</td>
-                    <td className="p-2">{item.service}</td>
-                    <td className="p-2">R$ {Number(item.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                    <td className="p-2">R$ {Number(item.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                    <td className="p-2 font-semibold text-blue-700">R$ {Number(item.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                    <td className="p-2">R$ {Number(item.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div>
+              {(() => {
+                const uniqueAreas = [...new Set(referenceItems.map((item) => item.legal_area).filter(Boolean))];
+                const itemsForSelectedArea = referenceItems.filter((item) =>
+                  selectedArea ? item.legal_area === selectedArea : true
+                );
+                return (
+                  <>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {uniqueAreas.map((area) => (
+                        <button
+                          key={area}
+                          onClick={() => setSelectedArea(area)}
+                          className={`px-3 py-1 text-xs rounded border ${
+                            selectedArea === area
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                          }`}
+                        >
+                          {area}
+                        </button>
+                      ))}
+                      {selectedArea && (
+                        <button
+                          onClick={() => setSelectedArea('')}
+                          className="px-3 py-1 text-xs rounded border bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200"
+                        >
+                          Todas
+                        </button>
+                      )}
+                    </div>
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="p-2 text-left">Área</th>
+                          <th className="p-2 text-left">Tipo</th>
+                          <th className="p-2 text-left">Serviço</th>
+                          <th className="p-2 text-left">Mínimo</th>
+                          <th className="p-2 text-left">Sugerido OAB</th>
+                          <th className="p-2 text-left">Regional (70-80%)</th>
+                          <th className="p-2 text-left">Máximo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {itemsForSelectedArea.map((item, idx) => (
+                          <tr key={idx} className="border-t">
+                            <td className="p-2">{item.legal_area}</td>
+                            <td className="p-2">{item.case_type}</td>
+                            <td className="p-2">{item.service}</td>
+                            <td className="p-2">R$ {Number(item.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                            <td className="p-2">R$ {Number(item.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                            <td className="p-2 font-semibold text-blue-700">R$ {Number(item.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                            <td className="p-2">R$ {Number(item.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Exibindo {itemsForSelectedArea.length} de {referenceItems.length} itens
+                    </p>
+                  </>
+                );
+              })()}
+            </div>
           )}
         </div>
       </div>

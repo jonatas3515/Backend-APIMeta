@@ -71,11 +71,19 @@ function extractReferences(tableData) {
     const urh = numeros.length > 1 ? numeros[0] : null;
     const valorReal = numeros[numeros.length - 1];
 
-    // Detecta se descricao e area/categoria (texto todo em maiusculo ou sem numero no inicio)
+    // Detecta se descricao e area/categoria principal
     const limpa = descricao.replace(/\d/g, '').trim();
     const isUppercase = descricao === descricao.toUpperCase() && descricao.length > 10;
-    if ((descricao && !/^\d/.test(descricao) && limpa.length > 0 && isUppercase) ||
-        (descricao.length > 5 && !descricao.includes('.') && isUppercase)) {
+    const areaMatch = descricao.match(/^(\d+)[.\s]+([A-Z\sÇÃÕÁÉÍÓÚÂÊÎÔÛÄËÏÖÜÀÈÌÒÙ&(),-]+)/);
+
+    if (areaMatch && areaMatch[2].trim().length > 5) {
+      // Area principal: 1. ATIVIDADES..., 2. ADMINISTRATIVO...
+      currentArea = areaMatch[2].trim();
+      continue;
+    }
+
+    // Categoria secundaria (subtitulo) so atualiza se for curta e maiuscula
+    if (descricao && !/^\d/.test(descricao) && limpa.length > 0 && isUppercase && descricao.length < 60) {
       currentArea = limpa;
       continue;
     }
