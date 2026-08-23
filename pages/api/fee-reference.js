@@ -35,22 +35,30 @@ function extractReferences(tableData) {
     const keys = Object.keys(row || {});
     if (keys.length === 0) continue;
 
-    // Coleta todos os numeros e a descricao mais longa
-    let descricao = '';
+    // Coleta numeros, valores monetarios em string e a descricao
     const numeros = [];
+    let descricao = '';
 
     for (const key of keys) {
       const v = row[key];
       if (v == null || v === '') continue;
 
       const isNumber = typeof v === 'number';
-      const s = String(v);
+      const s = String(v).trim();
 
       if (isNumber && v > 0) {
         numeros.push(v);
-      } else if (!isNumber && !s.startsWith('R$') && s.length > 1) {
-        if (s.length > descricao.length) {
-          descricao = s;
+      } else if (!isNumber) {
+        // Tenta extrair valor monetario de strings como "R$ 4.614,98" ou "R$ 65.151,10"
+        const moneyMatch = s.match(/R\$\s*([\d.]+(?:,\d+)?)/);
+        if (moneyMatch) {
+          const parsed = parseAmount(moneyMatch[1]);
+          if (parsed != null && parsed > 0) numeros.push(parsed);
+        } else if (!/^\d+$/.test(s) && s.length > 1) {
+          // Texto sem ser so numeros = descricao
+          if (s.length > descricao.length) {
+            descricao = s;
+          }
         }
       }
     }
@@ -63,11 +71,13 @@ function extractReferences(tableData) {
     const urh = numeros.length > 1 ? numeros[0] : null;
     const valorReal = numeros[numeros.length - 1];
 
-    // Se descricao parece area/categoria (sem numeros no inicio), atualiza currentArea
+    // Detecta se descricao e area/categoria (texto todo em maiusculo ou sem numero no inicio)
     const limpa = descricao.replace(/\d/g, '').trim();
-    if (descricao && !/^\d/.test(descricao) && limpa.length > 0) {
+    const isUppercase = descricao === descricao.toUpperCase() && descricao.length > 10;
+    if ((descricao && !/^\d/.test(descricao) && limpa.length > 0 && isUppercase) ||
+        (descricao.length > 5 && !descricao.includes('.') && isUppercase)) {
       currentArea = limpa;
-      continue; // pula linhas que sao so categorias
+      continue;
     }
 
     // Formata nome do servico (remove numeros 1.1, 1.1.1)

@@ -73,9 +73,14 @@ export default function FeeTablesManager({ viewMode = null }) {
         try {
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const json = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
-          resolve(json);
+          // Processa todas as abas/sheets do Excel e concatena
+          let allRows = [];
+          for (const sheetName of workbook.SheetNames) {
+            const sheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+            allRows = allRows.concat(json);
+          }
+          resolve(allRows);
         } catch (error) {
           reject(error);
         }
