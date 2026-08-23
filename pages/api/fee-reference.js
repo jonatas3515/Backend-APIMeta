@@ -35,10 +35,9 @@ function extractReferences(tableData) {
     const keys = Object.keys(row || {});
     if (keys.length === 0) continue;
 
-    // Encontra colunas de interesse pelos valores (estrutura OAB do Excel)
+    // Coleta todos os numeros e a descricao mais longa
     let descricao = '';
-    let valor = null;
-    let urh = null;
+    const numeros = [];
 
     for (const key of keys) {
       const v = row[key];
@@ -47,23 +46,22 @@ function extractReferences(tableData) {
       const isNumber = typeof v === 'number';
       const s = String(v);
 
-      if (isNumber) {
-        // Se a chave tem 'empty' e e numero grande, e o valor do servico
-        if (key.includes('EMPTY') && s.length <= 6) {
-          valor = v;
-        } else if (!valor) {
-          valor = v;
-        }
+      if (isNumber && v > 0) {
+        numeros.push(v);
       } else if (!isNumber && !s.startsWith('R$') && s.length > 1) {
-        // Texto longo = descricao do servico
         if (s.length > descricao.length) {
           descricao = s;
         }
       }
     }
 
-    // Se nao achou valor numerico, ignora (categoria/header)
-    if (valor == null || !descricao) continue;
+    // Ignora sem descricao ou sem valores
+    if (numeros.length === 0 || !descricao) continue;
+
+    // Ordena numeros: maior = valor real, menor = URH
+    numeros.sort((a, b) => a - b);
+    const urh = numeros.length > 1 ? numeros[0] : null;
+    const valorReal = numeros[numeros.length - 1];
 
     // Se descricao parece area/categoria (sem numeros no inicio), atualiza currentArea
     const limpa = descricao.replace(/\d/g, '').trim();
@@ -80,8 +78,8 @@ function extractReferences(tableData) {
       legal_area: currentArea,
       case_type: '',
       service: nomeServico,
-      min_amount: valor,
-      suggested_amount: valor,
+      min_amount: valorReal,
+      suggested_amount: valorReal,
       max_amount: null,
       unit: urh ? `${urh} URH` : '',
       region: ''
