@@ -27,52 +27,68 @@ function parseAmount(value) {
 
 function extractReferences(tableData) {
   if (!Array.isArray(tableData)) return [];
-  return tableData.map((row, idx) => {
+
+  const refs = [];
+  let currentArea = 'Geral';
+
+  for (const row of tableData) {
     const keys = Object.keys(row || {});
-    const find = (candidates) => {
-      for (const key of keys) {
-        const low = normalizeText(key);
-        for (const candidate of candidates) {
-          if (low.includes(candidate)) return row[key];
+    if (keys.length === 0) continue;
+
+    // Encontra colunas de interesse pelos valores (estrutura OAB do Excel)
+    let descricao = '';
+    let valor = null;
+    let urh = null;
+
+    for (const key of keys) {
+      const v = row[key];
+      if (v == null || v === '') continue;
+
+      const isNumber = typeof v === 'number';
+      const s = String(v);
+
+      if (isNumber) {
+        // Se a chave tem 'empty' e e numero grande, e o valor do servico
+        if (key.includes('EMPTY') && s.length <= 6) {
+          valor = v;
+        } else if (!valor) {
+          valor = v;
+        }
+      } else if (!isNumber && !s.startsWith('R$') && s.length > 1) {
+        // Texto longo = descricao do servico
+        if (s.length > descricao.length) {
+          descricao = s;
         }
       }
-      return null;
-    };
-
-    // Tenta encontrar colunas especificas, senao usa primeira coluna para servico
-    const firstCol = keys[0] ? row[keys[0]] : '';
-    const legal_area = find(['indicativo']) || 'Geral';
-    const case_type = find(['tipo', 'case']) || '';
-    const service = find(['atividade']) || firstCol || '';
-    const min_amount = parseAmount(find(['urh']));
-    const suggested_amount = parseAmount(find(['r$', '276']));
-    const max_amount = parseAmount(find(['maximo', 'max']));
-    
-    // Log primeira linha para debug
-    if (idx === 0) {
-      console.log('[EXTRACT] Primeira linha - keys:', keys);
-      console.log('[EXTRACT] Primeira linha - area:', legal_area, 'servico:', service);
     }
-    const unit = find(['unidade', 'unit', 'por', 'und']) || '';
-    const region = find(['regiao', 'região', 'estado', 'uf', 'region']) || '';
 
-    return {
-      id: `oab-${idx}`,
-      legal_area: String(legal_area).trim(),
-      case_type: String(case_type).trim(),
-      service: String(service).trim(),
-      min_amount,
-      suggested_amount,
-      max_amount,
-      unit: String(unit).trim(),
-      region: String(region).trim()
-    };
-  }).filter((r) => {
-    // Filtra linhas com servico valido e pelo menos um valor
-    const hasService = r.service && r.service.length > 0;
-    const hasValue = r.min_amount != null || r.suggested_amount != null || r.max_amount != null;
-    return hasService && hasValue;
-  });
+    // Se nao achou valor numerico, ignora (categoria/header)
+    if (valor == null || !descricao) continue;
+
+    // Se descricao parece area/categoria (sem numeros no inicio), atualiza currentArea
+    const limpa = descricao.replace(/\d/g, '').trim();
+    if (descricao && !/^\d/.test(descricao) && limpa.length > 0) {
+      currentArea = limpa;
+      continue; // pula linhas que sao so categorias
+    }
+
+    // Formata nome do servico (remove numeros 1.1, 1.1.1)
+    const nomeServico = descricao.replace(/^\d+[.\d]*/, '').trim();
+
+    refs.push({
+      id: `oab-${refs.length}`,
+      legal_area: currentArea,
+      case_type: '',
+      service: nomeServico,
+      min_amount: valor,
+      suggested_amount: valor,
+      max_amount: null,
+      unit: urh ? `${urh} URH` : '',
+      region: ''
+    });
+  }
+
+  return refs;
 }
 
 async function handler(req, res) {
