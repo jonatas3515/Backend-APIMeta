@@ -25,6 +25,21 @@ function parseAmount(value) {
   return isNaN(parsed) ? null : parsed;
 }
 
+function parseAmountFromCell(cell) {
+  if (cell == null || cell === '') return null;
+  if (typeof cell === 'number') return cell;
+
+  const s = String(cell).trim();
+  const moneyMatch = s.match(/R\$\s*([\d.]+(?:,\d+)?)/);
+  const raw = moneyMatch ? moneyMatch[1] : s;
+  const clean = raw
+    .replace(/\s/g, '')
+    .replace(/\./g, '')
+    .replace(/,/g, '.');
+  const parsed = Number(clean);
+  return isNaN(parsed) ? null : parsed;
+}
+
 function extractReferences(tableData) {
   if (!Array.isArray(tableData)) return [];
 
@@ -32,70 +47,56 @@ function extractReferences(tableData) {
   let currentArea = 'Geral';
 
   for (const row of tableData) {
-    const keys = Object.keys(row || {});
-    if (keys.length === 0) continue;
+    if (!row) continue;
 
-    // Coleta numeros, valores monetarios em string e a descricao
-    const numeros = [];
-    let descricao = '';
+    // Converte linha para array unificado (suporta array de arrays e array de objetros legados)
+    const cells = Array.isArray(row) ? row : Object.values(row);
+    if (cells.length === 0) continue;
 
-    for (const key of keys) {
-      const v = row[key];
-      if (v == null || v === '') continue;
+    const first = String(cells[0] || '').trim();
+    const second = String(cells[1] || '').trim().replace(/\n+/g, ' ').replace(/\s+/g, ' ');
 
-      const isNumber = typeof v === 'number';
-      const s = String(v).trim();
+    // Pula cabecalhos e linhas vazias
+    if (!first || first.toUpperCase() === 'INDICATIVO' || first.toUpperCase().includes('VALOR URH:')) continue;
 
-      if (isNumber && v > 0) {
-        numeros.push(v);
-      } else if (!isNumber) {
-        // Tenta extrair valor monetario de strings como "R$ 4.614,98" ou "R$ 65.151,10"
-        const moneyMatch = s.match(/R\$\s*([\d.]+(?:,\d+)?)/);
-        if (moneyMatch) {
-          const parsed = parseAmount(moneyMatch[1]);
-          if (parsed != null && parsed > 0) numeros.push(parsed);
-        } else if (!/^\d+$/.test(s) && s.length > 1) {
-          // Texto sem ser so numeros = descricao
-          if (s.length > descricao.length) {
-            descricao = s;
-          }
-        }
+    // Detecta area principal (ex: 1. ATIVIDADES..., 2. MATÉRIA ADMINISTRATIVA, 19-A. ...)
+    const areaMatch = first.match(/^(\d+[A-Z]?)[.\s]+([A-Z\sÇÃÕÁÉÍÓÚÂÊÎÔÛÄËÏÖÜÀÈÌÒÙ&(),-/]+)/);
+    if (areaMatch && areaMatch[2].trim().length > 5) {
+      // Verifica se nao eh um servico numerado (1.1, 1.1.1) - servicos comecam com numeros pequenos e depois descricao em title case
+      const rest = areaMatch[2].trim();
+      if (first.indexOf('.') === first.lastIndexOf('.') || first.includes('-')) {
+        currentArea = rest;
+        continue;
       }
     }
 
-    // Ignora sem descricao ou sem valores
-    if (numeros.length === 0 || !descricao) continue;
+    // Se a primeira celula for um indicativo de servico (1.1, 1.1.1, etc) e tiver descricao na segunda
+    const serviceMatch = first.match(/^(\d+(?:\.\d+)*)\s*$/);
+    if (!serviceMatch || !second) continue;
 
-    // Ordena numeros: maior = valor real, menor = URH
+    // Coleta numeros a partir da terceira coluna
+    const numeros = [];
+    for (let i = 2; i < cells.length; i++) {
+      const v = cells[i];
+      if (v == null || v === '') continue;
+      const s = String(v).trim();
+      if (s === '' || s === 'R$' || /^\d{3}\/\d{4}$/.test(s)) continue;
+
+      const parsed = parseAmountFromCell(v);
+      if (parsed != null && parsed > 0) numeros.push(parsed);
+    }
+
+    if (numeros.length === 0) continue;
+
     numeros.sort((a, b) => a - b);
     const urh = numeros.length > 1 ? numeros[0] : null;
     const valorReal = numeros[numeros.length - 1];
-
-    // Detecta se descricao e area/categoria principal
-    const limpa = descricao.replace(/\d/g, '').trim();
-    const isUppercase = descricao === descricao.toUpperCase() && descricao.length > 10;
-    const areaMatch = descricao.match(/^(\d+)[.\s]+([A-Z\sÇÃÕÁÉÍÓÚÂÊÎÔÛÄËÏÖÜÀÈÌÒÙ&(),-]+)/);
-
-    if (areaMatch && areaMatch[2].trim().length > 5) {
-      // Area principal: 1. ATIVIDADES..., 2. ADMINISTRATIVO...
-      currentArea = areaMatch[2].trim();
-      continue;
-    }
-
-    // Categoria secundaria (subtitulo) so atualiza se for curta e maiuscula
-    if (descricao && !/^\d/.test(descricao) && limpa.length > 0 && isUppercase && descricao.length < 60) {
-      currentArea = limpa;
-      continue;
-    }
-
-    // Formata nome do servico (remove numeros 1.1, 1.1.1)
-    const nomeServico = descricao.replace(/^\d+[.\d]*/, '').trim();
 
     refs.push({
       id: `oab-${refs.length}`,
       legal_area: currentArea,
       case_type: '',
-      service: nomeServico,
+      service: second,
       min_amount: valorReal,
       suggested_amount: valorReal,
       max_amount: null,

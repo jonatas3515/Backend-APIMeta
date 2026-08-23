@@ -82,11 +82,12 @@ export default function FeeTablesManager({ viewMode = null }) {
         try {
           const data = new Uint8Array(e.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
-          // Processa todas as abas/sheets do Excel e concatena
+          // Processa todas as abas/sheets do Excel como arrays de celulas
+          // Usamos header: 1 para nao transformar as areas em nomes de coluna
           let allRows = [];
           for (const sheetName of workbook.SheetNames) {
             const sheet = workbook.Sheets[sheetName];
-            const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
             allRows = allRows.concat(json);
           }
           resolve(allRows);
@@ -419,15 +420,15 @@ export default function FeeTablesManager({ viewMode = null }) {
                 <table className="min-w-full">
                   <thead>
                     <tr className="bg-gray-100">
-                      {Object.keys(preview[0]).map((k) => (
-                        <th key={k} className="p-1 border text-left">{k}</th>
+                      {(Array.isArray(preview[0]) ? preview[0] : Object.keys(preview[0])).map((k, idx) => (
+                        <th key={idx} className="p-1 border text-left">{String(k)}</th>
                       ))}
                     </tr>
                   </thead>
                 <tbody>
                   {preview.map((row, i) => (
                     <tr key={i}>
-                      {Object.values(row).map((v, j) => (
+                      {(Array.isArray(row) ? row : Object.values(row)).map((v, j) => (
                         <td key={j} className="p-1 border">{String(v)}</td>
                       ))}
                     </tr>
