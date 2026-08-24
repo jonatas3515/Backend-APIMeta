@@ -83,7 +83,7 @@ export default function ClientsList({ onSelectClient }) {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white">
+    <div className="flex-1 flex flex-col bg-white min-h-0">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-4">
         <h1 className="text-2xl font-bold mb-3 text-gray-900">📋 Lista de Clientes</h1>

@@ -521,7 +521,7 @@ export default function Home() {
                   )}
                 </>
               ) : (
-                <div className="flex-1 h-full flex flex-col overflow-hidden bg-white">
+                <div className="flex-1 h-[calc(100vh-120px)] md:h-[calc(100vh-80px)] flex flex-col overflow-hidden bg-white">
                   <ClientsList
                     onSelectClient={(client) => {
                       setSelectedClient(client);
