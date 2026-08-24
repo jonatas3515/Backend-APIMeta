@@ -22,6 +22,9 @@ export default function CaseSidebar({ conversationId, userRole }) {
     notes: ''
   });
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null);
+  const canEdit = userRole === 'admin' || userRole === 'advogado';
 
   useEffect(() => {
     if (conversationId) {
@@ -46,11 +49,17 @@ export default function CaseSidebar({ conversationId, userRole }) {
   };
 
   const handleCreateCase = async () => {
+    if (!canEdit) {
+      setMessage({ type: 'error', text: 'Você não tem permissão para criar casos.' });
+      return;
+    }
     if (!formData.title) {
-      alert('Título é obrigatório');
+      setMessage({ type: 'error', text: 'Título é obrigatório.' });
       return;
     }
 
+    setSaving(true);
+    setMessage(null);
     try {
       const { error } = await supabase
         .from('cases')
@@ -74,14 +83,18 @@ export default function CaseSidebar({ conversationId, userRole }) {
         deadline_type: '',
         notes: ''
       });
+      setMessage({ type: 'success', text: 'Caso criado com sucesso.' });
       fetchCases();
     } catch (error) {
-      console.error('[CASE_SIDEBAR] Erro ao criar caso:', error);
-      alert('Erro ao criar caso');
+      console.error('[CASE_SIDEBAR] Erro ao criar caso');
+      setMessage({ type: 'error', text: 'Erro ao criar caso. Tente novamente.' });
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleUpdateCase = async (caseId, updates) => {
+    if (!caseId || !canEdit) return;
     try {
       const { error } = await supabase
         .from('cases')
@@ -91,13 +104,16 @@ export default function CaseSidebar({ conversationId, userRole }) {
       if (error) throw error;
       fetchCases();
     } catch (error) {
-      console.error('[CASE_SIDEBAR] Erro ao atualizar caso:', error);
-      alert('Erro ao atualizar caso');
+      console.error('[CASE_SIDEBAR] Erro ao atualizar caso');
     }
   };
 
   const handleDeleteCase = async (caseId) => {
-    if (!confirm('Deletar este caso?')) return;
+    if (!canEdit) {
+      setMessage({ type: 'error', text: 'Você não tem permissão para excluir casos.' });
+      return;
+    }
+    if (!confirm('Tem certeza que deseja excluir este caso?')) return;
 
     try {
       const { error } = await supabase
@@ -108,8 +124,8 @@ export default function CaseSidebar({ conversationId, userRole }) {
       if (error) throw error;
       fetchCases();
     } catch (error) {
-      console.error('[CASE_SIDEBAR] Erro ao deletar caso:', error);
-      alert('Erro ao deletar caso');
+      console.error('[CASE_SIDEBAR] Erro ao deletar caso');
+      setMessage({ type: 'error', text: 'Erro ao excluir caso. Tente novamente.' });
     }
   };
 
@@ -141,11 +157,19 @@ export default function CaseSidebar({ conversationId, userRole }) {
 
   return (
     <div className="w-80 bg-gray-50 border-l border-gray-200 overflow-y-auto">
+      {message && (
+        <div className={`p-3 m-4 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+          {message.text}
+        </div>
+      )}
+
       <div className="p-4 border-b border-gray-200">
         <h3 className="font-bold text-lg mb-3">Casos Jurídicos</h3>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="w-full px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+          disabled={!canEdit}
+          title={canEdit ? '' : 'Criação de casos é restrita a administradores/advogados.'}
+          className="w-full px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
         >
           {showForm ? 'Cancelar' : '+ Novo Caso'}
         </button>
@@ -206,9 +230,10 @@ export default function CaseSidebar({ conversationId, userRole }) {
             />
             <button
               onClick={handleCreateCase}
-              className="w-full px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
+              disabled={saving}
+              className="w-full px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 disabled:opacity-50"
             >
-              Criar Caso
+              {saving ? 'Criando...' : 'Criar Caso'}
             </button>
           </div>
         </div>
@@ -228,12 +253,15 @@ export default function CaseSidebar({ conversationId, userRole }) {
                 <div key={caseItem.id} className="p-3 bg-white border rounded">
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-semibold text-sm">{caseItem.title}</h4>
-                    <button
-                      onClick={() => handleDeleteCase(caseItem.id)}
-                      className="text-red-500 hover:text-red-700 text-xs"
-                    >
-                      ✕
-                    </button>
+                    {canEdit && (
+                      <button
+                        onClick={() => handleDeleteCase(caseItem.id)}
+                        title="Excluir caso"
+                        className="text-red-500 hover:text-red-700 text-xs"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
 
                   <div className="space-y-1 text-xs">
@@ -284,7 +312,8 @@ export default function CaseSidebar({ conversationId, userRole }) {
                     <select
                       value={caseItem.status}
                       onChange={(e) => handleUpdateCase(caseItem.id, { status: e.target.value })}
-                      className="w-full px-2 py-1 border rounded text-xs mt-2"
+                      disabled={!canEdit}
+                      className="w-full px-2 py-1 border rounded text-xs mt-2 disabled:bg-gray-100"
                     >
                       <option value="prospect">Prospect</option>
                       <option value="em_analise">Em Análise</option>

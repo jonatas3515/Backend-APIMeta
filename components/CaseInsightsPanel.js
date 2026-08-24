@@ -11,7 +11,9 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
   const [selectedInsight, setSelectedInsight] = useState(null);
   const [loading, setLoading] = useState(false);
   const [generatingProposal, setGeneratingProposal] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [proposal, setProposal] = useState(null);
+  const [message, setMessage] = useState(null);
   const { selectedArea, setSelectedArea } = useAreaFilter();
   const [filters, setFilters] = useState({
     legal_area: '',
@@ -48,9 +50,12 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
       if (response.ok) {
         const data = await response.json();
         setInsights(data);
+      } else {
+        setMessage({ type: 'error', text: 'Erro ao buscar insights.' });
       }
     } catch (error) {
       console.error('[INSIGHTS] Erro ao buscar:', error);
+      setMessage({ type: 'error', text: 'Erro ao buscar insights.' });
     } finally {
       setLoading(false);
     }
@@ -63,28 +68,37 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
       if (response.ok) {
         const data = await response.json();
         setSimilarInsights(data);
+      } else {
+        setMessage({ type: 'error', text: 'Erro ao buscar insights similares.' });
       }
     } catch (error) {
       console.error('[INSIGHTS] Erro ao buscar similares:', error);
+      setMessage({ type: 'error', text: 'Erro ao buscar insights similares.' });
     } finally {
       setLoading(false);
     }
   };
 
   const generateProposal = async () => {
-    if (!conversationId) return;
+    if (!conversationId) {
+      setMessage({ type: 'error', text: 'Selecione uma conversa para gerar a proposta.' });
+      return;
+    }
 
     setGeneratingProposal(true);
+    setMessage(null);
     try {
       const response = await fetch(`/api/insights?action=generate_proposal&conversation_id=${conversationId}`, { headers: await getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setProposal(data);
         setActiveTab('create');
+      } else {
+        setMessage({ type: 'error', text: 'Erro ao gerar proposta de insight.' });
       }
     } catch (error) {
       console.error('[INSIGHTS] Erro ao gerar proposta:', error);
-      alert('Erro ao gerar proposta de insight');
+      setMessage({ type: 'error', text: 'Erro ao gerar proposta de insight.' });
     } finally {
       setGeneratingProposal(false);
     }
@@ -93,6 +107,8 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
   const saveInsight = async () => {
     if (!proposal) return;
 
+    setSaving(true);
+    setMessage(null);
     try {
       const response = await fetch('/api/insights', {
         method: 'POST',
@@ -106,19 +122,29 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
       });
 
       if (response.ok) {
-        alert('Insight salvo com sucesso!');
+        setMessage({ type: 'success', text: 'Insight salvo com sucesso.' });
         setProposal(null);
         setActiveTab('list');
         fetchInsights();
+      } else {
+        setMessage({ type: 'error', text: 'Erro ao salvar insight.' });
       }
     } catch (error) {
       console.error('[INSIGHTS] Erro ao salvar:', error);
-      alert('Erro ao salvar insight');
+      setMessage({ type: 'error', text: 'Erro ao salvar insight.' });
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
     <div className="w-full bg-white rounded-lg shadow">
+      {message && (
+        <div className={`m-4 p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+          {message.text}
+        </div>
+      )}
+
       {/* Header com abas */}
       <div className="border-b border-gray-200 p-4">
         <h2 className="text-2xl font-bold mb-4">📚 Central de Conhecimento</h2>
@@ -322,9 +348,10 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
                 <div className="flex gap-2">
                   <button
                     onClick={saveInsight}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                    disabled={saving}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
                   >
-                    💾 Salvar Insight
+                    {saving ? 'Salvando...' : '💾 Salvar Insight'}
                   </button>
                   <button
                     onClick={() => {

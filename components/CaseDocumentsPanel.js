@@ -13,19 +13,25 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
   const [uploading, setUploading] = useState(false);
   const [linkDocId, setLinkDocId] = useState(null);
   const [linkItemId, setLinkItemId] = useState('');
+  const [message, setMessage] = useState(null);
 
   useEffect(() => {
-    fetchDocuments();
-  }, [caseItem.id]);
+    if (caseItem?.id) {
+      fetchDocuments();
+    }
+  }, [caseItem?.id]);
 
   const fetchDocuments = async () => {
+    if (!caseItem?.id) return;
     setLoading(true);
+    setMessage(null);
     try {
       const headers = await getAuthHeaders();
       const { data } = await axios.get(`/api/case-documents?case_id=${caseItem.id}`, { headers });
       setDocuments(data || []);
     } catch (error) {
-      console.error('[CASE_DOCUMENTS_PANEL] Erro ao carregar documentos:', error);
+      console.error('[CASE_DOCUMENTS_PANEL] Erro ao carregar documentos');
+      setMessage({ type: 'error', text: 'Erro ao carregar documentos. Tente novamente.' });
     } finally {
       setLoading(false);
     }
@@ -39,8 +45,8 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
         window.open(data.signed_url, '_blank');
       }
     } catch (error) {
-      console.error('[CASE_DOCUMENTS_PANEL] Erro ao baixar:', error);
-      alert('Erro ao gerar link temporario');
+      console.error('[CASE_DOCUMENTS_PANEL] Erro ao baixar');
+      setMessage({ type: 'error', text: 'Erro ao gerar link temporário. Tente novamente.' });
     }
   };
 
@@ -65,8 +71,8 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
       setSelectedFile(null);
       fetchDocuments();
     } catch (error) {
-      console.error('[CASE_DOCUMENTS_PANEL] Erro no upload:', error);
-      alert('Erro ao enviar arquivo');
+      console.error('[CASE_DOCUMENTS_PANEL] Erro no upload');
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Erro ao enviar arquivo. Tente novamente.' });
     } finally {
       setUploading(false);
     }
@@ -82,8 +88,8 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
       setLinkItemId('');
       fetchDocuments();
     } catch (error) {
-      console.error('[CASE_DOCUMENTS_PANEL] Erro ao vincular:', error);
-      alert('Erro ao vincular documento');
+      console.error('[CASE_DOCUMENTS_PANEL] Erro ao vincular');
+      setMessage({ type: 'error', text: 'Erro ao vincular documento. Tente novamente.' });
     }
   };
 
@@ -102,12 +108,17 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
         <div className="p-4 border-b flex justify-between items-center">
           <div>
             <h3 className="text-lg font-bold">Documentos do Caso</h3>
-            <p className="text-sm text-gray-500">{caseItem.title}</p>
+            <p className="text-sm text-gray-500">{caseItem?.title || 'Caso'}</p>
           </div>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
         </div>
 
         <div className="p-4 overflow-y-auto flex-1 space-y-4">
+          {message && (
+            <div className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+              {message.text}
+            </div>
+          )}
           {isIntern ? null : (
             <div className="border rounded p-3 bg-gray-50">
               <p className="text-sm font-medium mb-2">Upload manual</p>

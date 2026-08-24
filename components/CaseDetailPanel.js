@@ -55,8 +55,26 @@ export default function CaseDetailPanel({
   onOpenConversationSelector,
   onUnlinkConversation
 }) {
-  const daysLeft = daysUntilDeadline(caseItem.deadline_date);
-  const linkedConversation = conversations.find((c) => c.id === caseItem.conversation_id);
+  if (!caseItem || typeof caseItem !== 'object') {
+    return (
+      <div className="flex-1 h-full flex items-center justify-center bg-white rounded-lg shadow p-6 text-center">
+        <div>
+          <p className="text-sm text-gray-600">Nenhum caso selecionado.</p>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="mt-2 px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+            >
+              Voltar para lista
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  const daysLeft = daysUntilDeadline(caseItem?.deadline_date);
+  const linkedConversation = conversations?.find((c) => c.id === caseItem?.conversation_id);
 
   return (
     <div className="flex-1 h-full flex flex-col bg-white rounded-lg shadow overflow-hidden">
@@ -241,6 +259,7 @@ export default function CaseDetailPanel({
               <GeneratedDocumentsPanel 
                 caseId={caseItem.id} 
                 conversationId={caseItem.conversation_id}
+                userRole={userRole}
               />
             </div>
           </div>
@@ -251,6 +270,7 @@ export default function CaseDetailPanel({
             <CaseRoutinesPanel 
               caseId={caseItem.id} 
               conversationId={caseItem.conversation_id}
+              userRole={userRole}
             />
           </div>
         )}
