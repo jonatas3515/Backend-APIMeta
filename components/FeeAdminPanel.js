@@ -16,6 +16,10 @@ export default function FeeAdminPanel({ initialView = 'services' }) {
   const isAdminOrLawyer = userRole === 'admin' || userRole === 'advogado';
   const isAdmin = userRole === 'admin';
 
+  if (!isAdminOrLawyer) {
+    return <p className="p-4 text-sm text-red-600">Você não tem permissão para acessar esta área.</p>;
+  }
+
   const tabs = [
     { key: 'services', label: '📋 Serviços', visible: isAdminOrLawyer },
     { key: 'reference-tables', label: '📊 Tabela da OAB', visible: isAdminOrLawyer },

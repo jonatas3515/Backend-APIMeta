@@ -40,7 +40,7 @@ function parseAmountFromCell(cell) {
   return isNaN(parsed) ? null : parsed;
 }
 
-function extractReferences(tableData) {
+export function extractReferences(tableData) {
   if (!Array.isArray(tableData)) return [];
 
   const refs = [];
@@ -59,7 +59,14 @@ function extractReferences(tableData) {
     // Pula cabecalhos e linhas vazias
     if (!first || first.toUpperCase() === 'INDICATIVO' || first.toUpperCase().includes('VALOR URH:')) continue;
 
-    // Detecta area principal (ex: 1. ATIVIDADES..., 2. MATÉRIA ADMINISTRATIVA, 19-A. ...)
+    // Detecta area principal (ex: 1. ATIVIDADES..., '1.', 'ATIVIDADES...' ou '1 - MATÉRIA ADMINISTRATIVA')
+    const areaPrefix = first.match(/^(\d+[A-Z]?)[.\s-]*$/);
+    const areaText = second || '';
+    if (areaPrefix && areaText.toUpperCase() === areaText && areaText.length > 5) {
+      currentArea = areaText;
+      continue;
+    }
+
     const areaMatch = first.match(/^(\d+[A-Z]?)[.\s]+([A-Z\sÇÃÕÁÉÍÓÚÂÊÎÔÛÄËÏÖÜÀÈÌÒÙ&(),-/]+)/);
     if (areaMatch && areaMatch[2].trim().length > 5) {
       // Verifica se nao eh um servico numerado (1.1, 1.1.1) - servicos comecam com numeros pequenos e depois descricao em title case
