@@ -91,12 +91,14 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   const loadOabReference = async (service) => {
     const ref = await fetchOabReference(service);
     setOabReference(ref);
+    if (ref) setUseOabBase(true);
     return ref;
   };
 
   useEffect(() => {
     if (!selectedService) {
       setOabReference(null);
+      setUseOabBase(false);
       return;
     }
     const selected = services.find((s) => s.id === selectedService);
@@ -227,7 +229,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
 
       const { data } = await axios.post('/api/fee-simulations', payload, { headers });
 
-      setMessage({ type: 'success', text: status === 'rascunho' ? 'Rascunho salvo' : 'Proposta salva' });
+      setMessage({ type: 'success', text: 'Simulação salva com sucesso.' });
       setResult(null);
       setForm({
         complexity: 'media',
@@ -243,7 +245,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       setSelectedService('');
       fetchSimulations();
     } catch (err) {
-      const text = err.response?.data?.error || 'Erro ao salvar simulação';
+      const text = err.response?.data?.error || 'Erro ao salvar simulação. Tente novamente.';
       setMessage({ type: 'error', text });
     } finally {
       setSaving(false);
@@ -304,24 +306,40 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           </select>
         </div>
 
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={useOabBase}
-            onChange={(e) => setUseOabBase(e.target.checked)}
-          />
-          Usar tabela OAB como base (70–80% do sugerido)
-        </label>
+        <div className="space-y-1">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <input
+              type="checkbox"
+              checked={useOabBase}
+              onChange={(e) => setUseOabBase(e.target.checked)}
+              disabled={!oabReference}
+            />
+            Usar tabela OAB como base para este cálculo
+          </label>
+          <p className="text-xs text-gray-500 pl-6">
+            Quando ativo, o valor sugerido será calculado com base na tabela da OAB, com desconto regional de 20–30%.
+          </p>
+          {selectedService && !oabReference && (
+            <p className="text-xs text-yellow-700 pl-6">
+              Não há referência OAB para este serviço. O cálculo será feito com base no catálogo interno.
+            </p>
+          )}
+        </div>
 
         {oabReference && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded space-y-1">
-            <p className="text-xs font-semibold text-blue-700 uppercase">Referência OAB</p>
+          <div className="p-3 bg-green-50 border border-green-200 rounded space-y-1">
+            <p className="text-xs font-semibold text-green-700 uppercase flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+              Referência OAB
+            </p>
             <p className="text-sm"><strong>Serviço:</strong> {oabReference.service}</p>
             <p className="text-sm text-gray-700">
-              Valor OAB: mín. R$ {Number(oabReference.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | sugerido R$ {Number(oabReference.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | máx. R$ {Number(oabReference.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              <span className="font-medium text-green-800">Mínimo (OAB):</span> R$ {Number(oabReference.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}&nbsp;|&nbsp;
+              <span className="font-medium text-green-800">Sugerido (OAB):</span> R$ {Number(oabReference.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}&nbsp;|&nbsp;
+              <span className="font-medium text-green-800">Máximo (OAB):</span> R$ {Number(oabReference.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
             <p className="text-sm font-semibold text-green-700">
-              Sugestão regional (70-80%): R$ {Number(oabReference.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              Sugestão regional (70-80% OAB): R$ {Number(oabReference.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
         )}
@@ -400,11 +418,24 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       </div>
 
       {result && (
-        <div className="p-4 bg-gray-50 border rounded space-y-3">
-          <p className="text-xs font-semibold text-blue-700 uppercase">Sugestão interna</p>
+        <div className={`p-4 border rounded space-y-3 ${useOabBase ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'}`}>
+          <div className="flex items-center justify-between">
+            <p className={`text-xs font-semibold uppercase flex items-center gap-1 ${useOabBase ? 'text-green-700' : 'text-blue-700'}`}>
+              <span className={`inline-block w-2 h-2 rounded-full ${useOabBase ? 'bg-green-500' : 'bg-blue-500'}`} />
+              {useOabBase ? 'Cálculo baseado na tabela OAB' : 'Cálculo baseado no catálogo interno'}
+            </p>
+            {useOabBase && oabReference && (
+              <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">OAB</span>
+            )}
+            {!useOabBase && (
+              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Catálogo</span>
+            )}
+          </div>
           <div className="text-sm space-y-1">
-            <p><strong>Valor-base:</strong> R$ {Number(result.base_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-            {result.applied_rules.map((r, i) => (
+            <p>
+              <strong>Valor base {useOabBase ? '(OAB)' : '(catálogo)'}:</strong> R$ {Number(result.base_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
+            {!useOabBase && result.applied_rules.map((r, i) => (
               <p key={i} className="text-gray-600">
                 {r.rule_type} ({r.rule_value}): {r.adjustment_kind === 'percentual' ? `${r.adjustment_value}%` : `R$ ${Number(r.adjustment_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} → {r.amount >= 0 ? '+' : ''} R$ {Number(r.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
@@ -420,22 +451,24 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
             </p>
           </div>
 
-          {oabReference && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded space-y-1">
-              <p className="text-xs font-semibold text-blue-700 uppercase">Referência OAB</p>
-              <p className="text-sm"><strong>Serviço:</strong> {oabReference.service}</p>
+          {useOabBase && oabReference && (
+            <div className="p-3 bg-white border border-green-200 rounded space-y-1">
+              <p className="text-xs font-semibold text-green-700 uppercase">Valores OAB</p>
               <p className="text-sm text-gray-700">
-                Valor OAB: mín. R$ {Number(oabReference.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | sugerido R$ {Number(oabReference.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | máx. R$ {Number(oabReference.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                <span className="font-medium text-green-800">Mínimo (OAB):</span> R$ {Number(oabReference.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}&nbsp;|&nbsp;
+                <span className="font-medium text-green-800">Sugerido (OAB):</span> R$ {Number(oabReference.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}&nbsp;|&nbsp;
+                <span className="font-medium text-green-800">Máximo (OAB):</span> R$ {Number(oabReference.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
               <p className="text-sm font-semibold text-green-700">
-                Sugestão regional (70-80%): R$ {Number(oabReference.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                Sugestão regional (70-80% OAB): R$ {Number(oabReference.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
-              {form.final_amount && <p className="text-xs text-gray-600">Desconto vs OAB: {calculateOabDiscount(oabReference.suggested_amount, form.final_amount) !== null ? `${calculateOabDiscount(oabReference.suggested_amount, form.final_amount)}%` : '-'}</p>}
             </div>
           )}
 
           <div className="p-2 bg-yellow-100 text-yellow-800 rounded text-xs">
-            Sugestão interna. O valor final depende de revisão e aprovação de advogado ou administrador.
+            {useOabBase
+              ? 'Sugestão baseada na tabela OAB com desconto regional. O valor final depende de revisão e aprovação.'
+              : 'Sugestão interna. O valor final depende de revisão e aprovação de advogado ou administrador.'}
           </div>
 
           <div>
@@ -478,7 +511,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
               disabled={saving}
               className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 disabled:opacity-50 text-sm"
             >
-              Salvar rascunho
+              {saving ? 'Salvando...' : 'Salvar rascunho'}
             </button>
             {isAdminOrLawyerFinal && (
               <>
@@ -487,14 +520,14 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
                   disabled={saving}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm"
                 >
-                  Enviar proposta
+                  {saving ? 'Salvando...' : 'Enviar proposta'}
                 </button>
                 <button
                   onClick={() => handleSave('convertida_em_proposta')}
                   disabled={saving}
                   className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
                 >
-                  Gerar proposta
+                  {saving ? 'Salvando...' : 'Gerar proposta'}
                 </button>
               </>
             )}
@@ -503,9 +536,38 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       )}
 
       <div className="pt-4 border-t">
-        <h4 className="font-semibold text-sm mb-2">Histórico de simulações</h4>
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="font-semibold text-sm">Histórico de simulações</h4>
+          {isAdminOrLawyerFinal && (
+            <button
+              onClick={() => {
+                setResult(null);
+                setSelectedService('');
+                setMessage(null);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Nova simulação
+            </button>
+          )}
+        </div>
         {simulations.length === 0 ? (
-          <p className="text-sm text-gray-500">Nenhuma simulação para este caso.</p>
+          <div className="p-4 bg-gray-50 border rounded text-center space-y-2">
+            <p className="text-sm text-gray-600">Nenhuma simulação encontrada.</p>
+            {isAdminOrLawyerFinal && (
+              <button
+                onClick={() => {
+                  setResult(null);
+                  setSelectedService('');
+                  setMessage(null);
+                }}
+                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Nova simulação
+              </button>
+            )}
+          </div>
         ) : (
           <div className="space-y-2">
             {simulations.map((sim) => (

@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getAuthHeaders } from '../lib/api';
 
-export default function CaseRoutinesPanel({ caseId, conversationId }) {
+export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) {
   const [routines, setRoutines] = useState([]);
   const [executions, setExecutions] = useState([]);
   const [selectedRoutine, setSelectedRoutine] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState(null);
+  const canApply = userRole === 'admin' || userRole === 'advogado';
 
   useEffect(() => {
     if (conversationId) {
@@ -23,6 +25,7 @@ export default function CaseRoutinesPanel({ caseId, conversationId }) {
       setRoutines(data || []);
     } catch (error) {
       console.error('[CASE_ROUTINES] Erro ao buscar rotinas');
+      setMessage({ type: 'error', text: 'Erro ao buscar rotinas.' });
     }
   };
 
@@ -33,13 +36,19 @@ export default function CaseRoutinesPanel({ caseId, conversationId }) {
       setExecutions(data || []);
     } catch (error) {
       console.error('[CASE_ROUTINES] Erro ao buscar execucoes');
+      setMessage({ type: 'error', text: 'Erro ao buscar execuções.' });
     }
   };
 
   const handleApplyRoutine = async () => {
     if (!selectedRoutine) return;
-    
+    if (!canApply) {
+      setMessage({ type: 'error', text: 'Você não tem permissão para aplicar rotinas.' });
+      return;
+    }
+
     setLoading(true);
+    setMessage(null);
     try {
       const headers = await getAuthHeaders();
       const params = new URLSearchParams({
@@ -55,10 +64,10 @@ export default function CaseRoutinesPanel({ caseId, conversationId }) {
       setShowConfirm(false);
       setSelectedRoutine('');
       fetchExecutions();
-      alert('Rotina aplicada com sucesso');
+      setMessage({ type: 'success', text: 'Rotina aplicada com sucesso.' });
     } catch (error) {
       console.error('[CASE_ROUTINES] Erro ao aplicar');
-      alert(error.response?.data?.error || 'Erro ao aplicar rotina');
+      setMessage({ type: 'error', text: error.response?.data?.error || 'Erro ao aplicar rotina. Tente novamente.' });
     } finally {
       setLoading(false);
     }
@@ -68,6 +77,12 @@ export default function CaseRoutinesPanel({ caseId, conversationId }) {
 
   return (
     <div className="space-y-6">
+      {message && (
+        <div className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+          {message.text}
+        </div>
+      )}
+
       <div>
         <h3 className="font-semibold text-lg mb-3">🔄 Aplicar Rotina</h3>
         <div className="space-y-3">
@@ -99,18 +114,33 @@ export default function CaseRoutinesPanel({ caseId, conversationId }) {
           
           <button
             onClick={() => setShowConfirm(true)}
-            disabled={!selectedRoutine}
+            disabled={!selectedRoutine || !canApply}
+            title={canApply ? '' : 'Aplicação de rotinas é restrita a administradores/advogados.'}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
           >
             Aplicar Rotina
           </button>
+          {!canApply && (
+            <p className="text-xs text-red-600">Esta função é restrita a administradores/advogados.</p>
+          )}
         </div>
       </div>
 
       <div>
         <h3 className="font-semibold text-lg mb-3">📋 Histórico de Execuções</h3>
         {executions.length === 0 ? (
-          <p className="text-sm text-gray-500">Nenhuma rotina aplicada a este caso.</p>
+          <div className="p-4 bg-gray-50 border rounded text-center space-y-2">
+            <p className="text-sm text-gray-600">Nenhuma rotina aplicada a este caso.</p>
+            {canApply && (
+              <button
+                onClick={() => setSelectedRoutine(routines[0]?.id || '')}
+                disabled={routines.length === 0}
+                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+              >
+                Aplicar rotina
+              </button>
+            )}
+          </div>
         ) : (
           <div className="space-y-2">
             {executions.map((exec) => (

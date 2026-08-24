@@ -192,14 +192,14 @@ export default function FeeTablesManager({ viewMode = null }) {
         table_data: tableData
       }, { headers });
 
-      setMessage({ type: 'success', text: 'Tabela salva com sucesso.' });
+      setMessage({ type: 'success', text: 'Tabela da OAB enviada e processada com sucesso.' });
       setFile(null);
       setName('');
       setPreview([]);
       setIsPdf(false);
       fetchTables();
     } catch (err) {
-      const raw = err.response?.data?.error || err.response?.data?.message || err.message || 'Erro ao salvar tabela';
+      const raw = err.response?.data?.error || err.response?.data?.message || err.message || 'Erro ao processar tabela. Verifique o formato e as colunas.';
       setMessage({ type: 'error', text: String(raw) });
     } finally {
       setUploading(false);
@@ -290,7 +290,18 @@ export default function FeeTablesManager({ viewMode = null }) {
           {referenceLoading ? (
             <p className="text-sm text-gray-500 p-2">Carregando referências...</p>
           ) : referenceItems.length === 0 ? (
-            <p className="text-sm text-gray-500 p-2">Nenhum item encontrado na tabela da OAB.</p>
+            <div className="p-4 bg-gray-50 border rounded text-center space-y-2">
+              <p className="text-sm text-gray-600">Nenhuma tabela da OAB encontrada.</p>
+              <button
+                onClick={() => {
+                  const uploadSection = document.getElementById('fee-table-upload');
+                  uploadSection?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Enviar tabela da OAB
+              </button>
+            </div>
           ) : (
             <div>
               {(() => {
@@ -361,7 +372,7 @@ export default function FeeTablesManager({ viewMode = null }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="border rounded p-3 bg-gray-50 space-y-3">
+        <div id="fee-table-upload" className="border rounded p-3 bg-gray-50 space-y-3">
           <h4 className="font-semibold text-sm">⬆️ Enviar nova tabela</h4>
 
           <div>

@@ -10,7 +10,8 @@ export default function ModelsAndRoutinesPanel({ userRole }) {
   if (!canEdit) {
     return (
       <div className="p-6 bg-white rounded-lg shadow">
-        <p className="text-gray-600">Você não tem permissão para acessar esta área.</p>
+        <p className="text-sm text-red-600 font-medium">🚫 Acesso restrito</p>
+        <p className="text-sm text-gray-600 mt-1">Esta função é restrita a administradores e advogados.</p>
       </div>
     );
   }

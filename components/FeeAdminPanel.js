@@ -17,7 +17,12 @@ export default function FeeAdminPanel({ initialView = 'services' }) {
   const isAdmin = userRole === 'admin';
 
   if (!isAdminOrLawyer) {
-    return <p className="p-4 text-sm text-red-600">Você não tem permissão para acessar esta área.</p>;
+    return (
+      <div className="p-6 bg-white rounded-lg shadow">
+        <p className="text-sm text-red-600 font-medium">🚫 Acesso restrito</p>
+        <p className="text-sm text-gray-600 mt-1">Esta função é restrita a administradores e advogados.</p>
+      </div>
+    );
   }
 
   const tabs = [

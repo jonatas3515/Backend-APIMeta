@@ -50,6 +50,7 @@ describe('FeeAdminPanel - permissoes', () => {
   test('estagiario nao acessa Honorarios', () => {
     useAuth.mockReturnValue({ profile: { role: 'estagiario' } });
     const { container } = render(React.createElement(FeeAdminPanel, { initialView: 'services' }));
-    expect(container.textContent).toContain('Você não tem permissão para acessar esta área.');
+    expect(container.textContent).toContain('Acesso restrito');
+    expect(container.textContent).toContain('restrita a administradores e advogados');
   });
 });

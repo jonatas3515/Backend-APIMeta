@@ -89,19 +89,24 @@ describe('FeeSimulator - OAB e simulacao', () => {
 
     await waitFor(() => {
       expect(container.textContent).toContain('Referência OAB');
-      expect(container.textContent).toContain('mín. R$ 1.000,00');
-      expect(container.textContent).toContain('sugerido R$ 2.000,00');
-      expect(container.textContent).toContain('máx. R$ 3.000,00');
-      expect(container.textContent).toContain('Sugestão regional (70-80%): R$ 1.500,00');
+      expect(container.textContent).toContain('Mínimo (OAB):');
+      expect(container.textContent).toContain('Sugerido (OAB):');
+      expect(container.textContent).toContain('Máximo (OAB):');
+      expect(container.textContent).toContain('Sugestão regional (70-80% OAB): R$ 1.500,00');
     });
   });
 
-  test('toggle inativo chama calculo da API', async () => {
+  test('toggle inativo chama calculo da API e mostra badge de catalogo', async () => {
     const { container } = render(React.createElement(FeeSimulator, { caseId: 'case-1', caseData: { legal_area: 'Civel' }, userRole: 'admin' }));
     await waitFor(() => expect(container.querySelector('select option[value="svc-1"]')).toBeInTheDocument());
 
     const select = container.querySelector('select');
     fireEvent.change(select, { target: { value: 'svc-1' } });
+
+    const checkbox = container.querySelector('input[type="checkbox"]');
+    await waitFor(() => expect(checkbox.checked).toBe(true));
+    fireEvent.click(checkbox);
+    await waitFor(() => expect(checkbox.checked).toBe(false));
 
     await waitFor(() => {
       const calcButton = Array.from(container.querySelectorAll('button')).find((b) => b.textContent.includes('Calcular sugestão'));
@@ -121,6 +126,29 @@ describe('FeeSimulator - OAB e simulacao', () => {
         }),
         expect.any(Object)
       );
+    });
+
+    await waitFor(() => {
+      expect(container.textContent).toContain('Cálculo baseado no catálogo interno');
+    });
+  });
+
+  test('exibe mensagem quando nao ha referencia OAB', async () => {
+    axios.get.mockImplementation((url) => {
+      if (url.startsWith('/api/fee-services')) return Promise.resolve({ data: [internalService] });
+      if (url.startsWith('/api/fee-simulations')) return Promise.resolve({ data: [] });
+      if (url.startsWith('/api/fee-reference')) return Promise.resolve({ data: [] });
+      return Promise.resolve({ data: [] });
+    });
+
+    const { container } = render(React.createElement(FeeSimulator, { caseId: 'case-1', caseData: { legal_area: 'Civel' }, userRole: 'admin' }));
+    await waitFor(() => expect(container.querySelector('select option[value="svc-1"]')).toBeInTheDocument());
+
+    const select = container.querySelector('select');
+    fireEvent.change(select, { target: { value: 'svc-1' } });
+
+    await waitFor(() => {
+      expect(container.textContent).toContain('Não há referência OAB para este serviço');
     });
   });
 });

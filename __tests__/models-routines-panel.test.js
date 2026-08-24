@@ -26,7 +26,8 @@ describe('ModelsAndRoutinesPanel - permissoes e abas', () => {
   test('estagiario ve mensagem de permissao negada', () => {
     const ModelsAndRoutinesPanel = require('../components/ModelsAndRoutinesPanel').default;
     const { container } = render(React.createElement(ModelsAndRoutinesPanel, { userRole: 'estagiario' }));
-    expect(container.textContent).toContain('Você não tem permissão para acessar esta área.');
+    expect(container.textContent).toContain('Acesso restrito');
+    expect(container.textContent).toContain('restrita a administradores e advogados');
     expect(container.textContent).not.toContain('📄 Modelos de Documento');
   });
 
