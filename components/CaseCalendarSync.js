@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getAuthHeaders } from '../lib/api';
 
+// TODO (órfão/parcial): componente de sincronização de prazos com calendário externo.
+// Atualmente renderizado em CasesPanel, mas funcionalidade completa de sincronização ainda não integrada.
+// Candidato a ativação futura ou remoção.
 export default function CaseCalendarSync({ eventId, table = 'cases', deadlineDate, title }) {
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(false);

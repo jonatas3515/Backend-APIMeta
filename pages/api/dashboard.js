@@ -33,6 +33,7 @@ async function handler(req, res) {
     const yesterdayEnd = yesterdayStart.split('T')[0] + 'T23:59:59.999Z';
     const todayStart = today + 'T00:00:00.000Z';
     const todayEnd = today + 'T23:59:59.999Z';
+    const legalArea = req.query.legal_area || null;
 
     // 1. Próximos prazos (hoje + 3 dias) - de cases e case_events
     let nextDeadlines = [];
@@ -91,7 +92,7 @@ async function handler(req, res) {
       // Conta mensagens inbound não lidas (sem campo de read, usaremos unread da conversations + últimas mensagens inbound)
       const { data: unreadConvs, error: unreadError } = await supabase
         .from('conversations')
-        .select('id, client_name, client_phone, unread, updated_at, status, mode')
+        .select('id, client_name, client_phone, unread, updated_at, status, mode, legal_area')
         .eq('unread', true)
         .order('updated_at', { ascending: false })
         .limit(5);
@@ -125,7 +126,8 @@ async function handler(req, res) {
         client_phone: c.client_phone,
         last_message: messagesByConversation[c.id]?.text?.substring(0, 60) || 'Nova mensagem',
         last_message_at: messagesByConversation[c.id]?.created_at || c.updated_at,
-        unread: c.unread
+        unread: c.unread,
+        legal_area: c.legal_area
       }));
 
       const { count, error: countError } = await supabase
@@ -174,7 +176,7 @@ async function handler(req, res) {
     try {
       let taskQuery = supabase
         .from('chat_reminders')
-        .select('id, title, message, scheduled_for, priority, status, case_id, conversations(client_name), cases(title)')
+        .select('id, title, message, scheduled_for, priority, status, case_id, conversations(client_name, legal_area), cases(title, legal_area)')
         .eq('status', 'pending')
         .order('scheduled_for', { ascending: true })
         .limit(10);
@@ -195,7 +197,8 @@ async function handler(req, res) {
         status: t.status,
         case_id: t.case_id,
         case_title: t.cases?.title,
-        client_name: t.conversations?.client_name
+        client_name: t.conversations?.client_name,
+        legal_area: t.cases?.legal_area || t.conversations?.legal_area
       }));
     } catch (e) {
       console.error('[DASHBOARD] Erro ao buscar tarefas:', e);
@@ -215,57 +218,69 @@ async function handler(req, res) {
 
     try {
       // Novos leads hoje
-      const { count: leadsToday, error: leadsTodayError } = await supabase
+      let leadsTodayQuery = supabase
         .from('conversations')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', todayStart)
         .lte('created_at', todayEnd);
+      if (legalArea) leadsTodayQuery = leadsTodayQuery.eq('legal_area', legalArea);
+      const { count: leadsToday, error: leadsTodayError } = await leadsTodayQuery;
 
       if (leadsTodayError) throw leadsTodayError;
 
       // Novos leads ontem
-      const { count: leadsYesterday, error: leadsYesterdayError } = await supabase
+      let leadsYesterdayQuery = supabase
         .from('conversations')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', yesterdayStart)
         .lte('created_at', yesterdayEnd);
+      if (legalArea) leadsYesterdayQuery = leadsYesterdayQuery.eq('legal_area', legalArea);
+      const { count: leadsYesterday, error: leadsYesterdayError } = await leadsYesterdayQuery;
 
       if (leadsYesterdayError) throw leadsYesterdayError;
 
       // Contratos fechados hoje
-      const { count: contractsToday, error: contractsTodayError } = await supabase
+      let contractsTodayQuery = supabase
         .from('cases')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'contrato_assinado')
         .gte('updated_at', todayStart)
         .lte('updated_at', todayEnd);
+      if (legalArea) contractsTodayQuery = contractsTodayQuery.eq('legal_area', legalArea);
+      const { count: contractsToday, error: contractsTodayError } = await contractsTodayQuery;
 
       if (contractsTodayError) throw contractsTodayError;
 
       // Contratos fechados ontem
-      const { count: contractsYesterday, error: contractsYesterdayError } = await supabase
+      let contractsYesterdayQuery = supabase
         .from('cases')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'contrato_assinado')
         .gte('updated_at', yesterdayStart)
         .lte('updated_at', yesterdayEnd);
+      if (legalArea) contractsYesterdayQuery = contractsYesterdayQuery.eq('legal_area', legalArea);
+      const { count: contractsYesterday, error: contractsYesterdayError } = await contractsYesterdayQuery;
 
       if (contractsYesterdayError) throw contractsYesterdayError;
 
       // Casos ativos totais
-      const { count: activeCases, error: activeError } = await supabase
+      let activeCasesQuery = supabase
         .from('cases')
         .select('*', { count: 'exact', head: true })
         .not('status', 'in', '("encerrado","cancelado")');
+      if (legalArea) activeCasesQuery = activeCasesQuery.eq('legal_area', legalArea);
+      const { count: activeCases, error: activeError } = await activeCasesQuery;
 
       if (activeError) throw activeError;
 
       // Prazos vencendo hoje
-      const { count: dueToday, error: dueError } = await supabase
+      let dueTodayQuery = supabase
         .from('cases')
         .select('*', { count: 'exact', head: true })
         .eq('deadline_date', today)
         .not('status', 'in', '("encerrado","cancelado")');
+      if (legalArea) dueTodayQuery = dueTodayQuery.eq('legal_area', legalArea);
+      const { count: dueToday, error: dueError } = await dueTodayQuery;
 
       if (dueError) throw dueError;
 

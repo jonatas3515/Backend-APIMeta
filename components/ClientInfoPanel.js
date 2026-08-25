@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { getAuthHeaders } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
 
+// TODO (órfão): componente construído para histórico de client_info_requests, mas não integrado a nenhuma rota.
+// Candidato a integração futura ou remoção após definição do fluxo de experiência do cliente.
 export default function ClientInfoPanel({ conversationId, caseId }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);

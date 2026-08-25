@@ -15,7 +15,8 @@ import ProcessTriagePanel from '../components/ProcessTriagePanel';
 import FeeAdminPanel from '../components/FeeAdminPanel';
 import OfficeAIAssistant from '../components/OfficeAIAssistant';
 import KnowledgeBaseManager from '../components/KnowledgeBaseManager';
-import { resolveCaseView } from '../lib/caseView';
+import { resolveLegacyQuery, buildInternalUrl } from '../lib/router';
+import { NAV_ITEMS } from '../lib/tabResolver';
 import Login from '../components/Login';
 import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
@@ -44,7 +45,8 @@ export default function Home() {
   const [selectedClient, setSelectedClient] = useState(null);
   const [isClientProfileOpen, setIsClientProfileOpen] = useState(false);
   const [casesNotice, setCasesNotice] = useState(null);
-  const queryProcessed = useRef({ tab: false, conversation: false });
+  const lastProcessedAsPath = useRef('');
+  const lastConversationQuery = useRef(null);
   const { authUser, profile, loading: authLoading, signOut, canAccess } = useAuth();
   const { selectedArea, setSelectedArea } = useAreaFilter();
   const [showNewConvModal, setShowNewConvModal] = useState(false);
@@ -170,64 +172,61 @@ export default function Home() {
     };
   }, [authUser, profile, notifPrefs]);
 
-  // Interpreta query string e mantém compatibilidade com tabs removidas
+  const isTabAllowed = (tab, view) => {
+    if (tab === 'users' || tab === 'profile') {
+      return view === 'profile' ? canAccess('estagiario') : canAccess('advogado');
+    }
+    const nav = NAV_ITEMS.find((item) => item.key === tab);
+    return nav ? canAccess(nav.minRole) : false;
+  };
+
+  const getSafeTab = () => {
+    if (canAccess('estagiario')) return 'chat';
+    return 'chat';
+  };
+
+  // Processa tab/view e redirecionamentos legados de forma reativa
   useEffect(() => {
     if (!router.isReady) return;
+    const asPath = router.asPath;
+    if (asPath === lastProcessedAsPath.current) return;
 
-    const { tab, view, conversation, case: caseId, new: newParam, caseView } = router.query;
-    const isClientesView = view === 'clientes' || tab === 'clients';
+    const resolved = resolveLegacyQuery(router.query);
+    let {
+      tab,
+      view,
+      caseId,
+      caseView,
+      redirectTo,
+      notice,
+      newConversation,
+    } = resolved;
 
-    if (tab === 'clients' && typeof tab === 'string' && !queryProcessed.current.tab) {
-      setActiveTab('chat');
-      setChatView('clientes');
-      queryProcessed.current.tab = true;
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.set('tab', 'chat');
-        url.searchParams.set('view', 'clientes');
-        url.searchParams.delete('conversation');
-        window.history.replaceState(null, '', url.toString());
-      }
-    } else if ((tab === 'templates' || tab === 'documents') && !queryProcessed.current.tab) {
-      setActiveTab('models-routines');
-      setModelsRoutinesView('templates');
-      queryProcessed.current.tab = true;
-      if (typeof window !== 'undefined') {
-        window.history.replaceState(null, '', '/?tab=models-routines&view=templates');
-      }
-    } else if (tab === 'routines' && !queryProcessed.current.tab) {
-      setActiveTab('models-routines');
-      setModelsRoutinesView('routines');
-      queryProcessed.current.tab = true;
-      if (typeof window !== 'undefined') {
-        window.history.replaceState(null, '', '/?tab=models-routines&view=routines');
-      }
-    } else if (tab === 'profile' && !queryProcessed.current.tab) {
-      setActiveTab('users');
-      setConfigView('profile');
-      queryProcessed.current.tab = true;
-      if (typeof window !== 'undefined') {
-        window.history.replaceState(null, '', '/?tab=users&view=profile');
-      }
-    } else if ((tab === 'collaboration' || tab === 'insights') && !queryProcessed.current.tab) {
-      const resolved = resolveCaseView({ tab, caseId: caseId || null, caseView: caseView || null });
-      setActiveTab(resolved.activeTab);
-      setCasesNotice(resolved.notice);
-      queryProcessed.current.tab = true;
-      if (typeof window !== 'undefined') {
-        window.history.replaceState(null, '', resolved.redirectUrl || '/?tab=cases');
-      }
-    } else if (tab && typeof tab === 'string' && !queryProcessed.current.tab) {
-      setActiveTab(tab);
-      queryProcessed.current.tab = true;
+    // Aplica redirecionamento legado sem loop
+    if (redirectTo && redirectTo !== asPath && typeof window !== 'undefined') {
+      window.history.replaceState(null, '', redirectTo);
     }
 
-    if (view === 'clientes') {
-      setChatView('clientes');
-    } else if (view === 'conversas') {
-      setChatView('conversas');
-    } else if (tab === 'clients') {
-      setChatView('clientes');
+    // Valida permissões
+    if (!isTabAllowed(tab, view)) {
+      tab = getSafeTab();
+      view = undefined;
+      caseId = undefined;
+      caseView = undefined;
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', buildInternalUrl({ tab }));
+      }
+    }
+
+    setActiveTab(tab);
+    setCasesNotice(notice || null);
+
+    if (tab === 'chat' && view) {
+      setChatView(view === 'clientes' ? 'clientes' : 'conversas');
+    }
+
+    if (tab === 'models-routines' && view) {
+      setModelsRoutinesView(view);
     }
 
     if (tab === 'users' && view) {
@@ -238,11 +237,9 @@ export default function Home() {
       setFeeView(view);
     }
 
-    if (tab === 'chat' && newParam === '1' && !queryProcessed.current.conversation) {
+    if (tab === 'chat' && newConversation) {
       setShowNewConvModal(true);
       setSelectedConversation(null);
-      queryProcessed.current.conversation = true;
-      // Limpa o parâmetro para não reabrir ao voltar
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
         url.searchParams.delete('new');
@@ -251,18 +248,24 @@ export default function Home() {
       }
     }
 
-    if (!isClientesView && tab === 'chat' && conversation && conversations.length > 0 && !queryProcessed.current.conversation) {
-      const conv = conversations.find(c => c.id === conversation);
-      if (conv) {
-        setSelectedConversation(conv);
-        queryProcessed.current.conversation = true;
+    lastProcessedAsPath.current = asPath;
+  }, [router.isReady, router.asPath, profile?.role]);
+
+  // Seleciona conversa a partir da query string quando os dados estiverem carregados
+  useEffect(() => {
+    if (!router.isReady) return;
+    const conversationId = router.query.conversation;
+    if (conversationId && conversations.length > 0) {
+      if (lastConversationQuery.current !== conversationId) {
+        const conv = conversations.find((c) => c.id === conversationId);
+        if (conv) {
+          setSelectedConversation(conv);
+          setActiveTab('chat');
+        }
+        lastConversationQuery.current = conversationId;
       }
     }
-
-    if (tab === 'cases' && caseId) {
-      // Caso e aba serão gerenciados pelo CasesPanel via query
-    }
-  }, [router.isReady, router.query, conversations]);
+  }, [router.isReady, router.query.conversation, conversations]);
 
   const fetchConversations = async () => {
     try {

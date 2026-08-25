@@ -54,6 +54,14 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   const [selectedMessages, setSelectedMessages] = useState(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState('');
+
+  useEffect(() => {
+    if (!copyFeedback) return;
+    const t = setTimeout(() => setCopyFeedback(''), 2000);
+    return () => clearTimeout(t);
+  }, [copyFeedback]);
+
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const isAtBottomRef = useRef(true);
@@ -508,7 +516,12 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-nc-surface min-h-0">
+    <div className="flex-1 flex flex-col bg-nc-surface min-h-0 relative">
+      {copyFeedback && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-nc-gray-900 text-nc-white text-xs px-3 py-1.5 rounded shadow">
+          {copyFeedback}
+        </div>
+      )}
       {showProfile && (
         <CustomerProfilePanel
           conversation={conversation}
@@ -928,7 +941,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(msg.text);
-                        alert('Mensagem copiada!');
+                        setCopyFeedback('Mensagem copiada.');
                       }}
                       className="text-xs text-nc-text-muted hover:text-nc-text transition"
                       title="Copiar mensagem"

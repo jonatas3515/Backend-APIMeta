@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 
+// TODO (órfão): componente legado. MetricsDashboard é o componente ativo de métricas.
+// Candidato a integração futura ou remoção após confirmação de que não há mais uso.
 export default function MetricsPanel() {
   const [casesByArea, setCasesByArea] = useState([]);
   const [casesByType, setCasesByType] = useState([]);

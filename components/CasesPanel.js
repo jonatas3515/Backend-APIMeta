@@ -20,6 +20,7 @@ import ConversationSelectorModal from './ConversationSelectorModal';
 export default function CasesPanel({ notice }) {
   const router = useRouter();
   const { profile } = useAuth();
+  const canEdit = profile?.role === 'admin' || profile?.role === 'advogado';
   const { selectedArea, setSelectedArea } = useAreaFilter();
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -216,7 +217,7 @@ export default function CasesPanel({ notice }) {
 
   const handleSaveCase = async () => {
     if (!formData.title) {
-      alert('Título é obrigatório');
+      console.error('[CASES] Título é obrigatório');
       return;
     }
 
@@ -267,14 +268,18 @@ export default function CasesPanel({ notice }) {
   };
 
   const handleEditCase = (caseItem) => {
+    if (!canEdit) {
+      console.warn('[CASES] Permissão negada para editar caso.');
+      return;
+    }
     setEditingCase(caseItem);
     setFormData(caseItem);
     setShowForm(true);
   };
 
   const handleDeleteCase = async (id) => {
-    if (profile?.role === 'estagiario') {
-      alert('Você não tem permissão para excluir casos.');
+    if (!canEdit) {
+      console.warn('[CASES] Permissão negada para excluir caso.');
       return;
     }
     if (!confirm('Tem certeza que deseja deletar este caso?')) return;
@@ -326,7 +331,7 @@ export default function CasesPanel({ notice }) {
   };
 
   const handleLinkConversation = async (conversation) => {
-    if (!selectedCase || !conversation) return;
+    if (!canEdit || !selectedCase || !conversation) return;
     try {
       const { data, error } = await supabase
         .from('cases')
@@ -347,7 +352,7 @@ export default function CasesPanel({ notice }) {
   };
 
   const handleUnlinkConversation = async () => {
-    if (!selectedCase) return;
+    if (!canEdit || !selectedCase) return;
     try {
       const { data, error } = await supabase
         .from('cases')
@@ -477,29 +482,31 @@ export default function CasesPanel({ notice }) {
             onExcel={() => exportCasesExcel(cases)}
             disabled={loading || cases.length === 0}
           />
-          <button
-            onClick={() => {
-            setShowForm(true);
-            setEditingCase(null);
-            setFormData({
-              conversation_id: '',
-              title: '',
-              legal_area: '',
-              case_type: '',
-              municipality: '',
-              agency: '',
-              client_role: '',
-              status: 'prospect',
-              priority: 'media',
-              deadline_date: '',
-              deadline_type: '',
-              notes: ''
-            });
-          }}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          + Novo Caso
-        </button>
+          {canEdit && (
+            <button
+              onClick={() => {
+                setShowForm(true);
+                setEditingCase(null);
+                setFormData({
+                  conversation_id: '',
+                  title: '',
+                  legal_area: '',
+                  case_type: '',
+                  municipality: '',
+                  agency: '',
+                  client_role: '',
+                  status: 'prospect',
+                  priority: 'media',
+                  deadline_date: '',
+                  deadline_type: '',
+                  notes: ''
+                });
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              + Novo Caso
+            </button>
+          )}
         </div>
       </div>
 
@@ -724,12 +731,14 @@ export default function CasesPanel({ notice }) {
                       )}
                     </td>
                     <td className="border p-3 flex gap-2">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleEditCase(caseItem); }}
-                        className="px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-                      >
-                        Editar
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleEditCase(caseItem); }}
+                          className="px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                        >
+                          Editar
+                        </button>
+                      )}
                       <button
                         onClick={(e) => { e.stopPropagation(); setChecklistCase(caseItem); }}
                         className="px-2 py-1 bg-teal-500 text-white rounded text-sm hover:bg-teal-600"
@@ -760,12 +769,14 @@ export default function CasesPanel({ notice }) {
                       >
                         Processo
                       </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteCase(caseItem.id); }}
-                        className="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                      >
-                        Deletar
-                      </button>
+                      {canEdit && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteCase(caseItem.id); }}
+                          className="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                        >
+                          Deletar
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

@@ -5,9 +5,18 @@ import { useAuth } from '@/lib/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import Head from 'next/head';
+import axios from 'axios';
 import Sidebar from '@/components/Sidebar';
 import MetricsDashboard from '@/components/MetricsDashboard';
-import { AreaFilterProvider } from '@/contexts/AreaFilterContext';
+import AreaFilterSelector from '@/components/AreaFilterSelector';
+import ActiveFilterBanner from '@/components/ActiveFilterBanner';
+import GlobalSearch from '@/components/GlobalSearch';
+import KeyboardShortcuts from '@/components/KeyboardShortcuts';
+import NotificationPermissionPrompt from '@/components/NotificationPermissionPrompt';
+import useAreaFilter from '@/hooks/useAreaFilter';
+import { getAuthHeaders } from '@/lib/api';
+import { buildInternalUrl } from '@/lib/router';
+import { isSupported, getPermission } from '@/lib/notifications';
 
 const priorityColors = {
   alta: 'bg-red-100 text-red-800 border-red-200',
@@ -39,10 +48,14 @@ function DashboardLoading() {
 
 export default function DashboardPage() {
   const { authUser, profile, loading: authLoading } = useAuth();
+  const { selectedArea } = useAreaFilter();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [conversations, setConversations] = useState([]);
+  const [taskMessage, setTaskMessage] = useState(null);
+  const [notifPrefs, setNotifPrefs] = useState(null);
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -53,7 +66,27 @@ export default function DashboardPage() {
 
     fetchDashboard();
     fetchConversations();
-  }, [authUser, authLoading]);
+  }, [authUser, authLoading, selectedArea]);
+
+  useEffect(() => {
+    if (!authUser || !profile) return;
+
+    const load = async () => {
+      try {
+        const headers = await getAuthHeaders();
+        const { data } = await axios.get('/api/notification-preferences', { headers });
+        setNotifPrefs(data);
+
+        if (isSupported() && getPermission() === 'default' && (!data.ask_again_after || new Date(data.ask_again_after) < new Date())) {
+          setShowNotifPrompt(true);
+        }
+      } catch (e) {
+        console.error('[DASHBOARD NOTIFICATIONS] Erro ao carregar preferências:', e);
+      }
+    };
+
+    load();
+  }, [authUser, profile]);
 
   const fetchDashboard = async () => {
     try {
@@ -63,7 +96,11 @@ export default function DashboardPage() {
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
 
-      const response = await fetch('/api/dashboard', {
+      const url = selectedArea
+        ? `/api/dashboard?legal_area=${encodeURIComponent(selectedArea)}`
+        : '/api/dashboard';
+
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -109,10 +146,11 @@ export default function DashboardPage() {
 
       if (error) throw error;
 
+      setTaskMessage({ type: 'success', text: 'Tarefa concluída com sucesso.' });
       fetchDashboard();
     } catch (err) {
       console.error('[DASHBOARD] Erro ao concluir tarefa:', err);
-      alert('Erro ao concluir tarefa: ' + err.message);
+      setTaskMessage({ type: 'error', text: 'Não foi possível concluir a tarefa. Tente novamente.' });
     }
   };
 
@@ -126,6 +164,11 @@ export default function DashboardPage() {
     if (!date) return '—';
     const d = new Date(date);
     return d.toLocaleString('pt-BR');
+  };
+
+  const matchesArea = (item) => {
+    if (!selectedArea) return true;
+    return (item.legal_area || '') === selectedArea;
   };
 
   if (authLoading || loading) {
@@ -169,7 +212,6 @@ export default function DashboardPage() {
       <div className="flex flex-col md:flex-row h-screen bg-nc-surface overflow-hidden">
         <Sidebar activeTab="dashboard" />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-          <AreaFilterProvider>
           <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
             <div>
@@ -178,12 +220,15 @@ export default function DashboardPage() {
                 Olá, {profile?.name || 'Advogado'} · {new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
-            <div className="mt-4 md:mt-0">
+            <div className="mt-4 md:mt-0 flex items-center gap-3">
+              <AreaFilterSelector compact />
               <button onClick={fetchDashboard} className="nc-btn" title="Atualizar">
                 ↻ Atualizar
               </button>
             </div>
           </div>
+
+          <ActiveFilterBanner />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {/* Métricas */}
@@ -215,14 +260,14 @@ export default function DashboardPage() {
               <h2 className="text-lg font-semibold text-nc-text-title mb-4 flex items-center gap-2">
                 <span>⏰</span> Próximos Prazos
               </h2>
-              {data.next_deadlines?.length === 0 ? (
+              {data.next_deadlines?.filter(matchesArea).length === 0 ? (
                 <p className="text-sm text-nc-text-secondary">Nenhum prazo nos próximos 3 dias.</p>
               ) : (
                 <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {data.next_deadlines.map((item) => (
-                    <Link 
-                      key={item.id} 
-                      href={`/cases?id=${item.case_id}`}
+                  {data.next_deadlines.filter(matchesArea).map((item) => (
+                    <Link
+                      key={item.id}
+                      href={buildInternalUrl({ tab: 'cases', caseId: item.case_id })}
                       className="block p-3 rounded-nc border border-nc-gray-200 hover:border-nc-yellow transition bg-nc-white"
                     >
                       <div className="flex items-center justify-between">
@@ -244,18 +289,18 @@ export default function DashboardPage() {
             <div className="nc-card p-5">
               <h2 className="text-lg font-semibold text-nc-text-title mb-4 flex items-center gap-2">
                 <span>💬</span> Não Lidas
-                {data.unread_messages?.total > 0 && (
-                  <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{data.unread_messages.total}</span>
+                {data.unread_messages?.conversations?.filter(matchesArea).length > 0 && (
+                  <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">{data.unread_messages.conversations.filter(matchesArea).length}</span>
                 )}
               </h2>
-              {data.unread_messages?.conversations?.length === 0 ? (
+              {data.unread_messages?.conversations?.filter(matchesArea).length === 0 ? (
                 <p className="text-sm text-nc-text-secondary">Nenhuma mensagem não lida.</p>
               ) : (
                 <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {data.unread_messages.conversations.map((conv) => (
-                    <Link 
-                      key={conv.id} 
-                      href={`/?conv=${conv.id}`}
+                  {data.unread_messages.conversations.filter(matchesArea).map((conv) => (
+                    <Link
+                      key={conv.id}
+                      href={buildInternalUrl({ tab: 'chat', conversationId: conv.id })}
                       className="block p-3 rounded-nc border border-nc-gray-200 hover:border-nc-yellow transition bg-nc-white"
                     >
                       <p className="font-medium text-nc-text text-sm">{conv.client_name || conv.client_phone}</p>
@@ -272,14 +317,14 @@ export default function DashboardPage() {
               <h2 className="text-lg font-semibold text-nc-text-title mb-4 flex items-center gap-2">
                 <span>🚨</span> Casos em Etapa Crítica
               </h2>
-              {data.critical_cases?.length === 0 ? (
+              {data.critical_cases?.filter(matchesArea).length === 0 ? (
                 <p className="text-sm text-nc-text-secondary">Nenhum caso parado na proposta há mais de 5 dias.</p>
               ) : (
                 <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {data.critical_cases.map((c) => (
-                    <Link 
-                      key={c.id} 
-                      href={`/cases?id=${c.case_id}`}
+                  {data.critical_cases.filter(matchesArea).map((c) => (
+                    <Link
+                      key={c.id}
+                      href={buildInternalUrl({ tab: 'cases', caseId: c.case_id })}
                       className="block p-3 rounded-nc border border-nc-gray-200 hover:border-nc-yellow transition bg-nc-white"
                     >
                       <div className="flex items-center justify-between">
@@ -304,13 +349,18 @@ export default function DashboardPage() {
               <h2 className="text-lg font-semibold text-nc-text-title mb-4 flex items-center gap-2">
                 <span>✅</span> Minhas Tarefas
               </h2>
-              {data.my_tasks?.length === 0 ? (
+              {taskMessage && (
+                <div className={`mb-3 p-2 rounded text-sm ${taskMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'}`}>
+                  {taskMessage.text}
+                </div>
+              )}
+              {data.my_tasks?.filter(matchesArea).length === 0 ? (
                 <p className="text-sm text-nc-text-secondary">Nenhuma tarefa pendente.</p>
               ) : (
                 <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {data.my_tasks.map((task) => (
-                    <div 
-                      key={task.id} 
+                  {data.my_tasks.filter(matchesArea).map((task) => (
+                    <div
+                      key={task.id}
                       className="p-3 rounded-nc border border-nc-gray-200 bg-nc-white"
                     >
                       <div className="flex items-start gap-3">
@@ -325,7 +375,7 @@ export default function DashboardPage() {
                             <p className="text-xs text-nc-text-secondary mt-0.5">Caso: {task.case_title}</p>
                           )}
                           <p className="text-xs text-nc-text-muted mt-1">
-                            {formatDate(task.due_date)} · 
+                            {formatDate(task.due_date)} ·
                             <span className={`ml-1 px-1.5 py-0.5 rounded text-xs border ${priorityColors[task.priority] || priorityColors.media}`}>
                               {task.priority}
                             </span>
@@ -344,9 +394,27 @@ export default function DashboardPage() {
           </div>
 
           </div>
-          </AreaFilterProvider>
         </main>
       </div>
+
+      <GlobalSearch />
+      <KeyboardShortcuts />
+
+      {showNotifPrompt && (
+        <NotificationPermissionPrompt
+          profile={profile}
+          onClose={() => setShowNotifPrompt(false)}
+          onUpdate={async () => {
+            try {
+              const headers = await getAuthHeaders();
+              const { data } = await axios.get('/api/notification-preferences', { headers });
+              setNotifPrefs(data);
+            } catch (e) {
+              console.error('[DASHBOARD NOTIFICATIONS] Erro ao recarregar preferências:', e);
+            }
+          }}
+        />
+      )}
     </>
   );
 }

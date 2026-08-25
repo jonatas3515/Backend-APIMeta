@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/compat/router';
 import { useAuth } from '../lib/useAuth';
 import axios from 'axios';
 import { getAuthHeaders } from '../lib/api';
@@ -38,7 +38,7 @@ export default function GlobalSearch() {
     }
   }, []);
 
-  const isMac = typeof navigator !== 'undefined' && navigator.platform?.toUpperCase().includes('MAC');
+  const isMac = typeof navigator !== 'undefined' && navigator.userAgent?.toUpperCase().includes('MAC');
   const shortcut = isMac ? 'Cmd+K' : 'Ctrl+K';
 
   const performSearch = useCallback(async (term) => {
