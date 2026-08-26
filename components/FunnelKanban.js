@@ -5,6 +5,10 @@ import useAreaFilter from '../hooks/useAreaFilter';
 import { LEGAL_AREAS } from '../lib/legalAreas';
 import ExportButtons from './ExportButtons';
 import { exportFunnelPdf, exportFunnelExcel } from '../lib/export';
+import CaseSuggestionBanner from './CaseSuggestionBanner';
+import CaseCreationModal from './CaseCreationModal';
+import CaseLinkModal from './CaseLinkModal';
+import { navigateToCase } from '../lib/router';
 
 // Etapas padronizadas do funil
 const FUNNEL_STAGES = [
@@ -26,6 +30,11 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
     search: ''
   });
   const [loading, setLoading] = useState(false);
+  const [activeCases, setActiveCases] = useState({});
+  const [userRole, setUserRole] = useState(null);
+  const [selectedConvForCase, setSelectedConvForCase] = useState(null);
+  const [showCaseCreationModal, setShowCaseCreationModal] = useState(false);
+  const [showCaseLinkModal, setShowCaseLinkModal] = useState(false);
 
   useEffect(() => {
     setItems(conversations);
@@ -34,6 +43,66 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
   useEffect(() => {
     setFilters((prev) => ({ ...prev, area: selectedArea }));
   }, [selectedArea]);
+
+  // Buscar role do usuário
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data, error } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle();
+          
+          if (!error && data) {
+            setUserRole(data.role || null);
+          }
+        }
+      } catch (err) {
+        console.error('[FUNNEL] Erro ao buscar role:', err);
+      }
+    };
+    fetchUserRole();
+  }, []);
+
+  // Buscar casos ativos para conversas elegíveis
+  useEffect(() => {
+    const fetchActiveCases = async () => {
+      const eligibleStages = ['intake_concluido', 'proposta_enviada', 'contrato_assinado', 'acao_protocolada', 'aguardando_decisao', 'encerrado'];
+      const eligibleConvs = normalizedConversations.filter(c => eligibleStages.includes(c.funnel_stage));
+      
+      if (eligibleConvs.length === 0) return;
+
+      try {
+        const headers = await getAuthHeaders();
+        const cases = {};
+        
+        await Promise.all(
+          eligibleConvs.map(async (conv) => {
+            try {
+              const response = await fetch(`/api/cases/active?conversation_id=${conv.id}`, { headers });
+              if (response.ok) {
+                const data = await response.json();
+                if (data) cases[conv.id] = data;
+              }
+            } catch (err) {
+              console.error(`[FUNNEL] Erro ao buscar caso ativo para ${conv.id}:`, err);
+            }
+          })
+        );
+        
+        setActiveCases(cases);
+      } catch (err) {
+        console.error('[FUNNEL] Erro ao buscar casos ativos:', err);
+      }
+    };
+
+    if (normalizedConversations.length > 0) {
+      fetchActiveCases();
+    }
+  }, [items]);
 
   const handleStageChange = async (conversation, newStage) => {
     if (conversation.funnel_stage === newStage) return;
@@ -130,6 +199,35 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
   const handleExportPdf = () => exportFunnelPdf({ metrics, conversions, filters });
   const handleExportExcel = () => exportFunnelExcel({ metrics, conversions });
 
+  const handleCreateCase = (conversation) => {
+    setSelectedConvForCase(conversation);
+    setShowCaseCreationModal(true);
+  };
+
+  const handleLinkCase = (conversation) => {
+    setSelectedConvForCase(conversation);
+    setShowCaseLinkModal(true);
+  };
+
+  const handleOpenCase = (conversation) => {
+    const activeCase = activeCases[conversation.id];
+    if (activeCase) {
+      navigateToCase(activeCase.id);
+    }
+  };
+
+  const handleCaseCreated = (caseId) => {
+    navigateToCase(caseId);
+    // Recarregar casos ativos
+    setItems([...items]);
+  };
+
+  const handleCaseLinked = (caseId) => {
+    navigateToCase(caseId);
+    // Recarregar casos ativos
+    setItems([...items]);
+  };
+
   return (
     <div className="h-full w-full min-w-0 flex flex-col bg-nc-surface">
       {/* Filtros */}
@@ -217,6 +315,53 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
                       </span>
                     )}
 
+                    {/* Ação de Caso */}
+                    {userRole && ['intake_concluido', 'proposta_enviada', 'contrato_assinado', 'acao_protocolada', 'aguardando_decisao', 'encerrado'].includes(conv.funnel_stage) && (
+                      <div className="mt-2 mb-2">
+                        {activeCases[conv.id] ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenCase(conv);
+                            }}
+                            className="w-full text-xs px-2 py-1.5 bg-green-50 text-green-700 border border-green-300 rounded hover:bg-green-100 transition"
+                          >
+                            ⚖️ Abrir caso vinculado
+                          </button>
+                        ) : (
+                          <>
+                            {(userRole === 'admin' || userRole === 'advogado') && (
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCreateCase(conv);
+                                  }}
+                                  className="flex-1 text-xs px-2 py-1.5 bg-blue-50 text-blue-700 border border-blue-300 rounded hover:bg-blue-100 transition"
+                                >
+                                  ⚖️ Criar caso
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleLinkCase(conv);
+                                  }}
+                                  className="flex-1 text-xs px-2 py-1.5 bg-purple-50 text-purple-700 border border-purple-300 rounded hover:bg-purple-100 transition"
+                                >
+                                  🔗 Vincular
+                                </button>
+                              </div>
+                            )}
+                            {['acao_protocolada', 'aguardando_decisao', 'encerrado'].includes(conv.funnel_stage) && !activeCases[conv.id] && (
+                              <div className="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded px-2 py-1.5 mt-1">
+                                ⚠️ Inconsistência: estágio avançado sem caso
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+
                     {/* Dropdown para mudar stage */}
                     <select
                       value={conv.funnel_stage || 'lead_novo'}
@@ -242,6 +387,31 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
           ))}
         </div>
       </div>
+
+      {/* Modais de Caso */}
+      {selectedConvForCase && (
+        <>
+          <CaseCreationModal
+            isOpen={showCaseCreationModal}
+            onClose={() => {
+              setShowCaseCreationModal(false);
+              setSelectedConvForCase(null);
+            }}
+            conversation={selectedConvForCase}
+            onSuccess={handleCaseCreated}
+          />
+
+          <CaseLinkModal
+            isOpen={showCaseLinkModal}
+            onClose={() => {
+              setShowCaseLinkModal(false);
+              setSelectedConvForCase(null);
+            }}
+            conversationId={selectedConvForCase.id}
+            onSuccess={handleCaseLinked}
+          />
+        </>
+      )}
     </div>
   );
 }

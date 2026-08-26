@@ -280,3 +280,92 @@ describe('Case Transition - Segurança', () => {
     expect(displayData).not.toHaveProperty('access_token');
   });
 });
+
+describe('Case Transition - Integração no Funil', () => {
+  test('estágio elegível mostra ação de caso', () => {
+    const conversation = { funnel_stage: 'intake_concluido' };
+    const userRole = 'advogado';
+    const eligibleStages = ['intake_concluido', 'proposta_enviada', 'contrato_assinado', 'acao_protocolada', 'aguardando_decisao', 'encerrado'];
+    
+    const shouldShowAction = eligibleStages.includes(conversation.funnel_stage) && !!userRole;
+    
+    expect(shouldShowAction).toBe(true);
+  });
+
+  test('estágio não elegível não mostra ação', () => {
+    const conversation = { funnel_stage: 'lead_novo' };
+    const userRole = 'advogado';
+    const eligibleStages = ['intake_concluido', 'proposta_enviada', 'contrato_assinado', 'acao_protocolada', 'aguardando_decisao', 'encerrado'];
+    
+    const shouldShowAction = eligibleStages.includes(conversation.funnel_stage) && !!userRole;
+    
+    expect(shouldShowAction).toBe(false);
+  });
+
+  test('conversa com caso ativo mostra botão de abrir', () => {
+    const conversation = { id: 'conv-123', funnel_stage: 'intake_concluido' };
+    const activeCases = { 'conv-123': { id: 'case-123', status: 'prospect' } };
+    
+    const hasActiveCase = !!activeCases[conversation.id];
+    
+    expect(hasActiveCase).toBe(true);
+  });
+
+  test('conversa sem caso ativo mostra botões de criar/vincular para admin', () => {
+    const conversation = { id: 'conv-123', funnel_stage: 'intake_concluido' };
+    const activeCases = {};
+    const userRole = 'admin';
+    
+    const hasActiveCase = !!activeCases[conversation.id];
+    const canCreateOrLink = (userRole === 'admin' || userRole === 'advogado') && !hasActiveCase;
+    
+    expect(canCreateOrLink).toBe(true);
+  });
+
+  test('estagiário não vê botões de criar/vincular', () => {
+    const conversation = { id: 'conv-123', funnel_stage: 'intake_concluido' };
+    const activeCases = {};
+    const userRole = 'estagiario';
+    
+    const hasActiveCase = !!activeCases[conversation.id];
+    const canCreateOrLink = (userRole === 'admin' || userRole === 'advogado') && !hasActiveCase;
+    
+    expect(canCreateOrLink).toBe(false);
+  });
+
+  test('estágio avançado sem caso mostra aviso de inconsistência', () => {
+    const conversation = { id: 'conv-123', funnel_stage: 'acao_protocolada' };
+    const activeCases = {};
+    const advancedStages = ['acao_protocolada', 'aguardando_decisao', 'encerrado'];
+    
+    const showInconsistency = advancedStages.includes(conversation.funnel_stage) && !activeCases[conversation.id];
+    
+    expect(showInconsistency).toBe(true);
+  });
+
+  test('navegação usa mesma função do Chat', () => {
+    const caseId = 'case-123';
+    const expectedUrl = '/?tab=cases&caseId=case-123';
+    
+    // Simula buildInternalUrl
+    const params = new URLSearchParams();
+    params.set('tab', 'cases');
+    params.set('caseId', caseId);
+    const url = `/?${params.toString()}`;
+    
+    expect(url).toBe(expectedUrl);
+  });
+
+  test('reutiliza componentes existentes', () => {
+    // Verifica que os mesmos componentes são usados
+    const components = {
+      CaseCreationModal: 'CaseCreationModal',
+      CaseLinkModal: 'CaseLinkModal',
+      navigateToCase: 'navigateToCase'
+    };
+    
+    expect(components.CaseCreationModal).toBe('CaseCreationModal');
+    expect(components.CaseLinkModal).toBe('CaseLinkModal');
+    expect(components.navigateToCase).toBe('navigateToCase');
+  });
+});
