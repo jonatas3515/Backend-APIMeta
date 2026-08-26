@@ -8,6 +8,9 @@
 -- - Sincroniza conversations.has_case automaticamente
 -- ============================================================================
 
+-- 0. Garantir que coluna has_case existe (idempotente)
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS has_case BOOLEAN DEFAULT false;
+
 -- 1. Criar índice parcial para casos ativos por conversa
 -- Garante performance e unicidade de casos ativos
 CREATE UNIQUE INDEX IF NOT EXISTS idx_cases_active_per_conversation
