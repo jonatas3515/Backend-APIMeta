@@ -10,6 +10,10 @@ import RemindersPanel from './RemindersPanel';
 import DocumentGenerator from './DocumentGenerator';
 import CustomerProfilePanel from './CustomerProfilePanel';
 import SignaturePanel from './SignaturePanel';
+import CaseSuggestionBanner from './CaseSuggestionBanner';
+import CaseCreationModal from './CaseCreationModal';
+import CaseLinkModal from './CaseLinkModal';
+import { navigateToCase } from '../lib/router';
 
 function isSameDay(a, b) {
   return a.getFullYear() === b.getFullYear() &&
@@ -55,12 +59,72 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   const [selectionMode, setSelectionMode] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState('');
+  const [activeCase, setActiveCase] = useState(null);
+  const [showCaseCreationModal, setShowCaseCreationModal] = useState(false);
+  const [showCaseLinkModal, setShowCaseLinkModal] = useState(false);
+  const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
     if (!copyFeedback) return;
     const t = setTimeout(() => setCopyFeedback(''), 2000);
     return () => clearTimeout(t);
   }, [copyFeedback]);
+
+  // Buscar caso ativo vinculado
+  useEffect(() => {
+    if (conversation?.id) {
+      fetchActiveCase();
+    }
+  }, [conversation?.id]);
+
+  // Buscar role do usuário
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+          setUserRole(data?.role || null);
+        }
+      } catch (err) {
+        console.error('[CHAT] Erro ao buscar role:', err);
+      }
+    };
+    fetchUserRole();
+  }, []);
+
+  const fetchActiveCase = async () => {
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch(`/api/cases/active?conversation_id=${conversation.id}`, { headers });
+      if (response.ok) {
+        const data = await response.json();
+        setActiveCase(data);
+      }
+    } catch (err) {
+      console.error('[CHAT] Erro ao buscar caso ativo:', err);
+    }
+  };
+
+  const handleCaseCreated = (caseId) => {
+    navigateToCase(caseId);
+    fetchActiveCase();
+  };
+
+  const handleCaseLinked = (caseId) => {
+    navigateToCase(caseId);
+    fetchActiveCase();
+  };
+
+  const handleOpenCase = () => {
+    if (activeCase) {
+      navigateToCase(activeCase.id);
+    }
+  };
 
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -745,6 +809,20 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           <SignaturePanel conversationId={conversation?.id} />
         </div>
       )}
+
+      {/* Banner de Sugestão de Caso */}
+      {userRole && (
+        <div className="px-4 pt-4">
+          <CaseSuggestionBanner
+            conversation={conversation}
+            activeCase={activeCase}
+            userRole={userRole}
+            onCreateCase={() => setShowCaseCreationModal(true)}
+            onLinkCase={() => setShowCaseLinkModal(true)}
+            onOpenCase={handleOpenCase}
+          />
+        </div>
+      )}
       </div>
 
       <div
@@ -1147,6 +1225,21 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           </div>
         </div>
       </div>
+
+      {/* Modais de Caso */}
+      <CaseCreationModal
+        isOpen={showCaseCreationModal}
+        onClose={() => setShowCaseCreationModal(false)}
+        conversation={conversation}
+        onSuccess={handleCaseCreated}
+      />
+
+      <CaseLinkModal
+        isOpen={showCaseLinkModal}
+        onClose={() => setShowCaseLinkModal(false)}
+        conversationId={conversation?.id}
+        onSuccess={handleCaseLinked}
+      />
     </div>
   );
 }

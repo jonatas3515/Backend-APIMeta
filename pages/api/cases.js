@@ -78,11 +78,34 @@ async function handlePost(req, res) {
     notes
   } = req.body;
 
+  // Validar permissão
+  const userRole = req.user?.role;
+  if (userRole !== 'admin' && userRole !== 'advogado') {
+    return res.status(403).json({ error: 'Apenas admin e advogado podem criar casos' });
+  }
+
   if (!title) {
     return res.status(400).json({ error: 'Título do caso é obrigatório' });
   }
 
   try {
+    // Verificar se já existe caso ativo para esta conversa
+    if (conversation_id) {
+      const { data: existingCases, error: checkError } = await supabase
+        .from('cases')
+        .select('id, status, title')
+        .eq('conversation_id', conversation_id)
+        .neq('status', 'encerrado');
+
+      if (checkError) {
+        console.error('[CASES] Erro ao verificar casos existentes:', checkError);
+      } else if (existingCases && existingCases.length > 0) {
+        return res.status(409).json({
+          error: 'Esta conversa já possui um caso ativo vinculado',
+          existingCase: existingCases[0]
+        });
+      }
+    }
     const insertData = {
       conversation_id: conversation_id || null,
       title,
@@ -125,11 +148,35 @@ async function handlePatch(req, res) {
   const { id } = req.query;
   const updates = req.body;
 
+  // Validar permissão
+  const userRole = req.user?.role;
+  if (userRole !== 'admin' && userRole !== 'advogado') {
+    return res.status(403).json({ error: 'Apenas admin e advogado podem atualizar casos' });
+  }
+
   if (!id) {
     return res.status(400).json({ error: 'ID do caso é obrigatório' });
   }
 
   try {
+    // Se está alterando conversation_id, verificar caso ativo
+    if (updates.conversation_id) {
+      const { data: existingCases, error: checkError } = await supabase
+        .from('cases')
+        .select('id, status, title')
+        .eq('conversation_id', updates.conversation_id)
+        .neq('status', 'encerrado')
+        .neq('id', id);
+
+      if (checkError) {
+        console.error('[CASES] Erro ao verificar casos existentes:', checkError);
+      } else if (existingCases && existingCases.length > 0) {
+        return res.status(409).json({
+          error: 'A conversa de destino já possui um caso ativo vinculado',
+          existingCase: existingCases[0]
+        });
+      }
+    }
     const { data, error } = await supabase
       .from('cases')
       .update(updates)
