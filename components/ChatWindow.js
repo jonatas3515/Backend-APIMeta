@@ -83,12 +83,15 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('users')
             .select('role')
             .eq('id', user.id)
-            .single();
-          setUserRole(data?.role || null);
+            .maybeSingle();
+          
+          if (!error && data) {
+            setUserRole(data.role || null);
+          }
         }
       } catch (err) {
         console.error('[CHAT] Erro ao buscar role:', err);

@@ -252,8 +252,12 @@ export default async function handler(req, res) {
         const intakeResult = await handleIntake(conversation, textBody);
         if (intakeResult && intakeResult.reply) {
           // Enviar próxima pergunta do intake
-          await saveMessage(conversation.id, intakeResult.reply, 'ai');
-          await sendWhatsAppMessage(from, intakeResult.reply);
+          const savedMsg = await saveMessage(conversation.id, intakeResult.reply, 'ai');
+          const waMessageId = await sendWhatsAppMessage(from, intakeResult.reply);
+          // Atualizar mensagem com wa_message_id e status
+          if (savedMsg && waMessageId) {
+            await supabase.from('messages').update({ wa_message_id: waMessageId, status: 'sent' }).eq('id', savedMsg.id);
+          }
           log('intake_replied', { phoneHash: hashPhone(from), replyLength: intakeResult.reply?.length || 0 });
           return res.status(200).json({ success: true, intake: true });
         }
@@ -305,8 +309,11 @@ export default async function handler(req, res) {
           return res.status(200).json({ success: true, marketing: true });
         }
         if (specialReply) {
-          await saveMessage(conversation.id, specialReply, 'ai');
-          await sendWhatsAppMessage(from, specialReply);
+          const savedMsg = await saveMessage(conversation.id, specialReply, 'ai');
+          const waMessageId = await sendWhatsAppMessage(from, specialReply);
+          if (savedMsg && waMessageId) {
+            await supabase.from('messages').update({ wa_message_id: waMessageId, status: 'sent' }).eq('id', savedMsg.id);
+          }
           log('special_replied', { phoneHash: hashPhone(from), replyLength: specialReply?.length || 0 });
           return res.status(200).json({ success: true, special: true });
         }
@@ -346,8 +353,9 @@ export default async function handler(req, res) {
       const needsHuman = detectNeedsHuman(textBody, aiReply, intakeCompleted);
       
       // Salvar resposta da IA
+      let savedAiMsg = null;
       if (conversation) {
-        await saveMessage(conversation.id, aiReply, 'ai');
+        savedAiMsg = await saveMessage(conversation.id, aiReply, 'ai');
         
         // Marcar conversa como precisando de humano
         if (needsHuman && conversation.id) {
@@ -374,7 +382,11 @@ export default async function handler(req, res) {
       }
 
       // Enviar resposta via WhatsApp
-      await sendWhatsAppMessage(from, aiReply);
+      const aiWaMessageId = await sendWhatsAppMessage(from, aiReply);
+      // Atualizar mensagem com wa_message_id e status
+      if (savedAiMsg && aiWaMessageId) {
+        await supabase.from('messages').update({ wa_message_id: aiWaMessageId, status: 'sent' }).eq('id', savedAiMsg.id);
+      }
       log('reply_sent', { phoneHash: hashPhone(from) });
       
       // Retorna sucesso após processar tudo
@@ -1163,7 +1175,9 @@ async function sendWhatsAppMessage(to, text) {
     }
 
     const data = await response.json();
-    console.log(`[WHATSAPP] ✅ Mensagem enviada com sucesso. ID: ${data.messages?.[0]?.id}`);
+    const waMessageId = data.messages?.[0]?.id;
+    console.log(`[WHATSAPP] ✅ Mensagem enviada com sucesso. ID: ${waMessageId}`);
+    return waMessageId; // Retornar o ID da mensagem
   } catch (error) {
     console.error(`[WHATSAPP] ❌ Erro ao enviar mensagem: ${error.message}`);
     throw error;
