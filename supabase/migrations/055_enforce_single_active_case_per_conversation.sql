@@ -78,11 +78,6 @@ SET has_case = EXISTS (
   SELECT 1 FROM cases 
   WHERE conversation_id = c.id 
   AND status != 'encerrado'
-)
-WHERE has_case != EXISTS (
-  SELECT 1 FROM cases 
-  WHERE conversation_id = c.id 
-  AND status != 'encerrado'
 );
 
 -- 5. Adicionar comentários para documentação
