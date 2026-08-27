@@ -171,24 +171,6 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
     }
   };
 
-  const handleRequestConsent = async () => {
-    if (!conversationId) return;
-    setRequestingConsent(true);
-    try {
-      const headers = await getAuthHeaders();
-      await axios.post('/api/customer-profile', {
-        action: 'request_consent',
-        conversation_id: conversationId
-      }, { headers });
-      fetchProfile();
-      if (onConversationUpdate) onConversationUpdate();
-    } catch (err) {
-      console.error('[CUSTOMER-PROFILE] Erro ao solicitar consentimento:', err);
-      alert('Erro ao solicitar consentimento. Verifique o console.');
-    } finally {
-      setRequestingConsent(false);
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -271,62 +253,22 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
               {/* Consentimentos LGPD */}
               <section className="bg-nc-surface rounded-lg border border-nc-gray-200 p-4">
                 <h3 className="font-bold text-sm text-nc-text-title mb-3">🛡️ Consentimentos LGPD</h3>
-                <div className="flex items-center gap-2 mb-3">
-                  {(() => {
-                    const c = getConsentStatus(data.consents);
-                    return <span className={`text-xs px-2 py-1 rounded border ${c.class}`}>{c.text}</span>;
-                  })()}
-                  <span className="text-xs text-nc-text-secondary">
-                    {data.consents?.[0] ? formatDate(data.consents[0].created_at) : 'Sem registro'}
-                  </span>
+                <div className="text-xs text-nc-text-secondary space-y-2">
+                  <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1.5">
+                    ℹ️ O consentimento LGPD é informado automaticamente na primeira mensagem de boas-vindas. Ao continuar a conversa, o cliente concorda com os termos de tratamento de dados.
+                  </p>
                 </div>
-                {data.consents && data.consents.length > 0 ? (
-                  <ul className="space-y-1 text-sm">
-                    {data.consents.map(c => (
-                      <li key={c.id} className="flex justify-between">
-                        <span className="text-nc-text">{c.consent_type}</span>
-                        <span className={c.value ? 'text-green-600' : 'text-red-600'}>
-                          {c.value ? '✓' : '✗'}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-nc-text-muted">Nenhum consentimento registrado.</p>
-                )}
 
-                {customer.intake_data?.consent_request_status === 'accepted' && customer.intake_data?.consent_protocol && (
-                  <p className="mt-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1">
-                    Protocolo: #{customer.intake_data.consent_protocol}
+                {customer.intake_data?.consent_accepted_at && (
+                  <p className="mt-2 text-xs text-nc-text-secondary">
+                    Aceito em: {formatDate(customer.intake_data.consent_accepted_at)}
                   </p>
                 )}
 
-                {!getConsentStatus(data.consents).text.includes('Ativo') && customer.intake_data?.consent_request_status !== 'accepted' && (
-                  <>
-                    {customer.intake_data?.consent_request_status === 'pending' && (
-                      <p className="mt-2 text-xs text-yellow-700">
-                        Solicitação enviada em {formatDate(customer.intake_data.consent_request_sent_at)}
-                      </p>
-                    )}
-                    {customer.intake_data?.consent_request_status === 'rejected' && (
-                      <p className="mt-2 text-xs text-red-700">
-                        Consentimento recusado em {formatDate(customer.intake_data.consent_accepted_at)}
-                      </p>
-                    )}
-                    <button
-                      onClick={handleRequestConsent}
-                      disabled={requestingConsent}
-                      className="mt-3 w-full py-1.5 px-3 rounded text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition"
-                    >
-                      {requestingConsent
-                        ? 'Enviando...'
-                        : customer.intake_data?.consent_request_status === 'pending'
-                          ? '🔄 Reenviar Solicitação'
-                          : customer.intake_data?.consent_request_status === 'rejected'
-                            ? '📩 Solicitar Novamente'
-                            : '📩 Solicitar Consentimento LGPD'}
-                    </button>
-                  </>
+                {customer.intake_data?.consent_protocol && (
+                  <p className="mt-1 text-xs text-nc-text-secondary">
+                    Protocolo: #{customer.intake_data.consent_protocol}
+                  </p>
                 )}
               </section>
 
