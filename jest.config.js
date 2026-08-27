@@ -6,7 +6,7 @@ const createJestConfig = nextJest({
 
 const customJestConfig = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
-  testEnvironment: 'node',
+  testEnvironment: 'jsdom',
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
@@ -16,6 +16,7 @@ const customJestConfig = {
   collectCoverageFrom: [
     'pages/api/**/*.js',
     'lib/**/*.js',
+    'components/**/*.js',
     '!lib/supabaseClient.js',
     '!**/*.config.js',
     '!**/node_modules/**',
