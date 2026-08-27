@@ -42,6 +42,13 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole })
         }
       });
 
+      if (response.status === 429) {
+        // Rate limit - não é erro crítico, apenas aguardar
+        console.log('[NOTIFICATION-PANEL] Rate limit, aguardando...');
+        setError(null);
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(`Erro ${response.status}`);
       }
@@ -125,10 +132,11 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole })
         className={`
           ${isMobile
             ? 'fixed inset-0 z-50 bg-white'
-            : 'absolute right-0 top-full mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border border-nc-gray-200 z-50'
+            : 'absolute right-0 top-full mt-2 w-96 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-80px)] bg-white rounded-lg shadow-2xl border border-nc-gray-200 z-50'
           }
           flex flex-col
         `}
+        style={!isMobile ? { right: 0 } : {}}
       >
         {/* Header */}
         <div className="flex-shrink-0 border-b border-nc-gray-200 p-4">

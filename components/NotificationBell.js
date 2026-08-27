@@ -21,6 +21,12 @@ export default function NotificationBell({ userId, userRole, onOpen }) {
         }
       });
 
+      if (response.status === 429) {
+        // Rate limit - não é erro crítico, apenas aguardar
+        console.log('[NOTIFICATION-BELL] Rate limit, aguardando...');
+        return;
+      }
+
       if (!response.ok) {
         console.error('[NOTIFICATION-BELL] Erro ao buscar contagem:', response.status);
         return;
