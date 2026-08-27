@@ -4,6 +4,7 @@ import { withAuth } from '@/lib/auth';
 import { sanitizeError } from '@/lib/webhookLog';
 import { convertAudioToOgg } from '@/lib/audio';
 import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '@/lib/whatsapp';
+import { safeLog, safeError } from '@/lib/safeLogger';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 
@@ -35,8 +36,11 @@ async function handler(req, res) {
       .single();
 
     if (convError) {
-      console.error('[SEND-MESSAGE] Erro ao buscar conversa:', convError);
-      return res.status(500).json({ error: 'Erro ao buscar conversa: ' + convError.message });
+      safeError('send_message_fetch_conversation', convError, {
+        requestId: conversation_id,
+        route: '/api/send-message'
+      });
+      return res.status(500).json({ error: 'Erro ao buscar conversa' });
     }
 
     if (!conversation) {
@@ -61,36 +65,66 @@ async function handler(req, res) {
         : 'document';
 
       try {
-        console.log('[SEND-MESSAGE] Baixando mídia do Supabase');
+        safeLog('info', 'send_message_media_download', {
+          requestId: conversation_id,
+          contentType,
+          route: '/api/send-message'
+        });
         const mediaResponse = await axios.get(media_url, { responseType: 'arraybuffer' });
         let fileBuffer = Buffer.from(mediaResponse.data);
         let uploadMime = media_type;
-        console.log('[SEND-MESSAGE] Mídia baixada:', fileBuffer.length, 'bytes');
+        safeLog('info', 'send_message_media_downloaded', {
+          requestId: conversation_id,
+          payloadSize: fileBuffer.length,
+          contentType,
+          route: '/api/send-message'
+        });
 
         if (contentType === 'audio') {
           try {
-            console.log('[SEND-MESSAGE] Convertendo áudio para AMR-NB (formato nativo WhatsApp)');
+            safeLog('info', 'send_message_audio_convert', {
+              requestId: conversation_id,
+              route: '/api/send-message'
+            });
             const converted = await convertAudioToOgg(fileBuffer, media_type);
             if (converted) {
               fileBuffer = converted.buffer;
               uploadMime = converted.mime;
-              console.log('[SEND-MESSAGE] Áudio convertido para AMR:', fileBuffer.length, 'bytes');
+              safeLog('info', 'send_message_audio_converted', {
+                requestId: conversation_id,
+                payloadSize: fileBuffer.length,
+                route: '/api/send-message'
+              });
             }
           } catch (convertError) {
-            console.warn('[SEND-MESSAGE] Conversão de áudio falhou, usando original:', convertError.message);
+            safeError('send_message_audio_convert_failed', convertError, {
+              requestId: conversation_id,
+              route: '/api/send-message'
+            });
           }
         }
 
-        console.log('[SEND-MESSAGE] Fazendo upload para Meta:', contentType, uploadMime);
+        safeLog('info', 'send_message_media_upload', {
+          requestId: conversation_id,
+          contentType,
+          mediaType: uploadMime,
+          route: '/api/send-message'
+        });
         const mediaId = await uploadMediaToWhatsApp(fileBuffer, uploadMime);
 
-        console.log('[SEND-MESSAGE] Enviando mídia por media_id');
+        safeLog('info', 'send_message_media_send', {
+          requestId: conversation_id,
+          contentType,
+          route: '/api/send-message'
+        });
         waMessageId = await sendWhatsAppMediaMessage(conversation.client_phone, mediaId, contentType, text);
       } catch (mediaError) {
-        console.error('[SEND-MESSAGE] ❌ Erro ao enviar mídia:', mediaError.message);
+        safeError('send_message_media_failed', mediaError, {
+          requestId: conversation_id,
+          route: '/api/send-message'
+        });
         return res.status(500).json({ 
-          error: 'Erro ao enviar mídia: ' + mediaError.message,
-          details: mediaError.response?.data || mediaError.toString()
+          error: 'Erro ao enviar mídia'
         });
       }
     } else {
@@ -115,7 +149,10 @@ async function handler(req, res) {
       }]);
 
     if (msgError) {
-      console.error('Erro ao salvar mensagem:', sanitizeError(msgError));
+      safeError('send_message_save_failed', msgError, {
+        requestId: conversation_id,
+        route: '/api/send-message'
+      });
     }
 
     res.json({ 
@@ -124,8 +161,10 @@ async function handler(req, res) {
       wa_message_id: waMessageId || null
     });
   } catch (error) {
-    console.error('Erro ao enviar mensagem:', sanitizeError(error));
-    res.status(500).json({ error: error.message });
+    safeError('send_message_failed', error, {
+      route: '/api/send-message'
+    });
+    res.status(500).json({ error: 'Erro ao enviar mensagem' });
   }
 }
 

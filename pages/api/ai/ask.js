@@ -2,6 +2,7 @@ import { supabaseServer } from '../../../lib/supabaseServer';
 import { searchKnowledge } from '../../../lib/knowledgeSearch';
 import { askRag } from '../../../lib/aiRag';
 import { anonymizeText } from '../../../lib/anonymize';
+import { safeLog, safeError } from '../../../lib/safeLogger';
 
 async function getUserFromToken(req) {
   const authHeader = req.headers.authorization || '';
@@ -62,7 +63,8 @@ export default async function handler(req, res) {
       limit: 8
     });
 
-    console.log('[RAG] ask handler:', {
+    safeLog('info', 'rag_search', {
+      route: '/api/ai/ask',
       queryLength: query?.length,
       status: 'aprovado',
       area,
@@ -89,7 +91,9 @@ export default async function handler(req, res) {
       });
 
     if (logError) {
-      console.error('[RAG] Erro ao registrar log:', logError);
+      safeError('rag_log_failed', logError, {
+        route: '/api/ai/ask'
+      });
     }
 
     const sourceDocs = documents.map(d => ({
@@ -105,7 +109,9 @@ export default async function handler(req, res) {
       sources: sourceDocs
     });
   } catch (error) {
-    console.error('[RAG] Erro:', error);
+    safeError('rag_handler_failed', error, {
+      route: '/api/ai/ask'
+    });
     return res.status(500).json({ error: 'Erro ao processar a consulta' });
   }
 }
