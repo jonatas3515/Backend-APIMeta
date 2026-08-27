@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { formatPhone } from '../lib/formatters';
+import { formatPhone, getFirstName } from '../lib/formatters';
 
 const FILTERS = [
   { key: 'all', label: 'Tudo' },
@@ -165,7 +165,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
                     <p className={`text-sm font-medium truncate ${
                       selectedConversation?.id === conv.id ? 'text-nc-text-title' : 'text-nc-text'
                     }`}>
-                      {conv.client_name || formatPhone(conv.client_phone)}
+                      {conv.client_name ? getFirstName(conv.client_name) : formatPhone(conv.client_phone)}
                     </p>
                     <span className="text-xs text-nc-text-muted whitespace-nowrap">
                       {(() => {
