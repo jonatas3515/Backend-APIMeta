@@ -162,13 +162,13 @@ describe('Notification Cache', () => {
       expect(second).toBe(false); // Bloqueado (< 1 segundo)
     });
 
-    test('allows request after 1 second', async () => {
+    test('allows request after 3 seconds', async () => {
       const userId = 'user-123';
 
       notificationCache.checkRateLimit(userId);
 
-      // Esperar 1.1 segundos
-      await new Promise(resolve => setTimeout(resolve, 1100));
+      // Esperar 3.1 segundos (rate limit é 3s)
+      await new Promise(resolve => setTimeout(resolve, 3100));
 
       const allowed = notificationCache.checkRateLimit(userId);
       expect(allowed).toBe(true);
