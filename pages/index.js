@@ -60,6 +60,7 @@ export default function Home() {
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
   const [notifPrefs, setNotifPrefs] = useState(null);
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const notificationBellRef = useRef(null);
 
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -479,19 +480,19 @@ export default function Home() {
             <div className="flex-1 md:hidden" />
             <div className="flex items-center gap-2">
               <AreaFilterSelector compact />
-              <div className="relative">
-                <NotificationBell
-                  userId={authUser?.id}
-                  userRole={profile?.role}
-                  onOpen={() => setIsNotificationPanelOpen(true)}
-                />
-                <NotificationPanel
-                  isOpen={isNotificationPanelOpen}
-                  onClose={() => setIsNotificationPanelOpen(false)}
-                  userId={authUser?.id}
-                  userRole={profile?.role}
-                />
-              </div>
+              <NotificationBell
+                ref={notificationBellRef}
+                userId={authUser?.id}
+                userRole={profile?.role}
+                onOpen={() => setIsNotificationPanelOpen(true)}
+              />
+              <NotificationPanel
+                isOpen={isNotificationPanelOpen}
+                onClose={() => setIsNotificationPanelOpen(false)}
+                userId={authUser?.id}
+                userRole={profile?.role}
+                triggerRef={notificationBellRef}
+              />
             </div>
           </header>
           <ActiveFilterBanner />

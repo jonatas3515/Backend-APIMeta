@@ -1,31 +1,56 @@
 /**
  * NotificationPanel - Painel de notificações
- * Desktop: dropdown lateral | Mobile: fullscreen overlay
+ * Desktop: dropdown via portal | Mobile: fullscreen overlay
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import NotificationItem from './NotificationItem';
+import Portal from './Portal';
 import { groupNotifications } from '../lib/notificationHelpers';
 import { useRouter } from 'next/router';
 
-export default function NotificationPanel({ isOpen, onClose, userId, userRole }) {
+export default function NotificationPanel({ isOpen, onClose, userId, userRole, triggerRef }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeGroup, setActiveGroup] = useState('all');
   const [isMobile, setIsMobile] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 400 });
   const panelRef = useRef(null);
   const router = useRouter();
 
-  // Detectar mobile
+  // Detectar mobile e calcular posição
   useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
+    const updatePosition = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+
+      if (!mobile && triggerRef?.current && isOpen) {
+        const triggerRect = triggerRef.current.getBoundingClientRect();
+        const viewportPadding = 8;
+        const panelWidth = Math.min(400, window.innerWidth - viewportPadding * 2);
+        
+        let left = triggerRect.right - panelWidth;
+        if (left < viewportPadding) left = viewportPadding;
+        if (left + panelWidth > window.innerWidth - viewportPadding) {
+          left = window.innerWidth - panelWidth - viewportPadding;
+        }
+
+        const top = triggerRect.bottom + 8;
+
+        setPosition({ top, left, width: panelWidth });
+      }
     };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen, triggerRef]);
 
   // Buscar notificações
   const fetchNotifications = useCallback(async () => {
@@ -70,19 +95,33 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole })
     }
   }, [isOpen, fetchNotifications]);
 
-  // Fechar ao clicar fora (desktop)
+  // Fechar ao clicar fora (desktop) e Escape
   useEffect(() => {
-    if (!isOpen || isMobile) return;
+    if (!isOpen) return;
 
     const handleClickOutside = (event) => {
+      if (isMobile) return;
       if (panelRef.current && !panelRef.current.contains(event.target)) {
+        if (triggerRef?.current && !triggerRef.current.contains(event.target)) {
+          onClose();
+        }
+      }
+    };
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
         onClose();
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen, isMobile, onClose]);
+    document.addEventListener('keydown', handleEscape);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen, isMobile, onClose, triggerRef]);
 
   // Ação: Ver notificação
   const handleAction = async (notification) => {
@@ -115,12 +154,12 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole })
   const currentNotifications = groups[activeGroup] || [];
   const unreadCount = notifications.length;
 
-  return (
+  const panelContent = (
     <>
       {/* Backdrop (mobile) */}
       {isMobile && (
         <div
-          className="fixed inset-0 bg-black/30 z-40"
+          className="fixed inset-0 bg-black/30 z-[999]"
           onClick={onClose}
           data-testid="backdrop"
         />
@@ -131,12 +170,23 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole })
         ref={panelRef}
         className={`
           ${isMobile
-            ? 'fixed inset-0 z-50 bg-white'
-            : 'absolute right-0 top-full mt-2 w-96 max-w-[calc(100vw-2rem)] max-h-[calc(100vh-80px)] bg-white rounded-lg shadow-2xl border border-nc-gray-200 z-50'
+            ? 'fixed inset-0 z-[1000] bg-white'
+            : 'fixed bg-white rounded-lg shadow-2xl border border-nc-gray-200 z-[1000]'
           }
           flex flex-col
         `}
-        style={!isMobile ? { right: 0 } : {}}
+        style={!isMobile ? {
+          top: `${position.top}px`,
+          left: `${position.left}px`,
+          width: `${position.width}px`,
+          maxHeight: `min(680px, calc(100vh - ${position.top + 16}px))`,
+          boxSizing: 'border-box'
+        } : {
+          width: '100vw',
+          height: '100dvh',
+          maxWidth: 'none',
+          maxHeight: 'none'
+        }}
       >
         {/* Header */}
         <div className="flex-shrink-0 border-b border-nc-gray-200 p-4">
@@ -237,4 +287,6 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole })
       </div>
     </>
   );
+
+  return <Portal>{panelContent}</Portal>;
 }

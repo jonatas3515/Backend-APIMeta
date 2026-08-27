@@ -29,12 +29,21 @@ async function countNotifications(userId, userRole) {
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     const counts = await Promise.allSettled([
-      // Mensagens não lidas
+      // Mensagens não lidas (filtrar por assigned_user_id se não for admin)
       supabase
         .from('conversations')
         .select('id', { count: 'exact', head: true })
         .eq('unread', true)
-        .then(({ count }) => count || 0),
+        .then(async ({ data, count, error }) => {
+          if (error || userRole === 'admin') return count || 0;
+          // Filtrar por assigned_user_id se não for admin
+          const { count: filteredCount } = await supabase
+            .from('conversations')
+            .select('id', { count: 'exact', head: true })
+            .eq('unread', true)
+            .eq('assigned_user_id', userId);
+          return filteredCount || 0;
+        }),
 
       // Lembretes pendentes
       supabase

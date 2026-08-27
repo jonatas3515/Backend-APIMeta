@@ -6,7 +6,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { formatBadgeCount } from '../lib/notificationHelpers';
 
-export default function NotificationBell({ userId, userRole, onOpen }) {
+import { forwardRef } from 'react';
+
+const NotificationBell = forwardRef(({ userId, userRole, onOpen }, ref) => {
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
@@ -60,6 +62,7 @@ export default function NotificationBell({ userId, userRole, onOpen }) {
 
   return (
     <button
+      ref={ref}
       onClick={handleClick}
       className="relative p-2 rounded-full hover:bg-nc-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-nc-yellow"
       aria-label={`Notificações${count > 0 ? ` (${count} não lidas)` : ''}`}
@@ -89,4 +92,8 @@ export default function NotificationBell({ userId, userRole, onOpen }) {
       )}
     </button>
   );
-}
+});
+
+NotificationBell.displayName = 'NotificationBell';
+
+export default NotificationBell;
