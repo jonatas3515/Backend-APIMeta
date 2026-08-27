@@ -284,8 +284,148 @@ Para dúvidas ou problemas:
 2. Verificar testes: `npm test -- notifications`
 3. Verificar documentação de cada fonte
 
+## Componentes Frontend
+
+### NotificationBell
+
+Sino de notificações com badge no header.
+
+**Props:**
+- `userId` (string): ID do usuário autenticado
+- `userRole` (string): Role do usuário (admin/advogado/estagiario)
+- `onOpen` (function): Callback ao clicar no sino
+
+**Comportamento:**
+- Badge mostra contagem de não lidas (cap 99+)
+- Badge some quando count = 0
+- Polling a cada 30s para atualizar contagem
+- Tooltip: "Notificações"
+- Acessibilidade: aria-label, role="button"
+
+**Uso:**
+```jsx
+<NotificationBell
+  userId={authUser?.id}
+  userRole={profile?.role}
+  onOpen={() => setIsNotificationPanelOpen(true)}
+/>
+```
+
+### NotificationPanel
+
+Painel de notificações (dropdown desktop / fullscreen mobile).
+
+**Props:**
+- `isOpen` (boolean): Controla visibilidade
+- `onClose` (function): Callback ao fechar
+- `userId` (string): ID do usuário
+- `userRole` (string): Role do usuário
+
+**Comportamento:**
+- Desktop: dropdown lateral 400px, fecha ao clicar fora
+- Mobile: fullscreen overlay, botão "Fechar" no topo
+- Abas: Críticas, Hoje, Próximas, Todas
+- Agrupamento automático por prioridade
+- Loading state e tratamento de erro
+- Roteamento via Next.js router
+
+**Uso:**
+```jsx
+<NotificationPanel
+  isOpen={isNotificationPanelOpen}
+  onClose={() => setIsNotificationPanelOpen(false)}
+  userId={authUser?.id}
+  userRole={profile?.role}
+/>
+```
+
+### NotificationItem
+
+Card individual de notificação.
+
+**Props:**
+- `notification` (object): Objeto de notificação
+- `onAction` (function): Callback ao clicar em "Ver"
+- `onDismiss` (function): Callback ao clicar em "Dispensar"
+
+**Comportamento:**
+- Ícone por tipo (💬 mensagem, 📅 prazo, ⏰ lembrete, etc.)
+- Cor por prioridade (vermelho crítico, laranja alto, azul normal)
+- Data relativa ("há 2 horas", "vence hoje")
+- Botão "Ver" → navega para módulo
+- Botão "Dispensar" apenas se fonte permitir
+- Loading state durante ação
+
+## Integração
+
+### No Header (index.js)
+
+```jsx
+import NotificationBell from '../components/NotificationBell';
+import NotificationPanel from '../components/NotificationPanel';
+
+// Estado
+const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+
+// No header
+<div className="relative">
+  <NotificationBell
+    userId={authUser?.id}
+    userRole={profile?.role}
+    onOpen={() => setIsNotificationPanelOpen(true)}
+  />
+  <NotificationPanel
+    isOpen={isNotificationPanelOpen}
+    onClose={() => setIsNotificationPanelOpen(false)}
+    userId={authUser?.id}
+    userRole={profile?.role}
+  />
+</div>
+```
+
+## Roteamento
+
+Mapeamento de tipos para rotas:
+
+| Tipo | Rota |
+|---|---|
+| `message` | `/?conversation=<id>` |
+| `deadline` | `/?case=<id>` |
+| `deadline_overdue` | `/?case=<id>` |
+| `deadline_today` | `/?case=<id>` |
+| `reminder` | `/?conversation=<id>` |
+| `event_today` | `/?agenda=true&event=<id>` |
+| `case_critical` | `/?case=<id>` |
+| `process_movement` | `/?process=<id>` |
+| `signature` | `/?signatures=true&id=<id>` |
+
+## Mobile Responsivo
+
+**Desktop (≥ 768px):**
+- Dropdown lateral 400px
+- Fecha ao clicar fora
+- Scroll interno se necessário
+
+**Mobile (< 768px):**
+- Fullscreen overlay (fixed inset-0)
+- Botão "Fechar" no topo
+- Scroll vertical
+- Touch-friendly (botões maiores)
+- Backdrop escuro
+
+## Polling e Cache
+
+**Badge:**
+- Atualiza a cada 30s via `/api/notifications/count`
+- Cancela polling ao desmontar componente
+
+**Painel:**
+- Busca `/api/notifications` ao abrir
+- Cache de 60s no backend
+- Rate limiting 1 req/s por usuário
+
 ---
 
 **Versão:** 1.0.0 (Fase 1)  
 **Data:** 2024  
-**Status:** ✅ Backend completo, Frontend em desenvolvimento
+**Status:** ✅ Backend e Frontend completos

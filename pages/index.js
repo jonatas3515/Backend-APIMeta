@@ -27,6 +27,8 @@ import Sidebar from '../components/Sidebar';
 import AreaFilterSelector from '../components/AreaFilterSelector';
 import ActiveFilterBanner from '../components/ActiveFilterBanner';
 import NotificationPermissionPrompt from '../components/NotificationPermissionPrompt';
+import NotificationBell from '../components/NotificationBell';
+import NotificationPanel from '../components/NotificationPanel';
 import { maybeNotify, getPermission, isSupported } from '../lib/notifications';
 import { getAuthHeaders } from '../lib/api';
 import { normalizePhoneForMatch } from '../lib/formatters';
@@ -57,6 +59,7 @@ export default function Home() {
   const [deletingId, setDeletingId] = useState(null);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
   const [notifPrefs, setNotifPrefs] = useState(null);
+  const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
 
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
@@ -447,7 +450,7 @@ export default function Home() {
 
         {/* Conteúdo principal */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <header className="flex items-center justify-between px-3 py-2 bg-white border-b border-gray-200 z-10 gap-2">
+          <header className="flex items-center justify-between px-3 py-2 bg-white border-b border-gray-200 z-10 gap-2 relative">
             <h1 className="md:hidden text-base font-bold flex-shrink-0">N&C</h1>
             {activeTab === 'chat' && (
               <div className="flex gap-1 bg-nc-gray-100 p-1 rounded text-xs font-medium">
@@ -474,7 +477,22 @@ export default function Home() {
               </div>
             )}
             <div className="flex-1 md:hidden" />
-            <AreaFilterSelector compact />
+            <div className="flex items-center gap-2">
+              <AreaFilterSelector compact />
+              <div className="relative">
+                <NotificationBell
+                  userId={authUser?.id}
+                  userRole={profile?.role}
+                  onOpen={() => setIsNotificationPanelOpen(true)}
+                />
+                <NotificationPanel
+                  isOpen={isNotificationPanelOpen}
+                  onClose={() => setIsNotificationPanelOpen(false)}
+                  userId={authUser?.id}
+                  userRole={profile?.role}
+                />
+              </div>
+            </div>
           </header>
           <ActiveFilterBanner />
           <main className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0 pb-16 md:pb-0">
