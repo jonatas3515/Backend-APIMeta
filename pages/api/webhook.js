@@ -1027,7 +1027,9 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     if (conversation) {
       if (conversation.client_name) {
         const title = getClientTitle(conversation.client_name);
-        contextParts.push(`NOME DO CLIENTE: ${conversation.client_name}${title ? `; TRATAMENTO: ${title}` : ''}`);
+        const firstName = String(conversation.client_name).trim().split(/\s+/)[0];
+        contextParts.push(`PRIMEIRO NOME DO CLIENTE (uso restrito): ${firstName}${title ? `; TRATAMENTO: ${title}` : ''}`);
+        contextParts.push(`REGRA DE NOME: O nome completo NUNCA deve ser usado. Na PRIMEIRA resposta, use apenas o primeiro nome no cumprimento. Nas demais respostas, use SOMENTE "${title || 'senhor(a)'}" SEM o nome.`);
       }
       if (conversation.case_summary) {
         contextParts.push(`RESUMO DO CASO: ${conversation.case_summary}`);
@@ -1051,6 +1053,11 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     const historyBlock = conversationHistory 
       ? `HISTÓRICO DAS ÚLTIMAS 24H (MAIS RECENTES POR ÚLTIMO):\n${conversationHistory}\n\n` 
       : '';
+
+    const clientFullName = conversation?.client_name || '';
+    const clientTitle = clientFullName ? getClientTitle(clientFullName) : 'senhor(a)';
+    const clientFirstName = clientFullName ? clientFullName.trim().split(/\s+/)[0] : 'cliente';
+    const nameRule = `NUNCA use o nome completo do cliente. Na PRIMEIRA resposta, se usar nome, use APENAS o primeiro nome ("${clientFirstName}"). Nas demais respostas, use SOMENTE "${clientTitle}" SEM o nome. NUNCA diga "${clientTitle} ${clientFullName}".`;
     
     const firstTurn = !conversationHistory || conversationHistory.trim() === '';
     const noRepeatRule = firstTurn
@@ -1058,7 +1065,8 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
       : 'O histórico já existe. NÃO se apresente, NÃO diga "Olá", "Oi" ou "Bom dia" em nenhuma circunstância. Responda DIRETAMENTE ao assunto.';
 
     const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- Responda DIRETAMENTE à NOVA MENSAGEM do cliente, usando o contexto e a memória apenas como referência. Não fique preso a uma informação anterior se o cliente mudou de assunto.\n- Se a mensagem mencionar CNPJ, boleto, "Neves Costa" (sem &), "outro escritório" ou cobrança atribuída a nós e o esclarecimento ainda NÃO tiver sido dito no histórico, o esclarecimento ENXUTO é a prioridade máxima. NUNCA trate "financiamento", "consórcio", "banco" ou "dívida" sozinhos como confusão — são tipos de caso. Depois de esclarecer, NÃO ofereça outros serviços.
-- Se o esclarecimento sobre boleto/cobrança/Neves Costa JÁ tiver sido dito no histórico e o cliente apenas pedir ajuda sem apresentar uma nova dúvida jurídica, NÃO repita o esclarecimento. Diga respeitosamente que não podemos intervir, pois não somos a empresa do boleto, e ofereça-se a ouvir caso haja outro assunto jurídico — sem listar áreas de atuação.\n- Não peça nome, e-mail ou telefone que já estiverem no histórico, contexto ou memória.\n- Responda como Jhon, 1-3 frases, sem listas, sem telefone a menos que o cliente peça explicitamente.`;
+- Se o esclarecimento sobre boleto/cobrança/Neves Costa JÁ tiver sido dito no histórico e o cliente apenas pedir ajuda sem apresentar uma nova dúvida jurídica, NÃO repita o esclarecimento. Diga respeitosamente que não podemos intervir, pois não somos a empresa do boleto, e ofereça-se a ouvir caso haja outro assunto jurídico — sem listar áreas de atuação.\n- Não peça nome, e-mail ou telefone que já estiverem no histórico, contexto ou memória.\n- ${nameRule}
+- Responda como Jhon, 1-3 frases, sem listas, sem telefone a menos que o cliente peça explicitamente.`;
     
     const controller = new AbortController();
     const timeout = setTimeout(() => {
@@ -1101,9 +1109,10 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
   try {
     console.log('[GEMINI] Tentando Gemini 3.1 Flash-Lite (fallback)...');
     // Fallback recebe o mesmo fullPrompt para manter contexto
+    const fallbackNameRule = `NUNCA use o nome completo do cliente. Na PRIMEIRA resposta, se usar nome, use APENAS o primeiro nome. Nas demais respostas, use SOMENTE "${clientTitle}" SEM o nome.`;
     const fullPrompt = conversationHistory 
-      ? `${clientMemoryText ? clientMemoryText + '\n\n' : ''}HISTÓRICO DA CONVERSA:\n${conversationHistory}\n\nNOVA MENSAGEM DO CLIENTE: ${prompt}`
-      : (clientMemoryText ? clientMemoryText + '\n\nNOVA MENSAGEM DO CLIENTE: ' + prompt : prompt);
+      ? `${clientMemoryText ? clientMemoryText + '\n\n' : ''}HISTÓRICO DA CONVERSA:\n${conversationHistory}\n\nNOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZ DE NOME: ${fallbackNameRule}`
+      : (clientMemoryText ? clientMemoryText + '\n\nNOVA MENSAGEM DO CLIENTE: ' + prompt + '\n\nDIRETRIZ DE NOME: ' + fallbackNameRule : prompt + '\n\nDIRETRIZ DE NOME: ' + fallbackNameRule);
     
     const response = await fetch(GEMINI_API_URL_FALLBACK, {
       method: 'POST',
