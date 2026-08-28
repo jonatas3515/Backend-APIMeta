@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
+import { safeError } from '@/lib/safeLogger';
+import { verifyCaseAccess } from '@/lib/caseAuth';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -44,6 +46,11 @@ async function handler(req, res) {
       return res.status(400).json({ error: 'Movimentação não vinculada a um caso' });
     }
 
+    const { allowed } = await verifyCaseAccess({ supabase, caseId, user: req.user });
+    if (!allowed) {
+      return res.status(403).json({ error: 'Acesso não autorizado ao caso.' });
+    }
+
     const { data, error } = await supabase
       .from('internal_notes')
       .insert({
@@ -72,7 +79,11 @@ async function handler(req, res) {
     await audit('CREATE_NOTE', id, req.user, { note_id: data.id });
     return res.status(201).json({ note: data, movement_id: id });
   } catch (error) {
-    console.error('[PROCESS-MOVEMENTS/CREATE-NOTE] Erro:', error);
+    safeError('process_movement_create_note_error', error, {
+      route: '/api/process-movements/[id]/create-note',
+      role: req.user?.role,
+      movementIdHash: String(id).slice(0, 8),
+    });
     return res.status(500).json({ error: 'Erro ao criar nota' });
   }
 }
@@ -88,8 +99,11 @@ async function audit(action, targetId, user, details = null) {
       details
     });
   } catch (e) {
-    console.error('[PROCESS-MOVEMENTS/CREATE-NOTE] Falha ao auditar:', e);
+    safeError('process_movement_create_note_audit_error', e, {
+      action,
+      role: user?.role,
+    });
   }
 }
 
-export default withAuth(handler, { minRole: 'estagiario' });
+export default withAuth(handler, { minRole: 'advogado' });

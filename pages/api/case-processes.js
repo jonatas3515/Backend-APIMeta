@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
 import { validateAndNormalizeCNJ, resolveDataJudAlias } from '@/lib/datajudClient';
 import { getCourtByCode } from '@/lib/datajudCourts';
+import { safeLog, safeError } from '@/lib/safeLogger';
+import { verifyCaseAccess, resolveCaseIdForProcess } from '@/lib/caseAuth';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -24,7 +26,11 @@ async function handler(req, res) {
     if (method === 'DELETE') return await handleDelete(req, res);
     return res.status(405).json({ error: 'Método não permitido' });
   } catch (error) {
-    console.error('[CASE-PROCESSES] Erro:', error);
+    safeError('case_processes_handler_error', error, {
+      route: '/api/case-processes',
+      method,
+      role: req.user?.role,
+    });
     return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }
@@ -38,16 +44,23 @@ async function handleGet(req, res) {
     if (id) {
       const { data, error } = await supabase
         .from('case_processes')
-        .select('*')
+        .select('*, cases:case_id (assigned_user_id)')
         .eq('id', id)
         .single();
       if (error) throw error;
       if (!data) return res.status(404).json({ error: 'Processo não encontrado' });
-      return res.status(200).json(data);
+      const allowed = req.user.role === 'admin' || data.cases?.assigned_user_id === req.user.id;
+      if (!allowed) return res.status(403).json({ error: 'Acesso não autorizado ao caso.' });
+      return res.status(200).json(stripAlias(data));
     }
 
     if (!case_id) {
       return res.status(400).json({ error: 'case_id é obrigatório' });
+    }
+
+    const { allowed } = await verifyCaseAccess({ supabase, caseId: case_id, user: req.user });
+    if (!allowed) {
+      return res.status(403).json({ error: 'Acesso não autorizado ao caso.' });
     }
 
     const { data, error } = await supabase
@@ -57,9 +70,13 @@ async function handleGet(req, res) {
       .order('created_at', { ascending: true });
 
     if (error) throw error;
-    return res.status(200).json(data || []);
+    return res.status(200).json((data || []).map(stripAlias));
   } catch (error) {
-    console.error('[CASE-PROCESSES] Erro ao listar:', error);
+    safeError('case_processes_get_error', error, {
+      route: '/api/case-processes',
+      method: 'GET',
+      role: req.user?.role,
+    });
     return res.status(500).json({ error: 'Erro ao listar processos' });
   }
 }
@@ -86,6 +103,11 @@ async function handlePost(req, res) {
 
   if (!case_id || !process_number || !court_code) {
     return res.status(400).json({ error: 'case_id, process_number e court_code são obrigatórios' });
+  }
+
+  const { allowed } = await verifyCaseAccess({ supabase, caseId: case_id, user: req.user });
+  if (!allowed) {
+    return res.status(403).json({ error: 'Acesso não autorizado ao caso.' });
   }
 
   const validation = validateAndNormalizeCNJ(process_number);
@@ -129,14 +151,22 @@ async function handlePost(req, res) {
       .single();
 
     if (error) {
-      console.error('[CASE-PROCESSES] Erro no insert:', error);
+      safeError('case_processes_insert_error', error, {
+        route: '/api/case-processes',
+        method: 'POST',
+        role: req.user?.role,
+      });
       return res.status(400).json({ error: 'Não foi possível salvar o processo. Verifique se já não está vinculado a este caso.' });
     }
 
     await audit('CREATE', data.id, req.user);
-    return res.status(201).json(data);
+    return res.status(201).json(stripAlias(data));
   } catch (error) {
-    console.error('[CASE-PROCESSES] Erro ao criar:', error);
+    safeError('case_processes_create_error', error, {
+      route: '/api/case-processes',
+      method: 'POST',
+      role: req.user?.role,
+    });
     return res.status(500).json({ error: 'Erro ao salvar processo' });
   }
 }
@@ -147,12 +177,12 @@ async function handlePatch(req, res) {
     return res.status(400).json({ error: 'id é obrigatório na URL' });
   }
 
-  const allowed = [
+  const allowedFields = [
     'court_code','court_name','datajud_alias','branch','instance','court_unit','case_class','main_subject','client_role','is_primary','monitoring_status','monitoring_frequency','last_checked_at','next_check_at','last_movement_at','last_movement_summary','public_consultation_url','last_error'
   ];
 
   const update = {};
-  for (const key of allowed) {
+  for (const key of allowedFields) {
     if (req.body[key] !== undefined) update[key] = req.body[key];
   }
 
@@ -172,6 +202,12 @@ async function handlePatch(req, res) {
     return res.status(400).json({ error: 'Nenhum campo permitido para atualização' });
   }
 
+  const caseId = await resolveCaseIdForProcess({ supabase, processId: id });
+  const { allowed } = await verifyCaseAccess({ supabase, caseId, user: req.user });
+  if (!allowed) {
+    return res.status(403).json({ error: 'Acesso não autorizado ao caso.' });
+  }
+
   try {
     const { data, error } = await supabase
       .from('case_processes')
@@ -184,9 +220,13 @@ async function handlePatch(req, res) {
     if (!data) return res.status(404).json({ error: 'Processo não encontrado' });
 
     await audit('UPDATE', id, req.user, update);
-    return res.status(200).json(data);
+    return res.status(200).json(stripAlias(data));
   } catch (error) {
-    console.error('[CASE-PROCESSES] Erro ao atualizar:', error);
+    safeError('case_processes_update_error', error, {
+      route: '/api/case-processes',
+      method: 'PATCH',
+      role: req.user?.role,
+    });
     return res.status(500).json({ error: 'Erro ao atualizar processo' });
   }
 }
@@ -195,6 +235,12 @@ async function handleDelete(req, res) {
   const { id } = req.query;
   if (!id) {
     return res.status(400).json({ error: 'id é obrigatório na URL' });
+  }
+
+  const caseId = await resolveCaseIdForProcess({ supabase, processId: id });
+  const { allowed } = await verifyCaseAccess({ supabase, caseId, user: req.user });
+  if (!allowed) {
+    return res.status(403).json({ error: 'Acesso não autorizado ao caso.' });
   }
 
   try {
@@ -211,9 +257,19 @@ async function handleDelete(req, res) {
     await audit('DELETE', id, req.user);
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.error('[CASE-PROCESSES] Erro ao deletar:', error);
+    safeError('case_processes_delete_error', error, {
+      route: '/api/case-processes',
+      method: 'DELETE',
+      role: req.user?.role,
+    });
     return res.status(500).json({ error: 'Erro ao remover processo' });
   }
+}
+
+function stripAlias(row) {
+  if (!row) return row;
+  const { datajud_alias, ...rest } = row;
+  return rest;
 }
 
 async function audit(action, targetId, user, details = null) {
@@ -227,6 +283,10 @@ async function audit(action, targetId, user, details = null) {
       details
     });
   } catch (e) {
-    console.error('[CASE-PROCESSES] Falha ao auditar:', e);
+    safeError('case_processes_audit_error', e, {
+      route: '/api/case-processes',
+      action,
+      role: user?.role,
+    });
   }
 }

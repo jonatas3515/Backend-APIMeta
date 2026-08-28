@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
 import { queryDataJud } from '@/lib/datajudClient';
+import { safeLog, safeError } from '@/lib/safeLogger';
+import { resolveCaseIdForProcess, verifyCaseAccess } from '@/lib/caseAuth';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -23,8 +25,24 @@ async function handler(req, res) {
 
   const profile = req.user;
   const start = Date.now();
+  const requestId = `dj-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   try {
+    const caseId = await resolveCaseIdForProcess({ supabase, processId: id });
+    if (!caseId) {
+      return res.status(404).json({ error: 'Processo não encontrado' });
+    }
+
+    const { allowed } = await verifyCaseAccess({ supabase, caseId, user: profile });
+    if (!allowed) {
+      safeLog('warn', 'datajud_query_access_denied', {
+        requestId,
+        role: profile?.role,
+        caseIdHash: String(caseId).slice(0, 8),
+      });
+      return res.status(403).json({ error: 'Acesso não autorizado ao caso.' });
+    }
+
     // Busca processo
     const { data: proc, error: procError } = await supabase
       .from('case_processes')
@@ -39,7 +57,8 @@ async function handler(req, res) {
     const result = await queryDataJud({
       processNumber: proc.process_number_normalized,
       tribunalCode: proc.court_code,
-      timeoutMs: 25000
+      timeoutMs: 25000,
+      requestId,
     });
 
     const duration = Date.now() - start;
@@ -73,7 +92,7 @@ async function handler(req, res) {
       return res.status(200).json({
         status: result.status,
         message: result.error,
-        log
+        log: safeQueryLog(log)
       });
     }
 
@@ -136,12 +155,24 @@ async function handler(req, res) {
       data: result,
       new_movements_count: insertedMovements.length,
       new_movements: insertedMovements,
-      log
+      log: safeQueryLog(log)
     });
   } catch (error) {
-    console.error('[CASE-PROCESSES/QUERY] Erro:', error);
+    safeError('datajud_query_handler_error', error, {
+      requestId,
+      role: profile?.role,
+      caseIdHash: String(caseId).slice(0, 8),
+      processIdHash: String(id).slice(0, 8),
+    });
     return res.status(500).json({ error: 'Erro interno na consulta' });
   }
+}
+
+function safeQueryLog(log) {
+  // Exclui campos que não devem ir ao frontend/log público
+  const safe = { ...log };
+  delete safe.response_summary?.tribunal; // mantém apenas metadados controlados
+  return safe;
 }
 
 function normalizeText(text) {
@@ -169,7 +200,10 @@ async function audit(action, targetId, user, details = null) {
       details
     });
   } catch (e) {
-    console.error('[CASE-PROCESSES/QUERY] Falha ao auditar:', e);
+    safeError('datajud_query_audit_error', e, {
+      action,
+      role: user?.role,
+    });
   }
 }
 

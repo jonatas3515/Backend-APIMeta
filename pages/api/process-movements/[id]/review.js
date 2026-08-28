@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
+import { safeError } from '@/lib/safeLogger';
+import { resolveCaseIdForMovement, verifyCaseAccess } from '@/lib/caseAuth';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -27,6 +29,16 @@ async function handler(req, res) {
   }
 
   try {
+    const caseId = await resolveCaseIdForMovement({ supabase, movementId: id });
+    if (!caseId) {
+      return res.status(404).json({ error: 'Movimentação não encontrada' });
+    }
+
+    const { allowed } = await verifyCaseAccess({ supabase, caseId, user: req.user });
+    if (!allowed) {
+      return res.status(403).json({ error: 'Acesso não autorizado ao caso.' });
+    }
+
     const { data, error } = await supabase
       .from('process_movements')
       .update({
@@ -45,7 +57,11 @@ async function handler(req, res) {
     await audit('REVIEW', id, req.user, { review_status });
     return res.status(200).json(data);
   } catch (error) {
-    console.error('[PROCESS-MOVEMENTS/REVIEW] Erro:', error);
+    safeError('process_movement_review_error', error, {
+      route: '/api/process-movements/[id]/review',
+      role: req.user?.role,
+      movementIdHash: String(id).slice(0, 8),
+    });
     return res.status(500).json({ error: 'Erro ao revisar movimentação' });
   }
 }
@@ -61,8 +77,11 @@ async function audit(action, targetId, user, details = null) {
       details
     });
   } catch (e) {
-    console.error('[PROCESS-MOVEMENTS/REVIEW] Falha ao auditar:', e);
+    safeError('process_movement_review_audit_error', e, {
+      action,
+      role: user?.role,
+    });
   }
 }
 
-export default withAuth(handler, { minRole: 'estagiario' });
+export default withAuth(handler, { minRole: 'advogado' });
