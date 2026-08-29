@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { askGemini } from '@/lib/ai';
 import { withAuth } from '@/lib/auth';
+import { safeLog, safeError } from '@/lib/safeLogger';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -25,14 +26,19 @@ async function handler(req, res) {
       return res.status(405).json({ error: 'Método não permitido' });
     }
   } catch (error) {
-    console.error('[AGENDA] Erro:', error);
+    safeError('agenda_handler_error', error, { route: '/api/agenda' });
     return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }
 
 export default withAuth(handler, { minRole: 'estagiario' });
 
+function generateRequestId(req) {
+  return req.headers['x-request-id'] || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 async function handleGet(req, res) {
+  const requestId = generateRequestId(req);
   const { range = 'today', start_date, end_date, legal_area, municipality, agency, priority } = req.query;
 
   try {
@@ -74,12 +80,12 @@ async function handleGet(req, res) {
       if (result.error) throw result.error;
       items = result.data;
     } catch (error) {
-      console.error('[AGENDA] get_agenda falhou:', error);
+      safeError('agenda_rpc_error', error, { requestId, route: '/api/agenda', method: 'GET' });
       rpcError = error;
     }
 
     if (items === null) {
-      console.log('[AGENDA] Tentando fallback via agenda_consolidada...');
+      safeLog('info', 'agenda_fallback', { requestId, route: '/api/agenda', reason: 'rpc_failed' });
       try {
         const { data, error } = await supabase
           .from('agenda_consolidada')
@@ -98,12 +104,9 @@ async function handleGet(req, res) {
           return true;
         });
       } catch (fallbackError) {
-        console.error('[AGENDA] Fallback falhou:', fallbackError);
+        safeError('agenda_fallback_error', fallbackError, { requestId, route: '/api/agenda', method: 'GET' });
         return res.status(500).json({
-          error: 'Erro ao buscar agenda',
-          rpcError: rpcError ? String(rpcError.message || rpcError) : null,
-          fallbackError: String(fallbackError.message || fallbackError),
-          code: (rpcError && rpcError.code) || (fallbackError && fallbackError.code) || null
+          error: 'Não foi possível carregar a agenda. Tente novamente.'
         });
       }
     }
@@ -138,14 +141,15 @@ async function handleGet(req, res) {
       total_items: (items || []).length
     });
   } catch (error) {
-    console.error('[AGENDA] Erro geral:', error);
+    safeError('agenda_get_error', error, { requestId, route: '/api/agenda', method: 'GET' });
     return res.status(500).json({
-      error: error.message || 'Erro ao buscar agenda'
+      error: 'Não foi possível carregar a agenda. Tente novamente.'
     });
   }
 }
 
 async function handlePost(req, res) {
+  const requestId = generateRequestId(req);
   const { action } = req.body;
 
   try {
@@ -235,7 +239,7 @@ Responda APENAS com o resumo, sem explicações adicionais.`;
       });
     }
   } catch (error) {
-    console.error('[AGENDA] Erro ao gerar resumo:', error);
-    return res.status(500).json({ error: 'Erro ao gerar resumo' });
+    safeError('agenda_summary_error', error, { requestId, route: '/api/agenda', method: 'POST' });
+    return res.status(500).json({ error: 'Não foi possível gerar o resumo. Tente novamente.' });
   }
 }

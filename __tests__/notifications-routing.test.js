@@ -184,7 +184,7 @@ describe('NotificationPanel - Roteamento', () => {
         expect(screen.getByText(notification.title)).toBeInTheDocument();
       });
 
-      const verButtons = screen.getAllByText('Ver');
+      const verButtons = screen.getAllByTestId('notification-action');
       fireEvent.click(verButtons[0]);
 
       expect(mockPush).toHaveBeenCalledWith(expectedRoute);
@@ -221,7 +221,7 @@ describe('NotificationPanel - Roteamento', () => {
       expect(screen.getByText(notification.title)).toBeInTheDocument();
     });
 
-    const verButtons = screen.getAllByText('Ver');
+    const verButtons = screen.getAllByTestId('notification-action');
     fireEvent.click(verButtons[0]);
 
     expect(mockOnClose).toHaveBeenCalledTimes(1);
@@ -294,7 +294,7 @@ describe('NotificationPanel - Roteamento', () => {
       });
 
       // Link malicioso não deve ativar roteamento
-      const verButtons = screen.getAllByText('Ver');
+      const verButtons = screen.getAllByTestId('notification-action');
       expect(verButtons[0]).toBeDisabled();
       fireEvent.click(verButtons[0]);
 
@@ -354,7 +354,7 @@ describe('NotificationPanel - Roteamento', () => {
         expect(screen.getByText(notification.title)).toBeInTheDocument();
       });
 
-      const verButtons = screen.getAllByText('Ver');
+      const verButtons = screen.getAllByTestId('notification-action');
       expect(verButtons[0]).toBeDisabled();
       fireEvent.click(verButtons[0]);
 
@@ -394,7 +394,7 @@ describe('NotificationPanel - Roteamento', () => {
       expect(screen.getByText(notification.title)).toBeInTheDocument();
     });
 
-    const verButtons = screen.getAllByText('Ver');
+    const verButtons = screen.getAllByTestId('notification-action');
     fireEvent.click(verButtons[0]);
 
     // Não deve ter chamado router.push

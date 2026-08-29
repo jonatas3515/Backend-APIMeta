@@ -127,19 +127,13 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole, t
     };
   }, [isOpen, isMobile, onClose, triggerRef]);
 
-  // Ação: Ver notificação
+  // Ação: Ver notificação (abre origem e fecha painel)
   const handleAction = async (notification) => {
     if (notification.link && validateInternalNotificationRoute(notification.link)) {
-      router.push(notification.link);
       onClose();
+      await router.push(notification.link);
+      // Badge e lista serão atualizadas na próxima abertura autorizada
     }
-  };
-
-  // Ação: Dispensar notificação
-  const handleDismiss = async (notification) => {
-    // TODO: Implementar marcação como lida via API
-    // Por enquanto, apenas remove da lista local
-    setNotifications(prev => prev.filter(n => n.id !== notification.id));
   };
 
   if (!isOpen) return null;
@@ -289,7 +283,6 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole, t
                   key={notification.id}
                   notification={notification}
                   onAction={handleAction}
-                  onDismiss={handleDismiss}
                 />
               ))}
             </div>

@@ -363,7 +363,7 @@ export default function ProcessTriagePanel({ movementId, profile }) {
         setSelectedMovement(data.movement);
         setHistory(data.history || []);
       } else {
-        setMessage({ type: 'error', text: data.error || 'Erro ao carregar detalhes' });
+        setMessage({ type: 'error', text: 'Não foi possível carregar os detalhes. Tente novamente.' });
       }
     } catch (err) {
       console.error('[TRIAGE] Detalhes:', err);
@@ -727,7 +727,7 @@ export default function ProcessTriagePanel({ movementId, profile }) {
                 <button onClick={clearFilters} className="nc-btn text-sm" data-testid="clear-empty-filters">Limpar filtros</button>
               </>
             ) : (
-              <p>Nenhuma movimentação autorizada para triagem</p>
+              <p>Não há movimentações disponíveis para sua revisão.</p>
             )}
           </div>
         )}
