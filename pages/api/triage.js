@@ -61,15 +61,20 @@ async function listMovements(req, res) {
     court_code,
     start_date,
     end_date,
+    assigned_user_id,
     page = 1,
     limit = 20
   } = req.query;
+
+  const mine = req.query.mine === 'true';
+  const targetAssignedUserId = mine ? req.user.id : assigned_user_id;
 
   try {
     let query = supabase
       .from('process_movements')
       .select(`
         *,
+        assigned_user:users!assigned_user_id(name),
         case_process:case_processes!inner(
           id,
           process_number,
@@ -113,6 +118,14 @@ async function listMovements(req, res) {
       query = query.lte('movement_date', end_date);
     }
 
+    if (targetAssignedUserId) {
+      if (targetAssignedUserId === 'unassigned') {
+        query = query.is('assigned_user_id', null);
+      } else {
+        query = query.eq('assigned_user_id', targetAssignedUserId);
+      }
+    }
+
     // Ordenação e paginação
     const offset = (parseInt(page) - 1) * parseInt(limit);
     query = query
@@ -148,21 +161,28 @@ async function getStats(req, res) {
       // Se a função não existir, calcular manualmente
       const { data: movements, error: countError } = await supabase
         .from('process_movements')
-        .select('triage_status, priority, legal_classification', { count: 'exact' });
+        .select('triage_status, priority, legal_classification, assigned_user_id', { count: 'exact' });
 
       if (countError) throw countError;
+
+      const myId = req.user.id;
+      const activeStatuses = ['novo', 'em_analise'];
 
       const statsManual = {
         total: movements.length,
         by_status: {},
         by_priority: {},
-        by_classification: {}
+        by_classification: {},
+        my_pendencies: 0
       };
 
       movements.forEach(m => {
         statsManual.by_status[m.triage_status] = (statsManual.by_status[m.triage_status] || 0) + 1;
         statsManual.by_priority[m.priority] = (statsManual.by_priority[m.priority] || 0) + 1;
         statsManual.by_classification[m.legal_classification] = (statsManual.by_classification[m.legal_classification] || 0) + 1;
+        if (activeStatuses.includes(m.triage_status) && m.assigned_user_id === myId) {
+          statsManual.my_pendencies += 1;
+        }
       });
 
       return res.status(200).json(statsManual);
@@ -184,6 +204,7 @@ async function getMovementDetails(req, res, id) {
       .from('process_movements')
       .select(`
         *,
+        assigned_user:users!assigned_user_id(name),
         case_process:case_processes(
           id,
           process_number,

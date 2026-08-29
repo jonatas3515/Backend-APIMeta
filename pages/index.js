@@ -575,7 +575,7 @@ export default function Home() {
           ) : activeTab === 'agenda' ? (
             <AgendaPanel />
           ) : activeTab === 'triage' ? (
-            <ProcessTriagePanel movementId={triageMovementId} />
+            <ProcessTriagePanel movementId={triageMovementId} profile={profile} />
           ) : activeTab === 'cases' ? (
             <CasesPanel notice={casesNotice} />
           ) : activeTab === 'models-routines' ? (
