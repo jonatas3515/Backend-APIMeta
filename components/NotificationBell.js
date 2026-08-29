@@ -10,6 +10,7 @@ import { forwardRef } from 'react';
 
 const NotificationBell = forwardRef(({ userId, userRole, onOpen }, ref) => {
   const [count, setCount] = useState(0);
+  const [countReliable, setCountReliable] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const fetchCount = useCallback(async () => {
@@ -36,6 +37,7 @@ const NotificationBell = forwardRef(({ userId, userRole, onOpen }, ref) => {
 
       const data = await response.json();
       setCount(data.unreadCount || 0);
+      setCountReliable(data.countReliable !== false);
     } catch (error) {
       console.error('[NOTIFICATION-BELL] Erro:', error);
     }
@@ -58,14 +60,15 @@ const NotificationBell = forwardRef(({ userId, userRole, onOpen }, ref) => {
     }
   };
 
-  const badgeText = formatBadgeCount(count);
+  const badgeText = countReliable ? formatBadgeCount(count) : '!';
+  const showBadge = count > 0 || !countReliable;
 
   return (
     <button
       ref={ref}
       onClick={handleClick}
       className="relative p-2 rounded-full hover:bg-nc-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-nc-yellow"
-      aria-label={`Notificações${count > 0 ? ` (${count} não lidas)` : ''}`}
+      aria-label={`Notificações${count > 0 ? ` (${count} não lidas)` : ''}${!countReliable ? ' - atualização pendente' : ''}`}
       role="button"
       title="Notificações"
     >
@@ -85,8 +88,8 @@ const NotificationBell = forwardRef(({ userId, userRole, onOpen }, ref) => {
       </svg>
 
       {/* Badge */}
-      {badgeText && (
-        <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full">
+      {showBadge && (
+        <span className={`absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white rounded-full ${countReliable ? 'bg-red-500' : 'bg-yellow-500'}`}>
           {badgeText}
         </span>
       )}

@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import notificationCache from '../../../lib/notificationCache';
+import { aggregateNotifications } from '../../../lib/notificationAggregator';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -109,21 +110,31 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Verificar cache
-    const cached = notificationCache.get(userId, 'count');
+    const cached = notificationCache.get(userId, 'count', userRole);
     if (cached !== null) {
-      return res.status(200).json({ unreadCount: cached, cached: true });
+      return res.status(200).json(cached);
     }
 
-    // Contar
-    const count = await countNotifications(userId, userRole);
+    const result = await aggregateNotifications({ userId, userRole });
 
-    // Cachear
-    notificationCache.set(userId, count, 'count');
+    const response = {
+      unreadCount: result.notifications.length,
+      countReliable: result.countReliable,
+      errors: result.errors
+    };
 
-    return res.status(200).json({ unreadCount: count, cached: false });
+    if (result.countReliable) {
+      notificationCache.set(userId, response, 'count', userRole);
+    }
+
+    return res.status(200).json(response);
   } catch (error) {
     console.error('[NOTIFICATIONS/COUNT] Erro:', sanitizeError(error));
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({
+      error: 'Internal server error',
+      unreadCount: 0,
+      countReliable: false,
+      errors: [{ source: 'server', code: 'internal_error' }]
+    });
   }
 }

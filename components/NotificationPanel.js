@@ -6,11 +6,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import NotificationItem from './NotificationItem';
 import Portal from './Portal';
-import { groupNotifications } from '../lib/notificationHelpers';
+import { groupNotifications, validateInternalNotificationRoute } from '../lib/notificationHelpers';
 import { useRouter } from 'next/router';
 
 export default function NotificationPanel({ isOpen, onClose, userId, userRole, triggerRef }) {
   const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [countReliable, setCountReliable] = useState(true);
+  const [errors, setErrors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [activeGroup, setActiveGroup] = useState('all');
@@ -80,6 +83,9 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole, t
 
       const data = await response.json();
       setNotifications(data.notifications || []);
+      setUnreadCount(data.unreadCount || 0);
+      setCountReliable(data.countReliable !== false);
+      setErrors(data.errors || []);
     } catch (err) {
       console.error('[NOTIFICATION-PANEL] Erro:', err);
       setError('Não foi possível carregar notificações');
@@ -125,8 +131,7 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole, t
 
   // Ação: Ver notificação
   const handleAction = async (notification) => {
-    // Navegar para o módulo correto
-    if (notification.link) {
+    if (notification.link && validateInternalNotificationRoute(notification.link)) {
       router.push(notification.link);
       onClose();
     }
@@ -152,7 +157,6 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole, t
   };
 
   const currentNotifications = groups[activeGroup] || [];
-  const unreadCount = notifications.length;
 
   const panelContent = (
     <>
@@ -190,9 +194,15 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole, t
       >
         {/* Header */}
         <div className="flex-shrink-0 border-b border-nc-gray-200 p-4">
+          {!countReliable && !error && (
+            <div className="mb-2 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2">
+              Algumas fontes de notificações não puderam ser atualizadas.
+            </div>
+          )}
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold text-nc-text-title">
-              🔔 Notificações {unreadCount > 0 && `(${unreadCount})`}
+              🔔 Notificações {countReliable && unreadCount > 0 && `(${unreadCount})`}
+              {!countReliable && <span className="ml-1 text-xs text-yellow-500" title="Atualização pendente">●</span>}
             </h2>
             {isMobile && (
               <button
@@ -253,9 +263,24 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole, t
 
           {!loading && !error && currentNotifications.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-nc-text-muted">
-              <div className="text-5xl mb-3">🔕</div>
-              <p className="text-sm font-medium">Nenhuma notificação</p>
-              <p className="text-xs mt-1">Você está em dia!</p>
+              <div className="text-5xl mb-3">{notifications.length === 0 ? '🔕' : '📂'}</div>
+              <p className="text-sm font-medium">
+                {notifications.length === 0 ? 'Nenhuma notificação' : 'Nenhuma notificação nesta categoria'}
+              </p>
+              {notifications.length === 0 && countReliable && errors.length === 0 && (
+                <p className="text-xs mt-1">Você está em dia!</p>
+              )}
+              {notifications.length === 0 && !countReliable && (
+                <p className="text-xs mt-1">Contagem temporariamente indisponível.</p>
+              )}
+              {notifications.length > 0 && (
+                <button
+                  onClick={() => setActiveGroup('all')}
+                  className="mt-2 text-xs font-medium text-nc-yellow hover:text-nc-yellow-dark"
+                >
+                  Ver todas as notificações
+                </button>
+              )}
             </div>
           )}
 

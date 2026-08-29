@@ -38,7 +38,7 @@ const PRIORITY_LABELS = {
   urgente: '⚠️ Urgente'
 };
 
-export default function ProcessTriagePanel() {
+export default function ProcessTriagePanel({ movementId }) {
   const [movements, setMovements] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -71,6 +71,17 @@ export default function ProcessTriagePanel() {
     fetchMovements();
     fetchStats();
   }, [filters]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!movementId || movements.length === 0) return;
+    const found = movements.find((m) => m.id === movementId);
+    if (found) {
+      openMovement(found);
+    } else {
+      setMessage({ type: 'warning', text: 'Movimentação não encontrada ou não disponível.' });
+    }
+  }, [movementId, movements]);
 
   const fetchMovements = async () => {
     setLoading(true);

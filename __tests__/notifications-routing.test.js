@@ -59,11 +59,11 @@ describe('NotificationPanel - Roteamento', () => {
         id: 'notif-1',
         type: 'message',
         title: 'Nova mensagem',
-        link: '/?conversation=conv-uuid-123',
+        link: '/?tab=chat&conversationId=conv-uuid-123',
         priority: 'normal',
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       },
-      expectedRoute: '/?conversation=conv-uuid-123',
+      expectedRoute: '/?tab=chat&conversationId=conv-uuid-123',
     },
     {
       type: 'reminder',
@@ -71,11 +71,11 @@ describe('NotificationPanel - Roteamento', () => {
         id: 'notif-2',
         type: 'reminder',
         title: 'Lembrete',
-        link: '/?conversation=conv-uuid-456',
+        link: '/?tab=chat&conversationId=conv-uuid-456&reminderId=conv-uuid-456',
         priority: 'normal',
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       },
-      expectedRoute: '/?conversation=conv-uuid-456',
+      expectedRoute: '/?tab=chat&conversationId=conv-uuid-456&reminderId=conv-uuid-456',
     },
     {
       type: 'deadline',
@@ -83,11 +83,11 @@ describe('NotificationPanel - Roteamento', () => {
         id: 'notif-3',
         type: 'deadline',
         title: 'Prazo próximo',
-        link: '/?case=case-uuid-789',
+        link: '/?tab=cases&caseId=case-uuid-789',
         priority: 'high',
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       },
-      expectedRoute: '/?case=case-uuid-789',
+      expectedRoute: '/?tab=cases&caseId=case-uuid-789',
     },
     {
       type: 'deadline_overdue',
@@ -95,11 +95,11 @@ describe('NotificationPanel - Roteamento', () => {
         id: 'notif-4',
         type: 'deadline_overdue',
         title: 'Prazo vencido',
-        link: '/?case=case-uuid-abc',
+        link: '/?tab=cases&caseId=case-uuid-abc',
         priority: 'critical',
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       },
-      expectedRoute: '/?case=case-uuid-abc',
+      expectedRoute: '/?tab=cases&caseId=case-uuid-abc',
     },
     {
       type: 'deadline_today',
@@ -107,11 +107,11 @@ describe('NotificationPanel - Roteamento', () => {
         id: 'notif-5',
         type: 'deadline_today',
         title: 'Prazo hoje',
-        link: '/?case=case-uuid-def',
+        link: '/?tab=cases&caseId=case-uuid-def',
         priority: 'high',
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       },
-      expectedRoute: '/?case=case-uuid-def',
+      expectedRoute: '/?tab=cases&caseId=case-uuid-def',
     },
     {
       type: 'case_critical',
@@ -119,11 +119,11 @@ describe('NotificationPanel - Roteamento', () => {
         id: 'notif-6',
         type: 'case_critical',
         title: 'Caso crítico',
-        link: '/?case=case-uuid-ghi',
+        link: '/?tab=cases&caseId=case-uuid-ghi',
         priority: 'critical',
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       },
-      expectedRoute: '/?case=case-uuid-ghi',
+      expectedRoute: '/?tab=cases&caseId=case-uuid-ghi',
     },
     {
       type: 'event_today',
@@ -131,11 +131,11 @@ describe('NotificationPanel - Roteamento', () => {
         id: 'notif-7',
         type: 'event_today',
         title: 'Evento hoje',
-        link: '/?agenda=true&event=event-uuid-jkl',
+        link: '/?tab=agenda&eventId=event-uuid-jkl',
         priority: 'high',
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       },
-      expectedRoute: '/?agenda=true&event=event-uuid-jkl',
+      expectedRoute: '/?tab=agenda&eventId=event-uuid-jkl',
     },
     {
       type: 'process_movement',
@@ -143,11 +143,11 @@ describe('NotificationPanel - Roteamento', () => {
         id: 'notif-8',
         type: 'process_movement',
         title: 'Movimentação processual',
-        link: '/?process=process-uuid-mno',
+        link: '/?tab=triage&movementId=process-uuid-mno',
         priority: 'normal',
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       },
-      expectedRoute: '/?process=process-uuid-mno',
+      expectedRoute: '/?tab=triage&movementId=process-uuid-mno',
     },
     {
       type: 'signature',
@@ -155,11 +155,11 @@ describe('NotificationPanel - Roteamento', () => {
         id: 'notif-9',
         type: 'signature',
         title: 'Assinatura pendente',
-        link: '/?signatures=true&id=sig-uuid-pqr',
+        link: '/?tab=users&view=signatures&signatureId=sig-uuid-pqr',
         priority: 'normal',
-        created_at: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       },
-      expectedRoute: '/?signatures=true&id=sig-uuid-pqr',
+      expectedRoute: '/?tab=users&view=signatures&signatureId=sig-uuid-pqr',
     },
   ];
 
@@ -197,9 +197,9 @@ describe('NotificationPanel - Roteamento', () => {
       id: 'notif-1',
       type: 'message',
       title: 'Nova mensagem',
-      link: '/?conversation=conv-123',
+      link: '/?tab=chat&conversationId=conv-123',
       priority: 'normal',
-      created_at: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     };
 
     global.fetch.mockResolvedValueOnce({
@@ -293,13 +293,12 @@ describe('NotificationPanel - Roteamento', () => {
         expect(screen.getByText(notification.title)).toBeInTheDocument();
       });
 
-      // Link malicioso deve ser chamado (backend deve sanitizar)
-      // Mas vamos verificar que não quebra
+      // Link malicioso não deve ativar roteamento
       const verButtons = screen.getAllByText('Ver');
+      expect(verButtons[0]).toBeDisabled();
       fireEvent.click(verButtons[0]);
 
-      // Router.push foi chamado com o link (backend deve ter sanitizado)
-      expect(mockPush).toHaveBeenCalled();
+      expect(mockPush).not.toHaveBeenCalled();
 
       unmount();
     }
@@ -356,15 +355,11 @@ describe('NotificationPanel - Roteamento', () => {
       });
 
       const verButtons = screen.getAllByText('Ver');
+      expect(verButtons[0]).toBeDisabled();
       fireEvent.click(verButtons[0]);
 
-      // Backend deve ter sanitizado o link
-      expect(mockPush).toHaveBeenCalled();
-      const calledLink = mockPush.mock.calls[0][0];
-
-      // Verificar que não contém dados sensíveis (backend deve ter removido)
-      // Aqui apenas verificamos que o router.push foi chamado
-      expect(calledLink).toBeTruthy();
+      // Links com dados sensíveis devem ser bloqueados
+      expect(mockPush).not.toHaveBeenCalled();
 
       unmount();
     }

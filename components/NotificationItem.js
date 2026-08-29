@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { formatRelativeDate } from '../lib/notificationHelpers';
+import { formatRelativeDate, validateInternalNotificationRoute } from '../lib/notificationHelpers';
 
 const ICONS = {
   message: '💬',
@@ -52,6 +52,7 @@ export default function NotificationItem({ notification, onAction, onDismiss }) 
   const icon = ICONS[notification.type] || '🔔';
   const priorityClass = PRIORITY_COLORS[notification.priority] || PRIORITY_COLORS.normal;
   const relativeDate = formatRelativeDate(notification.createdAt, notification.isOverdue ? 'past' : 'future');
+  const hasValidLink = validateInternalNotificationRoute(notification?.link);
 
   // Determina se pode ser dispensada
   const canDismiss = ['message', 'process_movement', 'signature'].includes(notification.type.split('_')[0]);
@@ -82,8 +83,8 @@ export default function NotificationItem({ notification, onAction, onDismiss }) 
           <div className="flex items-center gap-2 mt-2">
             <button
               onClick={handleAction}
-              disabled={loading}
-              className="text-xs font-medium text-nc-yellow hover:text-nc-yellow-dark disabled:opacity-50 transition-colors"
+              disabled={!hasValidLink || loading}
+              className="text-xs font-medium text-nc-yellow hover:text-nc-yellow-dark disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Carregando...' : 'Ver'}
             </button>

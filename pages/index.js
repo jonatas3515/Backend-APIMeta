@@ -60,6 +60,7 @@ export default function Home() {
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
   const [notifPrefs, setNotifPrefs] = useState(null);
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const [triageMovementId, setTriageMovementId] = useState(null);
   const notificationBellRef = useRef(null);
 
   useEffect(() => {
@@ -204,6 +205,7 @@ export default function Home() {
       redirectTo,
       notice,
       newConversation,
+      movementId,
     } = resolved;
 
     // Aplica redirecionamento legado sem loop
@@ -224,6 +226,7 @@ export default function Home() {
 
     setActiveTab(tab);
     setCasesNotice(notice || null);
+    setTriageMovementId(movementId || null);
 
     if (tab === 'chat' && view) {
       setChatView(view === 'clientes' ? 'clientes' : 'conversas');
@@ -258,7 +261,7 @@ export default function Home() {
   // Seleciona conversa a partir da query string quando os dados estiverem carregados
   useEffect(() => {
     if (!router.isReady) return;
-    const conversationId = router.query.conversation;
+    const conversationId = router.query.conversationId || router.query.conversation;
     if (conversationId && conversations.length > 0) {
       if (lastConversationQuery.current !== conversationId) {
         const conv = conversations.find((c) => c.id === conversationId);
@@ -572,7 +575,7 @@ export default function Home() {
           ) : activeTab === 'agenda' ? (
             <AgendaPanel />
           ) : activeTab === 'triage' ? (
-            <ProcessTriagePanel />
+            <ProcessTriagePanel movementId={triageMovementId} />
           ) : activeTab === 'cases' ? (
             <CasesPanel notice={casesNotice} />
           ) : activeTab === 'models-routines' ? (

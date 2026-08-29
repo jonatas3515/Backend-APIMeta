@@ -15,6 +15,7 @@ import {
   validateNoPII
 } from '../../lib/notificationHelpers';
 import notificationCache from '../../lib/notificationCache';
+import { aggregateNotifications } from '../../lib/notificationAggregator';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -387,57 +388,6 @@ async function getPendingSignatures(userId, userRole) {
 }
 
 /**
- * Agrega todas as notificações
- */
-async function aggregateNotifications(userId, userRole) {
-  const sources = [
-    { name: 'messages', fn: getUnreadMessages },
-    { name: 'reminders', fn: getReminders },
-    { name: 'deadlines', fn: getDeadlines },
-    { name: 'events', fn: getEvents },
-    { name: 'critical_cases', fn: getCriticalCases },
-    { name: 'movements', fn: getUnreviewedMovements },
-    { name: 'signatures', fn: getPendingSignatures }
-  ];
-
-  const results = await Promise.allSettled(
-    sources.map(s => s.fn(userId, userRole))
-  );
-
-  const notifications = [];
-  const errors = [];
-
-  results.forEach((result, i) => {
-    if (result.status === 'fulfilled') {
-      notifications.push(...result.value);
-    } else {
-      errors.push({
-        source: sources[i].name,
-        error: result.reason?.message || 'Unknown error'
-      });
-      console.error(`[NOTIFICATIONS] Erro em ${sources[i].name}:`, result.reason);
-    }
-  });
-
-  // Ordenar por prioridade e data
-  const priorityOrder = { critical: 0, high: 1, normal: 2, low: 3 };
-  notifications.sort((a, b) => {
-    const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
-    if (priorityDiff !== 0) return priorityDiff;
-    return new Date(b.createdAt) - new Date(a.createdAt);
-  });
-
-  // Validar que nenhum título contém PII
-  notifications.forEach(n => {
-    if (!validateNoPII(n.title)) {
-      console.error('[NOTIFICATIONS] ALERTA: PII detectada em título:', n.id);
-    }
-  });
-
-  return { notifications, errors };
-}
-
-/**
  * Handler principal
  */
 export default async function handler(req, res) {
@@ -446,7 +396,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Autenticação (simplificada - ajustar conforme seu sistema)
     const userId = req.headers['x-user-id'] || req.query.user_id;
     const userRole = req.headers['x-user-role'] || req.query.user_role || 'advogado';
 
@@ -454,34 +403,36 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Rate limiting
     if (!notificationCache.checkRateLimit(userId)) {
       return res.status(429).json({ error: 'Too many requests' });
     }
 
-    // Verificar cache
-    const cached = notificationCache.get(userId, 'notifications');
+    const cached = notificationCache.get(userId, 'list', userRole);
     if (cached) {
-      return res.status(200).json({ ...cached, cached: true });
+      return res.status(200).json(cached);
     }
 
-    // Agregar notificações
-    const startTime = Date.now();
-    const result = await aggregateNotifications(userId, userRole);
-    const duration = Date.now() - startTime;
+    const result = await aggregateNotifications({ userId, userRole });
 
-    console.log(`[NOTIFICATIONS] Agregadas ${result.notifications.length} notificações em ${duration}ms`);
+    const response = {
+      notifications: result.notifications,
+      unreadCount: result.notifications.length,
+      countReliable: result.countReliable,
+      errors: result.errors
+    };
 
-    // Cachear resultado
-    notificationCache.set(userId, result, 'notifications');
+    if (result.countReliable) {
+      notificationCache.set(userId, response, 'list', userRole);
+    }
 
-    return res.status(200).json({
-      ...result,
-      cached: false,
-      duration
-    });
+    return res.status(200).json(response);
   } catch (error) {
     console.error('[NOTIFICATIONS] Erro:', sanitizeError(error));
-    return res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({
+      error: 'Internal server error',
+      unreadCount: 0,
+      countReliable: false,
+      errors: [{ source: 'server', code: 'internal_error' }]
+    });
   }
 }

@@ -50,38 +50,38 @@ describe('Notification Helpers', () => {
 
   describe('getNotificationRoute', () => {
     test('message routes to conversation', () => {
-      const notif = { type: 'message', reference_id: 'conv-123' };
-      expect(getNotificationRoute(notif)).toBe('/?conversation=conv-123');
+      const notif = { type: 'message', reference_type: 'conversation', reference_id: 'conv-123' };
+      expect(getNotificationRoute(notif)).toBe('/?tab=chat&conversationId=conv-123');
     });
 
     test('deadline routes to case', () => {
-      const notif = { type: 'deadline', reference_id: 'case-456' };
-      expect(getNotificationRoute(notif)).toBe('/?case=case-456');
+      const notif = { type: 'deadline', reference_type: 'case', reference_id: 'case-456' };
+      expect(getNotificationRoute(notif)).toBe('/?tab=cases&caseId=case-456');
     });
 
     test('deadline_overdue routes to case', () => {
-      const notif = { type: 'deadline_overdue', reference_id: 'case-789' };
-      expect(getNotificationRoute(notif)).toBe('/?case=case-789');
+      const notif = { type: 'deadline_overdue', reference_type: 'case', reference_id: 'case-789' };
+      expect(getNotificationRoute(notif)).toBe('/?tab=cases&caseId=case-789');
     });
 
     test('event routes to agenda', () => {
-      const notif = { type: 'event_today', reference_id: 'event-111' };
-      expect(getNotificationRoute(notif)).toBe('/?agenda=true&event=event-111');
+      const notif = { type: 'event_today', reference_type: 'event', reference_id: 'event-111' };
+      expect(getNotificationRoute(notif)).toBe('/?tab=agenda&eventId=event-111');
     });
 
-    test('process_movement routes to process', () => {
-      const notif = { type: 'process_movement', reference_id: 'mov-222' };
-      expect(getNotificationRoute(notif)).toBe('/?process=mov-222');
+    test('process_movement routes to triage', () => {
+      const notif = { type: 'process_movement', reference_type: 'movement', reference_id: 'mov-222' };
+      expect(getNotificationRoute(notif)).toBe('/?tab=triage&movementId=mov-222');
     });
 
     test('signature routes to signatures panel', () => {
-      const notif = { type: 'signature', reference_id: 'sig-333' };
-      expect(getNotificationRoute(notif)).toBe('/?signatures=true&id=sig-333');
+      const notif = { type: 'signature', reference_type: 'signature', reference_id: 'sig-333' };
+      expect(getNotificationRoute(notif)).toBe('/?tab=users&view=signatures&signatureId=sig-333');
     });
 
-    test('unknown type routes to home', () => {
-      const notif = { type: 'unknown', reference_id: 'xxx' };
-      expect(getNotificationRoute(notif)).toBe('/');
+    test('unknown type routes to nothing', () => {
+      const notif = { type: 'unknown', reference_type: 'unknown', reference_id: 'xxx' };
+      expect(getNotificationRoute(notif)).toBe(null);
     });
   });
 
