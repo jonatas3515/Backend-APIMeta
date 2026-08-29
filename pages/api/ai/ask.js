@@ -4,6 +4,8 @@ import { askRag } from '../../../lib/aiRag';
 import { anonymizeText } from '../../../lib/anonymize';
 import { safeLog, safeError } from '../../../lib/safeLogger';
 
+const MAX_QUERY_LENGTH = 1000;
+
 async function getUserFromToken(req) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.replace('Bearer ', '').trim();
@@ -38,6 +40,10 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido' });
   }
 
+  if (req.headers['x-user-id'] || req.headers['x-user-role']) {
+    return res.status(401).json({ error: 'Autenticação inválida' });
+  }
+
   const user = await getUserFromToken(req);
   if (!user) {
     return res.status(401).json({ error: 'Não autenticado' });
@@ -49,13 +55,14 @@ export default async function handler(req, res) {
   }
 
   const { query, area = null, tribunal = null, type = null } = req.body || {};
-  if (!query || query.trim().length < 3) {
+  const safeQuery = (query || '').trim().slice(0, MAX_QUERY_LENGTH);
+  if (safeQuery.length < 3) {
     return res.status(400).json({ error: 'Pergunta muito curta' });
   }
 
   try {
     const { results, documents } = await searchKnowledge({
-      query,
+      query: safeQuery,
       status: 'aprovado',
       area,
       tribunal,
@@ -65,25 +72,24 @@ export default async function handler(req, res) {
 
     safeLog('info', 'rag_search', {
       route: '/api/ai/ask',
-      queryLength: query?.length,
+      queryLength: safeQuery.length,
       status: 'aprovado',
       area,
       tribunal,
       type,
       resultsCount: results?.length,
       documentsCount: documents?.length,
-      documentTitles: documents?.map(d => d.title),
       contextLength: (results || []).reduce((acc, r) => acc + (r.content?.length || 0), 0)
     });
 
     const context = buildContext(results, 5000);
-    const answer = await askRag(query, context);
+    const answer = await askRag(safeQuery, context);
 
     const { error: logError } = await supabaseServer
       .from('knowledge_query_logs')
       .insert({
         user_id: user.id,
-        query: anonymizeText(query.trim()),
+        query: anonymizeText(safeQuery),
         area_filter: area,
         tribunal_filter: tribunal,
         type_filter: type,

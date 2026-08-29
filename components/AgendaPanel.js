@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { askGemini } from '../lib/ai';
 import { getAuthHeaders } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
 import useAreaFilter from '../hooks/useAreaFilter';
 import { LEGAL_AREAS } from '../lib/legalAreas';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { buildInternalUrl } from '../lib/router';
+import { validateInternalNotificationRoute } from '../lib/notificationHelpers';
 import ExportButtons from './ExportButtons';
 import { exportAgendaPdf, exportAgendaExcel } from '../lib/export';
 import CaseCalendarSync from './CaseCalendarSync';
 
 export default function AgendaPanel() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('today');
   const [agenda, setAgenda] = useState({});
   const [summary, setSummary] = useState(null);
@@ -151,6 +155,28 @@ export default function AgendaPanel() {
     } catch (error) {
       console.error('[AGENDA] Erro ao gerar iCal:', error);
       alert('Erro ao gerar link iCal');
+    }
+  };
+
+  const isSafeId = (id) => typeof id === 'string' && id.trim() && id.length <= 100;
+
+  const handleItemClick = (item) => {
+    const itemType = item.item_type;
+    const conversationId = item.conversation_id;
+    const caseId = item.case_id;
+    const eventId = item.event_id;
+
+    let url = null;
+    if (itemType === 'reminder' && isSafeId(conversationId)) {
+      url = buildInternalUrl({ tab: 'chat', conversationId, reminderId: item.id });
+    } else if ((itemType === 'case_deadline' || (itemType === 'reminder' && isSafeId(caseId))) && isSafeId(caseId)) {
+      url = buildInternalUrl({ tab: 'cases', caseId, reminderId: item.id });
+    } else if ((itemType === 'case_event' || (itemType === 'reminder' && isSafeId(eventId))) && isSafeId(eventId)) {
+      url = buildInternalUrl({ tab: 'agenda', eventId, reminderId: item.id });
+    }
+
+    if (url && validateInternalNotificationRoute(url)) {
+      router.push(url);
     }
   };
 
@@ -456,9 +482,15 @@ export default function AgendaPanel() {
                         className={`p-3 border-l-4 rounded flex justify-between items-start ${getPriorityColor(item.priority)}`}
                       >
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1" data-testid="agenda-item" data-item-type={item.item_type} data-item-id={item.case_id || item.event_id || item.conversation_id || item.id}>
                             <span>{getItemTypeIcon(item.item_type)}</span>
-                            <span className="font-semibold">{item.title}</span>
+                            <span
+                              className="font-semibold cursor-pointer hover:underline"
+                              onClick={() => handleItemClick(item)}
+                              data-testid="agenda-item-title"
+                            >
+                              {item.title}
+                            </span>
                             <span className="text-xs bg-white bg-opacity-60 px-2 py-0.5 rounded">
                               {item.event_type}
                             </span>

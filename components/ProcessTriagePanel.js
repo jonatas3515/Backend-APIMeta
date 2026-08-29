@@ -268,7 +268,6 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     try {
       const headers = await getAuthHeaders();
       const res = await fetch(`/api/triage?${buildParams(pageNum)}`, { headers });
-      if (!res) return;
       const data = await res.json();
       if (res.ok) {
         const next = data.movements || [];
@@ -288,17 +287,17 @@ export default function ProcessTriagePanel({ movementId, profile }) {
         setPage(pageNum);
       } else {
         if (pageNum === 1) {
-          setError(data.error || 'Erro ao carregar movimentações');
+          setError('Não foi possível atualizar a triagem. Tente novamente.');
         } else {
-          setPartialError(data.error || 'Erro ao carregar mais');
+          setPartialError('Não foi possível atualizar a triagem. Tente novamente.');
         }
       }
     } catch (err) {
-      console.error('[TRIAGE] Erro:', err);
+      console.error('[TRIAGE] Erro ao carregar movimentações');
       if (pageNum === 1) {
-        setError('Erro ao carregar movimentações');
+        setError('Não foi possível atualizar a triagem. Tente novamente.');
       } else {
-        setPartialError('Erro ao carregar mais');
+        setPartialError('Não foi possível atualizar a triagem. Tente novamente.');
       }
     } finally {
       setLoading(false);
@@ -310,7 +309,6 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     try {
       const headers = await getAuthHeaders();
       const res = await fetch('/api/triage?action=stats', { headers });
-      if (!res) return;
       const data = await res.json();
       if (res.ok) setStats(data);
     } catch (err) {
@@ -360,7 +358,6 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     try {
       const headers = await getAuthHeaders();
       const res = await fetch(`/api/triage?id=${mov.id}`, { headers });
-      if (!res) return;
       const data = await res.json();
       if (res.ok) {
         setSelectedMovement(data.movement);
@@ -408,7 +405,6 @@ export default function ProcessTriagePanel({ movementId, profile }) {
         headers,
         body: JSON.stringify(body)
       });
-      if (!res) return false;
       const data = await res.json();
       if (res.ok) {
         setMessage({ type: 'success', text: 'Ação registrada com sucesso' });
@@ -439,7 +435,6 @@ export default function ProcessTriagePanel({ movementId, profile }) {
         headers,
         body: JSON.stringify({ ...body, movement_id: selectedMovement.id })
       });
-      if (!res) return false;
       const data = await res.json();
       if (res.ok) {
         setMessage({ type: 'success', text: 'Ação registrada com sucesso' });
