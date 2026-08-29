@@ -35,27 +35,65 @@ export default withAuth(handler, { minRole: 'estagiario' });
 
 async function handleGet(req, res) {
   const { id, conversation_id, status, priority, legal_area, municipality } = req.query;
+  const user = req.user;
 
   try {
-    let query = supabase.from('cases').select('*');
-
     if (id) {
-      query = query.eq('id', id).single();
-    } else {
-      if (conversation_id) query = query.eq('conversation_id', conversation_id);
-      if (status) query = query.eq('status', status);
-      if (priority) query = query.eq('priority', priority);
-      if (legal_area) query = query.eq('legal_area', legal_area);
-      if (municipality) query = query.eq('municipality', municipality);
+      const { data, error } = await supabase
+        .from('cases')
+        .select('*, conversations!inner(assigned_user_id)')
+        .eq('id', id)
+        .maybeSingle();
 
-      query = query.order('deadline_date', { ascending: true, nullsFirst: false });
+      if (error || !data) {
+        return res.status(403).json({ error: 'Acesso não autorizado' });
+      }
+
+      const assigned = data.conversations?.assigned_user_id;
+      if (user.role !== 'admin' && assigned !== user.id) {
+        return res.status(403).json({ error: 'Acesso não autorizado' });
+      }
+
+      return res.status(200).json(data);
     }
+
+    if (conversation_id) {
+      const { data: conv, error: convError } = await supabase
+        .from('conversations')
+        .select('id, assigned_user_id')
+        .eq('id', conversation_id)
+        .maybeSingle();
+
+      if (convError || !conv) {
+        return res.status(404).json({ error: 'Conversa não encontrada' });
+      }
+
+      if (user.role !== 'admin' && conv.assigned_user_id !== user.id) {
+        return res.status(403).json({ error: 'Acesso não autorizado' });
+      }
+    }
+
+    let query = supabase
+      .from('cases')
+      .select('*, conversations!inner(assigned_user_id)');
+
+    if (user.role !== 'admin') {
+      query = query.eq('conversations.assigned_user_id', user.id);
+    }
+
+    if (conversation_id) query = query.eq('conversation_id', conversation_id);
+    if (status) query = query.eq('status', status);
+    if (priority) query = query.eq('priority', priority);
+    if (legal_area) query = query.eq('legal_area', legal_area);
+    if (municipality) query = query.eq('municipality', municipality);
+
+    query = query.order('deadline_date', { ascending: true, nullsFirst: false });
 
     const { data, error } = await query;
 
     if (error) throw error;
 
-    return res.status(200).json(data);
+    return res.status(200).json(data || []);
   } catch (error) {
     console.error('[CASES] Erro ao listar casos:', error);
     return res.status(500).json({ error: 'Erro ao listar casos' });

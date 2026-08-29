@@ -6,6 +6,7 @@
 import { createClient } from '@supabase/supabase-js';
 import notificationCache from '../../../lib/notificationCache';
 import { aggregateNotifications } from '../../../lib/notificationAggregator';
+import { withAuth } from '../../../lib/auth';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -97,24 +98,24 @@ async function countNotifications(userId, userRole) {
   }
 }
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const userId = req.user?.id;
+  const userRole = req.user?.role;
+
+  if (!userId || !userRole) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const cached = notificationCache.get(userId, 'count', userRole);
+  if (cached !== null) {
+    return res.status(200).json(cached);
+  }
+
   try {
-    const userId = req.headers['x-user-id'] || req.query.user_id;
-    const userRole = req.headers['x-user-role'] || req.query.user_role || 'advogado';
-
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const cached = notificationCache.get(userId, 'count', userRole);
-    if (cached !== null) {
-      return res.status(200).json(cached);
-    }
-
     const result = await aggregateNotifications({ userId, userRole });
 
     const response = {
@@ -138,3 +139,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withAuth(handler, { minRole: 'estagiario' });

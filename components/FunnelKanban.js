@@ -8,6 +8,7 @@ import { exportFunnelPdf, exportFunnelExcel } from '../lib/export';
 import CaseSuggestionBanner from './CaseSuggestionBanner';
 import CaseCreationModal from './CaseCreationModal';
 import CaseLinkModal from './CaseLinkModal';
+import ConfirmModal from './ConfirmModal';
 import { navigateToCase } from '../lib/router';
 
 // Etapas padronizadas do funil
@@ -35,6 +36,8 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
   const [selectedConvForCase, setSelectedConvForCase] = useState(null);
   const [showCaseCreationModal, setShowCaseCreationModal] = useState(false);
   const [showCaseLinkModal, setShowCaseLinkModal] = useState(false);
+  const [pendingStageChange, setPendingStageChange] = useState(null);
+  const [stageChangeError, setStageChangeError] = useState(null);
 
   useEffect(() => {
     setItems(conversations);
@@ -82,13 +85,18 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
         await Promise.all(
           eligibleConvs.map(async (conv) => {
             try {
-              const response = await fetch(`/api/cases/active?conversation_id=${conv.id}`, { headers });
+              const response = await fetch(`/api/cases?conversation_id=${conv.id}`, { headers });
               if (response.ok) {
                 const data = await response.json();
-                if (data) cases[conv.id] = data;
+                const list = Array.isArray(data) ? data : [data];
+                const activeCase = list.find(c => c && c.status !== 'encerrado');
+                if (activeCase) cases[conv.id] = activeCase;
+              } else if (response.status === 403 || response.status === 404) {
+                // Inacessível ou sem caso: não expõe nada
+                return;
               }
             } catch (err) {
-              console.error(`[FUNNEL] Erro ao buscar caso ativo para ${conv.id}:`, err);
+              console.error('[FUNNEL] Erro ao buscar caso ativo');
             }
           })
         );
@@ -104,10 +112,23 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
     }
   }, [items]);
 
-  const handleStageChange = async (conversation, newStage) => {
+  const handleStageSelect = (conversation, newStage) => {
     if (conversation.funnel_stage === newStage) return;
+    setPendingStageChange({ conversation, newStage });
+    setStageChangeError(null);
+  };
+
+  const handleStageChange = async () => {
+    if (!pendingStageChange) return;
+
+    const { conversation, newStage } = pendingStageChange;
+    if (conversation.funnel_stage === newStage) {
+      setPendingStageChange(null);
+      return;
+    }
 
     setLoading(true);
+    setStageChangeError(null);
     try {
       const response = await fetch('/api/funnel', {
         method: 'PATCH',
@@ -122,13 +143,13 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
       if (!response.ok) throw new Error('Erro ao atualizar stage');
 
       const result = await response.json();
-      console.log('[KANBAN] Stage atualizado:', result.message);
+      console.log('[KANBAN] Stage atualizado');
 
-      // Atualiza a conversa localmente para que mude de coluna imediatamente
       setItems(prev => prev.map(c => c.id === conversation.id ? result.conversation : c));
+      setPendingStageChange(null);
     } catch (error) {
       console.error('[KANBAN] Erro ao mudar stage:', error);
-      alert('Erro ao mover conversa');
+      setStageChangeError('Não foi possível mover a conversa. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -365,9 +386,10 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
                     {/* Dropdown para mudar stage */}
                     <select
                       value={conv.funnel_stage || 'lead_novo'}
-                      onChange={(e) => handleStageChange(conv, e.target.value)}
+                      onChange={(e) => handleStageSelect(conv, e.target.value)}
                       onClick={(e) => e.stopPropagation()}
                       disabled={loading}
+                      data-testid="funnel-stage-select"
                       className="w-full mt-2 px-2 py-1 text-xs border border-gray-300 rounded bg-white hover:bg-gray-50 disabled:opacity-50"
                     >
                       {FUNNEL_STAGES.map(s => (
@@ -412,6 +434,31 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
           />
         </>
       )}
+
+      {pendingStageChange && (
+        <ConfirmModal
+          isOpen={true}
+          title="Confirmar mudança de estágio"
+          onConfirm={handleStageChange}
+          onCancel={() => setPendingStageChange(null)}
+          loading={loading}
+          disabled={loading}
+          error={stageChangeError}
+        >
+          <p>
+            <strong>Atual:</strong>{' '}
+            {FUNNEL_STAGES.find(s => s.id === pendingStageChange.conversation.funnel_stage)?.label || pendingStageChange.conversation.funnel_stage}
+          </p>
+          <p>
+            <strong>Destino:</strong>{' '}
+            {FUNNEL_STAGES.find(s => s.id === pendingStageChange.newStage)?.label || pendingStageChange.newStage}
+          </p>
+          <p className="text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-2">
+            Atenção: esta alteração atualiza o estágio do Funil, mas não cria caso, prazo, evento ou tarefa automaticamente.
+          </p>
+        </ConfirmModal>
+      )}
+
     </div>
   );
 }

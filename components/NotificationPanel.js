@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import NotificationItem from './NotificationItem';
 import Portal from './Portal';
 import { groupNotifications, validateInternalNotificationRoute } from '../lib/notificationHelpers';
+import { getAuthHeaders } from '../lib/api';
 import { useRouter } from 'next/router';
 
 export default function NotificationPanel({ isOpen, onClose, userId, userRole, triggerRef }) {
@@ -57,17 +58,14 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole, t
 
   // Buscar notificações
   const fetchNotifications = useCallback(async () => {
-    if (!userId || !isOpen) return;
+    if (!isOpen) return;
 
     setLoading(true);
     setError(null);
 
     try {
       const response = await fetch('/api/notifications', {
-        headers: {
-          'x-user-id': userId,
-          'x-user-role': userRole || 'advogado'
-        }
+        headers: await getAuthHeaders()
       });
 
       if (response.status === 429) {
@@ -92,7 +90,7 @@ export default function NotificationPanel({ isOpen, onClose, userId, userRole, t
     } finally {
       setLoading(false);
     }
-  }, [userId, userRole, isOpen]);
+  }, [isOpen]);
 
   // Buscar ao abrir
   useEffect(() => {

@@ -22,7 +22,9 @@ describe('Triage deep link', () => {
       expect(c).toBeInTheDocument();
       return c;
     });
-    expect(card).toHaveClass('ring-2');
+    await waitFor(() => {
+      expect(card).toHaveClass('ring-2');
+    });
     await waitFor(() => {
       expect(window.HTMLElement.prototype.scrollIntoView).toHaveBeenCalled();
     });

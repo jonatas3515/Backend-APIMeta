@@ -5,6 +5,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { withAuth } from '../../lib/auth';
 import {
   sanitizeNotificationTitle,
   prioritizeNotification,
@@ -390,23 +391,23 @@ async function getPendingSignatures(userId, userRole) {
 /**
  * Handler principal
  */
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const userId = req.user?.id;
+  const userRole = req.user?.role;
+
+  if (!userId || !userRole) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (!notificationCache.checkRateLimit(userId)) {
+    return res.status(429).json({ error: 'Too many requests' });
+  }
+
   try {
-    const userId = req.headers['x-user-id'] || req.query.user_id;
-    const userRole = req.headers['x-user-role'] || req.query.user_role || 'advogado';
-
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    if (!notificationCache.checkRateLimit(userId)) {
-      return res.status(429).json({ error: 'Too many requests' });
-    }
-
     const cached = notificationCache.get(userId, 'list', userRole);
     if (cached) {
       return res.status(200).json(cached);
@@ -436,3 +437,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+export default withAuth(handler, { minRole: 'estagiario' });

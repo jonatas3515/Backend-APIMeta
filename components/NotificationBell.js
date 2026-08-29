@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { formatBadgeCount } from '../lib/notificationHelpers';
+import { getAuthHeaders } from '../lib/api';
 
 import { forwardRef } from 'react';
 
@@ -14,14 +15,9 @@ const NotificationBell = forwardRef(({ userId, userRole, onOpen }, ref) => {
   const [loading, setLoading] = useState(false);
 
   const fetchCount = useCallback(async () => {
-    if (!userId) return;
-
     try {
       const response = await fetch('/api/notifications/count', {
-        headers: {
-          'x-user-id': userId,
-          'x-user-role': userRole || 'advogado'
-        }
+        headers: await getAuthHeaders()
       });
 
       if (response.status === 429) {
@@ -41,7 +37,7 @@ const NotificationBell = forwardRef(({ userId, userRole, onOpen }, ref) => {
     } catch (error) {
       console.error('[NOTIFICATION-BELL] Erro:', error);
     }
-  }, [userId, userRole]);
+  }, []);
 
   // Buscar contagem inicial
   useEffect(() => {

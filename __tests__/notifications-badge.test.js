@@ -8,6 +8,14 @@ import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom';
 import NotificationBell from '../components/NotificationBell';
 
+// Mock auth headers
+jest.mock('../lib/api', () => ({
+  getAuthHeaders: jest.fn(() => Promise.resolve({
+    Authorization: 'Bearer test-token',
+    'Content-Type': 'application/json'
+  }))
+}));
+
 // Mock fetch global
 global.fetch = jest.fn();
 
@@ -52,10 +60,10 @@ describe('NotificationBell - Badge', () => {
       expect(global.fetch).toHaveBeenCalledWith(
         '/api/notifications/count',
         expect.objectContaining({
-          headers: expect.objectContaining({
-            'x-user-id': 'user-123',
-            'x-user-role': 'advogado',
-          }),
+          headers: {
+            Authorization: 'Bearer test-token',
+            'Content-Type': 'application/json',
+          },
         })
       );
     });
@@ -107,22 +115,30 @@ describe('NotificationBell - Badge', () => {
         '/api/notifications/count',
         expect.objectContaining({
           headers: {
-            'x-user-id': 'user-123',
-            'x-user-role': 'advogado',
+            Authorization: 'Bearer test-token',
+            'Content-Type': 'application/json',
           },
         })
       );
     });
   });
 
-  test('não chama endpoint caso userId esteja ausente', async () => {
-    render(<NotificationBell userId={null} userRole="advogado" onOpen={mockOnOpen} />);
-
-    await act(async () => {
-      jest.advanceTimersByTime(1000);
+  test('não envia headers forjados x-user-id ou x-user-role', async () => {
+    global.fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ unreadCount: 0 }),
     });
 
-    expect(global.fetch).not.toHaveBeenCalled();
+    render(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalled();
+    });
+
+    const call = global.fetch.mock.calls[0];
+    expect(call[1].headers).not.toHaveProperty('x-user-id');
+    expect(call[1].headers).not.toHaveProperty('x-user-role');
+    expect(call[1].headers).toHaveProperty('Authorization');
   });
 
   test('atualiza a contagem após 30 segundos com fake timers', async () => {
