@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getAuthHeaders } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
+import { safeLog, safeError } from '../lib/safeLogger';
 import useAreaFilter from '../hooks/useAreaFilter';
 import { LEGAL_AREAS } from '../lib/legalAreas';
 import ExportButtons from './ExportButtons';
@@ -96,14 +97,14 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
                 return;
               }
             } catch (err) {
-              console.error('[FUNNEL] Erro ao buscar caso ativo');
+              safeError('funnel_active_case_error', err, { requestId: 'funnel' });
             }
           })
         );
         
         setActiveCases(cases);
       } catch (err) {
-        console.error('[FUNNEL] Erro ao buscar casos ativos:', err);
+        safeError('funnel_active_cases_error', err, { requestId: 'funnel' });
       }
     };
 
@@ -143,12 +144,12 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
       if (!response.ok) throw new Error('Erro ao atualizar stage');
 
       const result = await response.json();
-      console.log('[KANBAN] Stage atualizado');
+      safeLog('info', 'kanban_stage_updated', { requestId: 'funnel' });
 
       setItems(prev => prev.map(c => c.id === conversation.id ? result.conversation : c));
       setPendingStageChange(null);
     } catch (error) {
-      console.error('[KANBAN] Erro ao mudar stage:', error);
+      safeError('kanban_stage_change_error', error, { requestId: 'funnel' });
       setStageChangeError('Não foi possível mover a conversa. Tente novamente.');
     } finally {
       setLoading(false);
