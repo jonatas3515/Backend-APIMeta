@@ -48,6 +48,8 @@ async function handler(req, res) {
 
   const userId = req.user.id;
 
+  let event = null;
+
   try {
     if (action === 'delete') {
       // Busca external_id já sincronizado
@@ -86,7 +88,7 @@ async function handler(req, res) {
     }
 
     // Formata dados do evento para Google
-    const event = {
+    event = {
       title: buildEventTitle(internalEvent, internal_table),
       description: buildEventDescription(internalEvent, internal_table),
       event_date: internalEvent.event_date || internalEvent.deadline_date || internalEvent.scheduled_for,
@@ -144,6 +146,49 @@ async function handler(req, res) {
     });
 
   } catch (error) {
+    if (error.code === 'GOOGLE_AUTH_REQUIRED' || error.reconnect) {
+      return res.status(401).json({ error: error.message, reconnect: true });
+    }
+
+    if (error.code === 'GOOGLE_EVENT_NOT_FOUND' && event) {
+      // Evento foi removido do Google: apaga vinculação local e recria
+      await supabaseAdmin
+        .from('calendar_synced_events')
+        .delete()
+        .eq('internal_event_id', event_id)
+        .eq('internal_table', internal_table)
+        .eq('provider', provider)
+        .eq('user_id', userId);
+
+      const result = await createGoogleEvent({ supabaseAdmin, userId, event });
+
+      const { error: upsertError } = await supabaseAdmin
+        .from('calendar_synced_events')
+        .upsert({
+          internal_event_id: event_id,
+          internal_table,
+          provider,
+          user_id: userId,
+          external_event_id: result.id,
+          external_calendar_id: 'primary',
+          synced_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          last_sync_status: 'success'
+        }, { onConflict: 'internal_event_id,internal_table,provider' });
+
+      if (upsertError) {
+        console.error('[CALENDAR-SYNC-EVENT] Erro ao salvar vinculação após recriação:', upsertError);
+        return res.status(500).json({ error: 'Erro ao salvar vinculação do evento' });
+      }
+
+      return res.status(200).json({
+        success: true,
+        action: 'recreate',
+        external_event_id: result.id,
+        html_link: result.htmlLink
+      });
+    }
+
     console.error('[CALENDAR-SYNC-EVENT] Erro:', error.message);
     return res.status(500).json({ error: error.message });
   }
