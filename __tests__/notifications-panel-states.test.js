@@ -149,7 +149,7 @@ describe('NotificationPanel - Estados', () => {
     });
   });
 
-  test('Erro total: mostra "Não foi possível carregar notificações" e botão "Tentar novamente"', async () => {
+  test('Erro total: mostra "Não foi possível carregar notificações" e botão "Atualizar agora"', async () => {
     global.fetch.mockRejectedValueOnce(new Error('Network error'));
 
     render(
@@ -168,12 +168,12 @@ describe('NotificationPanel - Estados', () => {
       ).toBeInTheDocument();
     });
 
-    // Deve ter botão "Tentar novamente"
-    const retryButton = screen.queryByText(/Tentar novamente/i);
+    // Deve ter botão "Atualizar agora"
+    const retryButton = screen.queryByText(/Atualizar agora/i);
     expect(retryButton).toBeInTheDocument();
   });
 
-  test('Clicar em "Tentar novamente" realiza uma nova chamada', async () => {
+  test('Clicar em "Atualizar agora" realiza uma nova chamada', async () => {
     // Primeira chamada falha
     global.fetch.mockRejectedValueOnce(new Error('Network error'));
 
@@ -208,7 +208,7 @@ describe('NotificationPanel - Estados', () => {
       }),
     });
 
-    const retryButton = screen.getByText(/Tentar novamente/i);
+    const retryButton = screen.getByText(/Atualizar agora/i);
     fireEvent.click(retryButton);
 
     await waitFor(() => {

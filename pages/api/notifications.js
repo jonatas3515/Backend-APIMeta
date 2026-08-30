@@ -404,10 +404,22 @@ async function handler(req, res) {
   }
 
   if (!notificationCache.checkRateLimit(userId)) {
-    return res.status(429).json({ error: 'Too many requests' });
+    return res.status(429).json({
+      error: 'Too many requests',
+      notifications: [],
+      unreadCount: 0,
+      countReliable: false
+    });
   }
 
+  // Parâmetro refresh é reconhecido somente como '1'
+  const isRefresh = req.query?.refresh === '1';
+
   try {
+    if (isRefresh) {
+      notificationCache.invalidate(userId, userRole);
+    }
+
     const cached = notificationCache.get(userId, 'list', userRole);
     if (cached) {
       return res.status(200).json(cached);

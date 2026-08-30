@@ -29,6 +29,7 @@ import ActiveFilterBanner from '../components/ActiveFilterBanner';
 import NotificationPermissionPrompt from '../components/NotificationPermissionPrompt';
 import NotificationBell from '../components/NotificationBell';
 import NotificationPanel from '../components/NotificationPanel';
+import { NotificationProvider } from '../components/NotificationProvider';
 import { maybeNotify, getPermission, isSupported } from '../lib/notifications';
 import { getAuthHeaders } from '../lib/api';
 import { normalizePhoneForMatch } from '../lib/formatters';
@@ -483,19 +484,21 @@ export default function Home() {
             <div className="flex-1" />
             <div className="flex items-center gap-2">
               <AreaFilterSelector compact />
-              <NotificationBell
-                ref={notificationBellRef}
-                userId={authUser?.id}
-                userRole={profile?.role}
-                onOpen={() => setIsNotificationPanelOpen(true)}
-              />
-              <NotificationPanel
-                isOpen={isNotificationPanelOpen}
-                onClose={() => setIsNotificationPanelOpen(false)}
-                userId={authUser?.id}
-                userRole={profile?.role}
-                triggerRef={notificationBellRef}
-              />
+              <NotificationProvider>
+                <NotificationBell
+                  ref={notificationBellRef}
+                  userId={authUser?.id}
+                  userRole={profile?.role}
+                  onOpen={() => setIsNotificationPanelOpen(true)}
+                />
+                <NotificationPanel
+                  isOpen={isNotificationPanelOpen}
+                  onClose={() => setIsNotificationPanelOpen(false)}
+                  userId={authUser?.id}
+                  userRole={profile?.role}
+                  triggerRef={notificationBellRef}
+                />
+              </NotificationProvider>
             </div>
           </header>
           <ActiveFilterBanner />

@@ -110,6 +110,20 @@ async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  if (!notificationCache.checkRateLimit(userId)) {
+    return res.status(429).json({
+      error: 'Too many requests',
+      unreadCount: 0,
+      countReliable: false
+    });
+  }
+
+  // Parâmetro refresh é reconhecido somente como '1'
+  const isRefresh = req.query?.refresh === '1';
+  if (isRefresh) {
+    notificationCache.invalidate(userId, userRole);
+  }
+
   const cached = notificationCache.get(userId, 'count', userRole);
   if (cached !== null) {
     return res.status(200).json(cached);
