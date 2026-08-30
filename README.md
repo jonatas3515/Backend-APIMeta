@@ -9,7 +9,7 @@ Plataforma completa de atendimento, gestão de casos e automação jurídica par
 
 # WhatsApp Cloud API + Google AI Studio (Gemini) na Vercel
 
-Este projeto é um backend serverless feito em Node.js + Express para integrar a **WhatsApp Cloud API** da Meta com o **Google AI Studio (Gemini)**.
+Este projeto é um backend serverless com Next.js API Routes (Node.js) para integrar a **WhatsApp Cloud API** da Meta com o **Google AI Studio (Gemini)**.
 
 ## Arquivos principais
 

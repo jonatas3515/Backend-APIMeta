@@ -11,7 +11,7 @@ Cliente WhatsApp
     ↓
 Meta Webhook (POST /webhook)
     ↓
-Backend Node.js/Express
+Next.js API Routes em ambiente Node.js serverless
     ├─→ Salva em Supabase (conversations + messages)
     ├─→ Se modo='bot': chama Gemini 2.5 Flash-Lite
     └─→ Envia resposta via WhatsApp Cloud API
@@ -171,7 +171,7 @@ Você verá:
 
 ## 🔧 Arquivos Principais
 
-### Backend (Node.js/Express)
+### Backend (Next.js API Routes em ambiente Node.js serverless)
 
 - **`pages/api/webhook.js`** — webhook do WhatsApp, integração Gemini e Supabase
 - **`lib/supabase.js`** — cliente Supabase server-side

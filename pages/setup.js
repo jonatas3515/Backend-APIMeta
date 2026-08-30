@@ -11,7 +11,7 @@ export default function Setup() {
           <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
             <h3 className="font-semibold text-yellow-800 mb-2">Status Atual</h3>
             <ul className="text-sm text-yellow-700 space-y-1">
-              <li>✅ Backend (Node.js/Express) — Deploy OK</li>
+              <li>✅ Backend serverless (Next.js API Routes) — Deploy OK</li>
               <li>✅ Frontend (Next.js/React) — Deploy OK</li>
               <li>⏳ Supabase — Aguardando configuração</li>
               <li>⏳ Variáveis de ambiente — Aguardando</li>
