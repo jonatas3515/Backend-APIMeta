@@ -37,7 +37,18 @@ Este documento orienta a validação manual do sistema em ambiente controlado (P
 | 2. Ver categorias seguras | Aviso expandido | Categorias como "Prazos e eventos", "Casos", sem nomes técnicos (`process_movements`, `deadlines`) |
 | 3. Clicar em "Atualizar agora" | Uma única chamada `GET /api/notifications?refresh=1` | Badge e lista atualizados pelo mesmo retorno |
 | 4. Recuperação completa | `countReliable=true` | Sino exibe número, aviso e "!" desaparecem |
-| 5. Rate limit | Segundo clique em menos de 3 segundos | Mantém itens, exibe "Aguarde um instante..." e mantém "!" |
+| 5. Rate limit | Segundo clique em menos de 3 segundos | Não é falha parcial: mantém itens/número, exibe cooldown "Aguarde alguns segundos..." com contador e botão desabilitado |
+| 6. Sessão expirada | Token inválido (401/403) | Painel/sino limpam contagem, exibem "Sua sessão expirou. Entre novamente." e não "Você está em dia" |
+
+## Google Calendar Sync — UX de diferença interna vs. sync
+
+| Passo | Ação esperada | Resultado esperado |
+|---|---|---|
+| 1. Criar/editar prazo de caso internamente | Agenda aberta | Item apresenta `internalUpdatedAt` sem enviar dados de conteúdo/cliente |
+| 2. Sincronizar manualmente | Clique no botão | Única chamada `POST /api/calendar-integrations/sync-event`; componente mostra "Sincronizado com o Google Calendar" |
+| 3. Editar prazo após o sync | Alteração de prioridade ou data | Componente exibe "Google Calendar desatualizado" e botão "Atualizar no Google Calendar" |
+| 4. Verificar endpoint `sync-status` | Inspecionar resposta | Apenas `synced`, `provider`, `synced_at`, `last_sync_status`; nunca `external_event_id` ou `updated_at` |
+| 5. Falha no sync | Desconectar internet/API | Mantém mensagem anterior e exibe mensagem genérica, sem detalhe técnico |
 
 ## Checklist por perfil
 

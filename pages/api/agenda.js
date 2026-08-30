@@ -37,6 +37,82 @@ function generateRequestId(req) {
   return req.headers['x-request-id'] || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+async function enrichAgendaItems(items, startDate, endDate) {
+  if (!items || items.length === 0) return;
+
+  const caseIds = new Set();
+  const reminderIds = new Set();
+  const eventCaseIds = new Set();
+
+  items.forEach((item) => {
+    if (item.item_type === 'case_deadline' && item.case_id) {
+      caseIds.add(item.case_id);
+    } else if (item.item_type === 'reminder' && item.reminder_id) {
+      reminderIds.add(item.reminder_id);
+    } else if (item.item_type === 'case_event' && item.case_id) {
+      eventCaseIds.add(item.case_id);
+    }
+  });
+
+  const [caseResult, reminderResult, eventResult] = await Promise.allSettled([
+    caseIds.size
+      ? supabase.from('cases').select('id, updated_at').in('id', Array.from(caseIds))
+      : { data: [] },
+    reminderIds.size
+      ? supabase.from('chat_reminders').select('id, updated_at').in('id', Array.from(reminderIds))
+      : { data: [] },
+    eventCaseIds.size
+      ? supabase
+          .from('case_events')
+          .select('id, case_id, event_date, updated_at')
+          .gte('event_date', startDate)
+          .lte('event_date', endDate)
+          .in('case_id', Array.from(eventCaseIds))
+      : { data: [] }
+  ]);
+
+  const caseMap = new Map();
+  (caseResult.value?.data || []).forEach((row) => {
+    caseMap.set(row.id, row.updated_at);
+  });
+
+  const reminderMap = new Map();
+  (reminderResult.value?.data || []).forEach((row) => {
+    reminderMap.set(row.id, row.updated_at);
+  });
+
+  const eventMap = new Map();
+  (eventResult.value?.data || []).forEach((row) => {
+    const key = `${row.case_id}::${row.event_date}`;
+    const existing = eventMap.get(key);
+    if (!existing || new Date(row.updated_at) > new Date(existing.updated_at)) {
+      eventMap.set(key, row);
+    }
+  });
+
+  items.forEach((item) => {
+    let internalUpdatedAt = null;
+    let internalId = null;
+
+    if (item.item_type === 'case_deadline' && item.case_id) {
+      internalUpdatedAt = caseMap.get(item.case_id) || null;
+      internalId = item.case_id;
+    } else if (item.item_type === 'reminder' && item.reminder_id) {
+      internalUpdatedAt = reminderMap.get(item.reminder_id) || null;
+      internalId = item.reminder_id;
+    } else if (item.item_type === 'case_event' && item.case_id && item.event_date) {
+      const event = eventMap.get(`${item.case_id}::${item.event_date}`);
+      if (event) {
+        internalUpdatedAt = event.updated_at;
+        internalId = event.id;
+      }
+    }
+
+    item.internal_updated_at = internalUpdatedAt;
+    item.internal_id = internalId || item.case_id;
+  });
+}
+
 async function handleGet(req, res) {
   const requestId = generateRequestId(req);
   const { range = 'today', start_date, end_date, legal_area, municipality, agency, priority } = req.query;
@@ -111,6 +187,8 @@ async function handleGet(req, res) {
       }
     }
 
+    await enrichAgendaItems(items, startDate, endDate);
+
     const byDay = {};
     (items || []).forEach((item) => {
       const dateKey = item.event_date;
@@ -129,7 +207,9 @@ async function handleGet(req, res) {
         event_time: item.event_time || null,
         case_id: item.case_id || null,
         reminder_id: item.reminder_id || null,
-        conversation_id: item.conversation_id || null
+        conversation_id: item.conversation_id || null,
+        internal_id: item.internal_id || item.case_id || null,
+        internal_updated_at: item.internal_updated_at || null
       });
     });
 

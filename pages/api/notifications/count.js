@@ -111,10 +111,13 @@ async function handler(req, res) {
   }
 
   if (!notificationCache.checkRateLimit(userId)) {
+    res.setHeader('Retry-After', '3');
     return res.status(429).json({
-      error: 'Too many requests',
+      error: 'rate_limited',
+      retryAfterSeconds: 3,
       unreadCount: 0,
-      countReliable: false
+      countReliable: false,
+      errors: []
     });
   }
 

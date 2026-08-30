@@ -41,7 +41,7 @@ describe('/api/agenda - sanitização de erros', () => {
     consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost';
-    process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-synthetic';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'your_key_here';
   });
 
   afterEach(() => {

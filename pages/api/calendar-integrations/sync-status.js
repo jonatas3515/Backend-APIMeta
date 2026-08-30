@@ -1,5 +1,6 @@
 import { withAuth } from '@/lib/auth';
 import { createClient } from '@supabase/supabase-js';
+import { safeError } from '@/lib/safeLogger';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -27,7 +28,7 @@ async function handler(req, res) {
   try {
     const { data, error } = await supabaseAdmin
       .from('calendar_synced_events')
-      .select('external_event_id, synced_at, updated_at, last_sync_status, provider')
+      .select('synced_at, last_sync_status, provider')
       .eq('internal_event_id', event_id)
       .eq('internal_table', internal_table)
       .eq('user_id', userId)
@@ -40,14 +41,12 @@ async function handler(req, res) {
     return res.status(200).json({
       synced: !!data,
       provider: data?.provider || null,
-      external_event_id: data?.external_event_id || null,
       synced_at: data?.synced_at || null,
-      updated_at: data?.updated_at || null,
       last_sync_status: data?.last_sync_status || null
     });
   } catch (error) {
-    console.error('[CALENDAR-SYNC-STATUS] Erro:', error);
-    return res.status(500).json({ error: error.message });
+    safeError('calendar_sync_status_error', error, { route: '/api/calendar-integrations/sync-status' });
+    return res.status(500).json({ error: 'Erro ao consultar status. Tente novamente.' });
   }
 }
 

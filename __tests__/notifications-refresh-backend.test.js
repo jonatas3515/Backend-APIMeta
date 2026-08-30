@@ -90,8 +90,8 @@ describe('/api/notifications - refresh e rate limit', () => {
     expect(data.countReliable).toBe(false);
     expect(data.unreadCount).toBe(0);
     expect(data.notifications).toEqual([]);
-    expect(data.error).toBe('Too many requests');
-    expect(data.errors).toBeUndefined();
+    expect(data.error).toBe('rate_limited');
+    expect(data.retryAfterSeconds).toBe(3);
     expect(data.stack).toBeUndefined();
   });
 
@@ -143,6 +143,7 @@ describe('/api/notifications/count - rate limit', () => {
     const data = res2._getJSONData();
     expect(data.countReliable).toBe(false);
     expect(data.unreadCount).toBe(0);
-    expect(data.error).toBe('Too many requests');
+    expect(data.error).toBe('rate_limited');
+    expect(data.retryAfterSeconds).toBe(3);
   });
 });

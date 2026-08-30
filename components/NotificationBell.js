@@ -1,126 +1,38 @@
 /**
  * NotificationBell - Sino de notificações com badge
- * Exibe contagem de notificações não lidas
+ * Exibe contagem de notificações não lidas (estado vem do NotificationProvider)
  */
 
-import { useState, useEffect, useCallback, useRef, forwardRef } from 'react';
+import { forwardRef } from 'react';
 import { formatBadgeCount } from '../lib/notificationHelpers';
-import { getAuthHeaders } from '../lib/api';
 import { useNotifications } from './NotificationProvider';
 
-const NotificationBell = forwardRef(({ userId, userRole, onOpen }, ref) => {
-  const { unreadCount, countReliable, isRefreshing, setSummary } = useNotifications();
-  const isFetchingRef = useRef(false);
-  const isRefreshingRef = useRef(isRefreshing);
-  const unreadCountRef = useRef(unreadCount);
-  const userIdRef = useRef(userId);
-  const userRoleRef = useRef(userRole);
-  const abortRef = useRef(null);
-
-  useEffect(() => {
-    isRefreshingRef.current = isRefreshing;
-    unreadCountRef.current = unreadCount;
-    userIdRef.current = userId;
-    userRoleRef.current = userRole;
-  }, [isRefreshing, unreadCount, userId, userRole]);
-
-  const fetchCount = useCallback(async (signal) => {
-    if (!userIdRef.current || !userRoleRef.current || isFetchingRef.current || isRefreshingRef.current) return;
-    isFetchingRef.current = true;
-    try {
-      const response = await fetch('/api/notifications/count', {
-        headers: await getAuthHeaders(),
-        signal
-      });
-
-      if (response.status === 429) {
-        setSummary({ unreadCount: 0, countReliable: false, errors: [] });
-        return;
-      }
-
-      if (!response.ok) {
-        setSummary({ unreadCount: unreadCountRef.current, countReliable: false, errors: [] });
-        return;
-      }
-
-      const data = await response.json();
-      setSummary({
-        unreadCount: data.unreadCount || 0,
-        countReliable: data.countReliable !== false,
-        errors: data.errors || []
-      });
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-      setSummary({ unreadCount: unreadCountRef.current, countReliable: false, errors: [] });
-    } finally {
-      isFetchingRef.current = false;
-    }
-  }, [setSummary]);
-
-  // Buscar contagem inicial
-  useEffect(() => {
-    fetchCount();
-  }, [fetchCount]);
-
-  // Polling a cada 30s com pausa em aba oculta
-  useEffect(() => {
-    let interval = null;
-    const run = () => {
-      if (document.hidden || isRefreshingRef.current || isFetchingRef.current) return;
-      const controller = new AbortController();
-      abortRef.current = controller;
-      fetchCount(controller.signal);
-    };
-
-    interval = setInterval(run, 30000);
-
-    const handleVisibility = () => {
-      if (document.hidden) {
-        if (abortRef.current) {
-          abortRef.current.abort();
-          abortRef.current = null;
-        }
-      } else {
-        run();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    return () => {
-      clearInterval(interval);
-      document.removeEventListener('visibilitychange', handleVisibility);
-      if (abortRef.current) {
-        abortRef.current.abort();
-        abortRef.current = null;
-      }
-    };
-  }, [fetchCount]);
+const NotificationBell = forwardRef(({ onOpen }, ref) => {
+  const { unreadCount, countReliable, rateLimited } = useNotifications();
 
   const handleClick = () => {
-    if (onOpen) {
-      onOpen();
-    }
+    if (onOpen) onOpen();
   };
 
   const badgeText = countReliable ? formatBadgeCount(unreadCount) : '!';
   const showBadge = !countReliable || unreadCount > 0;
   const badgeColor = countReliable ? 'bg-red-500' : 'bg-yellow-500';
 
+  const ariaLabel = rateLimited
+    ? `Notificações - aguarde o tempo de recarga`
+    : countReliable
+    ? `Notificações${unreadCount > 0 ? ` (${unreadCount} não lidas)` : ''}`
+    : 'Notificações - atualização parcial; contagem indisponível';
+
   return (
     <button
       ref={ref}
       onClick={handleClick}
       className="relative p-2 rounded-full hover:bg-nc-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-nc-yellow"
-      aria-label={`Notificações${
-        countReliable && unreadCount > 0
-          ? ` (${unreadCount} não lidas)`
-          : countReliable
-          ? ''
-          : ' - atualização parcial; contagem indisponível'
-      }`}
+      aria-label={ariaLabel}
       role="button"
       title="Notificações"
+      data-testid="notification-bell"
     >
       {/* Sino */}
       <svg
@@ -139,7 +51,10 @@ const NotificationBell = forwardRef(({ userId, userRole, onOpen }, ref) => {
 
       {/* Badge */}
       {showBadge && (
-        <span className={`absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white rounded-full ${badgeColor}`}>
+        <span
+          className={`absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white rounded-full ${badgeColor}`}
+          data-testid="notification-badge"
+        >
           {badgeText}
         </span>
       )}

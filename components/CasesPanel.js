@@ -723,7 +723,13 @@ export default function CasesPanel({ notice }) {
                             </div>
                           )}
                           <div className="mt-1">
-                            <CaseCalendarSync eventId={caseItem.id} table="cases" deadlineDate={caseItem.deadline_date} title={caseItem.title} />
+                            <CaseCalendarSync
+                              eventId={caseItem.id}
+                              table="cases"
+                              deadlineDate={caseItem.deadline_date}
+                              title={caseItem.title}
+                              internalUpdatedAt={caseItem.updated_at}
+                            />
                           </div>
                         </div>
                       ) : (

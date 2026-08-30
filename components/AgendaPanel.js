@@ -532,10 +532,17 @@ export default function AgendaPanel() {
                           <span className="text-xs font-semibold capitalize">{item.priority}</span>
                           <div className="mt-2">
                             <CaseCalendarSync
-                              eventId={item.case_id}
-                              table={item.item_type === 'case_deadline' ? 'cases' : 'case_events'}
+                              eventId={item.internal_id || item.case_id}
+                              table={
+                                item.item_type === 'case_deadline'
+                                  ? 'cases'
+                                  : item.item_type === 'reminder'
+                                  ? 'chat_reminders'
+                                  : 'case_events'
+                              }
                               deadlineDate={item.event_date}
                               title={item.title}
+                              internalUpdatedAt={item.internal_updated_at}
                             />
                           </div>
                         </div>
