@@ -56,7 +56,7 @@
 ```
 ✅ Migration 029            - auth_user_id e admin user
 ✅ Migration 030            - Índices, constraints e funções
-✅ SUPABASE_SETUP.sql       - Script para rodar no Supabase
+✅ docs/archive/sql-legacy/SUPABASE_SETUP.sql - Script arquivado para referência (não executar sem revisão)
 ```
 
 ### 6. **Documentação**
@@ -72,7 +72,7 @@
 ### 1. **Executar SQL no Supabase**
 ```bash
 # Abra o Supabase SQL Editor
-# Copie o conteúdo de SUPABASE_SETUP.sql
+# SUPABASE_SETUP.sql foi arquivado em docs/archive/sql-legacy/ (não executar sem revisão)
 # Execute para criar índices, constraints e funções
 ```
 
