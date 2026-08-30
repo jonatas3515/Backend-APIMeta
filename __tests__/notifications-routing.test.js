@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { renderWithNotifications, screen, waitFor, fireEvent } from './helpers/renderWithNotificationProvider';
 import '@testing-library/jest-dom';
 import NotificationPanel from '../components/NotificationPanel';
 import { useRouter } from 'next/router';
@@ -22,6 +22,7 @@ describe('NotificationPanel - Roteamento', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    global.fetch.mockReset();
     mockPush = jest.fn();
     mockOnClose = jest.fn();
 
@@ -170,7 +171,7 @@ describe('NotificationPanel - Roteamento', () => {
         json: async () => ({ notifications: [notification] }),
       });
 
-      render(
+      renderWithNotifications(
         <NotificationPanel
           isOpen={true}
           onClose={mockOnClose}
@@ -207,7 +208,7 @@ describe('NotificationPanel - Roteamento', () => {
       json: async () => ({ notifications: [notification] }),
     });
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -279,7 +280,7 @@ describe('NotificationPanel - Roteamento', () => {
         json: async () => ({ notifications: [notification] }),
       });
 
-      const { unmount } = render(
+      const { unmount } = renderWithNotifications(
         <NotificationPanel
           isOpen={true}
           onClose={mockOnClose}
@@ -340,7 +341,7 @@ describe('NotificationPanel - Roteamento', () => {
         json: async () => ({ notifications: [notification] }),
       });
 
-      const { unmount } = render(
+      const { unmount } = renderWithNotifications(
         <NotificationPanel
           isOpen={true}
           onClose={mockOnClose}
@@ -380,7 +381,7 @@ describe('NotificationPanel - Roteamento', () => {
       json: async () => ({ notifications: [notification] }),
     });
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}

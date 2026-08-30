@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { renderWithNotifications, screen, waitFor, fireEvent } from './helpers/renderWithNotificationProvider';
 import '@testing-library/jest-dom';
 import NotificationPanel from '../components/NotificationPanel';
 
@@ -24,6 +24,7 @@ describe('NotificationPanel - Estados', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    global.fetch.mockReset();
     mockOnClose = jest.fn();
 
     mockTriggerRef = {
@@ -60,7 +61,7 @@ describe('NotificationPanel - Estados', () => {
         })
     );
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -92,7 +93,7 @@ describe('NotificationPanel - Estados', () => {
       json: async () => ({ notifications: [] }),
     });
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -133,7 +134,7 @@ describe('NotificationPanel - Estados', () => {
       json: async () => ({ notifications }),
     });
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -152,7 +153,7 @@ describe('NotificationPanel - Estados', () => {
   test('Erro total: mostra "Não foi possível carregar notificações" e botão "Atualizar agora"', async () => {
     global.fetch.mockRejectedValueOnce(new Error('Network error'));
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -164,7 +165,7 @@ describe('NotificationPanel - Estados', () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByText(/Não foi possível carregar notificações/i)
+        screen.queryByText(/Não foi possível atualizar as notificações/i)
       ).toBeInTheDocument();
     });
 
@@ -177,7 +178,7 @@ describe('NotificationPanel - Estados', () => {
     // Primeira chamada falha
     global.fetch.mockRejectedValueOnce(new Error('Network error'));
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -188,7 +189,7 @@ describe('NotificationPanel - Estados', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Não foi possível carregar/i)).toBeInTheDocument();
+      expect(screen.getByText(/Não foi possível atualizar/i)).toBeInTheDocument();
     });
 
     // Segunda chamada com sucesso
@@ -235,7 +236,7 @@ describe('NotificationPanel - Estados', () => {
       json: async () => ({ notifications }),
     });
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -261,7 +262,7 @@ describe('NotificationPanel - Estados', () => {
       json: async () => ({ notifications: [], unreadCount: 5 }),
     });
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -284,7 +285,7 @@ describe('NotificationPanel - Estados', () => {
       json: async () => ({ notifications: [], unreadCount: 0 }),
     });
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -333,7 +334,7 @@ describe('NotificationPanel - Estados', () => {
       json: async () => ({ notifications }),
     });
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -379,7 +380,7 @@ describe('NotificationPanel - Estados', () => {
       json: async () => ({ notifications }),
     });
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -412,7 +413,7 @@ describe('NotificationPanel - Estados', () => {
       json: async () => ({ error: 'Internal server error' }),
     });
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -424,7 +425,7 @@ describe('NotificationPanel - Estados', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Não foi possível carregar notificações/i)
+        screen.getByText(/Não foi possível atualizar as notificações/i)
       ).toBeInTheDocument();
     });
   });
@@ -435,7 +436,7 @@ describe('NotificationPanel - Estados', () => {
       status: 429,
     });
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}

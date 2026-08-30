@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { renderWithNotifications, screen, waitFor } from './helpers/renderWithNotificationProvider';
 import '@testing-library/jest-dom';
 import NotificationPanel from '../components/NotificationPanel';
 import NotificationItem from '../components/NotificationItem';
@@ -25,6 +25,7 @@ describe('NotificationPanel - Segurança Frontend', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    global.fetch.mockReset();
     mockOnClose = jest.fn();
 
     mockTriggerRef = {
@@ -67,7 +68,7 @@ describe('NotificationPanel - Segurança Frontend', () => {
       json: async () => ({ notifications: [notification] }),
     });
 
-    const { container } = render(
+    const { container } = renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -106,7 +107,7 @@ describe('NotificationPanel - Segurança Frontend', () => {
       json: async () => ({ notifications: [notification] }),
     });
 
-    const { container } = render(
+    const { container } = renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -144,7 +145,7 @@ describe('NotificationPanel - Segurança Frontend', () => {
       json: async () => ({ notifications: [notification] }),
     });
 
-    const { container } = render(
+    const { container } = renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -182,7 +183,7 @@ describe('NotificationPanel - Segurança Frontend', () => {
       json: async () => ({ notifications: [notification] }),
     });
 
-    const { container } = render(
+    const { container } = renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -220,7 +221,7 @@ describe('NotificationPanel - Segurança Frontend', () => {
       json: async () => ({ notifications: [notification] }),
     });
 
-    const { container } = render(
+    const { container } = renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -258,7 +259,7 @@ describe('NotificationPanel - Segurança Frontend', () => {
       json: async () => ({ notifications: [notification] }),
     });
 
-    const { container } = render(
+    const { container } = renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -295,7 +296,7 @@ describe('NotificationPanel - Segurança Frontend', () => {
       json: async () => ({ notifications: [notification] }),
     });
 
-    const { container } = render(
+    const { container } = renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -334,7 +335,7 @@ describe('NotificationPanel - Segurança Frontend', () => {
       json: async () => ({ notifications: [notification] }),
     });
 
-    const { container } = render(
+    const { container } = renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -373,7 +374,7 @@ describe('NotificationPanel - Segurança Frontend', () => {
       json: async () => ({ notifications: [notification] }),
     });
 
-    const { container } = render(
+    const { container } = renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -408,7 +409,7 @@ describe('NotificationPanel - Segurança Frontend', () => {
       json: async () => ({ notifications: [notification] }),
     });
 
-    const { container } = render(
+    const { container } = renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -447,7 +448,7 @@ describe('NotificationPanel - Segurança Frontend', () => {
       json: async () => ({ notifications: [notification] }),
     });
 
-    render(
+    renderWithNotifications(
       <NotificationPanel
         isOpen={true}
         onClose={mockOnClose}
@@ -476,7 +477,7 @@ describe('NotificationPanel - Segurança Frontend', () => {
       },
     };
 
-    const { container } = render(
+    const { container } = renderWithNotifications(
       <NotificationItem
         notification={notification}
         onAction={jest.fn()}

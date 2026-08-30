@@ -143,7 +143,7 @@ describe('NotificationPanel - retry e concorrência', () => {
     fireEvent.click(retryButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Aguarde um instante antes de atualizar novamente.')).toBeInTheDocument();
+      expect(screen.getByText('Aguarde alguns segundos antes de atualizar novamente.')).toBeInTheDocument();
     });
 
     expect(screen.getByText('Mensagem')).toBeInTheDocument();

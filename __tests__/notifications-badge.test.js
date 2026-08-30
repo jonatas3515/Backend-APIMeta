@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { renderWithNotifications, screen, waitFor, act, fireEvent } from './helpers/renderWithNotificationProvider';
 import '@testing-library/jest-dom';
 import NotificationBell from '../components/NotificationBell';
 
@@ -40,7 +40,7 @@ describe('NotificationBell - Badge', () => {
       json: async () => ({ unreadCount: 0 }),
     });
 
-    render(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
+    renderWithNotifications(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
 
     const button = screen.getByRole('button');
     expect(button).toBeInTheDocument();
@@ -54,7 +54,7 @@ describe('NotificationBell - Badge', () => {
       json: async () => ({ unreadCount: 0 }),
     });
 
-    render(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
+    renderWithNotifications(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
@@ -79,7 +79,7 @@ describe('NotificationBell - Badge', () => {
       json: async () => ({ unreadCount: 42 }),
     });
 
-    render(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
+    renderWithNotifications(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
 
     await waitFor(() => {
       const badge = screen.getByText('42');
@@ -93,7 +93,7 @@ describe('NotificationBell - Badge', () => {
       json: async () => ({ unreadCount: 150 }),
     });
 
-    render(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
+    renderWithNotifications(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
 
     await waitFor(() => {
       const badge = screen.getByText('99+');
@@ -107,7 +107,7 @@ describe('NotificationBell - Badge', () => {
       json: async () => ({ unreadCount: 5 }),
     });
 
-    render(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
+    renderWithNotifications(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -129,7 +129,7 @@ describe('NotificationBell - Badge', () => {
       json: async () => ({ unreadCount: 0 }),
     });
 
-    render(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
+    renderWithNotifications(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalled();
@@ -152,7 +152,7 @@ describe('NotificationBell - Badge', () => {
         json: async () => ({ unreadCount: 10 }),
       });
 
-    render(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
+    renderWithNotifications(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
 
     // Primeira chamada
     await waitFor(() => {
@@ -177,7 +177,7 @@ describe('NotificationBell - Badge', () => {
       json: async () => ({ unreadCount: 5 }),
     });
 
-    const { unmount } = render(
+    const { unmount } = renderWithNotifications(
       <NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />
     );
 
@@ -200,7 +200,7 @@ describe('NotificationBell - Badge', () => {
   test('em falha de endpoint, não quebra o header e não mostra contagem enganosa', async () => {
     global.fetch.mockRejectedValueOnce(new Error('Network error'));
 
-    render(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
+    renderWithNotifications(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalled();
@@ -221,7 +221,7 @@ describe('NotificationBell - Badge', () => {
       status: 429,
     });
 
-    render(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
+    renderWithNotifications(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalled();
@@ -242,7 +242,7 @@ describe('NotificationBell - Badge', () => {
       json: async () => ({ unreadCount: 5 }),
     });
 
-    render(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
+    renderWithNotifications(<NotificationBell userId="user-123" userRole="advogado" onOpen={mockOnOpen} />);
 
     await waitFor(() => {
       expect(screen.getByText('5')).toBeInTheDocument();

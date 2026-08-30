@@ -111,12 +111,12 @@ function reducer(state, action) {
 }
 
 function getRetryAfter(response, fallback = 3) {
-  const header = response.headers.get('Retry-After');
+  const header = response.headers?.get ? response.headers.get('Retry-After') : null;
   if (header && !Number.isNaN(Number(header))) {
     return Math.max(0, Math.ceil(Number(header)));
   }
   try {
-    const data = JSON.parse(response.headers.get('x-retry-after') || '{}');
+    const data = JSON.parse(response.headers?.get ? response.headers.get('x-retry-after') : '{}');
     if (typeof data.retryAfterSeconds === 'number') return data.retryAfterSeconds;
   } catch {
     // ignore
