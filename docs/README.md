@@ -10,6 +10,7 @@
 ## Segurança
 
 - [Auditoria de segurança](./SECURITY_AUDIT.md)
+- [Guardrails de segurança e separação de responsabilidades](./SECURITY_GUARDRAILS.md)
 
 ## Histórico
 
