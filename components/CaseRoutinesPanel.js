@@ -212,3 +212,4 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
     </div>
   );
 }
+

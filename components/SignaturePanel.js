@@ -403,3 +403,4 @@ export default function SignaturePanel({ caseId, conversationId, onClose }) {
     </div>
   );
 }
+

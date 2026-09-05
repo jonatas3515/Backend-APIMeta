@@ -327,3 +327,4 @@ export default function DocumentChecklist({ caseItem, onClose }) {
     </div>
   );
 }
+

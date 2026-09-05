@@ -915,3 +915,4 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     </div>
   );
 }
+

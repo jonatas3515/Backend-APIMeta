@@ -71,3 +71,4 @@ export default function NotificationPermissionPrompt({ profile, onClose, onUpdat
     </div>
   );
 }
+

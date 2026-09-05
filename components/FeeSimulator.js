@@ -609,3 +609,4 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
     </div>
   );
 }
+

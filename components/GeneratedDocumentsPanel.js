@@ -259,3 +259,4 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
     </div>
   );
 }
+
