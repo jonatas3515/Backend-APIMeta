@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';\nimport { supabase } from '../lib/supabaseClient';\n// import { getAuthHeaders } from '../lib/api';';
 import { supabase } from '../lib/supabaseClient';
 
 // TODO (órfão): componente construído para histórico de client_info_requests, mas não integrado a nenhuma rota.

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';\nimport { supabase } from '../lib/supabaseClient';\n// import { getAuthHeaders } from '../lib/api';';
 
 export default function SignatureSettings() {
   const [integrations, setIntegrations] = useState([]);

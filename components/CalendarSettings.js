@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';\nimport { supabase } from '../lib/supabaseClient';\n// import { getAuthHeaders } from '../lib/api';';
 
 export default function CalendarSettings() {
   const [integrations, setIntegrations] = useState([]);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';\nimport { supabase } from '../lib/supabaseClient';\n// import { getAuthHeaders } from '../lib/api';';
 import { supabase } from '../lib/supabaseClient';
 import { safeLog, safeError } from '../lib/safeLogger';
 import useAreaFilter from '../hooks/useAreaFilter';

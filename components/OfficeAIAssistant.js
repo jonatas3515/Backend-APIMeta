@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';\nimport { supabase } from '../lib/supabaseClient';\n// import { getAuthHeaders } from '../lib/api';';
 
 const AREAS = ['', 'civel', 'trabalhista', 'previdenciario', 'administrativo', 'consumidor', 'familia', 'tributario'];
 const TIPOS = ['', 'modelo_peca', 'clausula', 'tese', 'checklist', 'jurisprudencia'];

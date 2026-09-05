@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/compat/router';
 import { useAuth } from '../lib/useAuth';
 import axios from 'axios';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';\nimport { supabase } from '../lib/supabaseClient';\n// import { getAuthHeaders } from '../lib/api';';
 
 const CATEGORIES = [
   { key: 'conversations', label: 'Conversas', icon: '💬' },

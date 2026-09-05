@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';\nimport { supabase } from '../lib/supabaseClient';\n// import { getAuthHeaders } from '../lib/api';';
 import { formatPhone } from '../lib/formatters';
 import { supabase } from '../lib/supabaseClient';
 import axios from 'axios';

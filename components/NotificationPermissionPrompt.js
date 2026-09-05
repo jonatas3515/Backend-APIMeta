@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { requestPermission } from '../lib/notifications';
 import axios from 'axios';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';\nimport { supabase } from '../lib/supabaseClient';\n// import { getAuthHeaders } from '../lib/api';';
 
 export default function NotificationPermissionPrompt({ profile, onClose, onUpdate }) {
   const [loading, setLoading] = useState(false);
