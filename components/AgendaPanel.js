@@ -117,9 +117,7 @@ export default function AgendaPanel() {
 
   const fetchIcalUrl = async () => {
     try {
-      const response = await fetch('/api/calendar-integrations/ical-token', {
-        headers: await getAuthHeaders()
-      });
+      const response = await apiCall('/api/calendar-integrations/ical-token');
       if (response.ok) {
         const data = await response.json();
         setIcalUrl(data.icalUrl);
@@ -139,9 +137,8 @@ export default function AgendaPanel() {
     if (!confirm('Gerar novo link iCal? O link antigo será invalidado.')) return;
 
     try {
-      const response = await fetch('/api/calendar-integrations/ical-token', {
-        method: 'POST',
-        headers: await getAuthHeaders()
+      const response = await apiCall('/api/calendar-integrations/ical-token', {
+        method: 'POST'
       });
 
       if (response.ok) {
@@ -215,10 +212,8 @@ export default function AgendaPanel() {
 
     for (const { eventId, table, title } of selected) {
       try {
-        const headers = await getAuthHeaders();
-        const response = await fetch('/api/calendar-integrations/sync-event', {
+        const response = await apiCall('/api/calendar-integrations/sync-event', {
           method: 'POST',
-          headers,
           body: JSON.stringify({
             event_id: eventId,
             internal_table: table,

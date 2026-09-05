@@ -101,8 +101,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
 
   const fetchActiveCase = async () => {
     try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`/api/cases/active?conversation_id=${conversation.id}`, { headers });
+      const response = await apiCall(`/api/cases/active?conversation_id=${conversation.id}`);
       if (response.ok) {
         const data = await response.json();
         setActiveCase(data);
@@ -323,17 +322,24 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
         setUploadProgress(10);
 
         // 1. Buscar URL assinada do backend (service_role)
-        const headers = await getAuthHeaders();
-        const { data: signedData } = await axios.post('/api/upload-file', {
-          fileName: fileToUpload.name,
-          fileType: fileToUpload.type,
-          conversationId: conversation.id
-        }, { headers });
+        const uploadResponse = await apiCall('/api/upload-file', {
+          method: 'POST',
+          body: JSON.stringify({
+            fileName: fileToUpload.name,
+            fileType: fileToUpload.type,
+            conversationId: conversation.id
+          })
+        });
 
+        if (!uploadResponse.ok) {
+          throw new Error('Erro ao obter URL assinada');
+        }
+
+        const signedData = await uploadResponse.json();
         setUploadProgress(50);
 
         // 2. Fazer upload DIRETO para a URL assinada (evita limite do Vercel e RLS)
-        const uploadResponse = await fetch(signedData.signedUrl, {
+        const fileUploadResponse = await fetch(signedData.signedUrl, {
           method: 'PUT',
           body: fileToUpload,
           headers: {
@@ -341,8 +347,8 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           }
         });
 
-        if (!uploadResponse.ok) {
-          throw new Error(`Erro no upload: ${uploadResponse.statusText}`);
+        if (!fileUploadResponse.ok) {
+          throw new Error(`Erro no upload: ${fileUploadResponse.statusText}`);
         }
 
         setUploadProgress(90);
@@ -418,11 +424,18 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
 
   const handleResumeBot = async () => {
     try {
-      const headers = await getAuthHeaders();
-      await axios.post('/api/automation-control', {
-        conversationId: conversation.id,
-        action: 'resume'
-      }, { headers });
+      const response = await apiCall('/api/automation-control', {
+        method: 'POST',
+        body: JSON.stringify({
+          conversationId: conversation.id,
+          action: 'resume'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro ao reativar bot: ${response.status}`);
+      }
+
       setMode('bot');
       onConversationUpdate();
     } catch (error) {
