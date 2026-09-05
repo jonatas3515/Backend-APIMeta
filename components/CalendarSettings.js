@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 
 export default function CalendarSettings() {
   const [integrations, setIntegrations] = useState([]);
@@ -25,9 +25,9 @@ export default function CalendarSettings() {
 
   const fetchStatus = async () => {
     try {
-      const data = await apiCall('/api/calendar-integrations', { method: 'GET' });
-      setIntegrations(data.integrations || []);
-      setIcalUrl(data.icalUrl);
+      const data = await apiJson('/api/calendar-integrations', { method: 'GET' });
+      setIntegrations((data && data.integrations) || []);
+      setIcalUrl((data && data.icalUrl) || '');
     } catch (error) {
       console.error('Erro ao buscar integrações:', error);
     } finally {
@@ -38,9 +38,9 @@ export default function CalendarSettings() {
   const handleConnect = async (provider) => {
     setConnecting(provider);
     try {
-      const data = await apiCall('/api/calendar-integrations/connect', {
+      const data = await apiJson('/api/calendar-integrations/connect', {
         method: 'POST',
-        body: { provider }
+        body: JSON.stringify({ provider })
       });
 
       if (data.authUrl) {
@@ -66,13 +66,13 @@ export default function CalendarSettings() {
     setSyncMessage(null);
 
     try {
-      const data = await apiCall('/api/calendar-integrations/sync-event', {
+      const data = await apiJson('/api/calendar-integrations/sync-event', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           event_id: eventId,
           internal_table: internalTable,
           provider: 'google'
-        }
+        })
       });
 
       setSyncMessage({ type: 'success', message: `Sincronizado! ${data.html_link ? 'Link copiável em breve.' : ''}` });
@@ -89,7 +89,7 @@ export default function CalendarSettings() {
     if (!confirm(`Deseja desconectar o ${provider === 'google' ? 'Google Calendar' : 'Outlook Calendar'}?`)) return;
 
     try {
-      await apiCall(`/api/calendar-integrations?provider=${provider}`, { method: 'DELETE' });
+      await apiJson(`/api/calendar-integrations?provider=${provider}`, { method: 'DELETE' });
       fetchStatus();
     } catch (error) {
       console.error('Erro ao desconectar:', error);
@@ -107,10 +107,10 @@ export default function CalendarSettings() {
     if (!confirm('Gerar novo link iCal? O link antigo será invalidado.')) return;
 
     try {
-      const data = await apiCall('/api/calendar-integrations/ical-token', {
+      const data = await apiJson('/api/calendar-integrations/ical-token', {
         method: 'POST'
       });
-      setIcalUrl(data.icalUrl);
+      setIcalUrl((data && data.icalUrl) || '');
     } catch (error) {
       console.error('Erro ao gerar iCal:', error);
       alert('Erro ao gerar novo link iCal');

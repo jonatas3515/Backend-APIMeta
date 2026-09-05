@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 
 // TODO (órfão): componente construído para histórico de client_info_requests, mas não integrado a nenhuma rota.
@@ -17,8 +17,8 @@ export default function ClientInfoPanel({ conversationId, caseId }) {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const data = await apiCall(`/api/client-info?conversation_id=${conversationId}`, { method: 'GET' });
-      setRequests(data);
+      const data = await apiJson(`/api/client-info?conversation_id=${conversationId}`, { method: 'GET' });
+      setRequests(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('[CLIENT-INFO] Erro ao buscar requisições:', error);
     } finally {

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import * as XLSX from 'xlsx';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 import { validatePreview } from '../lib/feeTableValidation';
 const TABLE_TYPES = [
   { key: 'oab', label: 'Tabela da OAB' },
@@ -50,8 +49,8 @@ export default function FeeTablesManager({ viewMode = null }) {
       if (filters.legal_area) params.set('legal_area', filters.legal_area);
       if (filters.case_type) params.set('case_type', filters.case_type);
       if (filters.service) params.set('service', filters.service);
-      const { data } = await apiCall(`/api/fee-reference?${params.toString()}`);
-      setReferenceItems(data || []);
+      const data = await apiJson(`/api/fee-reference?${params.toString()}`);
+      setReferenceItems(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('[FEE-TABLES] Erro ao buscar referências:', err);
     } finally {
@@ -61,10 +60,9 @@ export default function FeeTablesManager({ viewMode = null }) {
 
   const fetchTables = async () => {
     try {
-      
-      const { data } = await apiCall('/api/fee-tables');
+      const data = await apiJson('/api/fee-tables');
       const grouped = { oab: [], escritorio: [] };
-      for (const item of data || []) {
+      for (const item of (Array.isArray(data) ? data : [])) {
         if (grouped[item.table_type]) grouped[item.table_type].push(item);
       }
       setTables(grouped);
@@ -183,11 +181,14 @@ export default function FeeTablesManager({ viewMode = null }) {
         throw new Error(`Colunas ausentes: ${validation.missing.join(', ')}`);
       }
 
-      await apiCall('/api/fee-tables', {
-        name: name.trim(),
-        table_type: selectedType,
-        source_file_name: file.name,
-        table_data: tableData
+      await apiJson('/api/fee-tables', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: name.trim(),
+          table_type: selectedType,
+          source_file_name: file.name,
+          table_data: tableData
+        })
       });
 
       setMessage({ type: 'success', text: 'Tabela da OAB enviada e processada com sucesso.' });
@@ -208,7 +209,7 @@ export default function FeeTablesManager({ viewMode = null }) {
     if (!confirm('Tem certeza que deseja remover esta tabela?')) return;
     try {
       
-      await apiCall(`/api/fee-tables?id=${id}`);
+      await apiJson(`/api/fee-tables?id=${id}`, { method: 'DELETE' });
       fetchTables();
     } catch (err) {
       console.error('[FEE-TABLES] Erro ao remover:', err);

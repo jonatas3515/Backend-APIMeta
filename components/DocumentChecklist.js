@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/useAuth';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 import { DOCUMENT_STATUS_LABELS, DOCUMENT_STATUS_COLORS } from '../lib/documentChecklists';
 
 const ALL_STATUSES = Object.keys(DOCUMENT_STATUS_LABELS);
@@ -27,11 +27,11 @@ export default function DocumentChecklist({ caseItem, onClose }) {
   const fetchChecklist = async () => {
     try {
       setLoading(true);
-      const data = await apiCall(
+      const data = await apiJson(
         `/api/document-checklists?case_id=${caseItem.id}&sync=true`,
         { method: 'GET' }
       );
-      setItems(data || []);
+      setItems(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('[DOCUMENT_CHECKLIST] Erro ao carregar checklist:', error);
     } finally {
@@ -41,11 +41,11 @@ export default function DocumentChecklist({ caseItem, onClose }) {
 
   const fetchTemplates = async () => {
     try {
-      const data = await apiCall(
+      const data = await apiJson(
         `/api/document-checklist-templates?case_type=${encodeURIComponent(caseItem.case_type || '')}`,
         { method: 'GET' }
       );
-      setTemplates(data || []);
+      setTemplates(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('[DOCUMENT_CHECKLIST] Erro ao carregar templates:', error);
     }
@@ -54,9 +54,9 @@ export default function DocumentChecklist({ caseItem, onClose }) {
   const handleStatusChange = async (itemId, newStatus) => {
     try {
       setSaving(prev => ({ ...prev, [itemId]: true }));
-      await apiCall(
+      await apiJson(
         `/api/document-checklists?id=${itemId}`,
-        { method: 'PATCH', body: { status: newStatus } }
+        { method: 'PATCH', body: JSON.stringify({ status: newStatus }) }
       );
       await fetchChecklist();
     } catch (error) {
@@ -69,9 +69,9 @@ export default function DocumentChecklist({ caseItem, onClose }) {
 
   const handleObservacaoChange = async (itemId, observacao) => {
     try {
-      await apiCall(
+      await apiJson(
         `/api/document-checklists?id=${itemId}`,
-        { method: 'PATCH', body: { observacao } }
+        { method: 'PATCH', body: JSON.stringify({ observacao }) }
       );
       await fetchChecklist();
     } catch (error) {

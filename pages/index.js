@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useRouter } from 'next/router';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 import ChatList from '../components/ChatList';
 import ChatWindow from '../components/ChatWindow';
 import ClientsList from '../components/ClientsList';
@@ -108,10 +108,10 @@ export default function Home() {
 
     const load = async () => {
       try {
-        const data = await apiCall('/api/notification-preferences', { method: 'GET' });
-        setNotifPrefs(data);
+        const data = await apiJson('/api/notification-preferences', { method: 'GET' });
+        setNotifPrefs(data || {});
 
-        if (isSupported() && getPermission() === 'default' && (!data.ask_again_after || new Date(data.ask_again_after) < new Date())) {
+        if (isSupported() && getPermission() === 'default' && (!data || !data.ask_again_after || new Date(data.ask_again_after) < new Date())) {
           setShowNotifPrompt(true);
         }
       } catch (e) {
@@ -131,7 +131,7 @@ export default function Home() {
 
     const save = async () => {
       try {
-        await apiCall('/api/user-preferences', { method: 'PATCH', body: { preferred_legal_area: normalizeLegalArea(selectedArea) } });
+        await apiJson('/api/user-preferences', { method: 'PATCH', body: JSON.stringify({ preferred_legal_area: normalizeLegalArea(selectedArea) }) });
       } catch (e) {
         console.error('[AREA-FILTER] Erro ao salvar preferência:', e);
       }
@@ -600,8 +600,8 @@ export default function Home() {
             onClose={() => setShowNotifPrompt(false)}
             onUpdate={async () => {
               try {
-                const data = await apiCall('/api/notification-preferences', { method: 'GET' });
-                setNotifPrefs(data);
+                const data = await apiJson('/api/notification-preferences', { method: 'GET' });
+                setNotifPrefs(data || {});
               } catch (e) {
                 console.error('[NOTIFICATIONS] Erro ao recarregar preferências:', e);
               }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 import FeeTablesManager from './FeeTablesManager';
 
 const BILLING_MODELS = ['fixo', 'percentual', 'entrada_parcelas', 'por_etapa', 'sob_consulta'];
@@ -28,8 +28,8 @@ export default function FeeServiceAdmin({ viewMode = null }) {
   const fetchServices = async () => {
     setLoading(true);
     try {
-      const data = await apiCall('/api/fee-services', { method: 'GET' });
-      setServices(data || []);
+      const data = await apiJson('/api/fee-services', { method: 'GET' });
+      setServices(Array.isArray(data) ? data : []);
     } catch (err) {
       setMessage({ type: 'error', text: 'Erro ao buscar serviços' });
     } finally {
@@ -39,8 +39,8 @@ export default function FeeServiceAdmin({ viewMode = null }) {
 
   const fetchRules = async (serviceId) => {
     try {
-      const data = await apiCall(`/api/fee-rules?service_id=${serviceId}`, { method: 'GET' });
-      setRules(data || []);
+      const data = await apiJson(`/api/fee-rules?service_id=${serviceId}`, { method: 'GET' });
+      setRules(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('[FEE-ADMIN] Erro ao buscar regras:', err);
     }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 
 import { calculateRegionalSuggestion, calculateOabDiscount } from '../lib/feeSuggestion';
 
@@ -35,21 +35,19 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   const fetchServices = async () => {
     try {
       
-      
-      // Tenta buscar serviços da área jurídica do caso
       let url = `/api/fee-services?active=true`;
       if (caseData?.legal_area) {
         url += `&legal_area=${encodeURIComponent(caseData.legal_area)}`;
       }
       
-      const { data } = await apiCall(url);
+      const data = await apiJson(url);
       
       // Se não encontrou serviços com filtro de área, busca todos ativos
       if ((!data || data.length === 0) && caseData?.legal_area) {
-        const { data: allServices } = await apiCall(`/api/fee-services?active=true`);
-        setServices(allServices || []);
+        const allServices = await apiJson(`/api/fee-services?active=true`);
+        setServices(Array.isArray(allServices) ? allServices : []);
       } else {
-        setServices(data || []);
+        setServices(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error('[FEE-SIMULATOR] Erro ao buscar serviços:', err);
@@ -68,19 +66,19 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         return params;
       };
 
-      let { data } = await apiCall(`/api/fee-reference?${buildParams({ service: service.name }).toString()}`);
+      let data = await apiJson(`/api/fee-reference?${buildParams({ service: service.name }).toString()}`);
 
-      if (!data || data.length === 0) {
+      if (!data || (Array.isArray(data) && data.length === 0)) {
         const fallbackParams = buildParams();
-        const fallback = await apiCall(`/api/fee-reference?${fallbackParams.toString()}`);
+        const fallback = await apiJson(`/api/fee-reference?${fallbackParams.toString()}`);
         const normServiceName = String(service.name).toLowerCase().trim();
-        data = (fallback.data || []).filter((r) =>
+        data = (Array.isArray(fallback) ? fallback : []).filter((r) =>
           String(r.service).toLowerCase().trim().includes(normServiceName) ||
           normServiceName.includes(String(r.service).toLowerCase().trim())
         );
       }
 
-      return data && data.length > 0 ? data[0] : null;
+      return Array.isArray(data) && data.length > 0 ? data[0] : null;
     } catch (err) {
       console.error('[FEE-SIMULATOR] Erro ao buscar referência OAB:', err);
       return null;
@@ -110,8 +108,8 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
     if (!caseId) return;
     try {
       
-      const { data } = await apiCall(`/api/fee-simulations?case_id=${caseId}`);
-      setSimulations(data || []);
+      const data = await apiJson(`/api/fee-simulations?case_id=${caseId}`);
+      setSimulations(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('[FEE-SIMULATOR] Erro ao buscar simulações:', err);
     }
@@ -163,7 +161,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         data = buildResultFromOab(ref, selected);
       } else {
         
-        const { data: calc } = await apiCall('/api/fee-simulations', {
+        const payload = {
           action: 'calculate',
           service_id: selectedService,
           complexity: form.complexity,
@@ -171,6 +169,10 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           service_stage: form.service_stage,
           document_volume: form.document_volume,
           estimated_economic_value: form.estimated_economic_value ? parseFloat(form.estimated_economic_value) : null
+        };
+        const calc = await apiJson('/api/fee-simulations', {
+          method: 'POST',
+          body: JSON.stringify(payload)
         });
         data = calc;
       }
@@ -226,7 +228,10 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         status
       };
 
-      const { data } = await apiCall('/api/fee-simulations', payload);
+      const data = await apiJson('/api/fee-simulations', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
 
       setMessage({ type: 'success', text: 'Simulação salva com sucesso.' });
       setResult(null);
@@ -256,7 +261,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       
       const status = action === 'approve' ? 'aprovada' : 'rejeitada';
       const extra = action === 'reject' ? { rejection_reason: 'Rejeitada pelo responsável' } : {};
-      await apiCall(`/api/fee-simulations?id=${id}`, { status, ...extra });
+      await apiJson(`/api/fee-simulations?id=${id}`, { method: 'PATCH', body: JSON.stringify({ status, ...extra }) });
       fetchSimulations();
     } catch (err) {
       const text = err.response?.data?.error || 'Erro ao atualizar';

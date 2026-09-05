@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 import { DATAJUD_COURTS, getCourtByCode } from '../lib/datajudCourts';
 
 const FREQUENCY_OPTIONS = [
@@ -73,13 +73,10 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
   const fetchProcesses = async () => {
     setLoading(true);
     try {
-      
-      const res = await fetch(`/api/case-processes?case_id=${caseId}`);
-      const data = await res.json();
-      if (res.ok) setProcesses(data || []);
-      else setError(data.error || 'Erro ao carregar processos');
+      const data = await apiJson(`/api/case-processes?case_id=${caseId}`, { method: 'GET' });
+      setProcesses(Array.isArray(data) ? data : []);
     } catch (e) {
-      setError('Erro ao carregar processos');
+      setError(e.message || 'Erro ao carregar processos');
     } finally {
       setLoading(false);
     }
@@ -87,10 +84,8 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
 
   const fetchMovements = async (processId) => {
     try {
-      
-      const res = await fetch(`/api/case-processes/${processId}/movements?limit=50`);
-      const data = await res.json();
-      if (res.ok) setMovements(data.data || []);
+      const data = await apiJson(`/api/case-processes/${processId}/movements?limit=50`, { method: 'GET' });
+      setMovements((data && data.data) || (Array.isArray(data) ? data : []));
     } catch (e) {
       console.error('[PROCESS-MONITORING] Erro ao carregar movimentações:', e);
     }
@@ -100,58 +95,44 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
     e.preventDefault();
     setError(null); setMessage(null);
     try {
-      
-      const res = await fetch('/api/case-processes', {
+      const data = await apiJson('/api/case-processes', {
         method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, case_id: caseId })
       });
-      const data = await res.json();
-      if (res.ok) {
-        setMessage('Processo cadastrado.');
-        setForm({ process_number: '', court_code: '', client_role: 'outro', monitoring_frequency: 'manual', is_primary: false });
-        setShowForm(false);
-        fetchProcesses();
-        setSelectedProcess(data);
-      } else {
-        setError(data.error || 'Erro ao cadastrar processo');
-      }
+      setMessage('Processo cadastrado.');
+      setForm({ process_number: '', court_code: '', client_role: 'outro', monitoring_frequency: 'manual', is_primary: false });
+      setShowForm(false);
+      fetchProcesses();
+      setSelectedProcess(data);
     } catch (e) {
-      setError('Erro ao cadastrar processo');
+      setError(e.message || 'Erro ao cadastrar processo');
     }
   };
 
   const handleQuery = async (process) => {
     setQuerying(true); setError(null); setMessage(null);
     try {
-      
-      const res = await fetch(`/api/case-processes/${process.id}/query`, {
-        method: 'POST',
-        headers
+      const data = await apiJson(`/api/case-processes/${process.id}/query`, {
+        method: 'POST'
       });
-      const data = await res.json();
-      if (res.ok) {
-        if (data.new_movements_count > 0) {
-          setMessage(`${data.new_movements_count} nova(s) movimentação(ões) detectada(s) — aguardando revisão jurídica.`);
-        } else if (data.status === 'success') {
-          setMessage('Nenhuma movimentação nova desde a última consulta.');
-        } else if (data.status === 'not_found') {
-          setMessage('Processo não localizado na fonte consultada. Confira número e tribunal.');
-        } else if (data.status === 'restricted') {
-          setMessage('Dados não disponíveis pela fonte pública. Acompanhe pelo sistema oficial apropriado.');
-        } else if (data.status === 'rate_limited') {
-          setMessage('Consulta temporariamente indisponível (rate limit). Tente mais tarde.');
-        } else {
-          setMessage(data.message || 'Consulta concluída sem alterações.');
-        }
-        // refresh selected process movements
-        await fetchProcesses();
-        if (selectedProcess && selectedProcess.id === process.id) await fetchMovements(process.id);
+      if (data.new_movements_count > 0) {
+        setMessage(`${data.new_movements_count} nova(s) movimentação(ões) detectada(s) — aguardando revisão jurídica.`);
+      } else if (data.status === 'success') {
+        setMessage('Nenhuma movimentação nova desde a última consulta.');
+      } else if (data.status === 'not_found') {
+        setMessage('Processo não localizado na fonte consultada. Confira número e tribunal.');
+      } else if (data.status === 'restricted') {
+        setMessage('Dados não disponíveis pela fonte pública. Acompanhe pelo sistema oficial apropriado.');
+      } else if (data.status === 'rate_limited') {
+        setMessage('Consulta temporariamente indisponível (rate limit). Tente mais tarde.');
       } else {
-        setError(data.error || 'Erro na consulta');
+        setMessage(data.message || 'Consulta concluída sem alterações.');
       }
+      // refresh selected process movements
+      await fetchProcesses();
+      if (selectedProcess && selectedProcess.id === process.id) await fetchMovements(process.id);
     } catch (e) {
-      setError('Erro na consulta ao DataJud.');
+      setError(e.message || 'Erro na consulta ao DataJud.');
     } finally {
       setQuerying(false);
     }
@@ -159,80 +140,53 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
 
   const handleReview = async (movementId, status, notes = null) => {
     try {
-      
-      const res = await fetch(`/api/process-movements/${movementId}/review`, {
+      await apiJson(`/api/process-movements/${movementId}/review`, {
         method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ review_status: status, review_notes: notes })
       });
-      if (res.ok) {
-        if (selectedProcess) fetchMovements(selectedProcess.id);
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Erro ao revisar');
-      }
+      if (selectedProcess) fetchMovements(selectedProcess.id);
     } catch (e) {
-      setError('Erro ao revisar movimentação');
+      setError(e.message || 'Erro ao revisar movimentação');
     }
   };
 
   const handleCreateNote = async (movementId) => {
     if (!noteText.trim()) return;
     try {
-      
-      const res = await fetch(`/api/process-movements/${movementId}/create-note`, {
+      await apiJson(`/api/process-movements/${movementId}/create-note`, {
         method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify({ note: noteText.trim() })
       });
-      if (res.ok) {
-        setNoteText(''); setActiveMovement(null);
-        if (selectedProcess) fetchMovements(selectedProcess.id);
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Erro ao criar nota');
-      }
+      setNoteText(''); setActiveMovement(null);
+      if (selectedProcess) fetchMovements(selectedProcess.id);
     } catch (e) {
-      setError('Erro ao criar nota');
+      setError(e.message || 'Erro ao criar nota');
     }
   };
 
   const handleCreateAgenda = async (movementId) => {
     if (!eventForm.event_date || !eventForm.title) return;
     try {
-      
-      const res = await fetch(`/api/process-movements/${movementId}/create-agenda-event`, {
+      await apiJson(`/api/process-movements/${movementId}/create-agenda-event`, {
         method: 'POST',
-        headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify(eventForm)
       });
-      if (res.ok) {
-        setEventForm({ event_date: '', event_time: '', title: '', description: '', priority: 'media' });
-        setActiveMovement(null);
-        if (selectedProcess) fetchMovements(selectedProcess.id);
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Erro ao criar evento');
-      }
+      setEventForm({ event_date: '', event_time: '', title: '', description: '', priority: 'media' });
+      setActiveMovement(null);
+      if (selectedProcess) fetchMovements(selectedProcess.id);
     } catch (e) {
-      setError('Erro ao criar evento');
+      setError(e.message || 'Erro ao criar evento');
     }
   };
 
   const handleDelete = async (id) => {
     if (!confirm('Remover processo do monitoramento?')) return;
     try {
-      
-      const res = await fetch(`/api/case-processes?id=${id}`, { method: 'DELETE', headers });
-      if (res.ok) {
-        setSelectedProcess(null);
-        fetchProcesses();
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Erro ao remover processo');
-      }
+      await apiJson(`/api/case-processes?id=${id}`, { method: 'DELETE' });
+      setSelectedProcess(null);
+      fetchProcesses();
     } catch (e) {
-      setError('Erro ao remover processo');
+      setError(e.message || 'Erro ao remover processo');
     }
   };
 

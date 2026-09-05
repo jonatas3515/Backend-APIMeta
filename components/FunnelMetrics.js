@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 
 export default function FunnelMetrics() {
   const [metrics, setMetrics] = useState(null);
@@ -12,9 +12,9 @@ export default function FunnelMetrics() {
 
   const fetchMetrics = async () => {
     try {
-      const data = await apiCall('/api/funnel?action=metrics', { method: 'GET' });
-      setMetrics(data.metrics);
-      setConversions(data.conversions);
+      const data = await apiJson('/api/funnel?action=metrics', { method: 'GET' });
+      setMetrics((data && data.metrics) || []);
+      setConversions((data && data.conversions) || []);
     } catch (error) {
       console.error('[METRICS] Erro:', error);
     } finally {

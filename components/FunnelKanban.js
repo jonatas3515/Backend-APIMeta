@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 import { safeLog, safeError } from '../lib/safeLogger';
 import { supabase } from '../lib/supabaseClient';
 import useAreaFilter from '../hooks/useAreaFilter';
@@ -86,8 +86,8 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
         await Promise.all(
           eligibleConvs.map(async (conv) => {
             try {
-              const data = await apiCall(`/api/cases?conversation_id=${conv.id}`, { method: 'GET' });
-              const list = Array.isArray(data) ? data : [data];
+              const data = await apiJson(`/api/cases?conversation_id=${conv.id}`, { method: 'GET' });
+              const list = Array.isArray(data) ? data : (data ? [data] : []);
               const activeCase = list.find(c => c && c.status !== 'encerrado');
               if (activeCase) cases[conv.id] = activeCase;
             } catch (err) {

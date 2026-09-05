@@ -1,6 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/router';
-import { apiCall } from '../lib/apiClient';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { apiJson } from '../lib/apiClient';
 import { buildInternalUrl } from '../lib/router';
 
 const TRIAGE_STATUS_LABELS = {
@@ -203,8 +202,8 @@ export default function ProcessTriagePanel({ movementId, profile }) {
   const fetchUsers = async () => {
     if (!canAct) return;
     try {
-      const data = await apiCall('/api/collaboration?action=users', { method: 'GET' });
-      setUsers((data.users || []).filter((u) => u.id !== userId));
+      const data = await apiJson('/api/collaboration?action=users', { method: 'GET' });
+      setUsers(((data && data.users) || []).filter((u) => u.id !== userId));
     } catch (err) {
       // ignore
     }
@@ -262,8 +261,8 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     }
     setPartialError(null);
     try {
-      const data = await apiCall(`/api/triage?${buildParams(pageNum)}`, { method: 'GET' });
-      const next = data.movements || [];
+      const data = await apiJson(`/api/triage?${buildParams(pageNum)}`, { method: 'GET' });
+      const next = (data && data.movements) || [];
       if (append) {
         setMovements((prev) => {
           const existing = new Set(prev.map((m) => m.id));
@@ -293,8 +292,8 @@ export default function ProcessTriagePanel({ movementId, profile }) {
 
   const fetchStats = async () => {
     try {
-      const data = await apiCall('/api/triage?action=stats', { method: 'GET' });
-      setStats(data);
+      const data = await apiJson('/api/triage?action=stats', { method: 'GET' });
+      setStats(data || {});
     } catch (err) {
       console.error('[TRIAGE] Stats error:', err);
     }
@@ -340,9 +339,9 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     setSuggestion(null);
     setActionForm({});
     try {
-      const data = await apiCall(`/api/triage?id=${mov.id}`, { method: 'GET' });
-      setSelectedMovement(data.movement);
-      setHistory(data.history || []);
+      const data = await apiJson(`/api/triage?id=${mov.id}`, { method: 'GET' });
+      setSelectedMovement((data && data.movement) || null);
+      setHistory((data && data.history) || []);
     } catch (err) {
       console.error('[TRIAGE] Detalhes:', err);
       setMessage({ type: 'error', text: 'Erro ao carregar detalhes' });
@@ -377,9 +376,9 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     if (!selectedMovement) return false;
     setSubmitting(true);
     try {
-      const data = await apiCall(`/api/triage?id=${selectedMovement.id}`, {
+      const data = await apiJson(`/api/triage?id=${selectedMovement.id}`, {
         method: 'PATCH',
-        body
+        body: JSON.stringify(body)
       });
       setMessage({ type: 'success', text: 'Ação registrada com sucesso' });
       await fetchMovements(page, false);
@@ -399,9 +398,9 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     if (!selectedMovement) return false;
     setSubmitting(true);
     try {
-      const data = await apiCall(`/api/triage?action=${action}`, {
+      const data = await apiJson(`/api/triage?action=${action}`, {
         method: 'POST',
-        body: { ...body, movement_id: selectedMovement.id }
+        body: JSON.stringify({ ...body, movement_id: selectedMovement.id })
       });
       setMessage({ type: 'success', text: 'Ação registrada com sucesso' });
       await fetchMovements(page, false);
@@ -456,9 +455,9 @@ export default function ProcessTriagePanel({ movementId, profile }) {
   const getSuggestion = async () => {
     if (!selectedMovement) return;
     try {
-      const data = await apiCall('/api/triage?action=suggest', {
+      const data = await apiJson('/api/triage?action=suggest', {
         method: 'POST',
-        body: { movement_text: selectedMovement.movement_text }
+        body: JSON.stringify({ movement_text: selectedMovement.movement_text })
       });
       setSuggestion(data);
     } catch (err) {

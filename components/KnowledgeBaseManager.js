@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 
 const DOC_TYPES = ['modelo_peca', 'clausula', 'tese', 'checklist', 'jurisprudencia'];
 const STATUS_OPTIONS = ['rascunho', 'revisado', 'aprovado'];
@@ -30,8 +30,8 @@ export default function KnowledgeBaseManager() {
     setLoading(true);
     try {
       const status = statusFilter === 'all' ? 'all' : statusFilter;
-      const data = await apiCall(`/api/knowledge/documents?status=${status}`, { method: 'GET' });
-      setDocuments(data.documents || []);
+      const data = await apiJson(`/api/knowledge/documents?status=${status}`, { method: 'GET' });
+      setDocuments((data && data.documents) || (Array.isArray(data) ? data : []));
     } catch (error) {
       console.error('[KNOWLEDGE] Erro ao listar documentos:', error);
       alert('Erro ao carregar documentos');
@@ -56,9 +56,8 @@ export default function KnowledgeBaseManager() {
 
   const openEdit = async (doc) => {
     try {
-      
-      const { data } = await apiCall(`/api/knowledge/documents?id=${doc.id}`);
-      const full = data.document || doc;
+      const data = await apiJson(`/api/knowledge/documents?id=${doc.id}`);
+      const full = (data && data.document) || doc;
       setEditing(full);
       setForm({
         title: full.title || '',
@@ -96,11 +95,16 @@ export default function KnowledgeBaseManager() {
 
     setSaving(true);
     try {
-      
       if (editing) {
-        await axios.put('/api/knowledge/documents', { ...payload, id: editing.id });
+        await apiJson('/api/knowledge/documents', {
+          method: 'PUT',
+          body: JSON.stringify({ ...payload, id: editing.id })
+        });
       } else {
-        await apiCall('/api/knowledge/documents', payload);
+        await apiJson('/api/knowledge/documents', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
       }
       closeForm();
       fetchDocuments();
@@ -125,8 +129,10 @@ export default function KnowledgeBaseManager() {
       if (!ok) return;
     }
     try {
-      
-      await apiCall('/api/knowledge/documents', { id, status: newStatus });
+      await apiJson('/api/knowledge/documents', {
+        method: 'PATCH',
+        body: JSON.stringify({ id, status: newStatus })
+      });
       fetchDocuments();
     } catch (error) {
       console.error('[KNOWLEDGE] Erro ao alterar status:', error);

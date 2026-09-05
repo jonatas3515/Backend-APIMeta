@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 import { safeError } from '../lib/safeLogger';
 
 export default function CaseCalendarSync({
@@ -27,17 +27,17 @@ export default function CaseCalendarSync({
     const load = async () => {
       try {
         const [integrationData, statusData] = await Promise.all([
-          apiCall('/api/calendar-integrations', { method: 'GET' }),
-          apiCall(`/api/calendar-integrations/sync-status?event_id=${eventId}&internal_table=${table}`, { method: 'GET' })
+          apiJson('/api/calendar-integrations', { method: 'GET' }),
+          apiJson(`/api/calendar-integrations/sync-status?event_id=${eventId}&internal_table=${table}`, { method: 'GET' })
         ]);
 
         if (!mounted) return;
 
-        const google = (integrationData.integrations || []).find(
+        const google = ((integrationData && integrationData.integrations) || []).find(
           (i) => i.provider === 'google' && i.is_active
         );
         setConnected(!!google);
-        setStatus(statusData);
+        setStatus(statusData || null);
       } catch (err) {
         safeError('calendar_sync_load_error', err, { component: 'CaseCalendarSync' });
       }
@@ -52,9 +52,9 @@ export default function CaseCalendarSync({
     setLoading(true);
     setMessage(null);
     try {
-      const data = await apiCall('/api/calendar-integrations/connect', {
+      const data = await apiJson('/api/calendar-integrations/connect', {
         method: 'POST',
-        body: { provider: 'google' }
+        body: JSON.stringify({ provider: 'google' })
       });
       if (data.authUrl) {
         window.location.href = data.authUrl;
@@ -74,14 +74,14 @@ export default function CaseCalendarSync({
     setLoading(true);
     setMessage(null);
     try {
-      await apiCall('/api/calendar-integrations/sync-event', {
+      await apiJson('/api/calendar-integrations/sync-event', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           event_id: eventId,
           internal_table: table,
           provider,
           action: 'sync'
-        }
+        })
       });
 
       setStatus({
@@ -112,14 +112,14 @@ export default function CaseCalendarSync({
     setLoading(true);
     setMessage(null);
     try {
-      await apiCall('/api/calendar-integrations/sync-event', {
+      await apiJson('/api/calendar-integrations/sync-event', {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           event_id: eventId,
           internal_table: table,
           provider,
           action: 'delete'
-        }
+        })
       });
 
       setStatus(null);
