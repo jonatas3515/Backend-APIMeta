@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { askGemini } from '../lib/ai';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import useAreaFilter from '../hooks/useAreaFilter';
 import { LEGAL_AREAS } from '../lib/legalAreas';
@@ -64,7 +64,7 @@ export default function AgendaPanel() {
       if (filters.agency) params.append('agency', filters.agency);
       if (filters.priority) params.append('priority', filters.priority);
 
-      const response = await fetch(`/api/agenda?${params.toString()}`, { headers: await getAuthHeaders() });
+      const response = await apiCall(`/api/agenda?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setAgenda(data);
@@ -87,9 +87,8 @@ export default function AgendaPanel() {
   const generateSummary = async () => {
     setGeneratingSummary(true);
     try {
-      const response = await fetch('/api/agenda', {
+      const response = await apiCall('/api/agenda', {
         method: 'POST',
-        headers: await getAuthHeaders(),
         body: JSON.stringify({
           action: 'summary',
           range: activeTab,

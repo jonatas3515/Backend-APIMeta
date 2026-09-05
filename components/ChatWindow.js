@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import axios from 'axios';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';
 import { formatPhone } from '../lib/formatters';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { maybeNotify } from '../lib/notifications';
@@ -359,13 +358,21 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
       }
 
       // Enviar mensagem
-      const headers = await getAuthHeaders();
-      const { data: sendData } = await axios.post('/api/send-message', {
-        conversation_id: conversation.id,
-        text: newMessage,
-        media_url: mediaUrl,
-        media_type: mediaType
-      }, { headers });
+      const response = await apiCall('/api/send-message', {
+        method: 'POST',
+        body: JSON.stringify({
+          conversation_id: conversation.id,
+          text: newMessage,
+          media_url: mediaUrl,
+          media_type: mediaType
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro ao enviar mensagem: ${response.status}`);
+      }
+
+      const sendData = await response.json();
 
       console.log('[CHAT] Mensagem enviada:', sendData);
       setNewMessage('');
@@ -387,12 +394,19 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
 
   const handlePauseBot = async (duration) => {
     try {
-      const headers = await getAuthHeaders();
-      await axios.post('/api/automation-control', {
-        conversationId: conversation.id,
-        action: 'pause',
-        duration
-      }, { headers });
+      const response = await apiCall('/api/automation-control', {
+        method: 'POST',
+        body: JSON.stringify({
+          conversationId: conversation.id,
+          action: 'pause',
+          duration
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro ao pausar bot: ${response.status}`);
+      }
+
       setMode('human');
       setShowPauseMenu(false);
       onConversationUpdate();

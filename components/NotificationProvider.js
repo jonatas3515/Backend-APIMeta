@@ -12,7 +12,7 @@ import {
   useRef,
   useCallback
 } from 'react';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';
 import { safeError } from '../lib/safeLogger';
 
 const NotificationContext = createContext(null);
@@ -229,8 +229,7 @@ export function NotificationProvider({ children }) {
 
     const promise = (async () => {
       try {
-        const response = await fetch('/api/notifications/count', {
-          headers: await getAuthHeaders(),
+        const response = await apiCall('/api/notifications/count', {
           signal: controller.signal
         });
         if (!isMountedRef.current) return;
@@ -264,8 +263,7 @@ export function NotificationProvider({ children }) {
     const promise = (async () => {
       try {
         const url = force ? '/api/notifications?refresh=1' : '/api/notifications';
-        const response = await fetch(url, {
-          headers: await getAuthHeaders(),
+        const response = await apiCall(url, {
           signal: controller.signal
         });
         if (!isMountedRef.current) return;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiCall } from '../lib/apiClient';
 
 /**
  * Modal para criar caso a partir de conversa
@@ -60,9 +61,8 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
     setError(null);
 
     try {
-      const response = await fetch('/api/cases', {
+      const response = await apiCall('/api/cases', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversation_id: conversation.id,
           ...formData

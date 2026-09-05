@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { apiCall } from '../lib/apiClient';
 
 /**
  * Modal para vincular conversa a caso existente
@@ -57,7 +58,7 @@ export default function CaseLinkModal({ isOpen, onClose, conversationId, onSucce
     setError(null);
 
     try {
-      const response = await fetch('/api/cases');
+      const response = await apiCall('/api/cases');
       if (!response.ok) throw new Error('Erro ao buscar casos');
 
       const data = await response.json();
@@ -84,9 +85,8 @@ export default function CaseLinkModal({ isOpen, onClose, conversationId, onSucce
     setError(null);
 
     try {
-      const response = await fetch(`/api/cases?id=${selectedCase.id}`, {
+      const response = await apiCall(`/api/cases?id=${selectedCase.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversation_id: conversationId
         })
