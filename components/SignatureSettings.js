@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { apiCall } from '../lib/apiClient';
 
 export default function SignatureSettings() {
@@ -22,8 +21,8 @@ export default function SignatureSettings() {
   const fetchIntegrations = async () => {
     try {
       setLoading(true);
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get('/api/signatures/config', { headers });
+      
+      const { data } = await apiCall('/api/signatures/config');
       setIntegrations(data.integrations || []);
       setError(null);
     } catch (err) {
@@ -38,8 +37,8 @@ export default function SignatureSettings() {
     e.preventDefault();
     try {
       setLoading(true);
-      const headers = await getAuthHeaders();
-      const { data } = await axios.patch('/api/signatures/config', formData, { headers });
+      
+      const { data } = await apiCall('/api/signatures/config', formData);
       
       setSuccess('Configuração salva com sucesso');
       setFormData({ platform: 'zapsign', api_key: '', api_secret: '' });
@@ -58,10 +57,10 @@ export default function SignatureSettings() {
   const handleTest = async (integrationId) => {
     try {
       setTesting(integrationId);
-      const headers = await getAuthHeaders();
+      
       const integration = integrations.find(i => i.id === integrationId);
 
-      const { data } = await axios.post('/api/signatures/config',
+      const { data } = await apiCall('/api/signatures/config',
         { platform: integration.platform },
         { headers }
       );
@@ -231,4 +230,6 @@ export default function SignatureSettings() {
     </div>
   );
 }
+
+
 

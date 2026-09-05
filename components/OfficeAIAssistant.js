@@ -11,7 +11,7 @@ const fetchTemplates = async (area, caseType) => {
     const params = new URLSearchParams();
     if (area) params.set('legal_area', area);
     if (caseType) params.set('case_type', caseType);
-    const { data } = await axios.get(`/api/templates?${params.toString()}`);
+    const { data } = await apiCall(`/api/templates?${params.toString()}`);
     return Array.isArray(data) ? data : [];
   } catch (err) {
     console.error('[AI] Erro ao buscar templates:', err);
@@ -50,14 +50,14 @@ export default function OfficeAIAssistant() {
     setError('');
 
     try {
-      const headers = await getAuthHeaders();
+      
       const enriched = await buildEnrichedPrompt(query.trim(), area, '', type);
-      const { data } = await axios.post('/api/ai/ask', {
+      const { data } = await apiCall('/api/ai/ask', {
         query: enriched,
         area: area || null,
         tribunal: tribunal || null,
         type: type || null
-      }, { headers });
+      });
 
       setAnswer(data.answer);
       setSources(data.sources || []);
@@ -182,4 +182,5 @@ export default function OfficeAIAssistant() {
     </div>
   );
 }
+
 

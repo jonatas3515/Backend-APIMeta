@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { apiCall } from '../lib/apiClient';
 import { safeError } from '../lib/safeLogger';
 
@@ -27,11 +26,9 @@ export default function CaseCalendarSync({
 
     const load = async () => {
       try {
-        const headers = await getAuthHeaders();
-
-        const [{ data: integrationData }, { data: statusData }] = await Promise.all([
-          axios.get('/api/calendar-integrations', { headers }),
-          axios.get(`/api/calendar-integrations/sync-status?event_id=${eventId}&internal_table=${table}`, { headers })
+        const [integrationData, statusData] = await Promise.all([
+          apiCall('/api/calendar-integrations', { method: 'GET' }),
+          apiCall(`/api/calendar-integrations/sync-status?event_id=${eventId}&internal_table=${table}`, { method: 'GET' })
         ]);
 
         if (!mounted) return;
@@ -55,12 +52,10 @@ export default function CaseCalendarSync({
     setLoading(true);
     setMessage(null);
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.post(
-        '/api/calendar-integrations/connect',
-        { provider: 'google' },
-        { headers }
-      );
+      const data = await apiCall('/api/calendar-integrations/connect', {
+        method: 'POST',
+        body: { provider: 'google' }
+      });
       if (data.authUrl) {
         window.location.href = data.authUrl;
       } else {
@@ -79,17 +74,15 @@ export default function CaseCalendarSync({
     setLoading(true);
     setMessage(null);
     try {
-      const headers = await getAuthHeaders();
-      await axios.post(
-        '/api/calendar-integrations/sync-event',
-        {
+      await apiCall('/api/calendar-integrations/sync-event', {
+        method: 'POST',
+        body: {
           event_id: eventId,
           internal_table: table,
           provider,
           action: 'sync'
-        },
-        { headers }
-      );
+        }
+      });
 
       setStatus({
         synced: true,
@@ -119,17 +112,15 @@ export default function CaseCalendarSync({
     setLoading(true);
     setMessage(null);
     try {
-      const headers = await getAuthHeaders();
-      await axios.post(
-        '/api/calendar-integrations/sync-event',
-        {
+      await apiCall('/api/calendar-integrations/sync-event', {
+        method: 'POST',
+        body: {
           event_id: eventId,
           internal_table: table,
           provider,
           action: 'delete'
-        },
-        { headers }
-      );
+        }
+      });
 
       setStatus(null);
       setMessage({ type: 'success', text: 'Removido do Google Calendar' });

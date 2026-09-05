@@ -79,13 +79,13 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
       if (eligibleConvs.length === 0) return;
 
       try {
-        const headers = await getAuthHeaders();
+        
         const cases = {};
         
         await Promise.all(
           eligibleConvs.map(async (conv) => {
             try {
-              const response = await fetch(`/api/cases?conversation_id=${conv.id}`, { headers });
+              const response = await fetch(`/api/cases?conversation_id=${conv.id}`);
               if (response.ok) {
                 const data = await response.json();
                 const list = Array.isArray(data) ? data : [data];
@@ -130,19 +130,15 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
     setLoading(true);
     setStageChangeError(null);
     try {
-      const response = await fetch('/api/funnel', {
+      const result = await apiCall('/api/funnel', {
         method: 'PATCH',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({
+        body: {
           conversation_id: conversation.id,
           new_stage: newStage,
           reason: 'Movido via Kanban'
-        })
+        }
       });
 
-      if (!response.ok) throw new Error('Erro ao atualizar stage');
-
-      const result = await response.json();
       safeLog('info', 'kanban_stage_updated', { requestId: 'funnel' });
 
       setItems(prev => prev.map(c => c.id === conversation.id ? result.conversation : c));
@@ -462,4 +458,5 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
     </div>
   );
 }
+
 

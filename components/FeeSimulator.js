@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { apiCall } from '../lib/apiClient';
 
 import { calculateRegionalSuggestion, calculateOabDiscount } from '../lib/feeSuggestion';
@@ -35,7 +34,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
 
   const fetchServices = async () => {
     try {
-      const headers = await getAuthHeaders();
+      
       
       // Tenta buscar serviços da área jurídica do caso
       let url = `/api/fee-services?active=true`;
@@ -43,11 +42,11 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         url += `&legal_area=${encodeURIComponent(caseData.legal_area)}`;
       }
       
-      const { data } = await axios.get(url, { headers });
+      const { data } = await apiCall(url);
       
       // Se não encontrou serviços com filtro de área, busca todos ativos
       if ((!data || data.length === 0) && caseData?.legal_area) {
-        const { data: allServices } = await axios.get(`/api/fee-services?active=true`, { headers });
+        const { data: allServices } = await apiCall(`/api/fee-services?active=true`);
         setServices(allServices || []);
       } else {
         setServices(data || []);
@@ -60,7 +59,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   const fetchOabReference = async (service, caseInfo = caseData) => {
     if (!service?.name) return null;
     try {
-      const headers = await getAuthHeaders();
+      
       const buildParams = (extra = {}) => {
         const params = new URLSearchParams();
         if (caseInfo?.legal_area) params.set('legal_area', caseInfo.legal_area);
@@ -69,11 +68,11 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         return params;
       };
 
-      let { data } = await axios.get(`/api/fee-reference?${buildParams({ service: service.name }).toString()}`, { headers });
+      let { data } = await apiCall(`/api/fee-reference?${buildParams({ service: service.name }).toString()}`);
 
       if (!data || data.length === 0) {
         const fallbackParams = buildParams();
-        const fallback = await axios.get(`/api/fee-reference?${fallbackParams.toString()}`, { headers });
+        const fallback = await apiCall(`/api/fee-reference?${fallbackParams.toString()}`);
         const normServiceName = String(service.name).toLowerCase().trim();
         data = (fallback.data || []).filter((r) =>
           String(r.service).toLowerCase().trim().includes(normServiceName) ||
@@ -110,8 +109,8 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   const fetchSimulations = async () => {
     if (!caseId) return;
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get(`/api/fee-simulations?case_id=${caseId}`, { headers });
+      
+      const { data } = await apiCall(`/api/fee-simulations?case_id=${caseId}`);
       setSimulations(data || []);
     } catch (err) {
       console.error('[FEE-SIMULATOR] Erro ao buscar simulações:', err);
@@ -163,8 +162,8 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       if (useOabBase) {
         data = buildResultFromOab(ref, selected);
       } else {
-        const headers = await getAuthHeaders();
-        const { data: calc } = await axios.post('/api/fee-simulations', {
+        
+        const { data: calc } = await apiCall('/api/fee-simulations', {
           action: 'calculate',
           service_id: selectedService,
           complexity: form.complexity,
@@ -172,7 +171,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           service_stage: form.service_stage,
           document_volume: form.document_volume,
           estimated_economic_value: form.estimated_economic_value ? parseFloat(form.estimated_economic_value) : null
-        }, { headers });
+        });
         data = calc;
       }
 
@@ -199,7 +198,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
     }
     setSaving(true);
     try {
-      const headers = await getAuthHeaders();
+      
       const final = form.final_amount ? parseFloat(form.final_amount) : (oabReference?.regional_suggestion || result.suggested_amount);
       const payload = {
         case_id: caseId,
@@ -227,7 +226,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         status
       };
 
-      const { data } = await axios.post('/api/fee-simulations', payload, { headers });
+      const { data } = await apiCall('/api/fee-simulations', payload);
 
       setMessage({ type: 'success', text: 'Simulação salva com sucesso.' });
       setResult(null);
@@ -254,10 +253,10 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
 
   const handleApprove = async (id, action) => {
     try {
-      const headers = await getAuthHeaders();
+      
       const status = action === 'approve' ? 'aprovada' : 'rejeitada';
       const extra = action === 'reject' ? { rejection_reason: 'Rejeitada pelo responsável' } : {};
-      await axios.patch(`/api/fee-simulations?id=${id}`, { status, ...extra }, { headers });
+      await apiCall(`/api/fee-simulations?id=${id}`, { status, ...extra });
       fetchSimulations();
     } catch (err) {
       const text = err.response?.data?.error || 'Erro ao atualizar';
@@ -609,4 +608,6 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
     </div>
   );
 }
+
+
 

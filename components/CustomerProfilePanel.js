@@ -77,8 +77,8 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
     setLoading(true);
     setError(null);
     try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`/api/customer-profile?conversation_id=${conversationId}`, { headers });
+      
+      const response = await fetch(`/api/customer-profile?conversation_id=${conversationId}`);
       if (!response.ok) throw new Error('Erro ao carregar perfil');
       const result = await response.json();
       setData(result);
@@ -126,14 +126,14 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
     if (!newCase.title) return;
     setCreatingCase(true);
     try {
-      const headers = await getAuthHeaders();
-      await axios.post('/api/cases', {
+      
+      await apiCall('/api/cases', {
         conversation_id: conversationId,
         title: newCase.title,
         legal_area: newCase.legal_area || null,
         case_type: newCase.case_type || null,
         priority: newCase.priority || 'media'
-      }, { headers });
+      });
       setNewCase({ title: '', legal_area: '', case_type: '', priority: 'media' });
       setShowNewCase(false);
       fetchProfile();
@@ -507,4 +507,5 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
     </>
   );
 }
+
 

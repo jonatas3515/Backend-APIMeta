@@ -18,8 +18,8 @@ export default function CalendarTokenManager() {
   const fetchToken = async () => {
     try {
       setLoading(true);
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get('/api/calendar/token', { headers });
+      
+      const { data } = await apiCall('/api/calendar/token');
       setToken(data.token);
       setIcalUrl(data.ical_url);
       setError(null);
@@ -38,8 +38,8 @@ export default function CalendarTokenManager() {
 
     try {
       setRegenerating(true);
-      const headers = await getAuthHeaders();
-      const { data } = await axios.post('/api/calendar/token', 
+      
+      const { data } = await apiCall('/api/calendar/token', 
         { action: 'regenerate' }, 
         { headers }
       );
@@ -72,8 +72,8 @@ export default function CalendarTokenManager() {
 
     try {
       setLoading(true);
-      const headers = await getAuthHeaders();
-      await axios.delete('/api/calendar/token', { headers });
+      
+      await apiCall('/api/calendar/token');
       
       setToken(null);
       setIcalUrl(null);
@@ -230,3 +230,4 @@ export default function CalendarTokenManager() {
     </div>
   );
 }
+

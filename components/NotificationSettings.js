@@ -22,8 +22,8 @@ export default function NotificationSettings() {
 
   const fetchPrefs = async () => {
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get('/api/notification-preferences', { headers });
+      
+      const { data } = await apiCall('/api/notification-preferences');
       setPrefs(data);
     } catch (e) {
       console.error('[SETTINGS] Erro ao carregar:', e);
@@ -36,8 +36,8 @@ export default function NotificationSettings() {
   const update = async (updates) => {
     setSaving(true);
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.patch('/api/notification-preferences', updates, { headers });
+      
+      const { data } = await apiCall('/api/notification-preferences', updates);
       setPrefs(data);
       setError('');
     } catch (e) {
@@ -130,4 +130,5 @@ export default function NotificationSettings() {
     </div>
   );
 }
+
 

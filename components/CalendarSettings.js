@@ -25,14 +25,9 @@ export default function CalendarSettings() {
 
   const fetchStatus = async () => {
     try {
-      const response = await fetch('/api/calendar-integrations', {
-        headers: await getAuthHeaders()
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setIntegrations(data.integrations || []);
-        setIcalUrl(data.icalUrl);
-      }
+      const data = await apiCall('/api/calendar-integrations', { method: 'GET' });
+      setIntegrations(data.integrations || []);
+      setIcalUrl(data.icalUrl);
     } catch (error) {
       console.error('Erro ao buscar integrações:', error);
     } finally {
@@ -43,18 +38,10 @@ export default function CalendarSettings() {
   const handleConnect = async (provider) => {
     setConnecting(provider);
     try {
-      const response = await fetch('/api/calendar-integrations/connect', {
+      const data = await apiCall('/api/calendar-integrations/connect', {
         method: 'POST',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({ provider })
+        body: { provider }
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(data.error || 'OAuth não configurado.');
-        return;
-      }
 
       if (data.authUrl) {
         const popup = window.open(data.authUrl, '_blank', 'noopener,noreferrer');
@@ -79,23 +66,16 @@ export default function CalendarSettings() {
     setSyncMessage(null);
 
     try {
-      const response = await fetch('/api/calendar-integrations/sync-event', {
+      const data = await apiCall('/api/calendar-integrations/sync-event', {
         method: 'POST',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({
+        body: {
           event_id: eventId,
           internal_table: internalTable,
           provider: 'google'
-        })
+        }
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setSyncMessage({ type: 'success', message: `Sincronizado! ${data.html_link ? 'Link copiável em breve.' : ''}` });
-      } else {
-        setSyncMessage({ type: 'error', message: data.error || 'Erro ao sincronizar' });
-      }
+      setSyncMessage({ type: 'success', message: `Sincronizado! ${data.html_link ? 'Link copiável em breve.' : ''}` });
     } catch (error) {
       console.error('Erro ao sincronizar evento:', error);
       setSyncMessage({ type: 'error', message: 'Erro ao sincronizar evento' });
@@ -109,17 +89,8 @@ export default function CalendarSettings() {
     if (!confirm(`Deseja desconectar o ${provider === 'google' ? 'Google Calendar' : 'Outlook Calendar'}?`)) return;
 
     try {
-      const response = await fetch(`/api/calendar-integrations?provider=${provider}`, {
-        method: 'DELETE',
-        headers: await getAuthHeaders()
-      });
-
-      if (response.ok) {
-        fetchStatus();
-      } else {
-        const data = await response.json();
-        alert(data.error || 'Erro ao desconectar');
-      }
+      await apiCall(`/api/calendar-integrations?provider=${provider}`, { method: 'DELETE' });
+      fetchStatus();
     } catch (error) {
       console.error('Erro ao desconectar:', error);
       alert('Erro ao desconectar');
@@ -136,18 +107,10 @@ export default function CalendarSettings() {
     if (!confirm('Gerar novo link iCal? O link antigo será invalidado.')) return;
 
     try {
-      const response = await fetch('/api/calendar-integrations/ical-token', {
-        method: 'POST',
-        headers: await getAuthHeaders()
+      const data = await apiCall('/api/calendar-integrations/ical-token', {
+        method: 'POST'
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setIcalUrl(data.icalUrl);
-      } else {
-        const data = await response.json();
-        alert(data.error || 'Erro ao gerar link');
-      }
+      setIcalUrl(data.icalUrl);
     } catch (error) {
       console.error('Erro ao gerar iCal:', error);
       alert('Erro ao gerar novo link iCal');
@@ -286,4 +249,5 @@ export default function CalendarSettings() {
     </div>
   );
 }
+
 

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { apiCall } from '../lib/apiClient';
 
 export default function SignaturePanel({ caseId, conversationId, onClose }) {
@@ -35,8 +34,8 @@ export default function SignaturePanel({ caseId, conversationId, onClose }) {
       }
 
       try {
-        const headers = await getAuthHeaders();
-        const { data } = await axios.get(`/api/cases?conversation_id=${encodeURIComponent(conversationId)}`, { headers });
+        
+        const { data } = await apiCall(`/api/cases?conversation_id=${encodeURIComponent(conversationId)}`);
 
         const active = Array.isArray(data)
           ? data.find(c => c.status !== 'encerrado' && c.status !== 'cancelado')
@@ -72,8 +71,8 @@ export default function SignaturePanel({ caseId, conversationId, onClose }) {
   const fetchSignatures = async () => {
     try {
       setLoading(true);
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get(`/api/signatures/status?case_id=${encodeURIComponent(resolvedCaseId)}`, { headers });
+      
+      const { data } = await apiCall(`/api/signatures/status?case_id=${encodeURIComponent(resolvedCaseId)}`);
       setSignatures(Array.isArray(data.signatures) ? data.signatures : [data.signatures]);
       setError(null);
     } catch (err) {
@@ -113,13 +112,13 @@ export default function SignaturePanel({ caseId, conversationId, onClose }) {
       }
 
       setSending(true);
-      const headers = await getAuthHeaders();
-      const { data } = await axios.post('/api/signatures/send', {
+      
+      const { data } = await apiCall('/api/signatures/send', {
         case_id: resolvedCaseId,
         document_type: formData.document_type,
         document_url: formData.document_url,
         signers: signers
-      }, { headers });
+      });
 
       setSuccess('Documento enviado para assinatura com sucesso!');
       setShowModal(false);
@@ -403,4 +402,6 @@ export default function SignaturePanel({ caseId, conversationId, onClose }) {
     </div>
   );
 }
+
+
 

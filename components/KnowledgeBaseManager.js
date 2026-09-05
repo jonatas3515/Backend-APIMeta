@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { apiCall } from '../lib/apiClient';
 
 const DOC_TYPES = ['modelo_peca', 'clausula', 'tese', 'checklist', 'jurisprudencia'];
@@ -31,9 +30,7 @@ export default function KnowledgeBaseManager() {
     setLoading(true);
     try {
       const status = statusFilter === 'all' ? 'all' : statusFilter;
-      const { data } = await axios.get(`/api/knowledge/documents?status=${status}`, {
-        headers: await getAuthHeaders()
-      });
+      const data = await apiCall(`/api/knowledge/documents?status=${status}`, { method: 'GET' });
       setDocuments(data.documents || []);
     } catch (error) {
       console.error('[KNOWLEDGE] Erro ao listar documentos:', error);
@@ -59,8 +56,8 @@ export default function KnowledgeBaseManager() {
 
   const openEdit = async (doc) => {
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get(`/api/knowledge/documents?id=${doc.id}`, { headers });
+      
+      const { data } = await apiCall(`/api/knowledge/documents?id=${doc.id}`);
       const full = data.document || doc;
       setEditing(full);
       setForm({
@@ -99,11 +96,11 @@ export default function KnowledgeBaseManager() {
 
     setSaving(true);
     try {
-      const headers = await getAuthHeaders();
+      
       if (editing) {
-        await axios.put('/api/knowledge/documents', { ...payload, id: editing.id }, { headers });
+        await axios.put('/api/knowledge/documents', { ...payload, id: editing.id });
       } else {
-        await axios.post('/api/knowledge/documents', payload, { headers });
+        await apiCall('/api/knowledge/documents', payload);
       }
       closeForm();
       fetchDocuments();
@@ -128,8 +125,8 @@ export default function KnowledgeBaseManager() {
       if (!ok) return;
     }
     try {
-      const headers = await getAuthHeaders();
-      await axios.patch('/api/knowledge/documents', { id, status: newStatus }, { headers });
+      
+      await apiCall('/api/knowledge/documents', { id, status: newStatus });
       fetchDocuments();
     } catch (error) {
       console.error('[KNOWLEDGE] Erro ao alterar status:', error);
@@ -338,4 +335,6 @@ export default function KnowledgeBaseManager() {
     </div>
   );
 }
+
+
 

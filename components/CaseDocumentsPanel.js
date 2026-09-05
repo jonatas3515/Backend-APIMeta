@@ -81,10 +81,10 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
 
   const handleLink = async (docId) => {
     try {
-      const headers = await getAuthHeaders();
-      await axios.patch(`/api/case-documents?id=${docId}`, {
+      
+      await apiCall(`/api/case-documents?id=${docId}`, {
         checklist_item_id: linkItemId || null
-      }, { headers });
+      });
       setLinkDocId(null);
       setLinkItemId('');
       fetchDocuments();
@@ -228,3 +228,4 @@ function formatBytes(bytes) {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
+

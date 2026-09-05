@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import axios from 'axios';
 import { useRouter } from 'next/router';
+import { apiCall } from '../lib/apiClient';
 import ChatList from '../components/ChatList';
 import ChatWindow from '../components/ChatWindow';
 import ClientsList from '../components/ClientsList';
@@ -108,8 +108,7 @@ export default function Home() {
 
     const load = async () => {
       try {
-        const headers = await getAuthHeaders();
-        const { data } = await axios.get('/api/notification-preferences', { headers });
+        const data = await apiCall('/api/notification-preferences', { method: 'GET' });
         setNotifPrefs(data);
 
         if (isSupported() && getPermission() === 'default' && (!data.ask_again_after || new Date(data.ask_again_after) < new Date())) {
@@ -132,8 +131,7 @@ export default function Home() {
 
     const save = async () => {
       try {
-        const headers = await getAuthHeaders();
-        await axios.patch('/api/user-preferences', { preferred_legal_area: normalizeLegalArea(selectedArea) }, { headers });
+        await apiCall('/api/user-preferences', { method: 'PATCH', body: { preferred_legal_area: normalizeLegalArea(selectedArea) } });
       } catch (e) {
         console.error('[AREA-FILTER] Erro ao salvar preferência:', e);
       }
@@ -602,8 +600,7 @@ export default function Home() {
             onClose={() => setShowNotifPrompt(false)}
             onUpdate={async () => {
               try {
-                const headers = await getAuthHeaders();
-                const { data } = await axios.get('/api/notification-preferences', { headers });
+                const data = await apiCall('/api/notification-preferences', { method: 'GET' });
                 setNotifPrefs(data);
               } catch (e) {
                 console.error('[NOTIFICATIONS] Erro ao recarregar preferências:', e);

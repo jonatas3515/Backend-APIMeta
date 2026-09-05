@@ -50,8 +50,8 @@ export default function GlobalSearch() {
 
     setLoading(true);
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get(`/api/search?q=${encodeURIComponent(term)}`, { headers });
+      
+      const { data } = await apiCall(`/api/search?q=${encodeURIComponent(term)}`);
       setResults(data);
       setSelectedIndex(0);
     } catch (error) {
@@ -302,4 +302,5 @@ export default function GlobalSearch() {
     </div>
   );
 }
+
 

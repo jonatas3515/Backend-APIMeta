@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { apiCall } from '../lib/apiClient';
 import FeeTablesManager from './FeeTablesManager';
 
@@ -29,8 +28,7 @@ export default function FeeServiceAdmin({ viewMode = null }) {
   const fetchServices = async () => {
     setLoading(true);
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get('/api/fee-services', { headers });
+      const data = await apiCall('/api/fee-services', { method: 'GET' });
       setServices(data || []);
     } catch (err) {
       setMessage({ type: 'error', text: 'Erro ao buscar serviços' });
@@ -41,8 +39,7 @@ export default function FeeServiceAdmin({ viewMode = null }) {
 
   const fetchRules = async (serviceId) => {
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get(`/api/fee-rules?service_id=${serviceId}`, { headers });
+      const data = await apiCall(`/api/fee-rules?service_id=${serviceId}`, { method: 'GET' });
       setRules(data || []);
     } catch (err) {
       console.error('[FEE-ADMIN] Erro ao buscar regras:', err);
@@ -70,7 +67,6 @@ export default function FeeServiceAdmin({ viewMode = null }) {
     }
     setLoading(true);
     try {
-      const headers = await getAuthHeaders();
       const payload = {
         ...form,
         base_amount: parseFloat(form.base_amount),
@@ -82,9 +78,9 @@ export default function FeeServiceAdmin({ viewMode = null }) {
       };
 
       if (selected) {
-        await axios.patch(`/api/fee-services?id=${selected.id}`, payload, { headers });
+        await apiCall(`/api/fee-services?id=${selected.id}`, { method: 'PATCH', body: payload });
       } else {
-        await axios.post('/api/fee-services', payload, { headers });
+        await apiCall('/api/fee-services', { method: 'POST', body: payload });
       }
 
       setMessage({ type: 'success', text: 'Serviço salvo' });
@@ -92,7 +88,7 @@ export default function FeeServiceAdmin({ viewMode = null }) {
       resetForm();
       fetchServices();
     } catch (err) {
-      const text = err.response?.data?.error || 'Erro ao salvar';
+      const text = err.message || 'Erro ao salvar';
       setMessage({ type: 'error', text });
     } finally {
       setLoading(false);
@@ -102,8 +98,7 @@ export default function FeeServiceAdmin({ viewMode = null }) {
   const handleDeleteService = async (id) => {
     if (!confirm('Tem certeza?')) return;
     try {
-      const headers = await getAuthHeaders();
-      await axios.delete(`/api/fee-services?id=${id}`, { headers });
+      await apiCall(`/api/fee-services?id=${id}`, { method: 'DELETE' });
       setMessage({ type: 'success', text: 'Serviço removido' });
       fetchServices();
       setSelected(null);
@@ -116,7 +111,6 @@ export default function FeeServiceAdmin({ viewMode = null }) {
   const handleSaveRule = async () => {
     if (!selected || !ruleForm.rule_value) return;
     try {
-      const headers = await getAuthHeaders();
       const payload = {
         service_id: selected.id,
         rule_type: ruleForm.rule_type,
@@ -124,12 +118,12 @@ export default function FeeServiceAdmin({ viewMode = null }) {
         adjustment_kind: ruleForm.adjustment_kind,
         adjustment_value: parseFloat(ruleForm.adjustment_value)
       };
-      await axios.post('/api/fee-rules', payload, { headers });
+      await apiCall('/api/fee-rules', { method: 'POST', body: payload });
       setMessage({ type: 'success', text: 'Regra salva' });
       setRuleForm({ rule_type: 'complexidade', rule_value: '', adjustment_kind: 'percentual', adjustment_value: '' });
       fetchRules(selected.id);
     } catch (err) {
-      const text = err.response?.data?.error || 'Erro ao salvar regra';
+      const text = err.message || 'Erro ao salvar regra';
       setMessage({ type: 'error', text });
     }
   };
@@ -137,8 +131,7 @@ export default function FeeServiceAdmin({ viewMode = null }) {
   const handleDeleteRule = async (id) => {
     if (!confirm('Tem certeza?')) return;
     try {
-      const headers = await getAuthHeaders();
-      await axios.delete(`/api/fee-rules?id=${id}`, { headers });
+      await apiCall(`/api/fee-rules?id=${id}`, { method: 'DELETE' });
       fetchRules(selected.id);
     } catch (err) {
       setMessage({ type: 'error', text: 'Erro ao remover regra' });

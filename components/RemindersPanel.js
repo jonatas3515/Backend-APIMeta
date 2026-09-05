@@ -82,9 +82,7 @@ export default function RemindersPanel({ conversation }) {
     if (!confirm('Deseja excluir este lembrete?')) return;
     
     try {
-      await axios.delete(`/api/reminders?id=${id}`, {
-        headers: await getAuthHeaders()
-      });
+      await apiCall(`/api/reminders?id=${id}`, { method: 'DELETE' });
       fetchReminders();
     } catch (error) {
       console.error('Erro ao excluir:', error);
@@ -207,3 +205,4 @@ export default function RemindersPanel({ conversation }) {
     </div>
   );
 }
+

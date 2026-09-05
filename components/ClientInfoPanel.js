@@ -17,11 +17,8 @@ export default function ClientInfoPanel({ conversationId, caseId }) {
   const fetchRequests = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/client-info?conversation_id=${conversationId}`, { headers: await getAuthHeaders() });
-      if (response.ok) {
-        const data = await response.json();
-        setRequests(data);
-      }
+      const data = await apiCall(`/api/client-info?conversation_id=${conversationId}`, { method: 'GET' });
+      setRequests(data);
     } catch (error) {
       console.error('[CLIENT-INFO] Erro ao buscar requisições:', error);
     } finally {
@@ -104,3 +101,4 @@ export default function ClientInfoPanel({ conversationId, caseId }) {
     </div>
   );
 }
+

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useAuth } from '../lib/useAuth';
 import { apiCall } from '../lib/apiClient';
 import { DOCUMENT_STATUS_LABELS, DOCUMENT_STATUS_COLORS } from '../lib/documentChecklists';
@@ -28,10 +27,9 @@ export default function DocumentChecklist({ caseItem, onClose }) {
   const fetchChecklist = async () => {
     try {
       setLoading(true);
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get(
+      const data = await apiCall(
         `/api/document-checklists?case_id=${caseItem.id}&sync=true`,
-        { headers }
+        { method: 'GET' }
       );
       setItems(data || []);
     } catch (error) {
@@ -43,10 +41,9 @@ export default function DocumentChecklist({ caseItem, onClose }) {
 
   const fetchTemplates = async () => {
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get(
+      const data = await apiCall(
         `/api/document-checklist-templates?case_type=${encodeURIComponent(caseItem.case_type || '')}`,
-        { headers }
+        { method: 'GET' }
       );
       setTemplates(data || []);
     } catch (error) {
@@ -57,16 +54,14 @@ export default function DocumentChecklist({ caseItem, onClose }) {
   const handleStatusChange = async (itemId, newStatus) => {
     try {
       setSaving(prev => ({ ...prev, [itemId]: true }));
-      const headers = await getAuthHeaders();
-      await axios.patch(
+      await apiCall(
         `/api/document-checklists?id=${itemId}`,
-        { status: newStatus },
-        { headers }
+        { method: 'PATCH', body: { status: newStatus } }
       );
       await fetchChecklist();
     } catch (error) {
       console.error('[DOCUMENT_CHECKLIST] Erro ao atualizar status:', error);
-      alert(error.response?.data?.error || 'Erro ao atualizar status');
+      alert(error.message || 'Erro ao atualizar status');
     } finally {
       setSaving(prev => ({ ...prev, [itemId]: false }));
     }
@@ -74,11 +69,9 @@ export default function DocumentChecklist({ caseItem, onClose }) {
 
   const handleObservacaoChange = async (itemId, observacao) => {
     try {
-      const headers = await getAuthHeaders();
-      await axios.patch(
+      await apiCall(
         `/api/document-checklists?id=${itemId}`,
-        { observacao },
-        { headers }
+        { method: 'PATCH', body: { observacao } }
       );
       await fetchChecklist();
     } catch (error) {
@@ -89,15 +82,16 @@ export default function DocumentChecklist({ caseItem, onClose }) {
   const handleAddTemplate = async () => {
     if (!newTemplateName.trim()) return;
     try {
-      const headers = await getAuthHeaders();
-      await axios.post(
+      await apiCall(
         '/api/document-checklist-templates',
         {
-          case_type: caseItem.case_type,
-          document_name: newTemplateName.trim(),
-          title: newTemplateName.trim()
-        },
-        { headers }
+          method: 'POST',
+          body: {
+            case_type: caseItem.case_type,
+            document_name: newTemplateName.trim(),
+            title: newTemplateName.trim()
+          }
+        }
       );
       setNewTemplateName('');
       await fetchTemplates();
@@ -111,16 +105,17 @@ export default function DocumentChecklist({ caseItem, onClose }) {
   const handleAddItem = async () => {
     if (!newItemName.trim()) return;
     try {
-      const headers = await getAuthHeaders();
-      await axios.post(
+      await apiCall(
         '/api/document-checklists',
         {
-          case_id: caseItem.id,
-          document_name: newItemName.trim(),
-          title: newItemName.trim(),
-          status: 'pendente'
-        },
-        { headers }
+          method: 'POST',
+          body: {
+            case_id: caseItem.id,
+            document_name: newItemName.trim(),
+            title: newItemName.trim(),
+            status: 'pendente'
+          }
+        }
       );
       setNewItemName('');
       await fetchChecklist();
@@ -133,8 +128,7 @@ export default function DocumentChecklist({ caseItem, onClose }) {
   const handleDeleteItem = async (itemId) => {
     if (!confirm('Remover este item do checklist?')) return;
     try {
-      const headers = await getAuthHeaders();
-      await axios.delete(`/api/document-checklists?id=${itemId}`, { headers });
+      await apiCall(`/api/document-checklists?id=${itemId}`, { method: 'DELETE' });
       await fetchChecklist();
     } catch (error) {
       console.error('[DOCUMENT_CHECKLIST] Erro ao remover item:', error);
@@ -145,8 +139,7 @@ export default function DocumentChecklist({ caseItem, onClose }) {
   const handleDeleteTemplate = async (templateId) => {
     if (!confirm('Desativar este template?')) return;
     try {
-      const headers = await getAuthHeaders();
-      await axios.delete(`/api/document-checklist-templates?id=${templateId}`, { headers });
+      await apiCall(`/api/document-checklist-templates?id=${templateId}`, { method: 'DELETE' });
       await fetchTemplates();
     } catch (error) {
       console.error('[DOCUMENT_CHECKLIST] Erro ao desativar template:', error);

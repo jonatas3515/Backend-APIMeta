@@ -22,8 +22,8 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
 
   const fetchItems = async () => {
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get(`/api/document-checklists?case_id=${caseItem.id}`, { headers });
+      
+      const { data } = await apiCall(`/api/document-checklists?case_id=${caseItem.id}`);
       setItems(data || []);
     } catch (error) {
       console.error('[DOC_REQUEST_MODAL] Erro ao carregar checklist:', error);
@@ -52,12 +52,12 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
     }
     setLoading(true);
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.post('/api/document-checklist-requests', {
+      
+      const { data } = await apiCall('/api/document-checklist-requests', {
         case_id: caseItem.id,
         conversation_id: caseItem.conversation_id,
         items: selected
-      }, { headers });
+      });
       setDraft(data);
     } catch (error) {
       console.error('[DOC_REQUEST_MODAL] Erro ao criar rascunho:', error);
@@ -71,11 +71,11 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
     if (!draft) return;
     setSending(true);
     try {
-      const headers = await getAuthHeaders();
-      await axios.post('/api/document-checklist-requests?action=send', {
+      
+      await apiCall('/api/document-checklist-requests?action=send', {
         id: draft.id,
         message: customMessage
-      }, { headers });
+      });
       alert('Solicitacao enviada com sucesso');
       onClose();
     } catch (error) {
@@ -174,4 +174,5 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
     </div>
   );
 }
+
 

@@ -203,12 +203,8 @@ export default function ProcessTriagePanel({ movementId, profile }) {
   const fetchUsers = async () => {
     if (!canAct) return;
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch('/api/collaboration?action=users', { headers });
-      if (res.ok) {
-        const data = await res.json();
-        setUsers((data.users || []).filter((u) => u.id !== userId));
-      }
+      const data = await apiCall('/api/collaboration?action=users', { method: 'GET' });
+      setUsers((data.users || []).filter((u) => u.id !== userId));
     } catch (err) {
       // ignore
     }
@@ -266,32 +262,22 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     }
     setPartialError(null);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`/api/triage?${buildParams(pageNum)}`, { headers });
-      const data = await res.json();
-      if (res.ok) {
-        const next = data.movements || [];
-        if (append) {
-          setMovements((prev) => {
-            const existing = new Set(prev.map((m) => m.id));
-            const merged = [...prev];
-            next.forEach((m) => {
-              if (!existing.has(m.id)) merged.push(m);
-            });
-            return merged;
+      const data = await apiCall(`/api/triage?${buildParams(pageNum)}`, { method: 'GET' });
+      const next = data.movements || [];
+      if (append) {
+        setMovements((prev) => {
+          const existing = new Set(prev.map((m) => m.id));
+          const merged = [...prev];
+          next.forEach((m) => {
+            if (!existing.has(m.id)) merged.push(m);
           });
-        } else {
-          setMovements(next);
-        }
-        setTotalPages(data.totalPages || 1);
-        setPage(pageNum);
+          return merged;
+        });
       } else {
-        if (pageNum === 1) {
-          setError('Não foi possível atualizar a triagem. Tente novamente.');
-        } else {
-          setPartialError('Não foi possível atualizar a triagem. Tente novamente.');
-        }
+        setMovements(next);
       }
+      setTotalPages(data.totalPages || 1);
+      setPage(pageNum);
     } catch (err) {
       console.error('[TRIAGE] Erro ao carregar movimentações');
       if (pageNum === 1) {
@@ -307,10 +293,8 @@ export default function ProcessTriagePanel({ movementId, profile }) {
 
   const fetchStats = async () => {
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch('/api/triage?action=stats', { headers });
-      const data = await res.json();
-      if (res.ok) setStats(data);
+      const data = await apiCall('/api/triage?action=stats', { method: 'GET' });
+      setStats(data);
     } catch (err) {
       console.error('[TRIAGE] Stats error:', err);
     }
@@ -356,15 +340,9 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     setSuggestion(null);
     setActionForm({});
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`/api/triage?id=${mov.id}`, { headers });
-      const data = await res.json();
-      if (res.ok) {
-        setSelectedMovement(data.movement);
-        setHistory(data.history || []);
-      } else {
-        setMessage({ type: 'error', text: 'Não foi possível carregar os detalhes. Tente novamente.' });
-      }
+      const data = await apiCall(`/api/triage?id=${mov.id}`, { method: 'GET' });
+      setSelectedMovement(data.movement);
+      setHistory(data.history || []);
     } catch (err) {
       console.error('[TRIAGE] Detalhes:', err);
       setMessage({ type: 'error', text: 'Erro ao carregar detalhes' });
@@ -399,26 +377,18 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     if (!selectedMovement) return false;
     setSubmitting(true);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`/api/triage?id=${selectedMovement.id}`, {
+      const data = await apiCall(`/api/triage?id=${selectedMovement.id}`, {
         method: 'PATCH',
-        headers,
-        body: JSON.stringify(body)
+        body
       });
-      const data = await res.json();
-      if (res.ok) {
-        setMessage({ type: 'success', text: 'Ação registrada com sucesso' });
-        await fetchMovements(page, false);
-        await fetchStats();
-        closeAction();
-        return true;
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Erro ao executar ação' });
-        return false;
-      }
+      setMessage({ type: 'success', text: 'Ação registrada com sucesso' });
+      await fetchMovements(page, false);
+      await fetchStats();
+      closeAction();
+      return true;
     } catch (err) {
       console.error('[TRIAGE] Ação:', err);
-      setMessage({ type: 'error', text: 'Erro ao executar ação' });
+      setMessage({ type: 'error', text: err.message || 'Erro ao executar ação' });
       return false;
     } finally {
       setSubmitting(false);
@@ -429,26 +399,18 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     if (!selectedMovement) return false;
     setSubmitting(true);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`/api/triage?action=${action}`, {
+      const data = await apiCall(`/api/triage?action=${action}`, {
         method: 'POST',
-        headers,
-        body: JSON.stringify({ ...body, movement_id: selectedMovement.id })
+        body: { ...body, movement_id: selectedMovement.id }
       });
-      const data = await res.json();
-      if (res.ok) {
-        setMessage({ type: 'success', text: 'Ação registrada com sucesso' });
-        await fetchMovements(page, false);
-        await fetchStats();
-        closeAction();
-        return true;
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Erro ao executar ação' });
-        return false;
-      }
+      setMessage({ type: 'success', text: 'Ação registrada com sucesso' });
+      await fetchMovements(page, false);
+      await fetchStats();
+      closeAction();
+      return true;
     } catch (err) {
       console.error('[TRIAGE] Ação:', err);
-      setMessage({ type: 'error', text: 'Erro ao executar ação' });
+      setMessage({ type: 'error', text: err.message || 'Erro ao executar ação' });
       return false;
     } finally {
       setSubmitting(false);
@@ -494,14 +456,11 @@ export default function ProcessTriagePanel({ movementId, profile }) {
   const getSuggestion = async () => {
     if (!selectedMovement) return;
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch('/api/triage?action=suggest', {
+      const data = await apiCall('/api/triage?action=suggest', {
         method: 'POST',
-        headers,
-        body: JSON.stringify({ movement_text: selectedMovement.movement_text })
+        body: { movement_text: selectedMovement.movement_text }
       });
-      const data = await res.json();
-      if (res.ok) setSuggestion(data);
+      setSuggestion(data);
     } catch (err) {
       console.error('[TRIAGE] Sugestão:', err);
     }

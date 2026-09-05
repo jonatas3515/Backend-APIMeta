@@ -62,24 +62,21 @@ export default function CollaborationPanel({ conversationId, caseId }) {
     if (!newNote.trim()) return;
 
     try {
-      const response = await fetch('/api/collaboration', {
+      await apiCall('/api/collaboration', {
         method: 'POST',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({
+        body: {
           action: 'add_note',
           conversation_id: conversationId,
           case_id: caseId,
           text: newNote,
           is_visible_to_client: isVisibleToClient,
           user_id: null
-        })
+        }
       });
 
-      if (response.ok) {
-        setNewNote('');
-        setIsVisibleToClient(false);
-        fetchData();
-      }
+      setNewNote('');
+      setIsVisibleToClient(false);
+      fetchData();
     } catch (error) {
       console.error('[COLLABORATION] Erro ao adicionar nota:', error);
       alert('Erro ao adicionar nota');
@@ -88,22 +85,19 @@ export default function CollaborationPanel({ conversationId, caseId }) {
 
   const handleAssignUser = async (userId) => {
     try {
-      const response = await fetch('/api/collaboration', {
+      await apiCall('/api/collaboration', {
         method: 'POST',
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({
+        body: {
           action: 'assign_user',
           entity_type: caseId ? 'case' : 'conversation',
           entity_id: caseId || conversationId,
           user_id: userId,
           current_user_id: null
-        })
+        }
       });
 
-      if (response.ok) {
-        setAssignedUser(userId);
-        fetchData();
-      }
+      setAssignedUser(userId);
+      fetchData();
     } catch (error) {
       console.error('[COLLABORATION] Erro ao atribuir usuário:', error);
       alert('Erro ao atribuir usuário');
@@ -275,3 +269,4 @@ export default function CollaborationPanel({ conversationId, caseId }) {
     </div>
   );
 }
+

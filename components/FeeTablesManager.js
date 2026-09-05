@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import * as XLSX from 'xlsx';
 import { apiCall } from '../lib/apiClient';
 import { validatePreview } from '../lib/feeTableValidation';
@@ -46,12 +45,12 @@ export default function FeeTablesManager({ viewMode = null }) {
   const fetchReferenceItems = async () => {
     setReferenceLoading(true);
     try {
-      const headers = await getAuthHeaders();
+      
       const params = new URLSearchParams();
       if (filters.legal_area) params.set('legal_area', filters.legal_area);
       if (filters.case_type) params.set('case_type', filters.case_type);
       if (filters.service) params.set('service', filters.service);
-      const { data } = await axios.get(`/api/fee-reference?${params.toString()}`, { headers });
+      const { data } = await apiCall(`/api/fee-reference?${params.toString()}`);
       setReferenceItems(data || []);
     } catch (err) {
       console.error('[FEE-TABLES] Erro ao buscar referências:', err);
@@ -62,8 +61,8 @@ export default function FeeTablesManager({ viewMode = null }) {
 
   const fetchTables = async () => {
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get('/api/fee-tables', { headers });
+      
+      const { data } = await apiCall('/api/fee-tables');
       const grouped = { oab: [], escritorio: [] };
       for (const item of data || []) {
         if (grouped[item.table_type]) grouped[item.table_type].push(item);
@@ -135,12 +134,12 @@ export default function FeeTablesManager({ viewMode = null }) {
   };
 
   const uploadPdf = async (pdfFile) => {
-    const headers = await getAuthHeaders();
-    const { data: signedData } = await axios.post('/api/upload-file', {
+    
+    const { data: signedData } = await apiCall('/api/upload-file', {
       fileName: pdfFile.name,
       fileType: pdfFile.type || 'application/pdf',
       conversationId: 'fee-tables'
-    }, { headers });
+    });
 
     const uploadResponse = await fetch(signedData.signedUrl, {
       method: 'PUT',
@@ -174,7 +173,7 @@ export default function FeeTablesManager({ viewMode = null }) {
     setUploading(true);
     setMessage(null);
 
-    const headers = await getAuthHeaders();
+    
 
     try {
       // PDF nao suportado - usuario deve converter para Excel/CSV
@@ -184,12 +183,12 @@ export default function FeeTablesManager({ viewMode = null }) {
         throw new Error(`Colunas ausentes: ${validation.missing.join(', ')}`);
       }
 
-      await axios.post('/api/fee-tables', {
+      await apiCall('/api/fee-tables', {
         name: name.trim(),
         table_type: selectedType,
         source_file_name: file.name,
         table_data: tableData
-      }, { headers });
+      });
 
       setMessage({ type: 'success', text: 'Tabela da OAB enviada e processada com sucesso.' });
       setFile(null);
@@ -208,8 +207,8 @@ export default function FeeTablesManager({ viewMode = null }) {
   const handleDelete = async (id) => {
     if (!confirm('Tem certeza que deseja remover esta tabela?')) return;
     try {
-      const headers = await getAuthHeaders();
-      await axios.delete(`/api/fee-tables?id=${id}`, { headers });
+      
+      await apiCall(`/api/fee-tables?id=${id}`);
       fetchTables();
     } catch (err) {
       console.error('[FEE-TABLES] Erro ao remover:', err);
@@ -471,4 +470,6 @@ export default function FeeTablesManager({ viewMode = null }) {
     </div>
   );
 }
+
+
 

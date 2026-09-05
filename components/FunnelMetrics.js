@@ -12,10 +12,7 @@ export default function FunnelMetrics() {
 
   const fetchMetrics = async () => {
     try {
-      const response = await fetch('/api/funnel?action=metrics', { headers: await getAuthHeaders() });
-      if (!response.ok) throw new Error('Erro ao buscar métricas');
-
-      const data = await response.json();
+      const data = await apiCall('/api/funnel?action=metrics', { method: 'GET' });
       setMetrics(data.metrics);
       setConversions(data.conversions);
     } catch (error) {
@@ -127,4 +124,5 @@ export default function FunnelMetrics() {
     </div>
   );
 }
+
 

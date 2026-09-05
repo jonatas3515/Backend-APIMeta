@@ -73,8 +73,8 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
   const fetchProcesses = async () => {
     setLoading(true);
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`/api/case-processes?case_id=${caseId}`, { headers });
+      
+      const res = await fetch(`/api/case-processes?case_id=${caseId}`);
       const data = await res.json();
       if (res.ok) setProcesses(data || []);
       else setError(data.error || 'Erro ao carregar processos');
@@ -87,8 +87,8 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
 
   const fetchMovements = async (processId) => {
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`/api/case-processes/${processId}/movements?limit=50`, { headers });
+      
+      const res = await fetch(`/api/case-processes/${processId}/movements?limit=50`);
       const data = await res.json();
       if (res.ok) setMovements(data.data || []);
     } catch (e) {
@@ -100,7 +100,7 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
     e.preventDefault();
     setError(null); setMessage(null);
     try {
-      const headers = await getAuthHeaders();
+      
       const res = await fetch('/api/case-processes', {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
@@ -124,7 +124,7 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
   const handleQuery = async (process) => {
     setQuerying(true); setError(null); setMessage(null);
     try {
-      const headers = await getAuthHeaders();
+      
       const res = await fetch(`/api/case-processes/${process.id}/query`, {
         method: 'POST',
         headers
@@ -159,7 +159,7 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
 
   const handleReview = async (movementId, status, notes = null) => {
     try {
-      const headers = await getAuthHeaders();
+      
       const res = await fetch(`/api/process-movements/${movementId}/review`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
@@ -179,7 +179,7 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
   const handleCreateNote = async (movementId) => {
     if (!noteText.trim()) return;
     try {
-      const headers = await getAuthHeaders();
+      
       const res = await fetch(`/api/process-movements/${movementId}/create-note`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
@@ -200,7 +200,7 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
   const handleCreateAgenda = async (movementId) => {
     if (!eventForm.event_date || !eventForm.title) return;
     try {
-      const headers = await getAuthHeaders();
+      
       const res = await fetch(`/api/process-movements/${movementId}/create-agenda-event`, {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
@@ -222,7 +222,7 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
   const handleDelete = async (id) => {
     if (!confirm('Remover processo do monitoramento?')) return;
     try {
-      const headers = await getAuthHeaders();
+      
       const res = await fetch(`/api/case-processes?id=${id}`, { method: 'DELETE', headers });
       if (res.ok) {
         setSelectedProcess(null);
@@ -429,4 +429,5 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
     </div>
   );
 }
+
 

@@ -26,8 +26,8 @@ export default function ConversationSelectorModal({ caseItem, onSelect, onClose 
   const fetchConversations = async () => {
     setLoading(true);
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get('/api/conversations', { headers });
+      
+      const { data } = await apiCall('/api/conversations');
       setConversations(data || []);
     } catch (error) {
       console.error('[CONV_SELECTOR] Erro ao carregar conversas:', error);
@@ -97,4 +97,5 @@ export default function ConversationSelectorModal({ caseItem, onSelect, onClose 
     </div>
   );
 }
+
 

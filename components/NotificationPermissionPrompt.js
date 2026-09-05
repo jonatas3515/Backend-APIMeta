@@ -9,11 +9,11 @@ export default function NotificationPermissionPrompt({ profile, onClose, onUpdat
   const save = async (enabled, askAfter) => {
     setLoading(true);
     try {
-      const headers = await getAuthHeaders();
-      await axios.patch('/api/notification-preferences', {
+      
+      await apiCall('/api/notification-preferences', {
         enabled,
         ask_again_after: askAfter
-      }, { headers });
+      });
       onUpdate?.();
     } catch (e) {
       console.error('[PROMPT] Erro ao salvar preferências:', e);
@@ -71,4 +71,5 @@ export default function NotificationPermissionPrompt({ profile, onClose, onUpdat
     </div>
   );
 }
+
 

@@ -20,8 +20,8 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
 
   const fetchRoutines = async () => {
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get(`/api/routines?action=suggest&conversation_id=${conversationId}`, { headers });
+      
+      const { data } = await apiCall(`/api/routines?action=suggest&conversation_id=${conversationId}`);
       setRoutines(data || []);
     } catch (error) {
       console.error('[CASE_ROUTINES] Erro ao buscar rotinas');
@@ -31,8 +31,8 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
 
   const fetchExecutions = async () => {
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get(`/api/routines?action=executions&conversation_id=${conversationId}`, { headers });
+      
+      const { data } = await apiCall(`/api/routines?action=executions&conversation_id=${conversationId}`);
       setExecutions(data || []);
     } catch (error) {
       console.error('[CASE_ROUTINES] Erro ao buscar execucoes');
@@ -50,7 +50,7 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
     setLoading(true);
     setMessage(null);
     try {
-      const headers = await getAuthHeaders();
+      
       const params = new URLSearchParams({
         action: 'execute',
         routine_id: selectedRoutine,
@@ -60,7 +60,7 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
       
       if (caseId) params.append('case_id', caseId);
       
-      await axios.get(`/api/routines?${params}`, { headers });
+      await apiCall(`/api/routines?${params}`);
       setShowConfirm(false);
       setSelectedRoutine('');
       fetchExecutions();
@@ -212,4 +212,5 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
     </div>
   );
 }
+
 

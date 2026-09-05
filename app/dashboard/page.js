@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import Head from 'next/head';
-import axios from 'axios';
+import { apiCall } from '@/lib/apiClient';
 import Sidebar from '@/components/Sidebar';
 import MetricsDashboard from '@/components/MetricsDashboard';
 import AreaFilterSelector from '@/components/AreaFilterSelector';
@@ -14,7 +14,6 @@ import GlobalSearch from '@/components/GlobalSearch';
 import KeyboardShortcuts from '@/components/KeyboardShortcuts';
 import NotificationPermissionPrompt from '@/components/NotificationPermissionPrompt';
 import useAreaFilter from '@/hooks/useAreaFilter';
-import { getAuthHeaders } from '@/lib/api';
 import { buildInternalUrl } from '@/lib/router';
 import { isSupported, getPermission } from '@/lib/notifications';
 
@@ -73,8 +72,7 @@ export default function DashboardPage() {
 
     const load = async () => {
       try {
-        const headers = await getAuthHeaders();
-        const { data } = await axios.get('/api/notification-preferences', { headers });
+        const data = await apiCall('/api/notification-preferences', { method: 'GET' });
         setNotifPrefs(data);
 
         if (isSupported() && getPermission() === 'default' && (!data.ask_again_after || new Date(data.ask_again_after) < new Date())) {
@@ -406,8 +404,7 @@ export default function DashboardPage() {
           onClose={() => setShowNotifPrompt(false)}
           onUpdate={async () => {
             try {
-              const headers = await getAuthHeaders();
-              const { data } = await axios.get('/api/notification-preferences', { headers });
+              const data = await apiCall('/api/notification-preferences', { method: 'GET' });
               setNotifPrefs(data);
             } catch (e) {
               console.error('[DASHBOARD NOTIFICATIONS] Erro ao recarregar preferências:', e);

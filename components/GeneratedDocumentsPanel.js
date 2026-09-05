@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { apiCall } from '../lib/apiClient';
 
 export default function GeneratedDocumentsPanel({ caseId, conversationId, onClose, userRole }) {
@@ -23,11 +22,11 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
   const fetchDocuments = async () => {
     setLoading(true);
     try {
-      const headers = await getAuthHeaders();
+      
       const params = new URLSearchParams({ case_id: caseId });
       if (conversationId) params.append('conversation_id', conversationId);
       
-      const { data } = await axios.get(`/api/generated-documents?${params}`, { headers });
+      const { data } = await apiCall(`/api/generated-documents?${params}`);
       setDocuments(data || []);
     } catch (error) {
       console.error('[GEN_DOCS] Erro ao buscar');
@@ -39,8 +38,8 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
 
   const fetchTemplates = async () => {
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get('/api/templates', { headers });
+      
+      const { data } = await apiCall('/api/templates');
       setTemplates(data || []);
     } catch (error) {
       console.error('[GEN_DOCS] Erro ao buscar templates');
@@ -57,7 +56,7 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
     setGenerating(true);
     setMessage(null);
     try {
-      const headers = await getAuthHeaders();
+      
       const params = new URLSearchParams({
         action: 'generate',
         template_id: selectedTemplate,
@@ -65,7 +64,7 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
         case_id: caseId
       });
       
-      await axios.get(`/api/templates?${params}`, { headers });
+      await apiCall(`/api/templates?${params}`);
       setShowTemplateSelector(false);
       setSelectedTemplate('');
       fetchDocuments();
@@ -82,8 +81,8 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
     setUpdating(docId);
     setMessage(null);
     try {
-      const headers = await getAuthHeaders();
-      await axios.patch(`/api/generated-documents?id=${docId}`, { status: newStatus }, { headers });
+      
+      await apiCall(`/api/generated-documents?id=${docId}`, { status: newStatus });
       fetchDocuments();
       setMessage({ type: 'success', text: 'Status atualizado com sucesso.' });
     } catch (error) {
@@ -259,4 +258,6 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
     </div>
   );
 }
+
+
 
