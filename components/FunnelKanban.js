@@ -129,13 +129,13 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
     setLoading(true);
     setStageChangeError(null);
     try {
-      const result = await apiCall('/api/funnel', {
+      const result = await apiJson('/api/funnel', {
         method: 'PATCH',
-        body: {
+        body: JSON.stringify({
           conversation_id: conversation.id,
           new_stage: newStage,
           reason: 'Movido via Kanban'
-        }
+        })
       });
 
       safeLog('info', 'kanban_stage_updated', { requestId: 'funnel' });

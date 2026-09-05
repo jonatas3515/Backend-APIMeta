@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { askGemini } from '../lib/ai';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import useAreaFilter from '../hooks/useAreaFilter';
 import { LEGAL_AREAS } from '../lib/legalAreas';
@@ -64,18 +64,8 @@ export default function AgendaPanel() {
       if (filters.agency) params.append('agency', filters.agency);
       if (filters.priority) params.append('priority', filters.priority);
 
-      const response = await apiCall(`/api/agenda?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setAgenda(data);
-      } else {
-        let errText = 'Erro ao carregar agenda';
-        try {
-          const data = await response.json();
-          errText = data.error || errText;
-        } catch (e) {}
-        setApiError(errText);
-      }
+      const data = await apiJson(`/api/agenda?${params.toString()}`);
+      setAgenda(data || []);
     } catch (error) {
       console.error('[AGENDA] Erro ao buscar:', error);
       setApiError('Erro de conexão ao carregar agenda');
@@ -87,7 +77,7 @@ export default function AgendaPanel() {
   const generateSummary = async () => {
     setGeneratingSummary(true);
     try {
-      const response = await apiCall('/api/agenda', {
+      const data = await apiJson('/api/agenda', {
         method: 'POST',
         body: JSON.stringify({
           action: 'summary',
@@ -96,10 +86,7 @@ export default function AgendaPanel() {
         })
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setSummary(data.summary);
-      }
+      setSummary((data && data.summary) || '');
     } catch (error) {
       console.error('[AGENDA] Erro ao gerar resumo:', error);
       alert('Erro ao gerar resumo');
@@ -117,11 +104,8 @@ export default function AgendaPanel() {
 
   const fetchIcalUrl = async () => {
     try {
-      const response = await apiCall('/api/calendar-integrations/ical-token');
-      if (response.ok) {
-        const data = await response.json();
-        setIcalUrl(data.icalUrl);
-      }
+      const data = await apiJson('/api/calendar-integrations/ical-token');
+      setIcalUrl((data && data.icalUrl) || '');
     } catch (error) {
       console.error('[AGENDA] Erro ao buscar iCal:', error);
     }
@@ -137,17 +121,11 @@ export default function AgendaPanel() {
     if (!confirm('Gerar novo link iCal? O link antigo será invalidado.')) return;
 
     try {
-      const response = await apiCall('/api/calendar-integrations/ical-token', {
+      const data = await apiJson('/api/calendar-integrations/ical-token', {
         method: 'POST'
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setIcalUrl(data.icalUrl);
-      } else {
-        const data = await response.json();
-        alert(data.error || 'Erro ao gerar link iCal');
-      }
+      setIcalUrl((data && data.icalUrl) || '');
     } catch (error) {
       console.error('[AGENDA] Erro ao gerar iCal:', error);
       alert('Erro ao gerar link iCal');
@@ -212,7 +190,7 @@ export default function AgendaPanel() {
 
     for (const { eventId, table, title } of selected) {
       try {
-        const response = await apiCall('/api/calendar-integrations/sync-event', {
+        await apiJson('/api/calendar-integrations/sync-event', {
           method: 'POST',
           body: JSON.stringify({
             event_id: eventId,
@@ -222,12 +200,7 @@ export default function AgendaPanel() {
           })
         });
 
-        if (response.ok) {
-          success++;
-        } else {
-          failed++;
-          console.error(`[AGENDA] Falha ao sincronizar ${title}`);
-        }
+        success++;
       } catch (error) {
         failed++;
         console.error(`[AGENDA] Erro ao sincronizar ${title}:`, error);

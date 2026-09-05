@@ -26,10 +26,17 @@ export default function CalendarSettings() {
   const fetchStatus = async () => {
     try {
       const data = await apiJson('/api/calendar-integrations', { method: 'GET' });
-      setIntegrations((data && data.integrations) || []);
-      setIcalUrl((data && data.icalUrl) || '');
+      if (data && typeof data === 'object') {
+        setIntegrations(Array.isArray(data.integrations) ? data.integrations : []);
+        setIcalUrl((data && data.icalUrl) || '');
+      } else {
+        setIntegrations([]);
+        setIcalUrl('');
+      }
     } catch (error) {
       console.error('Erro ao buscar integrações:', error);
+      setIntegrations([]);
+      setIcalUrl('');
     } finally {
       setLoading(false);
     }
