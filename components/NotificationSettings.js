@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 
 const TYPES = [
   { key: 'notify_messages', label: 'Mensagens do WhatsApp' },
@@ -22,9 +21,8 @@ export default function NotificationSettings() {
 
   const fetchPrefs = async () => {
     try {
-      
-      const { data } = await apiCall('/api/notification-preferences');
-      setPrefs(data);
+      const data = await apiJson('/api/notification-preferences');
+      setPrefs(data && typeof data === 'object' ? data : {});
     } catch (e) {
       console.error('[SETTINGS] Erro ao carregar:', e);
       setError('Erro ao carregar preferências.');
@@ -36,9 +34,11 @@ export default function NotificationSettings() {
   const update = async (updates) => {
     setSaving(true);
     try {
-      
-      const { data } = await apiCall('/api/notification-preferences', updates);
-      setPrefs(data);
+      const data = await apiJson('/api/notification-preferences', {
+        method: 'PATCH',
+        body: JSON.stringify(updates)
+      });
+      setPrefs(data && typeof data === 'object' ? data : {});
       setError('');
     } catch (e) {
       console.error('[SETTINGS] Erro ao salvar:', e);

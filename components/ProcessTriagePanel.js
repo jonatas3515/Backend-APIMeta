@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/router';
 import { apiJson } from '../lib/apiClient';
 import { buildInternalUrl } from '../lib/router';
 

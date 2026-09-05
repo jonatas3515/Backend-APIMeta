@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 
 export default function SignaturePanel({ caseId, conversationId, onClose }) {
   const [signatures, setSignatures] = useState([]);
@@ -35,7 +35,7 @@ export default function SignaturePanel({ caseId, conversationId, onClose }) {
 
       try {
         
-        const { data } = await apiCall(`/api/cases?conversation_id=${encodeURIComponent(conversationId)}`);
+        const data = await apiJson(`/api/cases?conversation_id=${encodeURIComponent(conversationId)}`);
 
         const active = Array.isArray(data)
           ? data.find(c => c.status !== 'encerrado' && c.status !== 'cancelado')
@@ -72,8 +72,9 @@ export default function SignaturePanel({ caseId, conversationId, onClose }) {
     try {
       setLoading(true);
       
-      const { data } = await apiCall(`/api/signatures/status?case_id=${encodeURIComponent(resolvedCaseId)}`);
-      setSignatures(Array.isArray(data.signatures) ? data.signatures : [data.signatures]);
+      const data = await apiJson(`/api/signatures/status?case_id=${encodeURIComponent(resolvedCaseId)}`);
+      const list = data && data.signatures;
+      setSignatures(Array.isArray(list) ? list : (list ? [list] : []));
       setError(null);
     } catch (err) {
       console.error('Erro ao buscar assinaturas:', err);
@@ -113,11 +114,14 @@ export default function SignaturePanel({ caseId, conversationId, onClose }) {
 
       setSending(true);
       
-      const { data } = await apiCall('/api/signatures/send', {
-        case_id: resolvedCaseId,
-        document_type: formData.document_type,
-        document_url: formData.document_url,
-        signers: signers
+      await apiJson('/api/signatures/send', {
+        method: 'POST',
+        body: JSON.stringify({
+          case_id: resolvedCaseId,
+          document_type: formData.document_type,
+          document_url: formData.document_url,
+          signers: signers
+        })
       });
 
       setSuccess('Documento enviado para assinatura com sucesso!');

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 
 export default function SignatureSettings() {
   const [integrations, setIntegrations] = useState([]);
@@ -21,13 +21,13 @@ export default function SignatureSettings() {
   const fetchIntegrations = async () => {
     try {
       setLoading(true);
-      
-      const { data } = await apiCall('/api/signatures/config');
-      setIntegrations(data.integrations || []);
+      const data = await apiJson('/api/signatures/config');
+      setIntegrations((data && Array.isArray(data.integrations)) ? data.integrations : []);
       setError(null);
     } catch (err) {
       console.error('Erro ao buscar integrações:', err);
       setError('Erro ao carregar configurações');
+      setIntegrations([]);
     } finally {
       setLoading(false);
     }
@@ -38,7 +38,10 @@ export default function SignatureSettings() {
     try {
       setLoading(true);
       
-      const { data } = await apiCall('/api/signatures/config', formData);
+      await apiJson('/api/signatures/config', {
+        method: 'POST',
+        body: JSON.stringify(formData)
+      });
       
       setSuccess('Configuração salva com sucesso');
       setFormData({ platform: 'zapsign', api_key: '', api_secret: '' });
@@ -60,15 +63,15 @@ export default function SignatureSettings() {
       
       const integration = integrations.find(i => i.id === integrationId);
 
-      const { data } = await apiCall('/api/signatures/config',
-        { platform: integration.platform },
-        { headers }
-      );
+      const data = await apiJson('/api/signatures/config', {
+        method: 'POST',
+        body: JSON.stringify({ action: 'test', platform: integration.platform })
+      });
 
-      if (data.status === 'success') {
+      if (data && data.status === 'success') {
         setSuccess(data.message || `${integration.platform} conectado com sucesso!`);
       } else {
-        setError(data.error || data.message || 'Falha ao conectar');
+        setError((data && (data.error || data.message)) || 'Falha ao conectar');
       }
       fetchIntegrations();
 
