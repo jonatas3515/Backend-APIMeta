@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { apiCall } from '../lib/apiClient';\nimport { supabase } from '../lib/supabaseClient';\n// import { getAuthHeaders } from '../lib/api';';
+import { apiCall } from '../lib/apiClient';
 import FeeTablesManager from './FeeTablesManager';
 
 const BILLING_MODELS = ['fixo', 'percentual', 'entrada_parcelas', 'por_etapa', 'sob_consulta'];

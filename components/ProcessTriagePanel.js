@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { apiCall } from '../lib/apiClient';\nimport { supabase } from '../lib/supabaseClient';\n// import { getAuthHeaders } from '../lib/api';';
+import { apiCall } from '../lib/apiClient';
 import { buildInternalUrl } from '../lib/router';
 
 const TRIAGE_STATUS_LABELS = {

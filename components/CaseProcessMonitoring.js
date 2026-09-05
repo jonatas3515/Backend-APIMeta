@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { apiCall } from '../lib/apiClient';\nimport { supabase } from '../lib/supabaseClient';\n// import { getAuthHeaders } from '../lib/api';';
+import { apiCall } from '../lib/apiClient';
 import { DATAJUD_COURTS, getCourtByCode } from '../lib/datajudCourts';
 
 const FREQUENCY_OPTIONS = [

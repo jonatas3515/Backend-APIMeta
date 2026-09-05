@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { apiCall } from '../lib/apiClient';\nimport { supabase } from '../lib/supabaseClient';\n// import { getAuthHeaders } from '../lib/api';';
+import { apiCall } from '../lib/apiClient';
 import { safeError } from '../lib/safeLogger';
 
 export default function CaseCalendarSync({

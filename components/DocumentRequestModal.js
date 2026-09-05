@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../lib/useAuth';
-import { apiCall } from '../lib/apiClient';\nimport { supabase } from '../lib/supabaseClient';\n// import { getAuthHeaders } from '../lib/api';';
+import { apiCall } from '../lib/apiClient';
 
 export default function DocumentRequestModal({ caseItem, onClose }) {
   const { profile } = useAuth();

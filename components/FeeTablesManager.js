@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
-import { apiCall } from '../lib/apiClient';\nimport { supabase } from '../lib/supabaseClient';\n// import { getAuthHeaders } from '../lib/api';';
-import { supabase } from '../lib/supabaseClient';
+import { apiCall } from '../lib/apiClient';
 import { validatePreview } from '../lib/feeTableValidation';
 const TABLE_TYPES = [
   { key: 'oab', label: 'Tabela da OAB' },
