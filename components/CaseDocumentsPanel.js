@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useAuth } from '../lib/useAuth';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';
 
 export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }) {
   const { profile } = useAuth();
@@ -26,8 +25,8 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
     setLoading(true);
     setMessage(null);
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get(`/api/case-documents?case_id=${caseItem.id}`, { headers });
+      const response = await apiCall(`/api/case-documents?case_id=${caseItem.id}`);
+      const data = await response.json();
       setDocuments(data || []);
     } catch (error) {
       console.error('[CASE_DOCUMENTS_PANEL] Erro ao carregar documentos');
@@ -39,8 +38,8 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
 
   const handleDownload = async (docId) => {
     try {
-      const headers = await getAuthHeaders();
-      const { data } = await axios.get(`/api/case-documents?id=${docId}&download=1`, { headers });
+      const response = await apiCall(`/api/case-documents?id=${docId}&download=1`);
+      const data = await response.json();
       if (data?.signed_url) {
         window.open(data.signed_url, '_blank');
       }
@@ -60,14 +59,16 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
 
     try {
       const base64 = await fileToBase64(selectedFile);
-      const headers = await getAuthHeaders();
-      await axios.post('/api/case-documents', {
-        case_id: caseItem.id,
-        conversation_id: caseItem.conversation_id,
-        base64,
-        mime_type: selectedFile.type || 'application/octet-stream',
-        original_filename: selectedFile.name
-      }, { headers });
+      await apiCall('/api/case-documents', {
+        method: 'POST',
+        body: JSON.stringify({
+          case_id: caseItem.id,
+          conversation_id: caseItem.conversation_id,
+          base64,
+          mime_type: selectedFile.type || 'application/octet-stream',
+          original_filename: selectedFile.name
+        })
+      });
       setSelectedFile(null);
       fetchDocuments();
     } catch (error) {

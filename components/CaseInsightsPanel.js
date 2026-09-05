@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import useAreaFilter from '../hooks/useAreaFilter';
 import { LEGAL_AREAS } from '../lib/legalAreas';
@@ -46,7 +46,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
       if (filters.search) params.append('search', filters.search);
       if (caseId) params.append('case_id', caseId);
 
-      const response = await fetch(`/api/insights?${params.toString()}`, { headers: await getAuthHeaders() });
+      const response = await apiCall(`/api/insights?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setInsights(data);
@@ -64,7 +64,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
   const fetchSimilarInsights = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/insights?action=similar&conversation_id=${conversationId}`, { headers: await getAuthHeaders() });
+      const response = await apiCall(`/api/insights?action=similar&conversation_id=${conversationId}`);
       if (response.ok) {
         const data = await response.json();
         setSimilarInsights(data);
@@ -88,7 +88,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
     setGeneratingProposal(true);
     setMessage(null);
     try {
-      const response = await fetch(`/api/insights?action=generate_proposal&conversation_id=${conversationId}`, { headers: await getAuthHeaders() });
+      const response = await apiCall(`/api/insights?action=generate_proposal&conversation_id=${conversationId}`);
       if (response.ok) {
         const data = await response.json();
         setProposal(data);
@@ -110,9 +110,8 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
     setSaving(true);
     setMessage(null);
     try {
-      const response = await fetch('/api/insights', {
+      const response = await apiCall('/api/insights', {
         method: 'POST',
-        headers: await getAuthHeaders(),
         body: JSON.stringify({
           action: 'create',
           conversation_id: conversationId,

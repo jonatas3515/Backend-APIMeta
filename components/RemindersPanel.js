@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 
 const REMINDER_TYPES = [
@@ -28,9 +27,8 @@ export default function RemindersPanel({ conversation }) {
 
   const fetchReminders = async () => {
     try {
-      const { data } = await axios.get(`/api/reminders?conversation_id=${conversation.id}`, {
-        headers: await getAuthHeaders()
-      });
+      const response = await apiCall(`/api/reminders?conversation_id=${conversation.id}`);
+      const data = await response.json();
       setReminders(data.reminders || []);
     } catch (error) {
       console.error('Erro ao buscar lembretes:', error);
@@ -44,15 +42,16 @@ export default function RemindersPanel({ conversation }) {
     setLoading(true);
     try {
       const title = formData.title || formData.message;
-      await axios.post('/api/reminders', {
-        conversation_id: conversation.id,
-        client_phone: conversation.client_phone,
-        type: formData.type,
-        title,
-        message: formData.message,
-        scheduled_for: new Date(formData.scheduled_for).toISOString()
-      }, {
-        headers: await getAuthHeaders()
+      await apiCall('/api/reminders', {
+        method: 'POST',
+        body: JSON.stringify({
+          conversation_id: conversation.id,
+          client_phone: conversation.client_phone,
+          type: formData.type,
+          title,
+          message: formData.message,
+          scheduled_for: new Date(formData.scheduled_for).toISOString()
+        })
       });
       
       setFormData({ type: 'manual', title: '', message: '', scheduled_for: '' });
@@ -67,8 +66,9 @@ export default function RemindersPanel({ conversation }) {
 
   const handleSendNow = async (id) => {
     try {
-      await axios.put('/api/reminders', { id, send_now: true }, {
-        headers: await getAuthHeaders()
+      await apiCall('/api/reminders', {
+        method: 'PUT',
+        body: JSON.stringify({ id, send_now: true })
       });
       fetchReminders();
       alert('Mensagem enviada agora!');

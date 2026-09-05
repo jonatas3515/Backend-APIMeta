@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAuthHeaders } from '../lib/api';
+import { apiCall } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import ExportButtons from './ExportButtons';
 import { exportAuditPdf, exportAuditExcel } from '../lib/export';
@@ -24,7 +24,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
     setLoading(true);
     try {
       // Busca usuários
-      const usersRes = await fetch('/api/collaboration?action=users', { headers: await getAuthHeaders() });
+      const usersRes = await apiCall('/api/collaboration?action=users');
       if (usersRes.ok) {
         const usersData = await usersRes.json();
         setUsers(usersData);
@@ -34,9 +34,8 @@ export default function CollaborationPanel({ conversationId, caseId }) {
         // Busca notas
         const notesParams = new URLSearchParams({ action: 'notes', conversation_id: conversationId || '' });
         if (caseId) notesParams.append('case_id', caseId);
-        const notesRes = await fetch(
-          `/api/collaboration?${notesParams.toString()}`,
-          { headers: await getAuthHeaders() }
+        const notesRes = await apiCall(
+          `/api/collaboration?${notesParams.toString()}`
         );
         if (notesRes.ok) {
           const notesData = await notesRes.json();
@@ -44,9 +43,8 @@ export default function CollaborationPanel({ conversationId, caseId }) {
         }
       } else if (activeTab === 'audit') {
         // Busca auditoria
-        const auditRes = await fetch(
-          `/api/collaboration?action=audit&entity_type=${caseId ? 'case' : 'conversation'}&entity_id=${caseId || conversationId}`,
-          { headers: await getAuthHeaders() }
+        const auditRes = await apiCall(
+          `/api/collaboration?action=audit&entity_type=${caseId ? 'case' : 'conversation'}&entity_id=${caseId || conversationId}`
         );
         if (auditRes.ok) {
           const auditData = await auditRes.json();
