@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiCall } from '../lib/apiClient';
 import { safeLog, safeError } from '../lib/safeLogger';
+import { supabase } from '../lib/supabaseClient';
 import useAreaFilter from '../hooks/useAreaFilter';
 import { LEGAL_AREAS } from '../lib/legalAreas';
 import ExportButtons from './ExportButtons';
@@ -85,17 +86,15 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
         await Promise.all(
           eligibleConvs.map(async (conv) => {
             try {
-              const response = await fetch(`/api/cases?conversation_id=${conv.id}`);
-              if (response.ok) {
-                const data = await response.json();
-                const list = Array.isArray(data) ? data : [data];
-                const activeCase = list.find(c => c && c.status !== 'encerrado');
-                if (activeCase) cases[conv.id] = activeCase;
-              } else if (response.status === 403 || response.status === 404) {
+              const data = await apiCall(`/api/cases?conversation_id=${conv.id}`, { method: 'GET' });
+              const list = Array.isArray(data) ? data : [data];
+              const activeCase = list.find(c => c && c.status !== 'encerrado');
+              if (activeCase) cases[conv.id] = activeCase;
+            } catch (err) {
+              if (err.status === 403 || err.status === 404) {
                 // Inacessível ou sem caso: não expõe nada
                 return;
               }
-            } catch (err) {
               safeError('funnel_active_case_error', err, { requestId: 'funnel' });
             }
           })
