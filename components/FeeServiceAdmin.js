@@ -77,10 +77,15 @@ export default function FeeServiceAdmin({ viewMode = null }) {
         effective_from: form.effective_from || new Date().toISOString().split('T')[0]
       };
 
+      const jsonOptions = (method) => ({
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
       if (selected) {
-        await apiCall(`/api/fee-services?id=${selected.id}`, { method: 'PATCH', body: payload });
+        await apiJson(`/api/fee-services?id=${selected.id}`, jsonOptions('PATCH'));
       } else {
-        await apiCall('/api/fee-services', { method: 'POST', body: payload });
+        await apiJson('/api/fee-services', jsonOptions('POST'));
       }
 
       setMessage({ type: 'success', text: 'Serviço salvo' });
@@ -98,7 +103,7 @@ export default function FeeServiceAdmin({ viewMode = null }) {
   const handleDeleteService = async (id) => {
     if (!confirm('Tem certeza?')) return;
     try {
-      await apiCall(`/api/fee-services?id=${id}`, { method: 'DELETE' });
+      await apiJson(`/api/fee-services?id=${id}`, { method: 'DELETE' });
       setMessage({ type: 'success', text: 'Serviço removido' });
       fetchServices();
       setSelected(null);
@@ -118,7 +123,11 @@ export default function FeeServiceAdmin({ viewMode = null }) {
         adjustment_kind: ruleForm.adjustment_kind,
         adjustment_value: parseFloat(ruleForm.adjustment_value)
       };
-      await apiCall('/api/fee-rules', { method: 'POST', body: payload });
+      await apiJson('/api/fee-rules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
       setMessage({ type: 'success', text: 'Regra salva' });
       setRuleForm({ rule_type: 'complexidade', rule_value: '', adjustment_kind: 'percentual', adjustment_value: '' });
       fetchRules(selected.id);
@@ -131,7 +140,7 @@ export default function FeeServiceAdmin({ viewMode = null }) {
   const handleDeleteRule = async (id) => {
     if (!confirm('Tem certeza?')) return;
     try {
-      await apiCall(`/api/fee-rules?id=${id}`, { method: 'DELETE' });
+      await apiJson(`/api/fee-rules?id=${id}`, { method: 'DELETE' });
       fetchRules(selected.id);
     } catch (err) {
       setMessage({ type: 'error', text: 'Erro ao remover regra' });

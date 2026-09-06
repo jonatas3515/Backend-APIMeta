@@ -13,6 +13,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   const [selectedService, setSelectedService] = useState('');
   const [oabReference, setOabReference] = useState(null);
   const [oabAmbiguous, setOabAmbiguous] = useState(false);
+  const [oabCandidates, setOabCandidates] = useState([]);
   const [useOabBase, setUseOabBase] = useState(false);
   const [form, setForm] = useState({
     complexity: 'media',
@@ -56,17 +57,17 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   };
 
   const fetchOabReference = async (service, caseInfo = caseData) => {
-    if (!service?.name) return { ref: null, ambiguous: false };
+    if (!service?.name) return { ref: null, ambiguous: false, candidates: [] };
     try {
       // Escolhe o melhor candidato; empate de pontuacao = ambiguo (nao auto-seleciona)
       const pick = (list) => {
         const candidates = Array.isArray(list) ? list : [];
-        if (candidates.length === 0) return { ref: null, ambiguous: false };
+        if (candidates.length === 0) return { ref: null, ambiguous: false, candidates: [] };
         const top = candidates[0];
         const topScore = top.match_score ?? 0;
         const tied = candidates.filter((c) => (c.match_score ?? 0) === topScore);
-        if (tied.length > 1) return { ref: null, ambiguous: true };
-        return { ref: top, ambiguous: false };
+        if (tied.length > 1) return { ref: null, ambiguous: true, candidates: tied };
+        return { ref: top, ambiguous: false, candidates: [top] };
       };
 
       // 1a tentativa: servico + area do caso (ou do servico), sem case_type
@@ -77,6 +78,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       let data = await apiJson(`/api/fee-reference?${params.toString()}`);
       let outcome = pick(data);
       if (outcome.ref || outcome.ambiguous) return outcome;
+
 
       // 2a tentativa: somente servico, sem herdar area nem tipo
       const serviceOnly = new URLSearchParams();
@@ -90,22 +92,35 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       return pick(rankServiceMatches(service.name, Array.isArray(all) ? all : []));
     } catch (err) {
       console.error('[FEE-SIMULATOR] Erro ao buscar referência OAB:', err);
-      return { ref: null, ambiguous: false };
+      return { ref: null, ambiguous: false, candidates: [] };
     }
   };
 
   const loadOabReference = async (service) => {
-    const { ref, ambiguous } = await fetchOabReference(service);
+    const { ref, ambiguous, candidates } = await fetchOabReference(service);
     setOabReference(ref);
     setOabAmbiguous(ambiguous);
+    setOabCandidates(candidates || []);
     if (ref) setUseOabBase(true);
+    if (ambiguous) setUseOabBase(true);
     return ref;
+  };
+
+  const oabCandidateKey = (c) => (c?.table_id ? `${c.table_id}:${c.id}` : c?.id);
+
+  const handleSelectOabCandidate = (key) => {
+    const chosen = oabCandidates.find((c) => oabCandidateKey(c) === key);
+    if (!chosen) return;
+    setOabReference(chosen);
+    setUseOabBase(true);
+    setMessage(null);
   };
 
   useEffect(() => {
     if (!selectedService) {
       setOabReference(null);
       setOabAmbiguous(false);
+      setOabCandidates([]);
       setUseOabBase(false);
       return;
     }
@@ -154,12 +169,10 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       return;
     }
     const selected = services.find((s) => s.id === selectedService);
-    const { ref, ambiguous } = await fetchOabReference(selected);
-    setOabReference(ref);
-    setOabAmbiguous(ambiguous);
+    const ref = oabReference;
 
-    if (useOabBase && ambiguous) {
-      setMessage({ type: 'error', text: 'Foram encontradas múltiplas referências OAB; selecione uma referência manualmente na Tabela OAB ou use o catálogo interno.' });
+    if (useOabBase && oabAmbiguous && !ref) {
+      setMessage({ type: 'error', text: 'Foram encontradas várias referências OAB. Selecione a que corresponde ao caso ou desmarque "Usar tabela OAB" para calcular pelo catálogo interno.' });
       return;
     }
 
@@ -333,17 +346,54 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
               type="checkbox"
               checked={useOabBase}
               onChange={(e) => setUseOabBase(e.target.checked)}
-              disabled={!oabReference}
+              disabled={!oabReference && oabCandidates.length === 0}
             />
             Usar tabela OAB como base para este cálculo
           </label>
           <p className="text-xs text-gray-500 pl-6">
             Quando ativo, o valor sugerido será calculado com base na tabela da OAB, com desconto regional de 20–30%.
           </p>
-          {selectedService && !oabReference && oabAmbiguous && (
-            <p className="text-xs text-yellow-700 pl-6">
-              Foram encontradas múltiplas referências OAB; selecione uma referência manualmente na Tabela OAB ou use o catálogo interno.
-            </p>
+          {selectedService && oabAmbiguous && oabCandidates.length > 1 && (
+            <div className="ml-6 p-3 bg-yellow-50 border border-yellow-200 rounded space-y-2">
+              <p className="text-xs font-semibold text-yellow-800">
+                Foram encontradas várias referências OAB. Selecione a que corresponde ao caso:
+              </p>
+              <div className="space-y-1">
+                {oabCandidates.map((c) => {
+                  const key = oabCandidateKey(c);
+                  const checked = oabReference && oabCandidateKey(oabReference) === key;
+                  return (
+                    <label key={key} className={`flex items-start gap-2 p-2 rounded border text-xs cursor-pointer ${checked ? 'bg-green-50 border-green-300' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
+                      <input
+                        type="radio"
+                        name="oab-candidate"
+                        value={key}
+                        checked={!!checked}
+                        onChange={() => handleSelectOabCandidate(key)}
+                        className="mt-0.5"
+                      />
+                      <span className="flex-1">
+                        <span className="block font-medium text-gray-800">{c.service}</span>
+                        <span className="block text-gray-600">
+                          Área: {c.legal_area || '—'}
+                          {c.id ? ` | Código: ${c.id}` : ''}
+                        </span>
+                        <span className="block text-gray-700">
+                          Mín: R$ {Number(c.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          {' | '}Sug: R$ {Number(c.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          {c.max_amount != null && ` | Máx: R$ ${Number(c.max_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              {!oabReference && (
+                <p className="text-xs text-yellow-700">
+                  Nenhuma referência selecionada — o cálculo pela OAB ficará indisponível até escolher uma opção ou desmarcar "Usar tabela OAB".
+                </p>
+              )}
+            </div>
           )}
           {selectedService && !oabReference && !oabAmbiguous && (
             <p className="text-xs text-yellow-700 pl-6">
@@ -435,7 +485,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         <div className="flex gap-2">
           <button
             onClick={handleCalculate}
-            disabled={loading || !selectedService}
+            disabled={loading || !selectedService || (useOabBase && oabAmbiguous && !oabReference)}
             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm"
           >
             {loading ? 'Calculando...' : 'Calcular sugestão'}

@@ -150,4 +150,102 @@ describe('FeeSimulator - OAB e simulacao', () => {
       expect(container.textContent).toContain('Nenhuma referência compatível foi encontrada na tabela OAB ativa');
     });
   });
+
+  describe('ambiguidade de referencias OAB', () => {
+    const tiedA = {
+      id: 'oab-10', table_id: 'tab-1', service: 'Divorcio consensual', legal_area: 'Familia',
+      min_amount: 3000, suggested_amount: 3000, max_amount: null, regional_suggestion: 2250, match_score: 80
+    };
+    const tiedB = {
+      id: 'oab-11', table_id: 'tab-1', service: 'Divorcio litigioso', legal_area: 'Familia',
+      min_amount: 5000, suggested_amount: 5000, max_amount: null, regional_suggestion: 3750, match_score: 80
+    };
+
+    const mockAmbiguous = () => {
+      apiJson.mockImplementation((url, options = {}) => {
+        const method = (options.method || 'GET').toUpperCase();
+        if (method === 'GET') {
+          if (url.startsWith('/api/fee-services')) return Promise.resolve([internalService]);
+          if (url.startsWith('/api/fee-simulations')) return Promise.resolve([]);
+          if (url.startsWith('/api/fee-reference')) return Promise.resolve([tiedA, tiedB]);
+          return Promise.resolve([]);
+        }
+        if (method === 'POST') {
+          const payload = options.body ? JSON.parse(options.body) : {};
+          if (payload.action === 'calculate') return Promise.resolve(calcResult);
+          return Promise.resolve({ id: 'sim-1' });
+        }
+        return Promise.resolve(null);
+      });
+    };
+
+    const renderAndSelect = async () => {
+      const { container } = render(React.createElement(FeeSimulator, { caseId: 'case-1', caseData: { legal_area: 'Civel' }, userRole: 'admin' }));
+      await waitFor(() => expect(container.querySelector('select option[value="svc-1"]')).toBeInTheDocument());
+      fireEvent.change(container.querySelector('select'), { target: { value: 'svc-1' } });
+      await waitFor(() => {
+        expect(container.textContent).toContain('Foram encontradas várias referências OAB. Selecione a que corresponde ao caso:');
+      });
+      return container;
+    };
+
+    const calcButton = (container) => Array.from(container.querySelectorAll('button')).find((b) => b.textContent.includes('Calcular sugestão'));
+
+    test('dois candidatos empatados exibem seletor e botao desabilitado', async () => {
+      mockAmbiguous();
+      const container = await renderAndSelect();
+
+      const radios = container.querySelectorAll('input[name="oab-candidate"]');
+      expect(radios.length).toBe(2);
+      expect(container.textContent).toContain('Divorcio consensual');
+      expect(container.textContent).toContain('Divorcio litigioso');
+      expect(container.textContent).toContain('Código: oab-10');
+      expect(calcButton(container).disabled).toBe(true);
+    });
+
+    test('selecionar segundo candidato habilita calculo e usa a referencia escolhida', async () => {
+      mockAmbiguous();
+      const container = await renderAndSelect();
+
+      const radios = container.querySelectorAll('input[name="oab-candidate"]');
+      fireEvent.click(radios[1]);
+
+      await waitFor(() => {
+        expect(calcButton(container).disabled).toBe(false);
+        expect(container.textContent).toContain('Referência OAB');
+        expect(container.textContent).toContain('Divorcio litigioso');
+      });
+
+      fireEvent.click(calcButton(container));
+
+      await waitFor(() => {
+        expect(container.textContent).toContain('Cálculo baseado na tabela OAB');
+        // suggested = 5000 (min=max=suggested na ref) -> faixa 5000
+        expect(container.textContent).toContain('R$ 5.000,00');
+      });
+      // calculo OAB nao chama POST /api/fee-simulations
+      expect(apiJson).not.toHaveBeenCalledWith('/api/fee-simulations', expect.objectContaining({ method: 'POST' }));
+    });
+
+    test('desmarcar OAB em ambiguidade calcula pelo catalogo interno', async () => {
+      mockAmbiguous();
+      const container = await renderAndSelect();
+
+      const checkbox = container.querySelector('input[type="checkbox"]');
+      await waitFor(() => expect(checkbox.checked).toBe(true));
+      fireEvent.click(checkbox);
+      await waitFor(() => expect(checkbox.checked).toBe(false));
+      expect(calcButton(container).disabled).toBe(false);
+
+      fireEvent.click(calcButton(container));
+
+      await waitFor(() => {
+        expect(apiJson).toHaveBeenCalledWith(
+          '/api/fee-simulations',
+          expect.objectContaining({ method: 'POST', body: expect.stringContaining('"action":"calculate"') })
+        );
+        expect(container.textContent).toContain('Cálculo baseado no catálogo interno');
+      });
+    });
+  });
 });
