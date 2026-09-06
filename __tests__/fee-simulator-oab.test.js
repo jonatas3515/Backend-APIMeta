@@ -6,19 +6,12 @@ const React = require('react');
 require('@testing-library/jest-dom');
 const { render, fireEvent, waitFor } = require('@testing-library/react');
 
-const axios = {
-  get: jest.fn(),
-  post: jest.fn(),
-  patch: jest.fn()
-};
+const apiJson = jest.fn();
 
-jest.mock('axios', () => ({
+jest.mock('../lib/apiClient', () => ({
   __esModule: true,
-  default: axios
-}));
-
-jest.mock('../lib/api', () => ({
-  getAuthHeaders: jest.fn(() => Promise.resolve({ Authorization: 'Bearer mock' }))
+  apiJson: (...args) => apiJson(...args),
+  apiCall: jest.fn()
 }));
 
 const FeeSimulator = require('../components/FeeSimulator').default;
@@ -58,15 +51,20 @@ describe('FeeSimulator - OAB e simulacao', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    axios.get.mockImplementation((url) => {
-      if (url.startsWith('/api/fee-services')) return Promise.resolve({ data: [internalService] });
-      if (url.startsWith('/api/fee-simulations')) return Promise.resolve({ data: [] });
-      if (url.startsWith('/api/fee-reference')) return Promise.resolve({ data: [oabRef] });
-      return Promise.resolve({ data: [] });
-    });
-    axios.post.mockImplementation((_url, payload) => {
-      if (payload && payload.action === 'calculate') return Promise.resolve({ data: calcResult });
-      return Promise.resolve({ data: { id: 'sim-1' } });
+    apiJson.mockImplementation((url, options = {}) => {
+      const method = (options.method || 'GET').toUpperCase();
+      if (method === 'GET') {
+        if (url.startsWith('/api/fee-services')) return Promise.resolve([internalService]);
+        if (url.startsWith('/api/fee-simulations')) return Promise.resolve([]);
+        if (url.startsWith('/api/fee-reference')) return Promise.resolve([{ ...oabRef, match_score: 80 }]);
+        return Promise.resolve([]);
+      }
+      if (method === 'POST') {
+        const payload = options.body ? JSON.parse(options.body) : {};
+        if (payload.action === 'calculate') return Promise.resolve(calcResult);
+        return Promise.resolve({ id: 'sim-1' });
+      }
+      return Promise.resolve(null);
     });
   });
 
@@ -84,7 +82,7 @@ describe('FeeSimulator - OAB e simulacao', () => {
     fireEvent.change(select, { target: { value: 'svc-1' } });
 
     await waitFor(() => {
-      expect(axios.get).toHaveBeenCalledWith(expect.stringContaining('/api/fee-reference?'), expect.any(Object));
+      expect(apiJson).toHaveBeenCalledWith(expect.stringContaining('/api/fee-reference?'));
     });
 
     await waitFor(() => {
@@ -118,13 +116,12 @@ describe('FeeSimulator - OAB e simulacao', () => {
     fireEvent.click(calcButton);
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledWith(
+      expect(apiJson).toHaveBeenCalledWith(
         '/api/fee-simulations',
         expect.objectContaining({
-          action: 'calculate',
-          service_id: 'svc-1'
-        }),
-        expect.any(Object)
+          method: 'POST',
+          body: expect.stringContaining('"action":"calculate"')
+        })
       );
     });
 
@@ -134,11 +131,13 @@ describe('FeeSimulator - OAB e simulacao', () => {
   });
 
   test('exibe mensagem quando nao ha referencia OAB', async () => {
-    axios.get.mockImplementation((url) => {
-      if (url.startsWith('/api/fee-services')) return Promise.resolve({ data: [internalService] });
-      if (url.startsWith('/api/fee-simulations')) return Promise.resolve({ data: [] });
-      if (url.startsWith('/api/fee-reference')) return Promise.resolve({ data: [] });
-      return Promise.resolve({ data: [] });
+    apiJson.mockImplementation((url, options = {}) => {
+      const method = (options.method || 'GET').toUpperCase();
+      if (method === 'GET') {
+        if (url.startsWith('/api/fee-services')) return Promise.resolve([internalService]);
+        return Promise.resolve([]);
+      }
+      return Promise.resolve(null);
     });
 
     const { container } = render(React.createElement(FeeSimulator, { caseId: 'case-1', caseData: { legal_area: 'Civel' }, userRole: 'admin' }));
@@ -148,7 +147,7 @@ describe('FeeSimulator - OAB e simulacao', () => {
     fireEvent.change(select, { target: { value: 'svc-1' } });
 
     await waitFor(() => {
-      expect(container.textContent).toContain('Não há referência OAB para este serviço');
+      expect(container.textContent).toContain('Nenhuma referência compatível foi encontrada na tabela OAB ativa');
     });
   });
 });

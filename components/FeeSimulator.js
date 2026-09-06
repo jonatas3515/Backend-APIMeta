@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiJson } from '../lib/apiClient';
 
-import { calculateRegionalSuggestion, calculateOabDiscount } from '../lib/feeSuggestion';
+import { calculateRegionalSuggestion, calculateOabDiscount, calculateSuggestionRange, rankServiceMatches } from '../lib/feeSuggestion';
 
 export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawyer = null, showTracking = false, hideForm = false }) {
   const [services, setServices] = useState([]);
@@ -12,6 +12,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   const [message, setMessage] = useState(null);
   const [selectedService, setSelectedService] = useState('');
   const [oabReference, setOabReference] = useState(null);
+  const [oabAmbiguous, setOabAmbiguous] = useState(false);
   const [useOabBase, setUseOabBase] = useState(false);
   const [form, setForm] = useState({
     complexity: 'media',
@@ -55,39 +56,48 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   };
 
   const fetchOabReference = async (service, caseInfo = caseData) => {
-    if (!service?.name) return null;
+    if (!service?.name) return { ref: null, ambiguous: false };
     try {
-      
-      const buildParams = (extra = {}) => {
-        const params = new URLSearchParams();
-        if (caseInfo?.legal_area) params.set('legal_area', caseInfo.legal_area);
-        if (caseInfo?.case_type) params.set('case_type', caseInfo.case_type);
-        if (extra.service) params.set('service', extra.service);
-        return params;
+      // Escolhe o melhor candidato; empate de pontuacao = ambiguo (nao auto-seleciona)
+      const pick = (list) => {
+        const candidates = Array.isArray(list) ? list : [];
+        if (candidates.length === 0) return { ref: null, ambiguous: false };
+        const top = candidates[0];
+        const topScore = top.match_score ?? 0;
+        const tied = candidates.filter((c) => (c.match_score ?? 0) === topScore);
+        if (tied.length > 1) return { ref: null, ambiguous: true };
+        return { ref: top, ambiguous: false };
       };
 
-      let data = await apiJson(`/api/fee-reference?${buildParams({ service: service.name }).toString()}`);
+      // 1a tentativa: servico + area do caso (ou do servico), sem case_type
+      const area = caseInfo?.legal_area || service?.legal_area;
+      const params = new URLSearchParams();
+      if (area) params.set('legal_area', area);
+      params.set('service', service.name);
+      let data = await apiJson(`/api/fee-reference?${params.toString()}`);
+      let outcome = pick(data);
+      if (outcome.ref || outcome.ambiguous) return outcome;
 
-      if (!data || (Array.isArray(data) && data.length === 0)) {
-        const fallbackParams = buildParams();
-        const fallback = await apiJson(`/api/fee-reference?${fallbackParams.toString()}`);
-        const normServiceName = String(service.name).toLowerCase().trim();
-        data = (Array.isArray(fallback) ? fallback : []).filter((r) =>
-          String(r.service).toLowerCase().trim().includes(normServiceName) ||
-          normServiceName.includes(String(r.service).toLowerCase().trim())
-        );
-      }
+      // 2a tentativa: somente servico, sem herdar area nem tipo
+      const serviceOnly = new URLSearchParams();
+      serviceOnly.set('service', service.name);
+      data = await apiJson(`/api/fee-reference?${serviceOnly.toString()}`);
+      outcome = pick(data);
+      if (outcome.ref || outcome.ambiguous) return outcome;
 
-      return Array.isArray(data) && data.length > 0 ? data[0] : null;
+      // 3a tentativa: ranking local sobre todas as referencias ativas
+      const all = await apiJson('/api/fee-reference');
+      return pick(rankServiceMatches(service.name, Array.isArray(all) ? all : []));
     } catch (err) {
       console.error('[FEE-SIMULATOR] Erro ao buscar referência OAB:', err);
-      return null;
+      return { ref: null, ambiguous: false };
     }
   };
 
   const loadOabReference = async (service) => {
-    const ref = await fetchOabReference(service);
+    const { ref, ambiguous } = await fetchOabReference(service);
     setOabReference(ref);
+    setOabAmbiguous(ambiguous);
     if (ref) setUseOabBase(true);
     return ref;
   };
@@ -95,6 +105,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   useEffect(() => {
     if (!selectedService) {
       setOabReference(null);
+      setOabAmbiguous(false);
       setUseOabBase(false);
       return;
     }
@@ -143,11 +154,17 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       return;
     }
     const selected = services.find((s) => s.id === selectedService);
-    const ref = await fetchOabReference(selected);
+    const { ref, ambiguous } = await fetchOabReference(selected);
     setOabReference(ref);
+    setOabAmbiguous(ambiguous);
+
+    if (useOabBase && ambiguous) {
+      setMessage({ type: 'error', text: 'Foram encontradas múltiplas referências OAB; selecione uma referência manualmente na Tabela OAB ou use o catálogo interno.' });
+      return;
+    }
 
     if (useOabBase && !ref) {
-      setMessage({ type: 'error', text: 'Referência OAB não encontrada para este serviço.' });
+      setMessage({ type: 'error', text: 'Nenhuma referência compatível foi encontrada na tabela OAB ativa; o cálculo usa o catálogo interno.' });
       return;
     }
 
@@ -323,9 +340,14 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           <p className="text-xs text-gray-500 pl-6">
             Quando ativo, o valor sugerido será calculado com base na tabela da OAB, com desconto regional de 20–30%.
           </p>
-          {selectedService && !oabReference && (
+          {selectedService && !oabReference && oabAmbiguous && (
             <p className="text-xs text-yellow-700 pl-6">
-              Não há referência OAB para este serviço. O cálculo será feito com base no catálogo interno.
+              Foram encontradas múltiplas referências OAB; selecione uma referência manualmente na Tabela OAB ou use o catálogo interno.
+            </p>
+          )}
+          {selectedService && !oabReference && !oabAmbiguous && (
+            <p className="text-xs text-yellow-700 pl-6">
+              Nenhuma referência compatível foi encontrada na tabela OAB ativa; o cálculo usa o catálogo interno.
             </p>
           )}
         </div>

@@ -71,7 +71,9 @@ export default function FeeTablesManager({ viewMode = null }) {
     }
   };
 
-  const parseFile = (selectedFile) => {
+  const parseFile = async (selectedFile) => {
+    const xlsxModule = await import('xlsx');
+    const XLSX = xlsxModule.default || xlsxModule;
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {

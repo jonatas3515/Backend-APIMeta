@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth, requireRole } from '@/lib/auth';
-import { calculateRegionalSuggestion } from '@/lib/feeSuggestion';
+import { calculateRegionalSuggestion, normalizeText, normalizeLegalArea, rankServiceMatches } from '@/lib/feeSuggestion';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -8,11 +8,6 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
   : null;
-
-function normalizeText(value) {
-  if (value == null) return '';
-  return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-}
 
 function parseAmount(value) {
   if (value == null || value === '') return null;
@@ -102,6 +97,7 @@ export function extractReferences(tableData) {
     refs.push({
       id: `oab-${refs.length}`,
       legal_area: currentArea,
+      area_key: normalizeLegalArea(currentArea),
       case_type: '',
       service: second,
       min_amount: valorReal,
@@ -148,19 +144,29 @@ async function handler(req, res) {
 
       let filtered = all;
       if (legal_area) {
-        const norm = normalizeText(legal_area);
-        filtered = filtered.filter((r) => normalizeText(r.legal_area).includes(norm));
-        console.log('[FEE-REFERENCE] Apos filtro area:', filtered.length);
+        const areaKey = normalizeLegalArea(legal_area);
+        if (areaKey) {
+          filtered = filtered.filter((r) => r.area_key === areaKey);
+        } else {
+          // Fallback: area nao reconhecida, tenta substring normalizada no rotulo bruto
+          const norm = normalizeText(legal_area);
+          filtered = filtered.filter((r) => normalizeText(r.legal_area).includes(norm));
+        }
+        console.log('[FEE-REFERENCE] Apos filtro area (key=%s):', areaKey, filtered.length);
       }
       if (case_type) {
-        const norm = normalizeText(case_type);
-        filtered = filtered.filter((r) => normalizeText(r.case_type).includes(norm));
-        console.log('[FEE-REFERENCE] Apos filtro tipo:', filtered.length);
+        const hasStructuredCaseType = all.some((r) => r.case_type && String(r.case_type).trim() !== '');
+        if (hasStructuredCaseType) {
+          const norm = normalizeText(case_type);
+          filtered = filtered.filter((r) => normalizeText(r.case_type).includes(norm));
+          console.log('[FEE-REFERENCE] Apos filtro tipo:', filtered.length);
+        } else {
+          console.log('[FEE-REFERENCE] Filtro case_type ignorado: referencias sem case_type estruturado');
+        }
       }
       if (service) {
-        const norm = normalizeText(service);
-        filtered = filtered.filter((r) => normalizeText(r.service).includes(norm));
-        console.log('[FEE-REFERENCE] Apos filtro servico:', filtered.length);
+        filtered = rankServiceMatches(service, filtered);
+        console.log('[FEE-REFERENCE] Apos ranking por servico:', filtered.length, 'candidatos');
       }
 
       const withSuggestion = filtered.map((r) => ({
