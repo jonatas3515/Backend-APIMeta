@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
+import { supabase } from '../lib/supabaseClient';
 import { formatPhone } from '../lib/formatters';
-import axios from 'axios';
 
 const LEGAL_AREA_ICONS = {
   'Direito Trabalhista': '⚖️',
@@ -78,9 +78,9 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
     setError(null);
     try {
       
-      const response = await fetch(`/api/customer-profile?conversation_id=${conversationId}`);
-      if (!response.ok) throw new Error('Erro ao carregar perfil');
-      const result = await response.json();
+      const result = await apiJson(
+        `/api/customer-profile?conversation_id=${encodeURIComponent(conversationId)}`
+      );
       setData(result);
       setEditData({
         client_name: result.customer?.name || '',
@@ -127,12 +127,16 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
     setCreatingCase(true);
     try {
       
-      await apiCall('/api/cases', {
-        conversation_id: conversationId,
-        title: newCase.title,
-        legal_area: newCase.legal_area || null,
-        case_type: newCase.case_type || null,
-        priority: newCase.priority || 'media'
+      await apiJson('/api/cases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          title: newCase.title,
+          legal_area: newCase.legal_area || null,
+          case_type: newCase.case_type || null,
+          priority: newCase.priority || 'media'
+        })
       });
       setNewCase({ title: '', legal_area: '', case_type: '', priority: 'media' });
       setShowNewCase(false);
