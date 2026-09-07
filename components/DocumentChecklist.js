@@ -82,15 +82,16 @@ export default function DocumentChecklist({ caseItem, onClose }) {
   const handleAddTemplate = async () => {
     if (!newTemplateName.trim()) return;
     try {
-      await apiCall(
+      await apiJson(
         '/api/document-checklist-templates',
         {
           method: 'POST',
-          body: {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             case_type: caseItem.case_type,
             document_name: newTemplateName.trim(),
             title: newTemplateName.trim()
-          }
+          })
         }
       );
       setNewTemplateName('');
@@ -105,16 +106,17 @@ export default function DocumentChecklist({ caseItem, onClose }) {
   const handleAddItem = async () => {
     if (!newItemName.trim()) return;
     try {
-      await apiCall(
+      await apiJson(
         '/api/document-checklists',
         {
           method: 'POST',
-          body: {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
             case_id: caseItem.id,
             document_name: newItemName.trim(),
             title: newItemName.trim(),
             status: 'pendente'
-          }
+          })
         }
       );
       setNewItemName('');
@@ -128,7 +130,7 @@ export default function DocumentChecklist({ caseItem, onClose }) {
   const handleDeleteItem = async (itemId) => {
     if (!confirm('Remover este item do checklist?')) return;
     try {
-      await apiCall(`/api/document-checklists?id=${itemId}`, { method: 'DELETE' });
+      await apiJson(`/api/document-checklists?id=${itemId}`, { method: 'DELETE' });
       await fetchChecklist();
     } catch (error) {
       console.error('[DOCUMENT_CHECKLIST] Erro ao remover item:', error);
@@ -139,7 +141,7 @@ export default function DocumentChecklist({ caseItem, onClose }) {
   const handleDeleteTemplate = async (templateId) => {
     if (!confirm('Desativar este template?')) return;
     try {
-      await apiCall(`/api/document-checklist-templates?id=${templateId}`, { method: 'DELETE' });
+      await apiJson(`/api/document-checklist-templates?id=${templateId}`, { method: 'DELETE' });
       await fetchTemplates();
     } catch (error) {
       console.error('[DOCUMENT_CHECKLIST] Erro ao desativar template:', error);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 
 export default function GeneratedDocumentsPanel({ caseId, conversationId, onClose, userRole }) {
   const [documents, setDocuments] = useState([]);
@@ -25,9 +25,9 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
       
       const params = new URLSearchParams({ case_id: caseId });
       if (conversationId) params.append('conversation_id', conversationId);
-      
-      const { data } = await apiCall(`/api/generated-documents?${params}`);
-      setDocuments(data || []);
+
+      const data = await apiJson(`/api/generated-documents?${params}`);
+      setDocuments(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('[GEN_DOCS] Erro ao buscar');
       setMessage({ type: 'error', text: 'Erro ao buscar documentos.' });
@@ -39,8 +39,8 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
   const fetchTemplates = async () => {
     try {
       
-      const { data } = await apiCall('/api/templates');
-      setTemplates(data || []);
+      const data = await apiJson('/api/templates');
+      setTemplates(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('[GEN_DOCS] Erro ao buscar templates');
     }
@@ -64,14 +64,14 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
         case_id: caseId
       });
       
-      await apiCall(`/api/templates?${params}`);
+      await apiJson(`/api/templates?${params}`);
       setShowTemplateSelector(false);
       setSelectedTemplate('');
       fetchDocuments();
       setMessage({ type: 'success', text: 'Documento gerado com sucesso.' });
     } catch (error) {
       console.error('[GEN_DOCS] Erro ao gerar');
-      setMessage({ type: 'error', text: error.response?.data?.error || 'Erro ao gerar documento. Tente novamente.' });
+      setMessage({ type: 'error', text: error.message || 'Erro ao gerar documento. Tente novamente.' });
     } finally {
       setGenerating(false);
     }
@@ -81,13 +81,20 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
     setUpdating(docId);
     setMessage(null);
     try {
-      
-      await apiCall(`/api/generated-documents?id=${docId}`, { status: newStatus });
-      fetchDocuments();
+      const updated = await apiJson(`/api/generated-documents?id=${docId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (updated && updated.id) {
+        setDocuments(prev => prev.map(d => (d.id === updated.id ? { ...d, ...updated } : d)));
+      } else {
+        fetchDocuments();
+      }
       setMessage({ type: 'success', text: 'Status atualizado com sucesso.' });
     } catch (error) {
       console.error('[GEN_DOCS] Erro ao atualizar');
-      setMessage({ type: 'error', text: 'Erro ao atualizar status. Tente novamente.' });
+      setMessage({ type: 'error', text: error.message || 'Erro ao atualizar status. Tente novamente.' });
     } finally {
       setUpdating(null);
     }

@@ -128,7 +128,12 @@ export default async function handler(req, res) {
 
 async function handleDocumentSigned(data, res) {
   try {
-    const { uuid, signers } = data;
+    const { uuid } = data;
+    const signers = Array.isArray(data?.signers) ? data.signers : [];
+
+    if (signers.length === 0) {
+      console.warn(`[SIGNATURE-WEBHOOK] Evento document.signed sem signatários: ${uuid}`);
+    }
 
     // Busca documento no banco
     const { data: signature, error: selectError } = await supabase
@@ -142,8 +147,10 @@ async function handleDocumentSigned(data, res) {
       return res.status(200).json({ message: 'Documento não encontrado' });
     }
 
+    const currentSigners = Array.isArray(signature.signers) ? signature.signers : [];
+
     // Atualiza status de signatários
-    const updatedSigners = signature.signers.map(signer => {
+    const updatedSigners = currentSigners.map(signer => {
       const zapsignSigner = signers.find(z => z.email === signer.email);
       if (zapsignSigner) {
         return {
@@ -302,8 +309,9 @@ async function notifySignatureUpdate(caseId, status, signers) {
     if (caseError || !caseData) return;
 
     const conversationId = caseData.conversation_id;
+    const signerList = Array.isArray(signers) ? signers : [];
     const statusMessages = {
-      'signed': `✅ Documento assinado por ${signers.filter(s => s.signed).length} signatário(s)`,
+      'signed': `✅ Documento assinado por ${signerList.filter(s => s.signed).length} signatário(s)`,
       'completed': '✅ Todas as assinaturas foram concluídas com sucesso!',
       'rejected': '❌ Documento foi rejeitado por um signatário'
     };

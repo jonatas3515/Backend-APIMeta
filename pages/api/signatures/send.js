@@ -1,27 +1,36 @@
-import { supabase } from '../../../lib/supabaseClient';
+import { supabaseAdmin, withAuth } from '../../../lib/auth';
 import { decrypt } from '../../../lib/encryption';
 import FormData from 'form-data';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export default async function handler(req, res) {
+async function canAccessCase(caseData, user) {
+  if (user.role === 'admin') return true;
+  if (caseData.assigned_user_id === user.id) return true;
+
+  if (caseData.conversation_id) {
+    const { data: conv } = await supabaseAdmin
+      .from('conversations')
+      .select('assigned_user_id')
+      .eq('id', caseData.conversation_id)
+      .maybeSingle();
+    if (conv?.assigned_user_id === user.id) return true;
+  }
+
+  return false;
+}
+
+async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
   }
 
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: 'Supabase não configurado' });
+  }
+
   try {
-    const headers = req.headers;
-    const token = headers.authorization?.split(' ')[1];
-
-    if (!token) {
-      return res.status(401).json({ error: 'Não autorizado' });
-    }
-
-    // Verifica autenticação
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      return res.status(401).json({ error: 'Token inválido' });
-    }
+    const user = req.user;
 
     const { case_id, document_type, signers, document_url } = req.body;
 
@@ -34,14 +43,19 @@ export default async function handler(req, res) {
     }
 
     // Verifica se o usuário tem acesso ao caso
-    const { data: caseData, error: caseError } = await supabase
+    const { data: caseData, error: caseError } = await supabaseAdmin
       .from('cases')
-      .select('id, conversation_id')
+      .select('id, conversation_id, assigned_user_id')
       .eq('id', case_id)
       .single();
 
     if (caseError || !caseData) {
       return res.status(404).json({ error: 'Caso não encontrado' });
+    }
+
+    const allowed = await canAccessCase(caseData, user);
+    if (!allowed) {
+      return res.status(403).json({ error: 'Acesso não autorizado a este caso' });
     }
 
     // Prioridade 1: variável de ambiente ZAPSIGN_API_KEY
@@ -50,10 +64,10 @@ export default async function handler(req, res) {
 
     // Prioridade 2: configuração criptografada no banco (caso env não esteja definida)
     if (!api_key) {
-      const { data: config, error: configError } = await supabase
+      const { data: config, error: configError } = await supabaseAdmin
         .from('signature_integration_config')
         .select('platform, api_key_encrypted')
-        .eq('user_id', user.id)
+        .eq('user_id', user.auth_user_id || user.id)
         .eq('is_active', true)
         .single();
 
@@ -73,7 +87,7 @@ export default async function handler(req, res) {
         document_type,
         signers,
         document_url,
-        user.id,
+        user.auth_user_id || user.id,
         res
       );
     }
@@ -84,6 +98,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Erro ao enviar documento para assinatura' });
   }
 }
+
+export default withAuth(handler, { minRole: 'estagiario' });
 
 async function sendToZapsign(apiKey, caseId, documentType, signers, documentUrl, userId, res) {
   try {
@@ -130,7 +146,7 @@ async function sendToZapsign(apiKey, caseId, documentType, signers, documentUrl,
     const platformDocumentId = zapsignData.uuid;
 
     // Salva registro no banco
-    const { data: signature, error: insertError } = await supabase
+    const { data: signature, error: insertError } = await supabaseAdmin
       .from('document_signatures')
       .insert({
         case_id: caseId,

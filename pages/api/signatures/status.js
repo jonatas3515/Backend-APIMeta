@@ -43,7 +43,10 @@ export default async function handler(req, res) {
     if (error) throw error;
 
     if (!data || data.length === 0) {
-      return res.status(404).json({ error: 'Nenhuma assinatura encontrada' });
+      return res.status(200).json({
+        signatures: signature_id ? null : [],
+        message: 'Nenhuma assinatura encontrada'
+      });
     }
 
     // Formata resposta

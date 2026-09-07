@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useAuth } from '../lib/useAuth';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 
 export default function DocumentRequestModal({ caseItem, onClose }) {
   const { profile } = useAuth();
@@ -22,11 +21,11 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
 
   const fetchItems = async () => {
     try {
-      
-      const { data } = await apiCall(`/api/document-checklists?case_id=${caseItem.id}`);
-      setItems(data || []);
+      const data = await apiJson(`/api/document-checklists?case_id=${caseItem.id}`);
+      setItems(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('[DOC_REQUEST_MODAL] Erro ao carregar checklist:', error);
+      alert(error.message || 'Erro ao carregar checklist');
     }
   };
 
@@ -52,16 +51,19 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
     }
     setLoading(true);
     try {
-      
-      const { data } = await apiCall('/api/document-checklist-requests', {
-        case_id: caseItem.id,
-        conversation_id: caseItem.conversation_id,
-        items: selected
+      const data = await apiJson('/api/document-checklist-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          case_id: caseItem.id,
+          conversation_id: caseItem.conversation_id,
+          items: selected
+        })
       });
       setDraft(data);
     } catch (error) {
       console.error('[DOC_REQUEST_MODAL] Erro ao criar rascunho:', error);
-      alert(error.response?.data?.error || 'Erro ao criar rascunho');
+      alert(error.message || 'Erro ao criar rascunho');
     } finally {
       setLoading(false);
     }
@@ -71,16 +73,19 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
     if (!draft) return;
     setSending(true);
     try {
-      
-      await apiCall('/api/document-checklist-requests?action=send', {
-        id: draft.id,
-        message: customMessage
+      await apiJson('/api/document-checklist-requests?action=send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: draft.id,
+          message: customMessage
+        })
       });
       alert('Solicitacao enviada com sucesso');
       onClose();
     } catch (error) {
       console.error('[DOC_REQUEST_MODAL] Erro ao enviar:', error);
-      alert(error.response?.data?.error || 'Erro ao enviar solicitacao');
+      alert(error.message || 'Erro ao enviar solicitacao');
     } finally {
       setSending(false);
     }

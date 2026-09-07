@@ -239,6 +239,18 @@ async function handlePatch(req, res, user) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
+    if (checklist_item_id) {
+      const { data: item, error: itemError } = await supabase
+        .from('case_document_checklists')
+        .select('case_id')
+        .eq('id', checklist_item_id)
+        .single();
+
+      if (itemError || !item || item.case_id !== doc.case_id) {
+        return res.status(400).json({ error: 'Item de checklist nao pertence a este caso' });
+      }
+    }
+
     const updates = {};
     if (checklist_item_id !== undefined) updates.checklist_item_id = checklist_item_id;
     if (is_sensitive !== undefined) updates.is_sensitive = !!is_sensitive;

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/useAuth';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 
-export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }) {
+export default function CaseDocumentsPanel({ caseItem, checklist, onClose }) {
   const { profile } = useAuth();
   const isIntern = profile?.role === 'estagiario';
 
+  const [checklistItems, setChecklistItems] = useState(Array.isArray(checklist) ? checklist : []);
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -17,17 +18,28 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
   useEffect(() => {
     if (caseItem?.id) {
       fetchDocuments();
+      if (!Array.isArray(checklist)) {
+        fetchChecklist();
+      }
     }
   }, [caseItem?.id]);
+
+  const fetchChecklist = async () => {
+    try {
+      const data = await apiJson(`/api/document-checklists?case_id=${caseItem.id}`);
+      setChecklistItems(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('[CASE_DOCUMENTS_PANEL] Erro ao carregar checklist');
+    }
+  };
 
   const fetchDocuments = async () => {
     if (!caseItem?.id) return;
     setLoading(true);
     setMessage(null);
     try {
-      const response = await apiCall(`/api/case-documents?case_id=${caseItem.id}`);
-      const data = await response.json();
-      setDocuments(data || []);
+      const data = await apiJson(`/api/case-documents?case_id=${caseItem.id}`);
+      setDocuments(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('[CASE_DOCUMENTS_PANEL] Erro ao carregar documentos');
       setMessage({ type: 'error', text: 'Erro ao carregar documentos. Tente novamente.' });
@@ -38,8 +50,7 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
 
   const handleDownload = async (docId) => {
     try {
-      const response = await apiCall(`/api/case-documents?id=${docId}&download=1`);
-      const data = await response.json();
+      const data = await apiJson(`/api/case-documents?id=${docId}&download=1`);
       if (data?.signed_url) {
         window.open(data.signed_url, '_blank');
       }
@@ -59,8 +70,9 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
 
     try {
       const base64 = await fileToBase64(selectedFile);
-      await apiCall('/api/case-documents', {
+      await apiJson('/api/case-documents', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           case_id: caseItem.id,
           conversation_id: caseItem.conversation_id,
@@ -73,7 +85,7 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
       fetchDocuments();
     } catch (error) {
       console.error('[CASE_DOCUMENTS_PANEL] Erro no upload');
-      setMessage({ type: 'error', text: error.response?.data?.error || 'Erro ao enviar arquivo. Tente novamente.' });
+      setMessage({ type: 'error', text: error.message || 'Erro ao enviar arquivo. Tente novamente.' });
     } finally {
       setUploading(false);
     }
@@ -81,16 +93,20 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
 
   const handleLink = async (docId) => {
     try {
-      
-      await apiCall(`/api/case-documents?id=${docId}`, {
-        checklist_item_id: linkItemId || null
+      const updated = await apiJson(`/api/case-documents?id=${docId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checklist_item_id: linkItemId || null })
       });
+      if (updated && updated.id) {
+        setDocuments(prev => prev.map(d => (d.id === updated.id ? { ...d, ...updated } : d)));
+      }
       setLinkDocId(null);
       setLinkItemId('');
       fetchDocuments();
     } catch (error) {
       console.error('[CASE_DOCUMENTS_PANEL] Erro ao vincular');
-      setMessage({ type: 'error', text: 'Erro ao vincular documento. Tente novamente.' });
+      setMessage({ type: 'error', text: error.message || 'Erro ao vincular documento. Tente novamente.' });
     }
   };
 
@@ -180,7 +196,7 @@ export default function CaseDocumentsPanel({ caseItem, checklist = [], onClose }
                                 className="text-xs border rounded px-1 py-1"
                               >
                                 <option value="">Sem vinculo</option>
-                                {checklist.map((item) => (
+                                {checklistItems.map((item) => (
                                   <option key={item.id} value={item.id}>{item.title || item.document_name}</option>
                                 ))}
                               </select>

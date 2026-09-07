@@ -39,7 +39,8 @@ export default function SignatureSettings() {
       setLoading(true);
       
       await apiJson('/api/signatures/config', {
-        method: 'POST',
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
       
