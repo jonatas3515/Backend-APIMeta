@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../lib/useAuth';
+import { getErrorMessage } from '../lib/errorMessage';
 import useAreaFilter from '../hooks/useAreaFilter';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { LEGAL_AREAS } from '../lib/legalAreas';
@@ -24,6 +25,11 @@ export default function CasesPanel({ notice }) {
   const { selectedArea, setSelectedArea } = useAreaFilter();
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(null);
+  const [linking, setLinking] = useState(false);
+  const [unlinking, setUnlinking] = useState(false);
+  const [actionMessage, setActionMessage] = useState(null);
   const [filters, setFilters] = useState({
     status: '',
     priority: '',
@@ -216,9 +222,13 @@ export default function CasesPanel({ notice }) {
 
   const handleSaveCase = async () => {
     if (!formData.title) {
-      console.error('[CASES] Título é obrigatório');
+      setActionMessage({ type: 'error', text: 'Título do caso é obrigatório.' });
       return;
     }
+
+    if (saving) return;
+    setSaving(true);
+    setActionMessage(null);
 
     try {
       const payload = { ...formData };
@@ -227,20 +237,21 @@ export default function CasesPanel({ notice }) {
       }
 
       if (editingCase) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('cases')
           .update(payload)
-          .eq('id', editingCase.id);
+          .eq('id', editingCase.id)
+          .select()
+          .single();
 
         if (error) throw error;
-        console.log('[CASES] Caso atualizado');
+        setSelectedCase((prev) => (prev && prev.id === editingCase.id ? data : prev));
       } else {
         const { error } = await supabase
           .from('cases')
           .insert([payload]);
 
         if (error) throw error;
-        console.log('[CASES] Caso criado');
       }
 
       setShowForm(false);
@@ -260,9 +271,12 @@ export default function CasesPanel({ notice }) {
         notes: ''
       });
       fetchCases();
+      setActionMessage({ type: 'success', text: 'Caso salvo com sucesso.' });
     } catch (error) {
-      console.error('[CASES] Erro ao salvar caso:', error);
-      alert(error.message || 'Erro ao salvar caso. Verifique os dados e tente novamente.');
+      const text = getErrorMessage(error, 'Erro ao salvar caso. Verifique os dados e tente novamente.');
+      setActionMessage({ type: 'error', text });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -277,20 +291,23 @@ export default function CasesPanel({ notice }) {
   };
 
   const handleDeleteCase = async (id) => {
-    if (!canEdit) {
-      console.warn('[CASES] Permissão negada para excluir caso.');
-      return;
-    }
+    if (!canEdit) return;
     if (!confirm('Tem certeza que deseja deletar este caso?')) return;
+    if (deleting) return;
 
+    setDeleting(id);
+    setActionMessage(null);
     try {
       const { error } = await supabase.from('cases').delete().eq('id', id);
       if (error) throw error;
       setSelectedCase(null);
       fetchCases();
+      setActionMessage({ type: 'success', text: 'Caso removido com sucesso.' });
     } catch (error) {
-      console.error('[CASES] Erro ao deletar caso:', error);
-      alert('Erro ao deletar caso');
+      const text = getErrorMessage(error, 'Erro ao remover caso.');
+      setActionMessage({ type: 'error', text });
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -330,7 +347,10 @@ export default function CasesPanel({ notice }) {
   };
 
   const handleLinkConversation = async (conversation) => {
-    if (!canEdit || !selectedCase || !conversation) return;
+    if (!canEdit || !selectedCase || !conversation || linking) return;
+
+    setLinking(true);
+    setActionMessage(null);
     try {
       const { data, error } = await supabase
         .from('cases')
@@ -344,14 +364,20 @@ export default function CasesPanel({ notice }) {
       setSelectedCase(data);
       setCases((prev) => prev.map((c) => (c.id === data.id ? data : c)));
       setShowConversationSelector(false);
+      setActionMessage({ type: 'success', text: 'Conversa vinculada com sucesso.' });
     } catch (error) {
-      console.error('[CASES] Erro ao vincular conversa:', error);
-      alert(error.message || 'Erro ao vincular conversa');
+      const text = getErrorMessage(error, 'Erro ao vincular conversa. Verifique se a conversa está ativa e tente novamente.');
+      setActionMessage({ type: 'error', text });
+    } finally {
+      setLinking(false);
     }
   };
 
   const handleUnlinkConversation = async () => {
-    if (!canEdit || !selectedCase) return;
+    if (!canEdit || !selectedCase || unlinking) return;
+
+    setUnlinking(true);
+    setActionMessage(null);
     try {
       const { data, error } = await supabase
         .from('cases')
@@ -364,15 +390,33 @@ export default function CasesPanel({ notice }) {
 
       setSelectedCase(data);
       setCases((prev) => prev.map((c) => (c.id === data.id ? data : c)));
+      setActionMessage({ type: 'success', text: 'Conversa removida do caso.' });
     } catch (error) {
-      console.error('[CASES] Erro ao desvincular conversa:', error);
-      alert(error.message || 'Erro ao desvincular conversa');
+      const text = getErrorMessage(error, 'Não foi possível remover a conversa. Verifique se existem solicitações ou rotinas pendentes.');
+      setActionMessage({ type: 'error', text });
+    } finally {
+      setUnlinking(false);
     }
   };
 
   if (selectedCase && caseView !== 'list' && caseView !== 'insights') {
     return (
       <div className="p-4 md:p-6 h-full w-full flex flex-col">
+        {actionMessage && (
+          <div
+            className={`mb-4 p-3 rounded text-sm ${
+              actionMessage.type === 'error'
+                ? 'bg-red-100 text-red-700'
+                : actionMessage.type === 'success'
+                ? 'bg-green-100 text-green-700'
+                : 'bg-yellow-100 text-yellow-800'
+            }`}
+            role={actionMessage.type === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
+          >
+            {actionMessage.text}
+          </div>
+        )}
         <CaseDetailPanel
           caseItem={selectedCase}
           caseView={caseView}
@@ -392,6 +436,9 @@ export default function CasesPanel({ notice }) {
           conversations={conversations}
           onOpenConversationSelector={() => setShowConversationSelector(true)}
           onUnlinkConversation={handleUnlinkConversation}
+          linking={linking}
+          unlinking={unlinking}
+          userCanEdit={canEdit}
         />
 
         {feeCase && (
@@ -447,6 +494,21 @@ export default function CasesPanel({ notice }) {
 
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg shadow w-full h-full overflow-y-auto">
+      {actionMessage && (
+        <div
+          className={`mb-4 p-3 rounded text-sm ${
+            actionMessage.type === 'error'
+              ? 'bg-red-100 text-red-700'
+              : actionMessage.type === 'success'
+              ? 'bg-green-100 text-green-700'
+              : 'bg-yellow-100 text-yellow-800'
+          }`}
+          role={actionMessage.type === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+        >
+          {actionMessage.text}
+        </div>
+      )}
       {notice && !dismissed && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 flex justify-between items-center">
           <span>{notice}</span>
@@ -643,19 +705,24 @@ export default function CasesPanel({ notice }) {
           <div className="flex gap-2 mt-4">
             <button
               onClick={handleSaveCase}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              disabled={saving}
+              title={saving ? 'Salvando...' : 'Salvar caso'}
+              aria-describedby={saving ? 'saving-hint' : undefined}
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-60"
             >
-              Salvar
+              {saving ? 'Salvando...' : 'Salvar'}
             </button>
             <button
               onClick={() => {
                 setShowForm(false);
                 setEditingCase(null);
               }}
-              className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500"
+              disabled={saving}
+              className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 disabled:opacity-60"
             >
               Cancelar
             </button>
+            {saving && <span id="saving-hint" className="sr-only">Salvando o caso, aguarde.</span>}
           </div>
         </div>
       )}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { apiCall } from '../lib/apiClient';
+import { getErrorMessage } from '../lib/errorMessage';
 
 export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) {
   const [routines, setRoutines] = useState([]);
@@ -68,7 +68,7 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
       setMessage({ type: 'success', text: 'Rotina aplicada com sucesso.' });
     } catch (error) {
       console.error('[CASE_ROUTINES] Erro ao aplicar');
-      setMessage({ type: 'error', text: error.response?.data?.error || 'Erro ao aplicar rotina. Tente novamente.' });
+      setMessage({ type: 'error', text: getErrorMessage(error, 'Erro ao aplicar rotina. Tente novamente.') });
     } finally {
       setLoading(false);
     }
@@ -79,7 +79,11 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
   return (
     <div className="space-y-6">
       {message && (
-        <div className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+        <div
+          className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
+          role={message.type === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+        >
           {message.text}
         </div>
       )}
@@ -142,9 +146,14 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
       <div>
         <h3 className="font-semibold text-lg mb-3">📋 Histórico de Execuções</h3>
         {executions.length === 0 ? (
-          <div className="p-4 bg-gray-50 border rounded text-center space-y-2">
+          <div className="p-4 bg-gray-50 border rounded text-center space-y-2" role="status" aria-live="polite">
             <p className="text-sm text-gray-600">Nenhuma rotina aplicada a este caso.</p>
-            {canApply && (
+            <p className="text-xs text-gray-500">
+              {hasConversation
+                ? 'Selecione uma rotina acima e confirme a aplicação.'
+                : 'Vincule uma conversa ao caso para aplicar rotinas.'}
+            </p>
+            {canApply && hasConversation && (
               <button
                 onClick={() => setSelectedRoutine(routines[0]?.id || '')}
                 disabled={routines.length === 0}

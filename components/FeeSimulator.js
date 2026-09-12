@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { apiJson } from '../lib/apiClient';
+import { getErrorMessage } from '../lib/errorMessage';
 
 import { calculateRegionalSuggestion, calculateOabDiscount, calculateSuggestionRange, rankServiceMatches } from '../lib/feeSuggestion';
 
@@ -227,7 +228,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         proposal_valid_until: ''
       }));
     } catch (err) {
-      const text = err.response?.data?.error || 'Erro ao calcular honorários';
+      const text = getErrorMessage(err, 'Erro ao calcular honorários.');
       setMessage({ type: 'error', text });
     } finally {
       setLoading(false);
@@ -291,7 +292,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       setSelectedService('');
       fetchSimulations();
     } catch (err) {
-      const text = err.response?.data?.error || 'Erro ao salvar simulação. Tente novamente.';
+      const text = getErrorMessage(err, 'Erro ao salvar simulação. Tente novamente.');
       setMessage({ type: 'error', text });
     } finally {
       setSaving(false);
@@ -300,13 +301,12 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
 
   const handleApprove = async (id, action) => {
     try {
-      
       const status = action === 'approve' ? 'aprovada' : 'rejeitada';
       const extra = action === 'reject' ? { rejection_reason: 'Rejeitada pelo responsável' } : {};
       await apiJson(`/api/fee-simulations?id=${id}`, { method: 'PATCH', body: JSON.stringify({ status, ...extra }) });
       fetchSimulations();
     } catch (err) {
-      const text = err.response?.data?.error || 'Erro ao atualizar';
+      const text = getErrorMessage(err, 'Erro ao atualizar situação da simulação.');
       setMessage({ type: 'error', text });
     }
   };
@@ -330,11 +330,15 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       )}
 
       {message && (
-        <div className={`p-3 rounded text-sm ${
-          message.type === 'error' ? 'bg-red-100 text-red-700' :
-          message.type === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-          'bg-green-100 text-green-700'
-        }`}>
+        <div
+          className={`p-3 rounded text-sm ${
+            message.type === 'error' ? 'bg-red-100 text-red-700' :
+            message.type === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+            'bg-green-100 text-green-700'
+          }`}
+          role={message.type === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+        >
           {message.text}
         </div>
       )}
@@ -601,6 +605,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
             <button
               onClick={() => handleSave('rascunho')}
               disabled={saving}
+              title={saving ? 'Salvando...' : 'Salvar rascunho da simulação'}
               className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 disabled:opacity-50 text-sm"
             >
               {saving ? 'Salvando...' : 'Salvar rascunho'}
@@ -610,6 +615,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
                 <button
                   onClick={() => handleSave('enviada')}
                   disabled={saving}
+                  title={saving ? 'Salvando...' : 'Enviar proposta ao cliente'}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm"
                 >
                   {saving ? 'Salvando...' : 'Enviar proposta'}
@@ -617,6 +623,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
                 <button
                   onClick={() => handleSave('convertida_em_proposta')}
                   disabled={saving}
+                  title={saving ? 'Salvando...' : 'Gerar proposta final'}
                   className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-sm"
                 >
                   {saving ? 'Salvando...' : 'Gerar proposta'}

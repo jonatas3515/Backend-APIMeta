@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/useAuth';
 import { apiJson } from '../lib/apiClient';
+import { getErrorMessage } from '../lib/errorMessage';
 
 export default function DocumentRequestModal({ caseItem, conversation, onClose }) {
   const { profile } = useAuth();
@@ -10,6 +11,7 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
   const [customMessage, setCustomMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState(null);
 
   const conversationId = caseItem?.conversation_id || conversation?.id;
   const clientPhone = conversation?.client_phone;
@@ -35,8 +37,8 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
       const data = await apiJson(`/api/document-checklists?case_id=${caseItem.id}`);
       setItems(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error('[DOC_REQUEST_MODAL] Erro ao carregar checklist:', error);
-      alert(error.message || 'Erro ao carregar checklist');
+      console.error('[DOC_REQUEST_MODAL] Erro ao carregar checklist');
+      setMessage({ type: 'error', text: getErrorMessage(error, 'Erro ao carregar itens do checklist.') });
     }
   };
 
@@ -48,7 +50,7 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
     setSelected(prev => {
       if (prev.includes(id)) return prev.filter(x => x !== id);
       if (prev.length >= 3) {
-        alert('Limite de 3 itens por solicitacao');
+        setMessage({ type: 'warning', text: 'Limite de 3 itens por solicitação.' });
         return prev;
       }
       return [...prev, id];
@@ -56,12 +58,13 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
   };
 
   const handleCreateDraft = async () => {
-    if (!canRequestDocuments) return;
+    if (!canRequestDocuments || loading) return;
     if (selected.length === 0) {
-      alert('Selecione ao menos um item');
+      setMessage({ type: 'warning', text: 'Selecione ao menos um item.' });
       return;
     }
     setLoading(true);
+    setMessage(null);
     try {
       const data = await apiJson('/api/document-checklist-requests', {
         method: 'POST',
@@ -74,16 +77,17 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
       });
       setDraft(data);
     } catch (error) {
-      console.error('[DOC_REQUEST_MODAL] Erro ao criar rascunho:', error);
-      alert(error.message || 'Erro ao criar rascunho');
+      console.error('[DOC_REQUEST_MODAL] Erro ao criar rascunho');
+      setMessage({ type: 'error', text: getErrorMessage(error, 'Erro ao criar rascunho. Tente novamente.') });
     } finally {
       setLoading(false);
     }
   };
 
   const handleSend = async () => {
-    if (!draft) return;
+    if (!draft || sending) return;
     setSending(true);
+    setMessage(null);
     try {
       await apiJson('/api/document-checklist-requests?action=send', {
         method: 'POST',
@@ -93,11 +97,11 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
           message: customMessage
         })
       });
-      alert('Solicitacao enviada com sucesso');
-      onClose();
+      setMessage({ type: 'success', text: 'Solicitação enviada com sucesso.' });
+      setTimeout(onClose, 1200);
     } catch (error) {
-      console.error('[DOC_REQUEST_MODAL] Erro ao enviar:', error);
-      alert(error.message || 'Erro ao enviar solicitacao');
+      console.error('[DOC_REQUEST_MODAL] Erro ao enviar');
+      setMessage({ type: 'error', text: getErrorMessage(error, 'Erro ao enviar solicitação. Tente novamente.') });
     } finally {
       setSending(false);
     }
@@ -115,6 +119,19 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
         </div>
 
         <div className="p-4 overflow-y-auto flex-1">
+          {message && (
+            <div
+              className={`p-3 rounded text-sm mb-3 ${
+                message.type === 'error' ? 'bg-red-100 text-red-700' :
+                message.type === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-green-100 text-green-700'
+              }`}
+              role={message.type === 'error' ? 'alert' : 'status'}
+              aria-live="polite"
+            >
+              {message.text}
+            </div>
+          )}
           {!draft ? (
             <>
               <p className="text-sm text-gray-600 mb-3">

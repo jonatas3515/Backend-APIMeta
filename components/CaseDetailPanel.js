@@ -53,7 +53,10 @@ export default function CaseDetailPanel({
   userRole,
   conversations = [],
   onOpenConversationSelector,
-  onUnlinkConversation
+  onUnlinkConversation,
+  linking = false,
+  unlinking = false,
+  userCanEdit = false
 }) {
   if (!caseItem || typeof caseItem !== 'object') {
     return (
@@ -173,27 +176,40 @@ export default function CaseDetailPanel({
                   <div className="flex gap-2">
                     <button
                       onClick={onOpenConversationSelector}
-                      className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                      disabled={linking || unlinking}
+                      title={linking ? 'Vinculando...' : 'Trocar conversa vinculada'}
+                      className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-60"
                     >
-                      Trocar
+                      {linking ? 'Vinculando...' : 'Trocar'}
                     </button>
                     <button
                       onClick={onUnlinkConversation}
-                      className="px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700"
+                      disabled={linking || unlinking}
+                      title={unlinking ? 'Removendo...' : 'Remover vínculo da conversa'}
+                      className="px-3 py-1.5 bg-red-600 text-white rounded text-xs hover:bg-red-700 disabled:opacity-60"
                     >
-                      Remover
+                      {unlinking ? 'Removendo...' : 'Remover'}
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                  <p className="text-sm text-gray-600">Nenhuma conversa vinculada.</p>
-                  <button
-                    onClick={onOpenConversationSelector}
-                    className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                  >
-                    Vincular conversa
-                  </button>
+                  <div>
+                    <p className="text-sm text-gray-600">Nenhuma conversa vinculada.</p>
+                    <p className="text-xs text-gray-500" aria-live="polite" role="status">
+                      Vincule uma conversa para solicitar documentos ou aplicar rotinas.
+                    </p>
+                  </div>
+                  {userCanEdit && (
+                    <button
+                      onClick={onOpenConversationSelector}
+                      disabled={linking}
+                      title={linking ? 'Vinculando...' : 'Vincular uma conversa ativa a este caso'}
+                      className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      {linking ? 'Vinculando...' : 'Vincular conversa'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

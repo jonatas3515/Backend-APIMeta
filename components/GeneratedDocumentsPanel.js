@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiJson } from '../lib/apiClient';
+import { getErrorMessage } from '../lib/errorMessage';
 
 export default function GeneratedDocumentsPanel({ caseId, conversationId, onClose, userRole }) {
   const [documents, setDocuments] = useState([]);
@@ -71,7 +72,7 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
       setMessage({ type: 'success', text: 'Documento gerado com sucesso.' });
     } catch (error) {
       console.error('[GEN_DOCS] Erro ao gerar');
-      setMessage({ type: 'error', text: error.message || 'Erro ao gerar documento. Tente novamente.' });
+      setMessage({ type: 'error', text: getErrorMessage(error, 'Erro ao gerar documento. Tente novamente.') });
     } finally {
       setGenerating(false);
     }
@@ -98,7 +99,7 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
       setMessage({ type: 'success', text: 'Status atualizado com sucesso.' });
     } catch (error) {
       console.error('[GEN_DOCS] Erro ao atualizar');
-      setMessage({ type: 'error', text: error.message || 'Erro ao atualizar status. Tente novamente.' });
+      setMessage({ type: 'error', text: getErrorMessage(error, 'Erro ao atualizar status. Tente novamente.') });
     } finally {
       setUpdating(null);
     }
@@ -127,7 +128,11 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
   return (
     <div className="space-y-4">
       {message && (
-        <div className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+        <div
+          className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
+          role={message.type === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+        >
           {message.text}
         </div>
       )}
@@ -147,8 +152,9 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
       {loading ? (
         <p className="text-sm text-gray-500">Carregando...</p>
       ) : documents.length === 0 ? (
-        <div className="p-4 bg-gray-50 border rounded text-center space-y-2">
+        <div className="p-4 bg-gray-50 border rounded text-center space-y-2" role="status" aria-live="polite">
           <p className="text-sm text-gray-600">Nenhum documento gerado para este caso.</p>
+          <p className="text-xs text-gray-500">Selecione um template e clique em "Gerar Documento" para começar.</p>
           {canGenerate && (
             <button
               onClick={() => setShowTemplateSelector(true)}
@@ -182,6 +188,7 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
                   <button
                     onClick={() => handleUpdateStatus(doc.id, 'review')}
                     disabled={updating === doc.id || !canGenerate}
+                    title={updating === doc.id ? 'Atualizando...' : 'Enviar documento para revisão'}
                     className="px-2 py-1 bg-yellow-600 text-white rounded text-xs hover:bg-yellow-700 disabled:opacity-50"
                   >
                     {updating === doc.id ? 'Atualizando...' : 'Enviar para Revisão'}
@@ -192,6 +199,7 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
                     <button
                       onClick={() => handleUpdateStatus(doc.id, 'approved')}
                       disabled={updating === doc.id || !canGenerate}
+                      title={updating === doc.id ? 'Atualizando...' : 'Aprovar documento'}
                       className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 disabled:opacity-50"
                     >
                       {updating === doc.id ? 'Atualizando...' : 'Aprovar'}
@@ -199,6 +207,7 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
                     <button
                       onClick={() => handleUpdateStatus(doc.id, 'draft')}
                       disabled={updating === doc.id || !canGenerate}
+                      title={updating === doc.id ? 'Atualizando...' : 'Voltar documento para rascunho'}
                       className="px-2 py-1 bg-gray-600 text-white rounded text-xs hover:bg-gray-700 disabled:opacity-50"
                     >
                       {updating === doc.id ? 'Atualizando...' : 'Voltar para Rascunho'}
@@ -209,6 +218,7 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
                   <button
                     onClick={() => handleUpdateStatus(doc.id, 'sent')}
                     disabled={updating === doc.id || !canGenerate}
+                    title={updating === doc.id ? 'Atualizando...' : 'Marcar documento como enviado'}
                     className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700 disabled:opacity-50"
                   >
                     {updating === doc.id ? 'Atualizando...' : 'Marcar como Enviado'}

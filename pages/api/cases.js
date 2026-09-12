@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
 
+const ACTIVE_CLIENT_STATUSES = ['ativo', 'active', ''];
+
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -32,6 +34,47 @@ async function handler(req, res) {
 }
 
 export default withAuth(handler, { minRole: 'estagiario' });
+
+async function validateConversation(conversationId) {
+  if (!conversationId) return { valid: true };
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('id, client_status')
+    .eq('id', conversationId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[CASES] Erro ao verificar conversa:', error.message);
+    return { valid: false, status: 500, error: 'Erro ao verificar conversa' };
+  }
+
+  if (!data) {
+    return { valid: false, status: 404, error: 'Conversa nao encontrada' };
+  }
+
+  const status = (data.client_status || '').toLowerCase();
+  if (!ACTIVE_CLIENT_STATUSES.includes(status)) {
+    return { valid: false, status: 400, error: 'Conversa nao esta ativa' };
+  }
+
+  return { valid: true };
+}
+
+async function hasPendingOperations(caseId) {
+  const { data: requests } = await supabase
+    .from('document_checklist_requests')
+    .select('id, status')
+    .eq('case_id', caseId)
+    .in('status', ['draft', 'sent', 'resent']);
+
+  const { data: routines } = await supabase
+    .from('routine_executions')
+    .select('id, status')
+    .eq('case_id', caseId)
+    .in('status', ['pending', 'in_progress']);
+
+  return { requests: requests || [], routines: routines || [] };
+}
 
 async function handleGet(req, res) {
   const { id, conversation_id, status, priority, legal_area, municipality } = req.query;
@@ -127,8 +170,12 @@ async function handlePost(req, res) {
   }
 
   try {
-    // Verificar se já existe caso ativo para esta conversa
     if (conversation_id) {
+      const convCheck = await validateConversation(conversation_id);
+      if (!convCheck.valid) {
+        return res.status(convCheck.status).json({ error: convCheck.error });
+      }
+
       const { data: existingCases, error: checkError } = await supabase
         .from('cases')
         .select('id, status, title')
@@ -197,8 +244,25 @@ async function handlePatch(req, res) {
   }
 
   try {
-    // Se está alterando conversation_id, verificar caso ativo
+    // Verificar se está removendo o vínculo (desvincular conversa)
+    if (updates.conversation_id === null || updates.conversation_id === '') {
+      const { requests, routines } = await hasPendingOperations(id);
+      if (requests.length > 0 || routines.length > 0) {
+        return res.status(409).json({
+          error: 'Nao e possivel remover a conversa. Existem solicitacoes de documento ou rotinas pendentes para este caso.',
+          pendingRequests: requests.length,
+          pendingRoutines: routines.length
+        });
+      }
+    }
+
+    // Se está alterando conversation_id para um novo valor, validar existencia e atividade
     if (updates.conversation_id) {
+      const convCheck = await validateConversation(updates.conversation_id);
+      if (!convCheck.valid) {
+        return res.status(convCheck.status).json({ error: convCheck.error });
+      }
+
       const { data: existingCases, error: checkError } = await supabase
         .from('cases')
         .select('id, status, title')

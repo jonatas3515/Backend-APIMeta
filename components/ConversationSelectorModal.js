@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getErrorMessage } from '../lib/errorMessage';
 import { apiCall } from '../lib/apiClient';
+
+const ACTIVE_CLIENT_STATUSES = ['ativo', 'active', ''];
 
 export default function ConversationSelectorModal({ caseItem, onSelect, onClose }) {
   const [conversations, setConversations] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [selectingId, setSelectingId] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchConversations();
@@ -14,8 +18,9 @@ export default function ConversationSelectorModal({ caseItem, onSelect, onClose 
 
   useEffect(() => {
     const term = search.toLowerCase();
+    const active = conversations.filter(isActive);
     setFiltered(
-      conversations.filter((c) => {
+      active.filter((c) => {
         const name = c.client_name?.toLowerCase() || '';
         const phone = c.client_phone || '';
         return name.includes(term) || phone.includes(term);
@@ -23,16 +28,39 @@ export default function ConversationSelectorModal({ caseItem, onSelect, onClose 
     );
   }, [search, conversations]);
 
+  const isActive = (conversation) => {
+    const status = (conversation.client_status || '').toLowerCase();
+    return ACTIVE_CLIENT_STATUSES.includes(status);
+  };
+
   const fetchConversations = async () => {
     setLoading(true);
+    setError(null);
     try {
-      
       const { data } = await apiCall('/api/conversations');
-      setConversations(data || []);
+      setConversations((data || []).filter(isActive));
     } catch (error) {
-      console.error('[CONV_SELECTOR] Erro ao carregar conversas:', error);
+      const text = getErrorMessage(error, 'Erro ao carregar conversas. Tente novamente.');
+      setError(text);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSelect = async (conversation) => {
+    if (selectingId) return;
+    if (!isActive(conversation)) {
+      setError('Conversa inativa. Selecione uma conversa ativa.');
+      return;
+    }
+    setSelectingId(conversation.id);
+    try {
+      await onSelect(conversation);
+    } catch (error) {
+      const text = getErrorMessage(error, 'Erro ao vincular conversa. Tente novamente.');
+      setError(text);
+    } finally {
+      setSelectingId(null);
     }
   };
 
@@ -57,6 +85,16 @@ export default function ConversationSelectorModal({ caseItem, onSelect, onClose 
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
         </div>
 
+        {error && (
+          <div
+            className="p-3 m-4 mb-0 bg-red-100 text-red-700 rounded text-sm"
+            role="alert"
+            aria-live="polite"
+          >
+            {error}
+          </div>
+        )}
+
         <div className="p-4 border-b">
           <input
             type="text"
@@ -71,14 +109,19 @@ export default function ConversationSelectorModal({ caseItem, onSelect, onClose 
           {loading ? (
             <p className="text-center text-gray-500">Carregando conversas...</p>
           ) : filtered.length === 0 ? (
-            <p className="text-center text-gray-500">Nenhuma conversa encontrada.</p>
+            <div className="text-center" role="status" aria-live="polite">
+              <p className="text-gray-500">Nenhuma conversa ativa encontrada.</p>
+              <p className="text-xs text-gray-400 mt-1">Cadastre uma conversa ativa para vincular a este caso.</p>
+            </div>
           ) : (
             <div className="space-y-2">
               {filtered.map((conversation) => (
                 <button
                   key={conversation.id}
-                  onClick={() => onSelect(conversation)}
-                  className="w-full text-left p-3 border rounded hover:bg-blue-50 transition flex justify-between items-center"
+                  onClick={() => handleSelect(conversation)}
+                  disabled={selectingId === conversation.id}
+                  title={selectingId === conversation.id ? 'Vinculando...' : 'Selecionar conversa'}
+                  className="w-full text-left p-3 border rounded hover:bg-blue-50 transition flex justify-between items-center disabled:opacity-60"
                 >
                   <div>
                     <p className="text-sm font-medium">{conversation.client_name || 'Sem nome'}</p>
@@ -86,7 +129,7 @@ export default function ConversationSelectorModal({ caseItem, onSelect, onClose 
                   </div>
                   <div className="text-right text-xs text-gray-500">
                     {conversation.legal_area && <p className="font-medium">{conversation.legal_area}</p>}
-                    <p>Atualizado em {formatDate(conversation.updated_at)}</p>
+                    <p>{selectingId === conversation.id ? 'Vinculando...' : `Atualizado em ${formatDate(conversation.updated_at)}`}</p>
                   </div>
                 </button>
               ))}
