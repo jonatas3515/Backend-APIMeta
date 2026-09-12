@@ -22,29 +22,39 @@ function renderChatList(conversations = mockConversations) {
 }
 
 describe('ChatList - contadores por filtro', () => {
-  test('exibe contadores para Tudo, Nao lidos e Arquivados', () => {
+  test('exibe contadores acessiveis para Tudo, Nao lidos e Arquivados', () => {
     renderChatList();
-    expect(screen.getByText('Tudo (2)')).toBeInTheDocument();
-    expect(screen.getByText('Não lidos (1)')).toBeInTheDocument();
-    expect(screen.getByText('Arquivados (1)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tudo (2)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Não lidos (1)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Arquivados (1)' })).toBeInTheDocument();
   });
 
   test('nao exibe contador zero para filtro sem itens', () => {
     renderChatList([
       { id: '1', client_name: 'Ana', client_phone: '5511999990001', unread: false, archived: true, updated_at: new Date().toISOString() }
     ]);
-    expect(screen.getByText('Tudo')).toBeInTheDocument();
-    expect(screen.getByText('Não lidos')).toBeInTheDocument();
-    expect(screen.getByText('Arquivados (1)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tudo (0)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Não lidos (0)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Arquivados (1)' })).toBeInTheDocument();
   });
 
   test('filtra conversas ao clicar no botao', () => {
     renderChatList();
-    fireEvent.click(screen.getByText('Não lidos (1)'));
+    fireEvent.click(screen.getByRole('button', { name: 'Não lidos (1)' }));
     expect(screen.getByText('Ana')).toBeInTheDocument();
     expect(screen.queryByText('Bruno')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByText('Arquivados (1)'));
+    fireEvent.click(screen.getByRole('button', { name: 'Arquivados (1)' }));
     expect(screen.getByText('Carlos')).toBeInTheDocument();
     expect(screen.queryByText('Ana')).not.toBeInTheDocument();
+  });
+
+  test('contadores de nao lidos e arquivados sao visualmente menores que tudo', () => {
+    renderChatList();
+    const allButton = screen.getByRole('button', { name: 'Tudo (2)' });
+    const unreadButton = screen.getByRole('button', { name: 'Não lidos (1)' });
+    const archivedButton = screen.getByRole('button', { name: 'Arquivados (1)' });
+    expect(allButton.querySelector('span').className).toContain('text-xs');
+    expect(unreadButton.querySelector('span').className).toContain('text-[10px]');
+    expect(archivedButton.querySelector('span').className).toContain('text-[10px]');
   });
 });

@@ -133,6 +133,7 @@ export function NotificationProvider({ children }) {
   const countControllerRef = useRef(null);
   const pendingListRef = useRef(null);
   const pendingCountRef = useRef(null);
+  const lastListFetchRef = useRef(null);
   const cooldownIntervalRef = useRef(null);
   const isMountedRef = useRef(true);
   const panelOpenRef = useRef(false);
@@ -252,9 +253,18 @@ export function NotificationProvider({ children }) {
     return promise;
   }, [handleResponse]);
 
+  const LIST_THROTTLE_MS = 5000;
+
   const refreshNotifications = useCallback(async ({ force = false } = {}) => {
     if (!isMountedRef.current || stateRef.current.authExpired) return Promise.resolve();
     if (pendingListRef.current) return pendingListRef.current;
+    if (
+      !force &&
+      lastListFetchRef.current &&
+      Date.now() - lastListFetchRef.current < LIST_THROTTLE_MS
+    ) {
+      return Promise.resolve();
+    }
 
     const controller = new AbortController();
     listControllerRef.current = controller;
@@ -269,6 +279,7 @@ export function NotificationProvider({ children }) {
         });
         if (!isMountedRef.current) return;
         await handleResponse(response, 'list');
+        lastListFetchRef.current = Date.now();
       } catch (err) {
         if (err.name === 'AbortError' || !isMountedRef.current) return;
         safeError('notifications_refresh_error', err, { component: 'NotificationProvider' });

@@ -8,10 +8,9 @@ import { formatBadgeCount } from '../lib/notificationHelpers';
 import { useNotifications } from './NotificationProvider';
 
 const NotificationBell = forwardRef(({ onOpen }, ref) => {
-  const { unreadCount, countReliable, rateLimited, fetchNotificationCount } = useNotifications();
+  const { unreadCount, countReliable, rateLimited } = useNotifications();
 
   const handleClick = () => {
-    fetchNotificationCount({ force: true });
     if (onOpen) onOpen();
   };
 

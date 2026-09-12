@@ -110,7 +110,12 @@ export default function ChatList({ conversations, selectedConversation, onSelect
               }`}
               aria-label={`${filter.label} (${filterCounts[filter.key] || 0})`}
             >
-              {filter.label} {filterCounts[filter.key] > 0 && `(${filterCounts[filter.key]})`}
+              {filter.label}{' '}
+              {filterCounts[filter.key] > 0 && (
+                <span className={`${filter.key === 'all' ? 'text-xs' : 'text-[10px]'}`}>
+                  ({filterCounts[filter.key]})
+                </span>
+              )}
             </button>
           ))}
         </div>
