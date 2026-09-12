@@ -3,6 +3,7 @@ import { apiJson } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import { formatPhone } from '../lib/formatters';
 import LgpdExportButton from './LgpdExportButton';
+import ConsentManager from './ConsentManager';
 
 const LEGAL_AREA_ICONS = {
   'Direito Trabalhista': '⚖️',
@@ -255,26 +256,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
               </section>
 
               {/* Consentimentos LGPD */}
-              <section className="bg-nc-surface rounded-lg border border-nc-gray-200 p-4">
-                <h3 className="font-bold text-sm text-nc-text-title mb-3">🛡️ Consentimentos LGPD</h3>
-                <div className="text-xs text-nc-text-secondary space-y-2">
-                  <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1.5">
-                    ℹ️ O consentimento LGPD é informado automaticamente na primeira mensagem de boas-vindas. Ao continuar a conversa, o cliente concorda com os termos de tratamento de dados.
-                  </p>
-                </div>
-
-                {customer.intake_data?.consent_accepted_at && (
-                  <p className="mt-2 text-xs text-nc-text-secondary">
-                    Aceito em: {formatDate(customer.intake_data.consent_accepted_at)}
-                  </p>
-                )}
-
-                {customer.intake_data?.consent_protocol && (
-                  <p className="mt-1 text-xs text-nc-text-secondary">
-                    Protocolo: #{customer.intake_data.consent_protocol}
-                  </p>
-                )}
-              </section>
+              <ConsentManager clientId={conversationId} />
 
               {/* Histórico de Casos */}
               <section className="bg-nc-surface rounded-lg border border-nc-gray-200 p-4">
