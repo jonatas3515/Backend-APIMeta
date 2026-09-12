@@ -6,6 +6,7 @@ import { normalizePhoneForMatch } from '../../lib/formatters';
 import { loadClientMemory, formatClientMemory } from '../../lib/clientMemory';
 import { getClientTitle } from '../../lib/genderFromName';
 import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '../../lib/whatsapp.js';
+import { evaluateFunnelAutomation, registerFunnelEvent } from '../../lib/funnel-whatsapp.js';
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
@@ -227,6 +228,25 @@ export default async function handler(req, res) {
           .update({ unread: true })
           .eq('id', conversation.id);
 
+        const eventType = evaluateFunnelAutomation({
+          direction: 'inbound',
+          text: textBody,
+          firstContactAt: conversation.first_contact_at
+        });
+
+        if (eventType) {
+          await registerFunnelEvent({
+            supabase,
+            conversationId: conversation.id,
+            eventType,
+            triggeredBy: 'system',
+            metadata: {
+              messageId: savedMessage?.id,
+              direction: 'inbound',
+              trigger: 'automation'
+            }
+          });
+        }
       }
 
       // ================= COLETA GUIADA DE INFORMAÇÕES =================

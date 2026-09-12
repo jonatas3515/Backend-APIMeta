@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { applyTemplate } from '@/lib/whatsapp-templates';
+import { evaluateFunnelAutomation, registerFunnelEvent } from '@/lib/funnel-whatsapp';
 import logger from '@/lib/logger';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -133,6 +134,27 @@ async function handler(req, res) {
       p_new_value: 'sent',
       p_details: JSON.stringify(auditDetails)
     });
+
+    const eventType = evaluateFunnelAutomation({
+      direction: 'outbound',
+      text: messageText,
+      templateName: template ? template.name : ''
+    });
+
+    if (eventType) {
+      await registerFunnelEvent({
+        supabase,
+        conversationId: conversationIdUsed,
+        eventType,
+        triggeredBy: user.id,
+        metadata: {
+          messageId: inserted.id,
+          templateId: template ? template.id : null,
+          direction: 'outbound',
+          trigger: 'automation'
+        }
+      });
+    }
 
     const logKey = template ? 'WHATSAPP_SEND_TEMPLATE_SUCCESS' : 'WHATSAPP_SEND_SUCCESS';
     logger('info', logKey, { httpStatus: 200, userId: user.id, conversationId: conversationIdUsed });
