@@ -212,10 +212,10 @@ export function NotificationProvider({ children }) {
     }
   }, [startCooldown]);
 
-  const fetchNotificationCount = useCallback(async () => {
+  const fetchNotificationCount = useCallback(async ({ force = false } = {}) => {
     if (
       !isMountedRef.current ||
-      panelOpenRef.current ||
+      (panelOpenRef.current && !force) ||
       stateRef.current.rateLimited ||
       stateRef.current.authExpired
     ) {
@@ -229,7 +229,8 @@ export function NotificationProvider({ children }) {
 
     const promise = (async () => {
       try {
-        const response = await apiCall('/api/notifications/count', {
+        const url = force ? '/api/notifications/count?refresh=1' : '/api/notifications/count';
+        const response = await apiCall(url, {
           signal: controller.signal
         });
         if (!isMountedRef.current) return;
@@ -295,7 +296,8 @@ export function NotificationProvider({ children }) {
     ) {
       refreshNotifications({ force: false });
     }
-  }, [refreshNotifications]);
+    fetchNotificationCount({ force: true });
+  }, [refreshNotifications, fetchNotificationCount]);
 
   const closePanel = useCallback(() => {
     panelOpenRef.current = false;

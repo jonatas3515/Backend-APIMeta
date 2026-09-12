@@ -88,7 +88,7 @@ export default function CasesPanel({ notice }) {
     setCaseView(view);
     router.replace({
       pathname: router.pathname,
-      query: { ...router.query, caseId: caseItem.id, caseView: view }
+      query: { ...router.query, tab: 'cases', caseId: caseItem.id, caseView: view }
     }, undefined, { shallow: true });
   };
 
@@ -97,7 +97,7 @@ export default function CasesPanel({ notice }) {
     if (selectedCase) {
       router.replace({
         pathname: router.pathname,
-        query: { ...router.query, caseId: selectedCase.id, caseView: view }
+        query: { ...router.query, tab: 'cases', caseId: selectedCase.id, caseView: view }
       }, undefined, { shallow: true });
     }
   };

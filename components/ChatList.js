@@ -1,6 +1,21 @@
 import { useState } from 'react';
 import { formatPhone, getFirstName } from '../lib/formatters';
 
+function getFilterCounts(conversations) {
+  const counts = { all: 0, unread: 0, archived: 0 };
+  for (const conv of conversations || []) {
+    if (conv.archived) {
+      counts.archived += 1;
+    } else {
+      counts.all += 1;
+      if (conv.unread) {
+        counts.unread += 1;
+      }
+    }
+  }
+  return counts;
+}
+
 const FILTERS = [
   { key: 'all', label: 'Tudo' },
   { key: 'unread', label: 'Não lidos' },
@@ -37,6 +52,8 @@ export default function ChatList({ conversations, selectedConversation, onSelect
       </div>
     );
   }
+
+  const filterCounts = getFilterCounts(conversations);
 
   const filteredConversations = conversations
     .filter(conv => {
@@ -91,8 +108,9 @@ export default function ChatList({ conversations, selectedConversation, onSelect
                   ? 'bg-nc-yellow text-nc-black border-nc-yellow'
                   : 'bg-nc-white text-nc-text-secondary border-nc-gray-300 hover:border-nc-yellow hover:text-nc-yellow'
               }`}
+              aria-label={`${filter.label} (${filterCounts[filter.key] || 0})`}
             >
-              {filter.label}
+              {filter.label} {filterCounts[filter.key] > 0 && `(${filterCounts[filter.key]})`}
             </button>
           ))}
         </div>
