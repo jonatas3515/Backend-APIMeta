@@ -828,7 +828,11 @@ export default function CasesPanel({ notice }) {
       )}
 
       {requestCase && (
-        <DocumentRequestModal caseItem={requestCase} onClose={() => setRequestCase(null)} />
+        <DocumentRequestModal
+          caseItem={requestCase}
+          conversation={conversations.find(c => c.id === requestCase.conversation_id)}
+          onClose={() => setRequestCase(null)}
+        />
       )}
 
       {showConversationSelector && selectedCase && (

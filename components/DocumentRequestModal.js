@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/useAuth';
 import { apiJson } from '../lib/apiClient';
 
-export default function DocumentRequestModal({ caseItem, onClose }) {
+export default function DocumentRequestModal({ caseItem, conversation, onClose }) {
   const { profile } = useAuth();
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState([]);
@@ -10,6 +10,17 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
   const [customMessage, setCustomMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+
+  const conversationId = caseItem?.conversation_id || conversation?.id;
+  const clientPhone = conversation?.client_phone;
+  const hasConversation = Boolean(conversationId);
+  const hasClientPhone = Boolean(clientPhone?.trim());
+  const canRequestDocuments = hasConversation && hasClientPhone;
+  const requestDisabledReason = !hasConversation
+    ? 'Vincule uma conversa ao caso antes de solicitar documentos.'
+    : !hasClientPhone
+    ? 'A conversa vinculada não possui telefone do cliente. Atualize o telefone antes de solicitar documentos.'
+    : null;
 
   useEffect(() => {
     fetchItems();
@@ -45,6 +56,7 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
   };
 
   const handleCreateDraft = async () => {
+    if (!canRequestDocuments) return;
     if (selected.length === 0) {
       alert('Selecione ao menos um item');
       return;
@@ -56,7 +68,7 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           case_id: caseItem.id,
-          conversation_id: caseItem.conversation_id,
+          conversation_id: conversationId,
           items: selected
         })
       });
@@ -109,6 +121,17 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
                 Selecione ate 3 documentos nao sensiveis para enviar ao cliente.
               </p>
 
+              {requestDisabledReason && (
+                <p
+                  id="doc-request-alert"
+                  className="p-3 mb-3 text-sm text-yellow-800 bg-yellow-100 rounded"
+                  role="alert"
+                  aria-live="polite"
+                >
+                  {requestDisabledReason}
+                </p>
+              )}
+
               {pendingItems.length === 0 ? (
                 <p className="text-center text-gray-500">Nenhum item elegivel para solicitacao.</p>
               ) : (
@@ -139,8 +162,11 @@ export default function DocumentRequestModal({ caseItem, onClose }) {
 
               <div className="flex gap-2">
                 <button
+                  id="doc-request-create"
                   onClick={handleCreateDraft}
-                  disabled={loading || selected.length === 0}
+                  disabled={loading || selected.length === 0 || !canRequestDocuments}
+                  title={requestDisabledReason || 'Gerar rascunho da solicitacao'}
+                  aria-describedby={requestDisabledReason ? 'doc-request-alert' : undefined}
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
                 >
                   {loading ? 'Gerando...' : 'Gerar rascunho'}
