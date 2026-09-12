@@ -22,14 +22,14 @@ function renderChatList(conversations = mockConversations) {
 }
 
 describe('ChatList - contadores por filtro', () => {
-  test('exibe contadores acessiveis para Tudo, Nao lidos e Arquivados', () => {
+  test('exibe contadores pequenos para Tudo, Nao lidos e Arquivados', () => {
     renderChatList();
     expect(screen.getByRole('button', { name: 'Tudo (2)' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Não lidos (1)' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Arquivados (1)' })).toBeInTheDocument();
   });
 
-  test('nao exibe contador zero para filtro sem itens', () => {
+  test('exibe contador zero quando filtro esta vazio', () => {
     renderChatList([
       { id: '1', client_name: 'Ana', client_phone: '5511999990001', unread: false, archived: true, updated_at: new Date().toISOString() }
     ]);
@@ -48,13 +48,17 @@ describe('ChatList - contadores por filtro', () => {
     expect(screen.queryByText('Ana')).not.toBeInTheDocument();
   });
 
-  test('contadores de nao lidos e arquivados sao visualmente menores que tudo', () => {
+  test('contadores sao renderizados em superscript pequeno', () => {
     renderChatList();
-    const allButton = screen.getByRole('button', { name: 'Tudo (2)' });
-    const unreadButton = screen.getByRole('button', { name: 'Não lidos (1)' });
-    const archivedButton = screen.getByRole('button', { name: 'Arquivados (1)' });
-    expect(allButton.querySelector('span').className).toContain('text-xs');
-    expect(unreadButton.querySelector('span').className).toContain('text-[10px]');
-    expect(archivedButton.querySelector('span').className).toContain('text-[10px]');
+    const buttons = [
+      screen.getByRole('button', { name: 'Tudo (2)' }),
+      screen.getByRole('button', { name: 'Não lidos (1)' }),
+      screen.getByRole('button', { name: 'Arquivados (1)' })
+    ];
+    buttons.forEach(btn => {
+      const sup = btn.querySelector('sup');
+      expect(sup).toBeInTheDocument();
+      expect(sup.className).toContain('text-[10px]');
+    });
   });
 });
