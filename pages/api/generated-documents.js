@@ -33,6 +33,12 @@ async function handler(req, res) {
 
 export default withAuth(handler, { minRole: 'estagiario' });
 
+const MANAGE_ROLES = ['admin', 'advogado'];
+
+function canManageDocuments(user) {
+  return user && MANAGE_ROLES.includes(user.role);
+}
+
 async function handleGet(req, res) {
   const { case_id, conversation_id, id } = req.query;
 
@@ -99,6 +105,10 @@ async function handleGet(req, res) {
 }
 
 async function handlePatch(req, res) {
+  if (!canManageDocuments(req.user)) {
+    return res.status(403).json({ error: 'Apenas advogados e administradores podem alterar documentos gerados.' });
+  }
+
   const { id } = req.query;
   const { status } = req.body;
 
@@ -132,6 +142,10 @@ async function handlePatch(req, res) {
 }
 
 async function handleDelete(req, res) {
+  if (!canManageDocuments(req.user)) {
+    return res.status(403).json({ error: 'Apenas advogados e administradores podem excluir documentos gerados.' });
+  }
+
   const { id } = req.query;
 
   if (!id) {

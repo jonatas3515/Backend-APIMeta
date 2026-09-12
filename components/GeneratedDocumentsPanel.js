@@ -49,7 +49,7 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
   const handleGenerate = async () => {
     if (!selectedTemplate || !conversationId) return;
     if (!canGenerate) {
-      setMessage({ type: 'error', text: 'Você não tem permissão para gerar documentos.' });
+      setMessage({ type: 'error', text: 'Apenas advogados e administradores podem gerar ou alterar documentos.' });
       return;
     }
 
@@ -78,6 +78,10 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
   };
 
   const handleUpdateStatus = async (docId, newStatus) => {
+    if (!canGenerate) {
+      setMessage({ type: 'error', text: 'Apenas advogados e administradores podem gerar ou alterar documentos.' });
+      return;
+    }
     setUpdating(docId);
     setMessage(null);
     try {
@@ -133,7 +137,7 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
         <button
           onClick={() => setShowTemplateSelector(true)}
           disabled={!canGenerate}
-          title={canGenerate ? '' : 'Geração de documentos é restrita a administradores/advogados.'}
+          title={canGenerate ? '' : 'Apenas advogados e administradores podem gerar ou alterar documentos.'}
           className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 disabled:opacity-50"
         >
           + Gerar Documento

@@ -35,11 +35,20 @@ async function handler(req, res) {
 
 export default withAuth(handler, { minRole: 'estagiario' });
 
+const GENERATE_ROLES = ['admin', 'advogado'];
+
+function canGenerateDocuments(user) {
+  return user && GENERATE_ROLES.includes(user.role);
+}
+
 async function handleGet(req, res) {
   const { id, legal_area, case_type, action } = req.query;
 
   try {
     if (action === 'generate') {
+      if (!canGenerateDocuments(req.user)) {
+        return res.status(403).json({ error: 'Apenas advogados e administradores podem gerar documentos.' });
+      }
       // Gera documento a partir de template
       const { template_id, conversation_id, case_id } = req.query;
 

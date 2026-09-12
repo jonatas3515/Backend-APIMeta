@@ -6,7 +6,10 @@ const { createMocks } = require('node-mocks-http');
 const docsHandler = require('../pages/api/generated-documents').default;
 
 jest.mock('../lib/auth', () => ({
-  withAuth: (fn) => fn
+  withAuth: (fn) => (req, res) => {
+    req.user = req.__testUser || { role: 'advogado', id: 'user-1' };
+    return fn(req, res);
+  }
 }));
 
 function supabaseBuilder() {
@@ -76,5 +79,43 @@ describe('API /api/generated-documents - isolamento por caso', () => {
     const data = res._getJSONData();
     expect(data).toHaveLength(1);
     expect(data[0].case_id).toBe('case-A');
+  });
+
+  test('PATCH de status por estagiario retorna 403', async () => {
+    const { req, res } = createMocks({
+      method: 'PATCH',
+      query: { id: 'doc-1' },
+      body: { status: 'review' },
+      __testUser: { role: 'estagiario', id: 'user-2' }
+    });
+    await docsHandler(req, res);
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData().error).toMatch(/advogados e administradores/i);
+  });
+
+  test('DELETE por estagiario retorna 403', async () => {
+    const { req, res } = createMocks({
+      method: 'DELETE',
+      query: { id: 'doc-1' },
+      __testUser: { role: 'estagiario', id: 'user-2' }
+    });
+    await docsHandler(req, res);
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData().error).toMatch(/advogados e administradores/i);
+  });
+
+  test('advogado pode atualizar status', async () => {
+    global.__supabaseQueue = [
+      { data: { id: 'doc-1', status: 'review' }, error: null }
+    ];
+    const { req, res } = createMocks({
+      method: 'PATCH',
+      query: { id: 'doc-1' },
+      body: { status: 'review' },
+      __testUser: { role: 'advogado', id: 'user-1' }
+    });
+    await docsHandler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData().status).toBe('review');
   });
 });
