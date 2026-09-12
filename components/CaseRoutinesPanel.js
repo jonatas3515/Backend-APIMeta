@@ -10,6 +10,7 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
   const canApply = userRole === 'admin' || userRole === 'advogado';
+  const hasConversation = Boolean(conversationId);
 
   useEffect(() => {
     if (conversationId) {
@@ -41,9 +42,9 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
   };
 
   const handleApplyRoutine = async () => {
-    if (!selectedRoutine) return;
+    if (!selectedRoutine || !hasConversation) return;
     if (!canApply) {
-      setMessage({ type: 'error', text: 'Você não tem permissão para aplicar rotinas.' });
+      setMessage({ type: 'error', text: 'Apenas advogados e administradores podem aplicar rotinas.' });
       return;
     }
 
@@ -85,6 +86,18 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
 
       <div>
         <h3 className="font-semibold text-lg mb-3">🔄 Aplicar Rotina</h3>
+
+        {!hasConversation && (
+          <p
+            className="p-3 mb-3 text-sm text-yellow-800 bg-yellow-100 rounded"
+            role="alert"
+            aria-live="polite"
+          >
+            Vincule uma conversa ao caso antes de aplicar uma rotina.
+            A conversa é necessária para registrar documentos e lembretes no contexto correto.
+          </p>
+        )}
+
         <div className="space-y-3">
           <select
             value={selectedRoutine}
@@ -114,7 +127,7 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
           
           <button
             onClick={() => setShowConfirm(true)}
-            disabled={!selectedRoutine || !canApply}
+            disabled={!selectedRoutine || !canApply || !hasConversation}
             title={canApply ? '' : 'Aplicação de rotinas é restrita a administradores/advogados.'}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
           >

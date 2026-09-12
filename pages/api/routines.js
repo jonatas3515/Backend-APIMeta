@@ -103,11 +103,27 @@ async function handleGet(req, res) {
       const { routine_id, conversation_id: convId, case_id, confirmed } = req.query;
 
       if (!routine_id || !convId) {
-        return res.status(400).json({ error: 'routine_id e conversation_id são obrigatórios' });
+        const missing = !convId ? 'conversation_id' : 'routine_id';
+        return res.status(400).json({
+          error: missing === 'conversation_id'
+            ? 'Vincule uma conversa ao caso antes de executar uma rotina.'
+            : 'routine_id é obrigatório'
+        });
       }
 
       if (confirmed !== 'true') {
         return res.status(400).json({ error: 'Execucao de rotina requer confirmacao explicita (confirmed=true)' });
+      }
+
+      // Valida conversa antes de qualquer escrita
+      const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('id', convId)
+        .single();
+
+      if (convError || !conversation) {
+        return res.status(400).json({ error: 'Vincule uma conversa ao caso antes de executar uma rotina.' });
       }
 
       // Busca rotina
@@ -143,7 +159,10 @@ async function handleGet(req, res) {
             const caseIdParam = case_id ? `&case_id=${case_id}` : '';
             const docRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/templates?action=generate&template_id=${templateId}&conversation_id=${convId}${caseIdParam}`, {
               method: 'GET',
-              headers: { 'Content-Type': 'application/json' }
+              headers: {
+                'Content-Type': 'application/json',
+                ...(req.headers.authorization ? { 'Authorization': req.headers.authorization } : {})
+              }
             });
 
             if (docRes.ok) {

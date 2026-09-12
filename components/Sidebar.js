@@ -56,14 +56,7 @@ export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' })
 
       {/* Mobile bottom nav */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-nc-black border-t border-nc-gray-800 z-50 flex items-center justify-around px-1 overflow-x-auto">
-        {[
-          { key: 'chat', icon: '💬', label: 'Chat', minRole: 'estagiario' },
-          { key: 'cases', icon: '⚖️', label: 'Casos', minRole: 'estagiario' },
-          { key: 'ai_assistant', icon: '🧠', label: 'IA', minRole: 'estagiario' },
-          { key: 'agenda', icon: '📅', label: 'Agenda', minRole: 'advogado' },
-          { key: 'users', icon: '⚙️', label: 'Config.', minRole: 'advogado' },
-        ]
-          .filter((item) => canAccess(item.minRole))
+        {NAV_ITEMS.filter((item) => canAccess(item.minRole))
           .map((item) => (
             <button
               key={item.key}
@@ -73,6 +66,7 @@ export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' })
                   ? 'text-nc-yellow bg-nc-gray-800/50'
                   : 'text-nc-gray-400'
               }`}
+              title={item.label}
             >
               <span className="text-base leading-none">{item.icon}</span>
               <span className="text-[9px] mt-0.5 leading-tight whitespace-nowrap">{item.label}</span>

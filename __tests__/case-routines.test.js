@@ -62,6 +62,20 @@ describe('API /api/routines - execucoes em casos', () => {
     expect(res._getJSONData().error).toMatch(/advogados e administradores/i);
   });
 
+  test('execucao sem conversation_id retorna 400 e nao cria registros', async () => {
+    const { req, res } = createMocks({
+      method: 'GET',
+      query: {
+        action: 'execute',
+        routine_id: 'rt-1',
+        confirmed: 'true'
+      }
+    });
+    await routinesHandler(req, res);
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error).toMatch(/Vincule uma conversa/i);
+  });
+
   test('execucao de rotina exige confirmed=true', async () => {
     const { req, res } = createMocks({
       method: 'GET',
@@ -78,6 +92,7 @@ describe('API /api/routines - execucoes em casos', () => {
 
   test('execucao confirmada retorna documentos e lembretes criados', async () => {
     global.__supabaseQueue = [
+      { data: { id: 'conv-1' }, error: null },
       { data: { id: 'rt-1', name: 'Rotina Teste', documents_to_generate: ['tpl-1'], reminders_to_create: [{ type: 'prazo', title: 'Prazo', message: 'Prazo', days_from_now: 3 }] }, error: null },
       { data: { id: 'exec-1' }, error: null },
       { data: { id: 'rem-1' }, error: null },
@@ -92,17 +107,26 @@ describe('API /api/routines - execucoes em casos', () => {
         conversation_id: 'conv-1',
         case_id: 'case-1',
         confirmed: 'true'
-      }
+      },
+      headers: { authorization: 'Bearer token-1' }
     });
     await routinesHandler(req, res);
     const data = res._getJSONData();
     expect(res._getStatusCode()).toBe(200);
     expect(data.execution.documents_generated).toContain('doc-1');
     expect(data.execution.reminders_created).toContain('rem-1');
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/templates?action=generate'),
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({ 'Authorization': 'Bearer token-1' })
+      })
+    );
   });
 
   test('execucao nao envia WhatsApp, nao cria agenda e nao altera status do caso', async () => {
     global.__supabaseQueue = [
+      { data: { id: 'conv-1' }, error: null },
       { data: { id: 'rt-1', name: 'Rotina Teste', documents_to_generate: [], reminders_to_create: [] }, error: null },
       { data: { id: 'exec-1' }, error: null },
       { data: { id: 'exec-1', documents_generated: [], reminders_created: [] }, error: null }
