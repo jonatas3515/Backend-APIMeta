@@ -121,7 +121,7 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
             Aplicar Rotina
           </button>
           {!canApply && (
-            <p className="text-xs text-red-600">Esta função é restrita a administradores/advogados.</p>
+            <p className="text-xs text-red-600">Apenas advogados e administradores podem aplicar rotinas.</p>
           )}
         </div>
       </div>

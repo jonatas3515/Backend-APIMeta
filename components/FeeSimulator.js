@@ -176,9 +176,12 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       return;
     }
 
+    let effectiveUseOab = useOabBase;
     if (useOabBase && !ref) {
-      setMessage({ type: 'error', text: 'Nenhuma referência compatível foi encontrada na tabela OAB ativa; o cálculo usa o catálogo interno.' });
-      return;
+      effectiveUseOab = false;
+      setMessage({ type: 'warning', text: 'Nenhuma referência OAB foi encontrada para este serviço. O cálculo está usando o catálogo interno.' });
+    } else {
+      setMessage(null);
     }
 
     setLoading(true);
@@ -187,7 +190,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
 
     try {
       let data;
-      if (useOabBase) {
+      if (effectiveUseOab) {
         data = buildResultFromOab(ref, selected);
       } else {
         
@@ -318,7 +321,11 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       )}
 
       {message && (
-        <div className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+        <div className={`p-3 rounded text-sm ${
+          message.type === 'error' ? 'bg-red-100 text-red-700' :
+          message.type === 'warning' ? 'bg-yellow-100 text-yellow-800' :
+          'bg-green-100 text-green-700'
+        }`}>
           {message.text}
         </div>
       )}
@@ -397,7 +404,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           )}
           {selectedService && !oabReference && !oabAmbiguous && (
             <p className="text-xs text-yellow-700 pl-6">
-              Nenhuma referência compatível foi encontrada na tabela OAB ativa; o cálculo usa o catálogo interno.
+              Nenhuma referência OAB foi encontrada para este serviço. O cálculo está usando o catálogo interno.
             </p>
           )}
         </div>

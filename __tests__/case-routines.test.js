@@ -6,7 +6,10 @@ const { createMocks } = require('node-mocks-http');
 const routinesHandler = require('../pages/api/routines').default;
 
 jest.mock('../lib/auth', () => ({
-  withAuth: (fn) => fn,
+  withAuth: (fn) => (req, res) => {
+    req.user = req.__testUser || { role: 'advogado', id: 'user-1' };
+    return fn(req, res);
+  },
   hasMinimumRole: () => true
 }));
 
@@ -41,6 +44,22 @@ describe('API /api/routines - execucoes em casos', () => {
     global.fetch = jest.fn(() =>
       Promise.resolve({ ok: true, json: () => Promise.resolve({ id: 'doc-1' }) })
     );
+  });
+
+  test('execucao de rotina exige role admin ou advogado', async () => {
+    const { req, res } = createMocks({
+      method: 'GET',
+      query: {
+        action: 'execute',
+        routine_id: 'rt-1',
+        conversation_id: 'conv-1',
+        confirmed: 'true'
+      },
+      __testUser: { role: 'estagiario', id: 'user-2' }
+    });
+    await routinesHandler(req, res);
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData().error).toMatch(/advogados e administradores/i);
   });
 
   test('execucao de rotina exige confirmed=true', async () => {

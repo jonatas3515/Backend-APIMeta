@@ -35,10 +35,21 @@ async function handler(req, res) {
 
 export default withAuth(handler, { minRole: 'estagiario' });
 
+const EXECUTION_ROLES = ['admin', 'advogado'];
+
+function canExecute(profile) {
+  return profile && EXECUTION_ROLES.includes(profile.role);
+}
+
 async function handleGet(req, res) {
   const { id, legal_area, case_type, funnel_stage, action, conversation_id } = req.query;
+  const { user } = req;
 
   try {
+    if (action === 'execute' && !canExecute(user)) {
+      return res.status(403).json({ error: 'Apenas advogados e administradores podem executar rotinas.' });
+    }
+
     if (action === 'suggest') {
       // Sugere rotinas para uma conversa
       if (!conversation_id) {

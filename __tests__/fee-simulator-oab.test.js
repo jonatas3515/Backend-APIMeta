@@ -130,12 +130,18 @@ describe('FeeSimulator - OAB e simulacao', () => {
     });
   });
 
-  test('exibe mensagem quando nao ha referencia OAB', async () => {
+  test('exibe mensagem e usa catálogo interno quando nao ha referencia OAB', async () => {
     apiJson.mockImplementation((url, options = {}) => {
       const method = (options.method || 'GET').toUpperCase();
       if (method === 'GET') {
         if (url.startsWith('/api/fee-services')) return Promise.resolve([internalService]);
+        if (url.startsWith('/api/fee-simulations')) return Promise.resolve([]);
         return Promise.resolve([]);
+      }
+      if (method === 'POST') {
+        const payload = options.body ? JSON.parse(options.body) : {};
+        if (payload.action === 'calculate') return Promise.resolve(calcResult);
+        return Promise.resolve({ id: 'sim-1' });
       }
       return Promise.resolve(null);
     });
@@ -147,7 +153,22 @@ describe('FeeSimulator - OAB e simulacao', () => {
     fireEvent.change(select, { target: { value: 'svc-1' } });
 
     await waitFor(() => {
-      expect(container.textContent).toContain('Nenhuma referência compatível foi encontrada na tabela OAB ativa');
+      expect(container.textContent).toContain('Nenhuma referência OAB foi encontrada para este serviço');
+      expect(container.textContent).toContain('O cálculo está usando o catálogo interno');
+    });
+
+    const calcButton = Array.from(container.querySelectorAll('button')).find((b) => b.textContent.includes('Calcular sugestão'));
+    fireEvent.click(calcButton);
+
+    await waitFor(() => {
+      expect(apiJson).toHaveBeenCalledWith(
+        '/api/fee-simulations',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"action":"calculate"')
+        })
+      );
+      expect(container.textContent).toContain('Cálculo baseado no catálogo interno');
     });
   });
 
