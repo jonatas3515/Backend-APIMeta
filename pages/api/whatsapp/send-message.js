@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
+import { applyTemplate } from '@/lib/whatsapp-templates';
 import logger from '@/lib/logger';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -10,7 +11,7 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
   : null;
 
-const SUPPORTED_TYPES = ['text', 'image', 'document', 'audio', 'video'];
+const SUPPORTED_TYPES = ['text', 'image', 'document', 'audio', 'video', 'template'];
 
 function hashPhone(phone) {
   if (!phone) return null;
@@ -28,11 +29,11 @@ async function handler(req, res) {
   }
 
   const user = req.user;
-  const { to, type = 'text', content, clientId, conversationId, mediaUrl = null } = req.body;
+  const { to, type = 'text', content, templateId, variables = {}, clientId, conversationId, mediaUrl = null } = req.body;
 
-  if (!to || !SUPPORTED_TYPES.includes(type) || !content) {
+  if (!to || !SUPPORTED_TYPES.includes(type)) {
     logger('warn', 'WHATSAPP_SEND_VALIDATION', { httpStatus: 400, userId: user.id });
-    return res.status(400).json({ error: 'to, type e content são obrigatórios e type deve ser suportado' });
+    return res.status(400).json({ error: 'to e type são obrigatórios e type deve ser suportado' });
   }
 
   const conversationIdUsed = clientId || conversationId;
@@ -41,6 +42,10 @@ async function handler(req, res) {
     logger('warn', 'WHATSAPP_SEND_VALIDATION', { httpStatus: 400, userId: user.id });
     return res.status(400).json({ error: 'clientId ou conversationId é obrigatório' });
   }
+
+  let template = null;
+  let messageText = content;
+  let action = 'send_message';
 
   try {
     const { data: conversation, error: convError } = await supabase
@@ -64,7 +69,31 @@ async function handler(req, res) {
     }
 
     const phone = to.startsWith('5') ? to : conversation.client_phone;
-    const waMessageId = await sendWhatsAppMessage(phone, content);
+
+    if (type === 'template') {
+      if (!templateId) {
+        logger('warn', 'WHATSAPP_SEND_VALIDATION', { httpStatus: 400, userId: user.id });
+        return res.status(400).json({ error: 'templateId é obrigatório para type=template' });
+      }
+
+      const { data: t, error: tError } = await supabase
+        .from('whatsapp_templates')
+        .select('id, name, content, status')
+        .eq('id', templateId)
+        .eq('status', 'approved')
+        .single();
+
+      if (tError || !t) {
+        logger('warn', 'WHATSAPP_TEMPLATE_NOT_FOUND', { httpStatus: 404, userId: user.id, templateId });
+        return res.status(404).json({ error: 'Template não encontrado ou não aprovado' });
+      }
+
+      template = t;
+      messageText = applyTemplate(t.content, variables);
+      action = 'send_template_message';
+    }
+
+    const waMessageId = await sendWhatsAppMessage(phone, messageText);
 
     const { data: inserted, error: msgError } = await supabase
       .from('messages')
@@ -73,9 +102,10 @@ async function handler(req, res) {
         direction: 'outbound',
         sender_type: 'human',
         content_type: type,
-        text: content,
+        text: messageText,
         media_url: mediaUrl,
         wa_message_id: waMessageId || null,
+        template_id: template ? template.id : null,
         status: 'sent'
       })
       .select('id')
@@ -83,24 +113,38 @@ async function handler(req, res) {
 
     if (msgError) throw msgError;
 
+    const auditDetails = {
+      to: hashPhone(phone),
+      type,
+      conversationId: conversationIdUsed
+    };
+
+    if (template) {
+      auditDetails.templateId = template.id;
+      auditDetails.templateName = template.name;
+    }
+
     await supabase.rpc('log_audit', {
       p_user_id: user.id,
       p_entity_type: 'whatsapp_message',
       p_entity_id: inserted.id,
-      p_action: 'send_message',
+      p_action: action,
       p_old_value: null,
       p_new_value: 'sent',
-      p_details: JSON.stringify({ to: hashPhone(phone), type, conversationId: conversationIdUsed })
+      p_details: JSON.stringify(auditDetails)
     });
 
-    logger('info', 'WHATSAPP_SEND_SUCCESS', { httpStatus: 200, userId: user.id, conversationId: conversationIdUsed });
+    const logKey = template ? 'WHATSAPP_SEND_TEMPLATE_SUCCESS' : 'WHATSAPP_SEND_SUCCESS';
+    logger('info', logKey, { httpStatus: 200, userId: user.id, conversationId: conversationIdUsed });
+
     return res.status(200).json({
       success: true,
       messageId: inserted.id,
       waMessageId: waMessageId || null
     });
   } catch (error) {
-    logger('error', 'WHATSAPP_SEND_ERROR', { httpStatus: 500, userId: user.id, conversationId: conversationIdUsed, errorCode: 'WHATSAPP_SEND_FAILED' });
+    const logKey = template ? 'WHATSAPP_SEND_TEMPLATE_ERROR' : 'WHATSAPP_SEND_ERROR';
+    logger('error', logKey, { httpStatus: 500, userId: user.id, conversationId: conversationIdUsed, errorCode: 'WHATSAPP_SEND_FAILED' });
     return res.status(500).json({ error: 'Erro ao enviar mensagem' });
   }
 }
