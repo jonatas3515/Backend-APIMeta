@@ -3,6 +3,7 @@ import { apiJson } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import { formatPhone } from '../lib/formatters';
 import LgpdExportButton from './LgpdExportButton';
+import LgpdDeletionRequestButton from './LgpdDeletionRequestButton';
 import ConsentManager from './ConsentManager';
 
 const LEGAL_AREA_ICONS = {
@@ -387,6 +388,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
               📤 Enviar Documento
             </button>
             <LgpdExportButton clientId={conversationId} clientName={customer.name || conversationId} />
+            <LgpdDeletionRequestButton clientId={conversationId} />
           </div>
 
           {showNewCase && (
