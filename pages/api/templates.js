@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
+import { verifyCaseAccess } from '@/lib/caseAuth';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -51,6 +52,13 @@ async function handleGet(req, res) {
       }
       // Gera documento a partir de template
       const { template_id, conversation_id, case_id } = req.query;
+
+      if (case_id) {
+        const { allowed } = await verifyCaseAccess({ supabase, caseId: case_id, user: req.user });
+        if (!allowed) {
+          return res.status(403).json({ error: 'Acesso nao autorizado ao caso' });
+        }
+      }
 
       if (!template_id || !conversation_id) {
         return res.status(400).json({ error: 'template_id e conversation_id são obrigatórios' });

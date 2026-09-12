@@ -246,12 +246,12 @@ export default function Home() {
     if (tab === 'chat' && newConversation) {
       setShowNewConvModal(true);
       setSelectedConversation(null);
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('new');
-        url.searchParams.set('tab', 'chat');
-        window.history.replaceState(null, '', url.toString());
-      }
+      const query = { ...router.query };
+      delete query.new;
+      query.tab = 'chat';
+      delete query.conversationId;
+      delete query.conversation;
+      router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
     }
 
     lastProcessedAsPath.current = asPath;

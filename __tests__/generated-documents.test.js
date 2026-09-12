@@ -23,6 +23,7 @@ function supabaseBuilder() {
     delete: jest.fn(() => self),
     insert: jest.fn(() => self),
     single: jest.fn(() => self),
+    maybeSingle: jest.fn(() => self),
     then: (onFulfilled) => {
       const next = global.__supabaseQueue ? global.__supabaseQueue.shift() : { data: null, error: null };
       return onFulfilled ? onFulfilled(next) : Promise.resolve(next);
@@ -104,8 +105,10 @@ describe('API /api/generated-documents - isolamento por caso', () => {
     expect(res._getJSONData().error).toMatch(/advogados e administradores/i);
   });
 
-  test('advogado pode atualizar status', async () => {
+  test('advogado atribuido ao caso pode atualizar status', async () => {
     global.__supabaseQueue = [
+      { data: { case_id: 'case-1' }, error: null },
+      { data: { id: 'case-1', assigned_user_id: 'user-1' }, error: null },
       { data: { id: 'doc-1', status: 'review' }, error: null }
     ];
     const { req, res } = createMocks({
@@ -117,5 +120,69 @@ describe('API /api/generated-documents - isolamento por caso', () => {
     await docsHandler(req, res);
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData().status).toBe('review');
+  });
+
+  test('advogado nao atribuido ao caso recebe 403 e nao atualiza', async () => {
+    global.__supabaseQueue = [
+      { data: { case_id: 'case-1' }, error: null },
+      { data: { id: 'case-1', assigned_user_id: 'user-2' }, error: null }
+    ];
+    const { req, res } = createMocks({
+      method: 'PATCH',
+      query: { id: 'doc-1' },
+      body: { status: 'review' },
+      __testUser: { role: 'advogado', id: 'user-1' }
+    });
+    await docsHandler(req, res);
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData().error).toMatch(/nao autorizado/i);
+    // nenhuma chamada de update deve ter sido feita (fila consumida ate access check)
+    expect(global.__supabaseQueue).toHaveLength(0);
+  });
+
+  test('admin pode atualizar status mesmo sem atribuicao', async () => {
+    global.__supabaseQueue = [
+      { data: { case_id: 'case-1' }, error: null },
+      { data: { id: 'doc-1', status: 'review' }, error: null }
+    ];
+    const { req, res } = createMocks({
+      method: 'PATCH',
+      query: { id: 'doc-1' },
+      body: { status: 'review' },
+      __testUser: { role: 'admin', id: 'admin-1' }
+    });
+    await docsHandler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData().status).toBe('review');
+  });
+
+  test('advogado nao atribuido recebe 403 no DELETE e nao exclui', async () => {
+    global.__supabaseQueue = [
+      { data: { case_id: 'case-1' }, error: null },
+      { data: { id: 'case-1', assigned_user_id: 'user-2' }, error: null }
+    ];
+    const { req, res } = createMocks({
+      method: 'DELETE',
+      query: { id: 'doc-1' },
+      __testUser: { role: 'advogado', id: 'user-1' }
+    });
+    await docsHandler(req, res);
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData().error).toMatch(/nao autorizado/i);
+    expect(global.__supabaseQueue).toHaveLength(0);
+  });
+
+  test('admin pode excluir sem atribuicao', async () => {
+    global.__supabaseQueue = [
+      { data: { case_id: 'case-1' }, error: null },
+      { data: { success: true }, error: null }
+    ];
+    const { req, res } = createMocks({
+      method: 'DELETE',
+      query: { id: 'doc-1' },
+      __testUser: { role: 'admin', id: 'admin-1' }
+    });
+    await docsHandler(req, res);
+    expect(res._getStatusCode()).toBe(204);
   });
 });

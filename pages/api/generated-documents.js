@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
+import { verifyCaseAccess } from '@/lib/caseAuth';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -126,6 +127,23 @@ async function handlePatch(req, res) {
   }
 
   try {
+    const { data: doc, error: docError } = await supabase
+      .from('generated_documents')
+      .select('case_id')
+      .eq('id', id)
+      .single();
+
+    if (docError || !doc) {
+      return res.status(404).json({ error: 'Documento nao encontrado' });
+    }
+
+    if (doc.case_id) {
+      const { allowed } = await verifyCaseAccess({ supabase, caseId: doc.case_id, user: req.user });
+      if (!allowed) {
+        return res.status(403).json({ error: 'Acesso nao autorizado ao caso' });
+      }
+    }
+
     const { data, error } = await supabase
       .from('generated_documents')
       .update({ status })
@@ -153,6 +171,23 @@ async function handleDelete(req, res) {
   }
 
   try {
+    const { data: doc, error: docError } = await supabase
+      .from('generated_documents')
+      .select('case_id')
+      .eq('id', id)
+      .single();
+
+    if (docError || !doc) {
+      return res.status(404).json({ error: 'Documento nao encontrado' });
+    }
+
+    if (doc.case_id) {
+      const { allowed } = await verifyCaseAccess({ supabase, caseId: doc.case_id, user: req.user });
+      if (!allowed) {
+        return res.status(403).json({ error: 'Acesso nao autorizado ao caso' });
+      }
+    }
+
     const { error } = await supabase
       .from('generated_documents')
       .delete()

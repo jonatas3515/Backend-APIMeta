@@ -18,6 +18,7 @@ function supabaseBuilder() {
     select: jest.fn(() => self),
     eq: jest.fn(() => self),
     single: jest.fn(() => self),
+    maybeSingle: jest.fn(() => self),
     insert: jest.fn(() => self),
     update: jest.fn(() => self),
     delete: jest.fn(() => self),
@@ -55,8 +56,32 @@ describe('API /api/templates - geracao de documentos', () => {
     expect(res._getJSONData().error).toMatch(/advogados e administradores/i);
   });
 
+  test('advogado nao atribuido ao caso recebe 403 e nao gera documento', async () => {
+    global.__supabaseQueue = [
+      { data: { id: 'case-1', assigned_user_id: 'user-2' }, error: null },
+      { data: { id: 'tpl-1', name: 'Template Teste', template_text: 'Texto {{client_name}}' }, error: null },
+      { data: { id: 'conv-1', client_name: 'Cliente', client_phone: '5511999999999' }, error: null }
+    ];
+    const { req, res } = createMocks({
+      method: 'GET',
+      query: {
+        action: 'generate',
+        template_id: 'tpl-1',
+        conversation_id: 'conv-1',
+        case_id: 'case-1'
+      },
+      __testUser: { role: 'advogado', id: 'user-1' }
+    });
+    await templatesHandler(req, res);
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData().error).toMatch(/nao autorizado/i);
+    // caso nao autorizado: apenas o acesso ao caso foi verificado; nenhuma busca/escrita posterior
+    expect(global.__supabaseQueue).toHaveLength(2);
+  });
+
   test('advogado pode gerar documento via action=generate', async () => {
     global.__supabaseQueue = [
+      { data: { id: 'case-1', assigned_user_id: 'user-1' }, error: null },
       { data: { id: 'tpl-1', name: 'Template Teste', template_text: 'Texto {{client_name}}' }, error: null },
       { data: { id: 'conv-1', client_name: 'Cliente', client_phone: '5511999999999' }, error: null },
       { data: { id: 'doc-1', status: 'draft' }, error: null }

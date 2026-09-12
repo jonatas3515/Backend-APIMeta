@@ -130,6 +130,52 @@ describe('FeeSimulator - OAB e simulacao', () => {
     });
   });
 
+  test('resposta OAB obsoleta nao sobrescreve referencia do servico atual', async () => {
+    const oldRef = { id: 'oab-old', service: 'Old Service', min_amount: 100, suggested_amount: 200, max_amount: 300, regional_suggestion: 150, match_score: 80 };
+    const newRef = { id: 'oab-new', service: 'New Service', min_amount: 1000, suggested_amount: 2000, max_amount: 3000, regional_suggestion: 1500, match_score: 80 };
+    const oldService = { id: 'svc-old', name: 'Old Service', base_amount: 1500, billing_model: 'fixo', default_installments: 1, legal_area: 'Civel', case_type: 'Geral' };
+    const newService = { id: 'svc-new', name: 'New Service', base_amount: 2500, billing_model: 'fixo', default_installments: 1, legal_area: 'Civel', case_type: 'Geral' };
+
+    let delayOld = null;
+    apiJson.mockImplementation((url, options = {}) => {
+      const method = (options.method || 'GET').toUpperCase();
+      if (method === 'GET') {
+        if (url.startsWith('/api/fee-services')) return Promise.resolve([oldService, newService]);
+        if (url.startsWith('/api/fee-simulations')) return Promise.resolve([]);
+        if (url.includes('Old+Service')) {
+          return new Promise((resolve) => { delayOld = () => resolve([oldRef]); });
+        }
+        if (url.includes('New+Service')) {
+          return Promise.resolve([newRef]);
+        }
+        return Promise.resolve([]);
+      }
+      return Promise.resolve(null);
+    });
+
+    const { container } = render(React.createElement(FeeSimulator, { caseId: 'case-1', caseData: { legal_area: 'Civel' }, userRole: 'admin' }));
+    await waitFor(() => expect(container.querySelector('select option[value="svc-new"]')).toBeInTheDocument());
+
+    const select = container.querySelector('select');
+    fireEvent.change(select, { target: { value: 'svc-old' } });
+    await new Promise((r) => setTimeout(r, 20));
+    fireEvent.change(select, { target: { value: 'svc-new' } });
+
+    await waitFor(() => {
+      expect(container.textContent).toContain('Referência OAB');
+      expect(container.textContent).toContain('New Service');
+      expect(container.textContent).not.toContain('R$ 150,00');
+      expect(container.textContent).toContain('R$ 1.500,00');
+    }, { timeout: 3000 });
+
+    // agora libera a resposta atrasada; o componente nao deve mudar para Old Service
+    if (delayOld) delayOld();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(container.textContent).toContain('New Service');
+    expect(container.textContent).toContain('Sugestão regional (70-80% OAB): R$ 1.500,00');
+    expect(container.textContent).not.toContain('Sugestão regional (70-80% OAB): R$ 150,00');
+  });
+
   test('exibe mensagem e usa catálogo interno quando nao ha referencia OAB', async () => {
     apiJson.mockImplementation((url, options = {}) => {
       const method = (options.method || 'GET').toUpperCase();

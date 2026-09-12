@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { apiJson } from '../lib/apiClient';
 
 import { calculateRegionalSuggestion, calculateOabDiscount, calculateSuggestionRange, rankServiceMatches } from '../lib/feeSuggestion';
@@ -15,6 +15,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   const [oabAmbiguous, setOabAmbiguous] = useState(false);
   const [oabCandidates, setOabCandidates] = useState([]);
   const [useOabBase, setUseOabBase] = useState(false);
+  const oabRequestId = useRef(0);
   const [form, setForm] = useState({
     complexity: 'media',
     urgency: 'normal',
@@ -97,7 +98,15 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   };
 
   const loadOabReference = async (service) => {
+    const requestId = ++oabRequestId.current;
+    if (!service?.id) {
+      setOabReference(null);
+      setOabAmbiguous(false);
+      setOabCandidates([]);
+      return null;
+    }
     const { ref, ambiguous, candidates } = await fetchOabReference(service);
+    if (requestId !== oabRequestId.current) return ref;
     setOabReference(ref);
     setOabAmbiguous(ambiguous);
     setOabCandidates(candidates || []);

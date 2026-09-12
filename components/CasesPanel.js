@@ -78,21 +78,19 @@ export default function CasesPanel({ notice }) {
   const openCase = (caseItem, view = 'visao-geral') => {
     setSelectedCase(caseItem);
     setCaseView(view);
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.set('caseId', caseItem.id);
-      url.searchParams.set('caseView', view);
-      window.history.replaceState(null, '', url.toString());
-    }
+    router.replace({
+      pathname: router.pathname,
+      query: { ...router.query, caseId: caseItem.id, caseView: view }
+    }, undefined, { shallow: true });
   };
 
   const updateCaseView = (view) => {
     setCaseView(view);
-    if (selectedCase && typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.set('caseId', selectedCase.id);
-      url.searchParams.set('caseView', view);
-      window.history.replaceState(null, '', url.toString());
+    if (selectedCase) {
+      router.replace({
+        pathname: router.pathname,
+        query: { ...router.query, caseId: selectedCase.id, caseView: view }
+      }, undefined, { shallow: true });
     }
   };
 
@@ -120,9 +118,10 @@ export default function CasesPanel({ notice }) {
         notes: ''
       });
       setShowForm(true);
-      if (typeof window !== 'undefined') {
-        window.history.replaceState(null, '', '/?tab=cases');
-      }
+      const query = { ...router.query };
+      delete query.new;
+      query.tab = 'cases';
+      router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
     }
   }, [router.isReady, router.query, showForm]);
 
@@ -381,12 +380,10 @@ export default function CasesPanel({ notice }) {
           onBack={() => {
             setSelectedCase(null);
             setCaseView('list');
-            if (typeof window !== 'undefined') {
-              const url = new URL(window.location.href);
-              url.searchParams.delete('caseId');
-              url.searchParams.delete('caseView');
-              window.history.replaceState(null, '', url.toString());
-            }
+            const query = { ...router.query };
+            delete query.caseId;
+            delete query.caseView;
+            router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
           }}
           onOpenChecklist={() => setChecklistCase(selectedCase)}
           onOpenDocuments={() => setDocsCase(selectedCase)}

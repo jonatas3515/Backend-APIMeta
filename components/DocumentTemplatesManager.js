@@ -43,9 +43,10 @@ export default function DocumentTemplatesManager() {
   useEffect(() => {
     if (router.isReady && router.query.focus === 'search' && searchRef.current) {
       searchRef.current.focus();
-      if (typeof window !== 'undefined') {
-        window.history.replaceState(null, '', '/?tab=templates');
-      }
+      const query = { ...router.query };
+      delete query.focus;
+      query.tab = 'templates';
+      router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
     }
   }, [router.isReady, router.query]);
 
