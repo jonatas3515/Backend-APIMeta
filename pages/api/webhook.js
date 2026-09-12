@@ -819,6 +819,19 @@ async function saveMessage(conversationId, text, sender, messageType = 'text', m
 
         if (fallbackError) throw fallbackError;
         console.log(`[SUPABASE] Mensagem salva (fallback): ${fallbackData.id}`);
+
+        if (minimalInsertData.direction === 'inbound') {
+          await supabase.rpc('log_audit', {
+            p_user_id: null,
+            p_entity_type: 'whatsapp_message',
+            p_entity_id: fallbackData.id,
+            p_action: 'receive_message',
+            p_old_value: null,
+            p_new_value: 'received',
+            p_details: JSON.stringify({ conversationId, contentType: messageType })
+          });
+        }
+
         return fallbackData;
       }
 
@@ -826,6 +839,19 @@ async function saveMessage(conversationId, text, sender, messageType = 'text', m
     }
 
     console.log(`[SUPABASE] Mensagem salva: ${data.id}`);
+
+    if (insertData.direction === 'inbound') {
+      await supabase.rpc('log_audit', {
+        p_user_id: null,
+        p_entity_type: 'whatsapp_message',
+        p_entity_id: data.id,
+        p_action: 'receive_message',
+        p_old_value: null,
+        p_new_value: 'received',
+        p_details: JSON.stringify({ conversationId, contentType: messageType })
+      });
+    }
+
     return data;
   } catch (error) {
     console.error('[SUPABASE] Erro ao salvar mensagem:', sanitizeError(error));
