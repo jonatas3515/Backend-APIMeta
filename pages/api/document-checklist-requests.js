@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
 import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { buildDocumentRequestMessage } from '@/lib/documentChecklists';
+import logger from '@/lib/logger';
+import { incrementMetric } from '@/lib/metrics';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -78,18 +80,24 @@ async function handlePost(req, res, user) {
 }
 
 async function handleCreateDraft(req, res, user) {
+  const start = Date.now();
   const { case_id, conversation_id, items } = req.body;
 
+  logger('info', 'DOC_REQUEST_CREATE_DRAFT_START', { userId: user.id, caseId: case_id, conversationId });
+
   if (!case_id || !Array.isArray(items) || items.length === 0) {
+    logger('warn', 'DOC_REQUEST_CREATE_DRAFT_VALIDATION', { userId: user.id, httpStatus: 400, errorCode: 'MISSING_FIELDS' });
     return res.status(400).json({ error: 'case_id e items sao obrigatorios' });
   }
 
   if (items.length > 3) {
+    logger('warn', 'DOC_REQUEST_CREATE_DRAFT_VALIDATION', { userId: user.id, httpStatus: 400, errorCode: 'ITEM_LIMIT' });
     return res.status(400).json({ error: 'Limite de 3 itens por solicitacao' });
   }
 
   const accessible = await canAccessCase(case_id, user);
   if (!accessible) {
+    logger('warn', 'DOC_REQUEST_CREATE_DRAFT_FORBIDDEN', { userId: user.id, caseId: case_id, httpStatus: 403 });
     return res.status(403).json({ error: 'Acesso negado' });
   }
 
@@ -103,10 +111,12 @@ async function handleCreateDraft(req, res, user) {
     if (itemError) throw itemError;
 
     if (!itemDetails || itemDetails.length !== items.length) {
+      logger('warn', 'DOC_REQUEST_CREATE_DRAFT_VALIDATION', { userId: user.id, caseId: case_id, httpStatus: 400, errorCode: 'ITEMS_NOT_IN_CASE' });
       return res.status(400).json({ error: 'Um ou mais itens nao pertencem ao caso' });
     }
 
     if (itemDetails.some(i => i.is_sensitive)) {
+      logger('warn', 'DOC_REQUEST_CREATE_DRAFT_VALIDATION', { userId: user.id, caseId: case_id, httpStatus: 400, errorCode: 'SENSITIVE_ITEM' });
       return res.status(400).json({ error: 'Nao e permitido solicitar documentos sensiveis por WhatsApp' });
     }
 
@@ -128,20 +138,27 @@ async function handleCreateDraft(req, res, user) {
 
     if (insertError) throw insertError;
 
+    incrementMetric('document_requests', 'create');
+    logger('info', 'DOC_REQUEST_CREATE_DRAFT_SUCCESS', { userId: user.id, caseId: case_id, documentId: request.id, httpStatus: 201, durationMs: Date.now() - start });
     return res.status(201).json({
       ...request,
       message
     });
   } catch (error) {
-    console.error('[DOC_CHECKLIST_REQUESTS] Erro ao criar rascunho:', error.message);
+    logger('error', 'DOC_REQUEST_CREATE_DRAFT_ERROR', { userId: user.id, caseId: case_id, httpStatus: 500, durationMs: Date.now() - start });
     return res.status(500).json({ error: 'Erro ao criar rascunho' });
   }
 }
 
 async function handleSend(req, res, user, action) {
+  const start = Date.now();
   const { id } = req.body;
 
+  const eventPrefix = action === 'resend' ? 'DOC_REQUEST_RESEND' : 'DOC_REQUEST_SEND';
+  logger('info', `${eventPrefix}_START`, { userId: user.id, documentId: id });
+
   if (!id) {
+    logger('warn', `${eventPrefix}_VALIDATION`, { userId: user.id, httpStatus: 400, errorCode: 'ID_MISSING' });
     return res.status(400).json({ error: 'id da solicitacao e obrigatorio' });
   }
 
@@ -153,16 +170,19 @@ async function handleSend(req, res, user, action) {
       .single();
 
     if (error || !request) {
+      logger('warn', `${eventPrefix}_NOT_FOUND`, { userId: user.id, documentId: id, httpStatus: 404 });
       return res.status(404).json({ error: 'Solicitacao nao encontrada' });
     }
 
     const accessible = await canAccessCase(request.case_id, user);
     if (!accessible) {
+      logger('warn', `${eventPrefix}_FORBIDDEN`, { userId: user.id, caseId: request.case_id, documentId: id, httpStatus: 403 });
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
     const conversationId = request.conversation_id;
     if (!conversationId) {
+      logger('warn', `${eventPrefix}_VALIDATION`, { userId: user.id, documentId: id, httpStatus: 400, errorCode: 'NO_CONVERSATION' });
       return res.status(400).json({ error: 'Conversa nao vinculada a solicitacao' });
     }
 
@@ -173,6 +193,7 @@ async function handleSend(req, res, user, action) {
       .single();
 
     if (convError || !conversation?.client_phone) {
+      logger('warn', `${eventPrefix}_VALIDATION`, { userId: user.id, documentId: id, conversationId, httpStatus: 400, errorCode: 'CLIENT_NO_PHONE' });
       return res.status(400).json({ error: 'Cliente sem telefone configurado' });
     }
 
@@ -221,9 +242,15 @@ async function handleSend(req, res, user, action) {
       }
     }
 
+    if (action === 'resend') {
+      incrementMetric('document_requests', 'resend');
+    } else {
+      incrementMetric('document_requests', 'send');
+    }
+    logger('info', `${eventPrefix}_SUCCESS`, { userId: user.id, caseId: request.case_id, documentId: id, conversationId, httpStatus: 200, durationMs: Date.now() - start });
     return res.status(200).json({ ...updated, message });
   } catch (error) {
-    console.error('[DOC_CHECKLIST_REQUESTS] Erro ao enviar:', error.message);
+    logger('error', `${eventPrefix}_ERROR`, { userId: user.id, documentId: id, httpStatus: 500, durationMs: Date.now() - start });
     return res.status(500).json({ error: 'Erro ao enviar solicitacao' });
   }
 }

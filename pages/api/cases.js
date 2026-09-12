@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
+import logger from '@/lib/logger';
+import { incrementMetric } from '@/lib/metrics';
 
 const ACTIVE_CLIENT_STATUSES = ['ativo', 'active', ''];
 
@@ -144,6 +146,7 @@ async function handleGet(req, res) {
 }
 
 async function handlePost(req, res) {
+  const start = Date.now();
   const {
     conversation_id,
     title,
@@ -158,14 +161,18 @@ async function handlePost(req, res) {
     deadline_type,
     notes
   } = req.body;
+  const userId = req.user?.id;
 
-  // Validar permissão
+  logger('info', 'CASE_CREATE_START', { userId, conversationId: conversation_id });
+
   const userRole = req.user?.role;
   if (userRole !== 'admin' && userRole !== 'advogado') {
+    logger('warn', 'CASE_CREATE_FORBIDDEN', { userId, httpStatus: 403 });
     return res.status(403).json({ error: 'Apenas admin e advogado podem criar casos' });
   }
 
   if (!title) {
+    logger('warn', 'CASE_CREATE_VALIDATION', { userId, httpStatus: 400, errorCode: 'TITLE_MISSING' });
     return res.status(400).json({ error: 'Título do caso é obrigatório' });
   }
 
@@ -173,6 +180,7 @@ async function handlePost(req, res) {
     if (conversation_id) {
       const convCheck = await validateConversation(conversation_id);
       if (!convCheck.valid) {
+        logger('warn', 'CASE_CREATE_CONVERSATION_INVALID', { userId, conversationId: conversation_id, httpStatus: convCheck.status, errorCode: convCheck.error });
         return res.status(convCheck.status).json({ error: convCheck.error });
       }
 
@@ -185,6 +193,7 @@ async function handlePost(req, res) {
       if (checkError) {
         console.error('[CASES] Erro ao verificar casos existentes:', checkError);
       } else if (existingCases && existingCases.length > 0) {
+        logger('warn', 'CASE_CREATE_CONFLICT', { userId, conversationId: conversation_id, httpStatus: 409 });
         return res.status(409).json({
           error: 'Esta conversa já possui um caso ativo vinculado',
           existingCase: existingCases[0]
@@ -213,16 +222,18 @@ async function handlePost(req, res) {
       .single();
 
     if (error) {
-      console.error('[CASES] Erro no banco:', error);
+      logger('error', 'CASE_CREATE_ERROR', { userId, httpStatus: 400, errorCode: 'DB_ERROR', durationMs: Date.now() - start });
       return res.status(400).json({
         error: 'Não foi possível criar o caso. Verifique os dados e tente novamente.'
       });
     }
 
-    console.log(`[CASES] Caso criado: ${data.id}`);
+    incrementMetric('cases', 'create');
+    if (conversation_id) incrementMetric('cases', 'link');
+    logger('info', 'CASE_CREATE_SUCCESS', { userId, caseId: data.id, httpStatus: 201, durationMs: Date.now() - start });
     return res.status(201).json(data);
   } catch (error) {
-    console.error('[CASES] Erro ao criar caso:', error);
+    logger('error', 'CASE_CREATE_ERROR', { userId, httpStatus: 500, durationMs: Date.now() - start });
     return res.status(500).json({
       error: 'Erro ao criar caso. Tente novamente em instantes.'
     });
@@ -230,24 +241,30 @@ async function handlePost(req, res) {
 }
 
 async function handlePatch(req, res) {
+  const start = Date.now();
   const { id } = req.query;
   const updates = req.body;
+  const userId = req.user?.id;
+  const conversationId = updates?.conversation_id;
 
-  // Validar permissão
+  logger('info', 'CASE_UPDATE_START', { userId, caseId: id, conversationId });
+
   const userRole = req.user?.role;
   if (userRole !== 'admin' && userRole !== 'advogado') {
+    logger('warn', 'CASE_UPDATE_FORBIDDEN', { userId, caseId: id, httpStatus: 403 });
     return res.status(403).json({ error: 'Apenas admin e advogado podem atualizar casos' });
   }
 
   if (!id) {
+    logger('warn', 'CASE_UPDATE_VALIDATION', { userId, httpStatus: 400, errorCode: 'ID_MISSING' });
     return res.status(400).json({ error: 'ID do caso é obrigatório' });
   }
 
   try {
-    // Verificar se está removendo o vínculo (desvincular conversa)
     if (updates.conversation_id === null || updates.conversation_id === '') {
       const { requests, routines } = await hasPendingOperations(id);
       if (requests.length > 0 || routines.length > 0) {
+        logger('warn', 'CASE_UNLINK_CONVERSATION_BLOCKED_PENDING_OPS', { userId, caseId: id, httpStatus: 409, pendingRequests: requests.length, pendingRoutines: routines.length });
         return res.status(409).json({
           error: 'Nao e possivel remover a conversa. Existem solicitacoes de documento ou rotinas pendentes para este caso.',
           pendingRequests: requests.length,
@@ -256,23 +273,24 @@ async function handlePatch(req, res) {
       }
     }
 
-    // Se está alterando conversation_id para um novo valor, validar existencia e atividade
-    if (updates.conversation_id) {
-      const convCheck = await validateConversation(updates.conversation_id);
+    if (conversationId) {
+      const convCheck = await validateConversation(conversationId);
       if (!convCheck.valid) {
+        logger('warn', 'CASE_UPDATE_CONVERSATION_INVALID', { userId, caseId: id, conversationId, httpStatus: convCheck.status, errorCode: convCheck.error });
         return res.status(convCheck.status).json({ error: convCheck.error });
       }
 
       const { data: existingCases, error: checkError } = await supabase
         .from('cases')
         .select('id, status, title')
-        .eq('conversation_id', updates.conversation_id)
+        .eq('conversation_id', conversationId)
         .neq('status', 'encerrado')
         .neq('id', id);
 
       if (checkError) {
         console.error('[CASES] Erro ao verificar casos existentes:', checkError);
       } else if (existingCases && existingCases.length > 0) {
+        logger('warn', 'CASE_UPDATE_CONFLICT', { userId, caseId: id, conversationId, httpStatus: 409 });
         return res.status(409).json({
           error: 'A conversa de destino já possui um caso ativo vinculado',
           existingCase: existingCases[0]
@@ -288,10 +306,20 @@ async function handlePatch(req, res) {
 
     if (error) throw error;
 
-    console.log(`[CASES] Caso atualizado: ${id}`);
+    if (conversationId) {
+      incrementMetric('cases', 'link');
+      logger('info', 'CASE_LINK_CONVERSATION_SUCCESS', { userId, caseId: id, conversationId, httpStatus: 200, durationMs: Date.now() - start });
+    } else if (conversationId === null) {
+      incrementMetric('cases', 'unlink');
+      logger('info', 'CASE_UNLINK_CONVERSATION_SUCCESS', { userId, caseId: id, httpStatus: 200, durationMs: Date.now() - start });
+    } else {
+      incrementMetric('cases', 'update');
+      logger('info', 'CASE_UPDATE_SUCCESS', { userId, caseId: id, httpStatus: 200, durationMs: Date.now() - start });
+    }
+
     return res.status(200).json(data);
   } catch (error) {
-    console.error('[CASES] Erro ao atualizar caso:', error);
+    logger('error', 'CASE_UPDATE_ERROR', { userId, caseId: id, httpStatus: 500, durationMs: Date.now() - start });
     return res.status(500).json({ error: 'Erro ao atualizar caso' });
   }
 }

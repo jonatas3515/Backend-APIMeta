@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth, requireRole, hasMinimumRole } from '@/lib/auth';
+import logger from '@/lib/logger';
+import { incrementMetric } from '@/lib/metrics';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -38,11 +40,15 @@ async function handler(req, res) {
     }
 
     if (method === 'POST') {
+      const start = Date.now();
+      logger('info', 'FEE_SIM_SAVE_START', { userId: user.id, caseId: req.body.case_id });
+
       if (req.body.action === 'calculate') {
         return calculate(req, res);
       }
 
       if (!req.body.case_id || req.body.case_id === 'undefined' || req.body.case_id === 'null') {
+        logger('warn', 'FEE_SIM_SAVE_VALIDATION', { userId: user.id, httpStatus: 400, errorCode: 'CASE_ID_MISSING' });
         return res.status(400).json({ error: 'case_id é obrigatório' });
       }
 
@@ -54,6 +60,8 @@ async function handler(req, res) {
         .single();
       if (error) throw error;
 
+      incrementMetric('fee_simulator', 'save');
+      logger('info', 'FEE_SIM_SAVE_SUCCESS', { userId: user.id, caseId: req.body.case_id, documentId: data.id, httpStatus: 201, durationMs: Date.now() - start });
       await logAudit(user.id, 'fee_simulations', data.id, 'create', null, { calculated, simulation: data });
       return res.status(201).json(data);
     }

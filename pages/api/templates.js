@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
 import { verifyCaseAccess } from '@/lib/caseAuth';
+import logger from '@/lib/logger';
+import { incrementMetric } from '@/lib/metrics';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -47,11 +49,17 @@ async function handleGet(req, res) {
 
   try {
     if (action === 'generate') {
+      const start = Date.now();
+      const userId = req.user?.id;
+      const { template_id, conversation_id, case_id } = req.query;
+
+      logger('info', 'GENERATED_DOCUMENTS_GENERATE_START', { userId, caseId: case_id, conversationId: conversation_id, templateId: template_id });
+
       if (!canGenerateDocuments(req.user)) {
+        logger('warn', 'GENERATED_DOCUMENTS_GENERATE_FORBIDDEN', { userId, caseId: case_id, httpStatus: 403 });
         return res.status(403).json({ error: 'Apenas advogados e administradores podem gerar documentos.' });
       }
-      // Gera documento a partir de template
-      const { template_id, conversation_id, case_id } = req.query;
+
 
       if (case_id) {
         const { allowed } = await verifyCaseAccess({ supabase, caseId: case_id, user: req.user });
@@ -122,6 +130,8 @@ async function handleGet(req, res) {
 
       if (docError) throw docError;
 
+      incrementMetric('generated_documents', 'generate');
+      logger('info', 'GENERATED_DOCUMENTS_GENERATE_SUCCESS', { userId: req.user?.id, caseId: case_id, conversationId: conversation_id, documentId: doc.id, httpStatus: 200, durationMs: Date.now() - start });
       return res.status(200).json(doc);
     } else if (id) {
       // Retorna template específico
@@ -150,7 +160,7 @@ async function handleGet(req, res) {
       return res.status(200).json(data || []);
     }
   } catch (error) {
-    console.error('[TEMPLATES] Erro ao buscar:', error);
+    logger('error', 'GENERATED_DOCUMENTS_GENERATE_ERROR', { userId: req.user?.id, httpStatus: 500 });
     return res.status(500).json({ error: 'Erro ao buscar templates' });
   }
 }
