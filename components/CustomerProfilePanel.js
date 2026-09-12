@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiJson } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import { formatPhone } from '../lib/formatters';
+import LgpdExportButton from './LgpdExportButton';
 
 const LEGAL_AREA_ICONS = {
   'Direito Trabalhista': '⚖️',
@@ -403,12 +404,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
             >
               📤 Enviar Documento
             </button>
-            <button
-              onClick={() => alert('Exportação de histórico será implementada em breve.')}
-              className="nc-btn text-xs py-2"
-            >
-              📄 Exportar Histórico
-            </button>
+            <LgpdExportButton clientId={conversationId} clientName={customer.name || conversationId} />
           </div>
 
           {showNewCase && (
