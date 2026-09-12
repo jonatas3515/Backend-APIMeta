@@ -14,7 +14,7 @@ describe('API /api/metrics', () => {
     resetMetrics();
   });
 
-  test('admin acessa contadores agregados', async () => {
+  test('admin acessa contadores agregados em JSON', async () => {
     incrementMetric('cases', 'link');
     incrementMetric('cases', 'unlink');
 
@@ -26,8 +26,29 @@ describe('API /api/metrics', () => {
     await metricsHandler(req, res);
     const data = res._getJSONData();
     expect(res._getStatusCode()).toBe(200);
+    expect(data.collectedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(data.source).toBe('backend-api-meta');
     expect(data.metrics['cases:link']).toBe(1);
     expect(data.metrics['cases:unlink']).toBe(1);
+  });
+
+  test('admin exporta metricas em CSV', async () => {
+    incrementMetric('cases', 'link');
+    incrementMetric('cases', 'unlink');
+
+    const { req, res } = createMocks({
+      method: 'GET',
+      query: { format: 'csv' },
+      __testUser: { role: 'admin', id: 'user-1' }
+    });
+
+    await metricsHandler(req, res);
+    const csv = res._getData();
+    expect(res._getStatusCode()).toBe(200);
+    expect(res.getHeader('Content-Type')).toContain('text/csv');
+    expect(csv).toContain('collectedAt,source,metric,value');
+    expect(csv).toContain('backend-api-meta,cases:link,1');
+    expect(csv).toContain('backend-api-meta,cases:unlink,1');
   });
 
   test('nao-admin recebe 403', async () => {
