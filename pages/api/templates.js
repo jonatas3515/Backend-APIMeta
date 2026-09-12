@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/auth';
 import { verifyCaseAccess } from '@/lib/caseAuth';
 import logger from '@/lib/logger';
 import { incrementMetric } from '@/lib/metrics';
+import { getCache, setCache, clearCacheByPrefix } from '@/lib/cache';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -10,6 +11,8 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
   : null;
+
+const CACHE_TTL_TEMPLATES = 30_000;
 
 async function handler(req, res) {
   if (!supabase) {
@@ -146,6 +149,12 @@ async function handleGet(req, res) {
       return res.status(200).json(data);
     } else {
       // Lista templates com filtros
+      const listKey = `templates:applicable:${legal_area || 'all'}:${case_type || 'all'}`;
+      const cached = getCache(listKey);
+      if (cached) {
+        return res.status(200).json(cached);
+      }
+
       let query = supabase.from('document_templates').select('*');
 
       if (legal_area) query = query.eq('legal_area', legal_area);
@@ -157,7 +166,9 @@ async function handleGet(req, res) {
 
       if (error) throw error;
 
-      return res.status(200).json(data || []);
+      const result = data || [];
+      setCache(listKey, result, CACHE_TTL_TEMPLATES);
+      return res.status(200).json(result);
     }
   } catch (error) {
     logger('error', 'GENERATED_DOCUMENTS_GENERATE_ERROR', { userId: req.user?.id, httpStatus: 500 });
@@ -189,6 +200,7 @@ async function handlePost(req, res) {
 
     if (error) throw error;
 
+    clearCacheByPrefix('templates:applicable:');
     console.log(`[TEMPLATES] Template criado: ${data.id}`);
     return res.status(201).json(data);
   } catch (error) {
@@ -215,6 +227,7 @@ async function handlePatch(req, res) {
 
     if (error) throw error;
 
+    clearCacheByPrefix('templates:applicable:');
     console.log(`[TEMPLATES] Template atualizado: ${id}`);
     return res.status(200).json(data);
   } catch (error) {
@@ -239,6 +252,7 @@ async function handleDelete(req, res) {
 
     if (error) throw error;
 
+    clearCacheByPrefix('templates:applicable:');
     console.log(`[TEMPLATES] Template desativado: ${id}`);
     return res.status(200).json({ success: true, message: 'Template desativado' });
   } catch (error) {

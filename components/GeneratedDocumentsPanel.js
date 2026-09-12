@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useToast } from '../lib/useToast';
 import { apiJson } from '../lib/apiClient';
 import { getErrorMessage } from '../lib/errorMessage';
 
 export default function GeneratedDocumentsPanel({ caseId, conversationId, onClose, userRole }) {
+  const { addToast } = useToast();
   const [documents, setDocuments] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -70,9 +72,12 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
       setSelectedTemplate('');
       fetchDocuments();
       setMessage({ type: 'success', text: 'Documento gerado com sucesso.' });
+      addToast('Documento gerado com sucesso.', 'success');
     } catch (error) {
       console.error('[GEN_DOCS] Erro ao gerar');
-      setMessage({ type: 'error', text: getErrorMessage(error, 'Erro ao gerar documento. Tente novamente.') });
+      const text = getErrorMessage(error, 'Erro ao gerar documento. Tente novamente.');
+      setMessage({ type: 'error', text });
+      addToast(text, 'error');
     } finally {
       setGenerating(false);
     }
@@ -97,9 +102,12 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
         fetchDocuments();
       }
       setMessage({ type: 'success', text: 'Status atualizado com sucesso.' });
+      addToast('Status atualizado com sucesso.', 'success');
     } catch (error) {
       console.error('[GEN_DOCS] Erro ao atualizar');
-      setMessage({ type: 'error', text: getErrorMessage(error, 'Erro ao atualizar status. Tente novamente.') });
+      const text = getErrorMessage(error, 'Erro ao atualizar status. Tente novamente.');
+      setMessage({ type: 'error', text });
+      addToast(text, 'error');
     } finally {
       setUpdating(null);
     }
@@ -150,7 +158,9 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500">Carregando...</p>
+        <div className="p-4 bg-gray-50 border rounded text-center" role="status" aria-live="polite">
+          <p className="text-sm text-gray-500">Carregando documentos...</p>
+        </div>
       ) : documents.length === 0 ? (
         <div className="p-4 bg-gray-50 border rounded text-center space-y-2" role="status" aria-live="polite">
           <p className="text-sm text-gray-600">Nenhum documento gerado para este caso.</p>

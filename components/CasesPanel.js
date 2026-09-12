@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../lib/useAuth';
+import { useToast } from '../lib/useToast';
 import { getErrorMessage } from '../lib/errorMessage';
 import useAreaFilter from '../hooks/useAreaFilter';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -21,6 +22,7 @@ import ConversationSelectorModal from './ConversationSelectorModal';
 export default function CasesPanel({ notice }) {
   const router = useRouter();
   const { profile } = useAuth();
+  const { addToast } = useToast();
   const canEdit = profile?.role === 'admin' || profile?.role === 'advogado';
   const { selectedArea, setSelectedArea } = useAreaFilter();
   const [cases, setCases] = useState([]);
@@ -272,9 +274,11 @@ export default function CasesPanel({ notice }) {
       });
       fetchCases();
       setActionMessage({ type: 'success', text: 'Caso salvo com sucesso.' });
+      addToast('Caso salvo com sucesso.', 'success');
     } catch (error) {
       const text = getErrorMessage(error, 'Erro ao salvar caso. Verifique os dados e tente novamente.');
       setActionMessage({ type: 'error', text });
+      addToast(text, 'error');
     } finally {
       setSaving(false);
     }
@@ -303,9 +307,11 @@ export default function CasesPanel({ notice }) {
       setSelectedCase(null);
       fetchCases();
       setActionMessage({ type: 'success', text: 'Caso removido com sucesso.' });
+      addToast('Caso removido com sucesso.', 'success');
     } catch (error) {
       const text = getErrorMessage(error, 'Erro ao remover caso.');
       setActionMessage({ type: 'error', text });
+      addToast(text, 'error');
     } finally {
       setDeleting(null);
     }
@@ -365,9 +371,11 @@ export default function CasesPanel({ notice }) {
       setCases((prev) => prev.map((c) => (c.id === data.id ? data : c)));
       setShowConversationSelector(false);
       setActionMessage({ type: 'success', text: 'Conversa vinculada com sucesso.' });
+      addToast('Conversa vinculada com sucesso.', 'success');
     } catch (error) {
       const text = getErrorMessage(error, 'Erro ao vincular conversa. Verifique se a conversa está ativa e tente novamente.');
       setActionMessage({ type: 'error', text });
+      addToast(text, 'error');
     } finally {
       setLinking(false);
     }
@@ -391,9 +399,11 @@ export default function CasesPanel({ notice }) {
       setSelectedCase(data);
       setCases((prev) => prev.map((c) => (c.id === data.id ? data : c)));
       setActionMessage({ type: 'success', text: 'Conversa removida do caso.' });
+      addToast('Conversa removida do caso.', 'success');
     } catch (error) {
       const text = getErrorMessage(error, 'Não foi possível remover a conversa. Verifique se existem solicitações ou rotinas pendentes.');
       setActionMessage({ type: 'error', text });
+      addToast(text, 'error');
     } finally {
       setUnlinking(false);
     }
@@ -728,9 +738,14 @@ export default function CasesPanel({ notice }) {
       )}
 
       {loading ? (
-        <p className="text-center text-gray-500">Carregando casos...</p>
+        <div className="text-center p-8" role="status" aria-live="polite">
+          <p className="text-gray-500">Carregando casos...</p>
+        </div>
       ) : cases.length === 0 ? (
-        <p className="text-center text-gray-500">Nenhum caso encontrado</p>
+        <div className="text-center p-8 bg-gray-50 border rounded" role="status" aria-live="polite">
+          <p className="text-gray-600 font-medium">Nenhum caso encontrado</p>
+          <p className="text-sm text-gray-500 mt-1">Crie um novo caso ou ajuste os filtros para começar.</p>
+        </div>
       ) : (
         <div className="overflow-x-auto -mx-2 px-2">
           <table className="w-full border-collapse">

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useToast } from '../lib/useToast';
 import { getErrorMessage } from '../lib/errorMessage';
 import { apiCall } from '../lib/apiClient';
 
 const ACTIVE_CLIENT_STATUSES = ['ativo', 'active', ''];
 
 export default function ConversationSelectorModal({ caseItem, onSelect, onClose }) {
+  const { addToast } = useToast();
   const [conversations, setConversations] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [search, setSearch] = useState('');
@@ -42,6 +44,7 @@ export default function ConversationSelectorModal({ caseItem, onSelect, onClose 
     } catch (error) {
       const text = getErrorMessage(error, 'Erro ao carregar conversas. Tente novamente.');
       setError(text);
+      addToast(text, 'error');
     } finally {
       setLoading(false);
     }
@@ -59,6 +62,7 @@ export default function ConversationSelectorModal({ caseItem, onSelect, onClose 
     } catch (error) {
       const text = getErrorMessage(error, 'Erro ao vincular conversa. Tente novamente.');
       setError(text);
+      addToast(text, 'error');
     } finally {
       setSelectingId(null);
     }
@@ -107,7 +111,9 @@ export default function ConversationSelectorModal({ caseItem, onSelect, onClose 
 
         <div className="p-4 overflow-y-auto flex-1">
           {loading ? (
-            <p className="text-center text-gray-500">Carregando conversas...</p>
+            <div className="text-center p-4" role="status" aria-live="polite">
+              <p className="text-gray-500">Carregando conversas...</p>
+            </div>
           ) : filtered.length === 0 ? (
             <div className="text-center" role="status" aria-live="polite">
               <p className="text-gray-500">Nenhuma conversa ativa encontrada.</p>

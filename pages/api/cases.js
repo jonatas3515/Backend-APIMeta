@@ -2,8 +2,12 @@ import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
 import logger from '@/lib/logger';
 import { incrementMetric } from '@/lib/metrics';
+import { getCache, setCache, deleteCache, clearCacheByPrefix } from '@/lib/cache';
 
 const ACTIVE_CLIENT_STATUSES = ['ativo', 'active', ''];
+
+const CACHE_TTL_LIST = 10_000;
+const CACHE_TTL_DETAIL = 15_000;
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -78,12 +82,28 @@ async function hasPendingOperations(caseId) {
   return { requests: requests || [], routines: routines || [] };
 }
 
+function buildFiltersHash(filters) {
+  const ordered = Object.keys(filters)
+    .sort()
+    .reduce((acc, key) => {
+      if (filters[key]) acc[key] = filters[key];
+      return acc;
+    }, {});
+  return JSON.stringify(ordered);
+}
+
 async function handleGet(req, res) {
   const { id, conversation_id, status, priority, legal_area, municipality } = req.query;
   const user = req.user;
 
   try {
     if (id) {
+      const detailKey = `cases:detail:${id}`;
+      const cached = getCache(detailKey);
+      if (cached) {
+        return res.status(200).json(cached);
+      }
+
       const { data, error } = await supabase
         .from('cases')
         .select('*, conversations!inner(assigned_user_id)')
@@ -99,6 +119,7 @@ async function handleGet(req, res) {
         return res.status(403).json({ error: 'Acesso não autorizado' });
       }
 
+      setCache(detailKey, data, CACHE_TTL_DETAIL);
       return res.status(200).json(data);
     }
 
@@ -116,6 +137,13 @@ async function handleGet(req, res) {
       if (user.role !== 'admin' && conv.assigned_user_id !== user.id) {
         return res.status(403).json({ error: 'Acesso não autorizado' });
       }
+    }
+
+    const filters = { conversation_id, status, priority, legal_area, municipality };
+    const listKey = `cases:list:${user.id}:${buildFiltersHash(filters)}`;
+    const cachedList = getCache(listKey);
+    if (cachedList) {
+      return res.status(200).json(cachedList);
     }
 
     let query = supabase
@@ -138,7 +166,9 @@ async function handleGet(req, res) {
 
     if (error) throw error;
 
-    return res.status(200).json(data || []);
+    const result = data || [];
+    setCache(listKey, result, CACHE_TTL_LIST);
+    return res.status(200).json(result);
   } catch (error) {
     console.error('[CASES] Erro ao listar casos:', error);
     return res.status(500).json({ error: 'Erro ao listar casos' });
@@ -228,6 +258,9 @@ async function handlePost(req, res) {
       });
     }
 
+    clearCacheByPrefix(`cases:list:${userId}:`);
+    deleteCache(`cases:detail:${data.id}`);
+
     incrementMetric('cases', 'create');
     if (conversation_id) incrementMetric('cases', 'link');
     logger('info', 'CASE_CREATE_SUCCESS', { userId, caseId: data.id, httpStatus: 201, durationMs: Date.now() - start });
@@ -305,6 +338,9 @@ async function handlePatch(req, res) {
       .single();
 
     if (error) throw error;
+
+    clearCacheByPrefix(`cases:list:${userId}:`);
+    deleteCache(`cases:detail:${id}`);
 
     if (conversationId) {
       incrementMetric('cases', 'link');

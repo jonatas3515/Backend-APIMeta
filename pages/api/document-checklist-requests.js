@@ -4,8 +4,11 @@ import { sendWhatsAppMessage } from '@/lib/whatsapp';
 import { buildDocumentRequestMessage } from '@/lib/documentChecklists';
 import logger from '@/lib/logger';
 import { incrementMetric } from '@/lib/metrics';
+import { getCache, setCache, clearCacheByPrefix } from '@/lib/cache';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+const CACHE_TTL_LIST = 5_000;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
@@ -54,15 +57,23 @@ async function handleGet(req, res, user) {
     return res.status(403).json({ error: 'Acesso negado' });
   }
 
+  const listKey = `doc-requests:list:${case_id}`;
+  const cached = getCache(listKey);
+  if (cached) {
+    return res.status(200).json(cached);
+  }
+
   try {
     const { data, error } = await supabase
       .from('document_checklist_requests')
-      .select('*')
+      .select('id, case_id, conversation_id, items, status, requested_at, requested_by, wa_message_id, message_template_key, batch_number')
       .eq('case_id', case_id)
       .order('requested_at', { ascending: false });
 
     if (error) throw error;
-    return res.status(200).json(data || []);
+    const result = data || [];
+    setCache(listKey, result, CACHE_TTL_LIST);
+    return res.status(200).json(result);
   } catch (error) {
     console.error('[DOC_CHECKLIST_REQUESTS] Erro ao listar:', error.message);
     return res.status(500).json({ error: 'Erro ao listar solicitacoes' });
@@ -138,6 +149,7 @@ async function handleCreateDraft(req, res, user) {
 
     if (insertError) throw insertError;
 
+    clearCacheByPrefix(`doc-requests:list:${case_id}`);
     incrementMetric('document_requests', 'create');
     logger('info', 'DOC_REQUEST_CREATE_DRAFT_SUCCESS', { userId: user.id, caseId: case_id, documentId: request.id, httpStatus: 201, durationMs: Date.now() - start });
     return res.status(201).json({
@@ -242,6 +254,7 @@ async function handleSend(req, res, user, action) {
       }
     }
 
+    clearCacheByPrefix(`doc-requests:list:${request.case_id}`);
     if (action === 'resend') {
       incrementMetric('document_requests', 'resend');
     } else {

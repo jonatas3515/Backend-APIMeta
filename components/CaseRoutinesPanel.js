@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useToast } from '../lib/useToast';
 import { apiCall } from '../lib/apiClient';
 import { getErrorMessage } from '../lib/errorMessage';
 
 export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) {
+  const { addToast } = useToast();
   const [routines, setRoutines] = useState([]);
   const [executions, setExecutions] = useState([]);
   const [selectedRoutine, setSelectedRoutine] = useState('');
@@ -66,9 +68,12 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
       setSelectedRoutine('');
       fetchExecutions();
       setMessage({ type: 'success', text: 'Rotina aplicada com sucesso.' });
+      addToast('Rotina aplicada com sucesso.', 'success');
     } catch (error) {
       console.error('[CASE_ROUTINES] Erro ao aplicar');
-      setMessage({ type: 'error', text: getErrorMessage(error, 'Erro ao aplicar rotina. Tente novamente.') });
+      const text = getErrorMessage(error, 'Erro ao aplicar rotina. Tente novamente.');
+      setMessage({ type: 'error', text });
+      addToast(text, 'error');
     } finally {
       setLoading(false);
     }
@@ -100,6 +105,10 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
             Vincule uma conversa ao caso antes de aplicar uma rotina.
             A conversa é necessária para registrar documentos e lembretes no contexto correto.
           </p>
+        )}
+
+        {loading && !selectedRoutine && (
+          <div className="p-2 text-sm text-gray-500" role="status" aria-live="polite">Carregando rotinas...</div>
         )}
 
         <div className="space-y-3">

@@ -2,8 +2,10 @@ import { useEffect } from 'react';
 import '../styles/globals.css';
 import { AuthProvider } from '../lib/useAuth';
 import { AreaFilterProvider } from '../contexts/AreaFilterContext';
+import { ToastProvider } from '../lib/useToast';
 import GlobalSearch from '../components/GlobalSearch';
 import KeyboardShortcuts from '../components/KeyboardShortcuts';
+import { ToastContainer } from '../components/Toast';
 
 function AppContent({ Component, pageProps }) {
   useEffect(() => {
@@ -20,6 +22,7 @@ function AppContent({ Component, pageProps }) {
       <Component {...pageProps} />
       <GlobalSearch />
       <KeyboardShortcuts />
+      <ToastContainer />
     </>
   );
 }
@@ -28,7 +31,9 @@ function MyApp({ Component, pageProps }) {
   return (
     <AuthProvider>
       <AreaFilterProvider>
-        <AppContent Component={Component} pageProps={pageProps} />
+        <ToastProvider>
+          <AppContent Component={Component} pageProps={pageProps} />
+        </ToastProvider>
       </AreaFilterProvider>
     </AuthProvider>
   );

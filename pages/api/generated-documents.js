@@ -3,8 +3,12 @@ import { withAuth } from '@/lib/auth';
 import { verifyCaseAccess } from '@/lib/caseAuth';
 import logger from '@/lib/logger';
 import { incrementMetric } from '@/lib/metrics';
+import { getCache, setCache, deleteCache, clearCacheByPrefix } from '@/lib/cache';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+const CACHE_TTL_LIST = 5_000;
+const CACHE_TTL_DETAIL = 10_000;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
@@ -51,6 +55,12 @@ async function handleGet(req, res) {
 
   try {
     if (id) {
+      const detailKey = `generated-docs:detail:${id}`;
+      const cached = getCache(detailKey);
+      if (cached) {
+        return res.status(200).json(cached);
+      }
+
       const { data, error } = await supabase
         .from('generated_documents')
         .select('*, document_templates(name, legal_area)')
@@ -58,10 +68,17 @@ async function handleGet(req, res) {
         .single();
 
       if (error) throw error;
+      setCache(detailKey, data, CACHE_TTL_DETAIL);
       return res.status(200).json(data);
     }
 
     if (case_id) {
+      const listKey = `generated-docs:list:${case_id}:${conversation_id || ''}`;
+      const cachedList = getCache(listKey);
+      if (cachedList) {
+        return res.status(200).json(cachedList);
+      }
+
       let query = supabase
         .from('generated_documents')
         .select('*, document_templates(name, legal_area)')
@@ -71,6 +88,8 @@ async function handleGet(req, res) {
 
       const { data: directDocs, error: directError } = await query;
       if (directError) throw directError;
+
+      let result = directDocs || [];
 
       if (conversation_id) {
         const { data: legacyDocs, error: legacyError } = await supabase
@@ -82,18 +101,23 @@ async function handleGet(req, res) {
 
         if (legacyError) throw legacyError;
 
-        const combined = [
-          ...(directDocs || []),
+        result = [
+          ...directDocs,
           ...(legacyDocs || []).map(doc => ({ ...doc, is_legacy: true }))
         ];
-
-        return res.status(200).json(combined);
       }
 
-      return res.status(200).json(directDocs || []);
+      setCache(listKey, result, CACHE_TTL_LIST);
+      return res.status(200).json(result);
     }
 
     if (conversation_id) {
+      const listKey = `generated-docs:list:${conversation_id}`;
+      const cachedList = getCache(listKey);
+      if (cachedList) {
+        return res.status(200).json(cachedList);
+      }
+
       const { data, error } = await supabase
         .from('generated_documents')
         .select('*, document_templates(name, legal_area)')
@@ -101,7 +125,9 @@ async function handleGet(req, res) {
         .order('generated_at', { ascending: false });
 
       if (error) throw error;
-      return res.status(200).json(data || []);
+      const result = data || [];
+      setCache(listKey, result, CACHE_TTL_LIST);
+      return res.status(200).json(result);
     }
 
     logger('warn', 'GENERATED_DOCUMENTS_LIST_VALIDATION', { userId, httpStatus: 400, errorCode: 'MISSING_FILTER' });
@@ -170,6 +196,8 @@ async function handlePatch(req, res) {
       .single();
 
     if (error) throw error;
+    clearCacheByPrefix(`generated-docs:list:${doc.case_id}:`);
+    deleteCache(`generated-docs:detail:${id}`);
     incrementMetric('generated_documents', 'update');
     logger('info', 'GENERATED_DOCUMENTS_UPDATE_SUCCESS', { userId, documentId: id, caseId: doc.case_id, httpStatus: 200, durationMs: Date.now() - start });
     return res.status(200).json(data);
@@ -223,6 +251,8 @@ async function handleDelete(req, res) {
       .eq('id', id);
 
     if (error) throw error;
+    clearCacheByPrefix(`generated-docs:list:${doc.case_id}:`);
+    deleteCache(`generated-docs:detail:${id}`);
     incrementMetric('generated_documents', 'delete');
     logger('info', 'GENERATED_DOCUMENTS_DELETE_SUCCESS', { userId, documentId: id, caseId: doc.case_id, httpStatus: 204, durationMs: Date.now() - start });
     return res.status(204).end();

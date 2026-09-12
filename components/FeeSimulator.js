@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
+import { useToast } from '../lib/useToast';
 import { apiJson } from '../lib/apiClient';
 import { getErrorMessage } from '../lib/errorMessage';
 
 import { calculateRegionalSuggestion, calculateOabDiscount, calculateSuggestionRange, rankServiceMatches } from '../lib/feeSuggestion';
 
 export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawyer = null, showTracking = false, hideForm = false }) {
+  const { addToast } = useToast();
   const [services, setServices] = useState([]);
   const [simulations, setSimulations] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -227,9 +229,11 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         final_amount: defaultFinal,
         proposal_valid_until: ''
       }));
+      addToast('Cálculo de honorários concluído.', 'success');
     } catch (err) {
       const text = getErrorMessage(err, 'Erro ao calcular honorários.');
       setMessage({ type: 'error', text });
+      addToast(text, 'error');
     } finally {
       setLoading(false);
     }
@@ -277,6 +281,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       });
 
       setMessage({ type: 'success', text: 'Simulação salva com sucesso.' });
+      addToast('Simulação salva com sucesso.', 'success');
       setResult(null);
       setForm({
         complexity: 'media',
@@ -294,6 +299,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
     } catch (err) {
       const text = getErrorMessage(err, 'Erro ao salvar simulação. Tente novamente.');
       setMessage({ type: 'error', text });
+      addToast(text, 'error');
     } finally {
       setSaving(false);
     }
@@ -305,9 +311,11 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       const extra = action === 'reject' ? { rejection_reason: 'Rejeitada pelo responsável' } : {};
       await apiJson(`/api/fee-simulations?id=${id}`, { method: 'PATCH', body: JSON.stringify({ status, ...extra }) });
       fetchSimulations();
+      addToast(`Simulação ${status} com sucesso.`, 'success');
     } catch (err) {
       const text = getErrorMessage(err, 'Erro ao atualizar situação da simulação.');
       setMessage({ type: 'error', text });
+      addToast(text, 'error');
     }
   };
 

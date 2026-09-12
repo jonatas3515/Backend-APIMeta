@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/useAuth';
+import { useToast } from '../lib/useToast';
 import { apiJson } from '../lib/apiClient';
 import { getErrorMessage } from '../lib/errorMessage';
 
 export default function DocumentRequestModal({ caseItem, conversation, onClose }) {
   const { profile } = useAuth();
+  const { addToast } = useToast();
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState([]);
   const [draft, setDraft] = useState(null);
@@ -76,9 +78,12 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
         })
       });
       setDraft(data);
+      addToast('Rascunho criado com sucesso.', 'success');
     } catch (error) {
       console.error('[DOC_REQUEST_MODAL] Erro ao criar rascunho');
-      setMessage({ type: 'error', text: getErrorMessage(error, 'Erro ao criar rascunho. Tente novamente.') });
+      const text = getErrorMessage(error, 'Erro ao criar rascunho. Tente novamente.');
+      setMessage({ type: 'error', text });
+      addToast(text, 'error');
     } finally {
       setLoading(false);
     }
@@ -98,10 +103,13 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
         })
       });
       setMessage({ type: 'success', text: 'Solicitação enviada com sucesso.' });
+      addToast('Solicitação enviada com sucesso.', 'success');
       setTimeout(onClose, 1200);
     } catch (error) {
       console.error('[DOC_REQUEST_MODAL] Erro ao enviar');
-      setMessage({ type: 'error', text: getErrorMessage(error, 'Erro ao enviar solicitação. Tente novamente.') });
+      const text = getErrorMessage(error, 'Erro ao enviar solicitação. Tente novamente.');
+      setMessage({ type: 'error', text });
+      addToast(text, 'error');
     } finally {
       setSending(false);
     }
