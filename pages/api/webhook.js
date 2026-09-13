@@ -7,6 +7,7 @@ import { loadClientMemory, formatClientMemory } from '../../lib/clientMemory';
 import { getClientTitle } from '../../lib/genderFromName';
 import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '../../lib/whatsapp.js';
 import { evaluateFunnelAutomation, registerFunnelEvent } from '../../lib/funnel-whatsapp.js';
+import { detectThanks, getThanksReply, detectAgreement, getAcknowledgementReply, getToneInstructions, correctCommonMistakes } from '../../lib/bot-responses.js';
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
@@ -347,7 +348,8 @@ export default async function handler(req, res) {
       const clientMemoryText = formatClientMemory(clientMemory);
 
       // Chamar Gemini com await (timeout de 15s)
-      const aiReply = await askGemini(promptForAI, conversationHistory, conversation, clientMemoryText);
+      let aiReply = await askGemini(promptForAI, conversationHistory, conversation, clientMemoryText);
+      aiReply = correctCommonMistakes(promptForAI, aiReply);
       log('ai_reply_generated', { length: aiReply?.length || 0 });
 
       // Detectar se precisa de atendimento humano
@@ -982,6 +984,10 @@ function getSpecialReply(text, clientName, history = '') {
 
   if (isMarketingMessage(text)) return 'NO_REPLY';
 
+  if (detectThanks(text)) {
+    return getThanksReply();
+  }
+
   const isIdentity = IDENTITY_KEYWORDS.some(k => lower.includes(k));
   const alreadySaid = IDENTITY_ALREADY_SAID.some(s => historyLower.includes(s));
 
@@ -993,9 +999,9 @@ function getSpecialReply(text, clientName, history = '') {
     return `${name}, somos a Neves & Costa Advocacia (com &). Informamos que não emitimos boletos, e nem fazemos cobranças, além de não possuirmos CNPJ. Não temos relação nenhuma com a "Advocacia Neves Costa".`;
   }
 
-  if (alreadySaid && isConfirmationMessage(text)) {
+  if (alreadySaid && detectAgreement(text)) {
     const name = getClientGreeting(clientName);
-    return `${name}, entendido. Estamos à disposição.`;
+    return `${name}, ${getAcknowledgementReply()}`;
   }
 
   return null;
@@ -1060,7 +1066,8 @@ LEMBRETE FINAL:
 - Fale sempre como Jhon, em primeira pessoa. Use "posso", "nosso escritório". Evite "podemos" genérico.
 - Não ofereça nosso telefone sem ser solicitado explicitamente.
 - Responda APENAS ao que foi perguntado, sem informações extras.
-- Trate o cliente como "senhor" ou "senhora", com respeito e cordialidade.`;
+- Trate o cliente como "senhor" ou "senhora", com respeito e cordialidade.
+${getToneInstructions()}`;
 
 async function askGemini(prompt, conversationHistory = '', conversation = null, clientMemoryText = '') {
   try {
