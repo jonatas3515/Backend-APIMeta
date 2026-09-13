@@ -3,6 +3,7 @@ import { searchKnowledge } from '../../../lib/knowledgeSearch';
 import { askRag } from '../../../lib/aiRag';
 import { anonymizeText } from '../../../lib/anonymize';
 import { safeLog, safeError } from '../../../lib/safeLogger';
+import logger from '../../../lib/logger';
 
 const MAX_QUERY_LENGTH = 1000;
 
@@ -61,6 +62,11 @@ export default async function handler(req, res) {
   }
 
   try {
+    logger('info', 'RAG_QUERY_START', {
+      userId: user.id,
+      queryLength: safeQuery.length
+    });
+
     const { results, documents } = await searchKnowledge({
       query: safeQuery,
       status: 'aprovado',
@@ -84,6 +90,27 @@ export default async function handler(req, res) {
 
     const context = buildContext(results, 5000);
     const answer = await askRag(safeQuery, context);
+
+    logger('info', 'RAG_QUERY_SUCCESS', {
+      userId: user.id,
+      queryLength: safeQuery.length,
+      documentsCount: documents.length,
+      contextLength: context.length
+    });
+
+    await supabaseServer.rpc('log_audit', {
+      p_user_id: user.id,
+      p_entity_type: 'rag_query',
+      p_entity_id: null,
+      p_action: 'rag_answer',
+      p_old_value: null,
+      p_new_value: null,
+      p_details: JSON.stringify({
+        queryLength: safeQuery.length,
+        documentsCount: documents.length,
+        documentIds: documents.map(d => d.document_id)
+      })
+    });
 
     const { error: logError } = await supabaseServer
       .from('knowledge_query_logs')
@@ -115,6 +142,10 @@ export default async function handler(req, res) {
       sources: sourceDocs
     });
   } catch (error) {
+    logger('error', 'RAG_QUERY_ERROR', {
+      userId: user.id,
+      errorCode: 'RAG_QUERY_FAILED'
+    });
     safeError('rag_handler_failed', error, {
       route: '/api/ai/ask'
     });

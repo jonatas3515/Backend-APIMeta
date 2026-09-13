@@ -8,6 +8,7 @@ import { getClientTitle } from '../../lib/genderFromName';
 import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '../../lib/whatsapp.js';
 import { evaluateFunnelAutomation, registerFunnelEvent } from '../../lib/funnel-whatsapp.js';
 import { detectThanks, getThanksReply, detectAgreement, getAcknowledgementReply, getToneInstructions, correctCommonMistakes } from '../../lib/bot-responses.js';
+import { semanticSearch } from '../../lib/knowledge-embeddings.js';
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
@@ -1069,6 +1070,18 @@ LEMBRETE FINAL:
 - Trate o cliente como "senhor" ou "senhora", com respeito e cordialidade.
 ${getToneInstructions()}`;
 
+async function getKnowledgeContext(prompt) {
+  if (!supabase || prompt.length < 15) return '';
+  try {
+    const { chunks } = await semanticSearch(supabase, { query: prompt, topK: 2 });
+    if (!chunks || chunks.length === 0) return '';
+    const block = chunks.map(c => `FONTE: ${c.title} (${c.type})\n${c.content}`).join('\n---\n');
+    return `TRECHOS DA BASE DE CONHECIMENTO (use apenas se forem relevantes para a pergunta):\n${block}\n\n`;
+  } catch {
+    return '';
+  }
+}
+
 async function askGemini(prompt, conversationHistory = '', conversation = null, clientMemoryText = '') {
   try {
     console.log('[GEMINI] Tentando Gemini 2.5 Flash-Lite...');
@@ -1107,6 +1120,8 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
       ? `HISTÓRICO DAS ÚLTIMAS 24H (MAIS RECENTES POR ÚLTIMO):\n${conversationHistory}\n\n` 
       : '';
 
+    const knowledgeBlock = await getKnowledgeContext(prompt);
+
     const clientFullName = conversation?.client_name || '';
     const clientTitle = clientFullName ? getClientTitle(clientFullName) : 'senhor(a)';
     const clientFirstName = clientFullName ? clientFullName.trim().split(/\s+/)[0] : 'cliente';
@@ -1117,8 +1132,9 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
       ? 'Se a primeira mensagem for uma saudação (oi, olá, bom dia), responda APENAS a saudação e NÃO pergunte nada. Se a mensagem já apresentar um caso ou pergunta, responda diretamente e NÃO diga "Olá".'
       : 'O histórico já existe. NÃO se apresente, NÃO diga "Olá", "Oi" ou "Bom dia" em nenhuma circunstância. Responda DIRETAMENTE ao assunto.';
 
-    const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- Responda DIRETAMENTE à NOVA MENSAGEM do cliente, usando o contexto e a memória apenas como referência. Não fique preso a uma informação anterior se o cliente mudou de assunto.\n- Se a mensagem mencionar CNPJ, boleto, "Neves Costa" (sem &), "outro escritório" ou cobrança atribuída a nós e o esclarecimento ainda NÃO tiver sido dito no histórico, o esclarecimento ENXUTO é a prioridade máxima. NUNCA trate "financiamento", "consórcio", "banco" ou "dívida" sozinhos como confusão — são tipos de caso. Depois de esclarecer, NÃO ofereça outros serviços.
+    const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}${knowledgeBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- Responda DIRETAMENTE à NOVA MENSAGEM do cliente, usando o contexto e a memória apenas como referência. Não fique preso a uma informação anterior se o cliente mudou de assunto.\n- Se a mensagem mencionar CNPJ, boleto, "Neves Costa" (sem &), "outro escritório" ou cobrança atribuída a nós e o esclarecimento ainda NÃO tiver sido dito no histórico, o esclarecimento ENXUTO é a prioridade máxima. NUNCA trate "financiamento", "consórcio", "banco" ou "dívida" sozinhos como confusão — são tipos de caso. Depois de esclarecer, NÃO ofereça outros serviços.
 - Se o esclarecimento sobre boleto/cobrança/Neves Costa JÁ tiver sido dito no histórico e o cliente apenas pedir ajuda sem apresentar uma nova dúvida jurídica, NÃO repita o esclarecimento. Diga respeitosamente que não podemos intervir, pois não somos a empresa do boleto, e ofereça-se a ouvir caso haja outro assunto jurídico — sem listar áreas de atuação.\n- Não peça nome, e-mail ou telefone que já estiverem no histórico, contexto ou memória.\n- ${nameRule}
+- Se TRECHOS DA BASE DE CONHECIMENTO forem fornecidos, use-os apenas se forem diretamente relevantes e cite a fonte (ex: "Conforme jurisprudência..."). Se não forem relevantes, ignore-os.
 - Responda como Jhon, 1-3 frases, sem listas, sem telefone a menos que o cliente peça explicitamente.`;
     
     const controller = new AbortController();
@@ -1163,9 +1179,10 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     console.log('[GEMINI] Tentando Gemini 3.1 Flash-Lite (fallback)...');
     // Fallback recebe o mesmo fullPrompt para manter contexto
     const fallbackNameRule = `NUNCA use o nome completo do cliente. Na PRIMEIRA resposta, se usar nome, use APENAS o primeiro nome. Nas demais respostas, use SOMENTE "${clientTitle}" SEM o nome.`;
+    const knowledgeInstruction = '\n- Se TRECHOS DA BASE DE CONHECIMENTO forem fornecidos, use-os apenas se forem diretamente relevantes e cite a fonte. Se não forem relevantes, ignore-os.';
     const fullPrompt = conversationHistory 
-      ? `${clientMemoryText ? clientMemoryText + '\n\n' : ''}HISTÓRICO DA CONVERSA:\n${conversationHistory}\n\nNOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZ DE NOME: ${fallbackNameRule}`
-      : (clientMemoryText ? clientMemoryText + '\n\nNOVA MENSAGEM DO CLIENTE: ' + prompt + '\n\nDIRETRIZ DE NOME: ' + fallbackNameRule : prompt + '\n\nDIRETRIZ DE NOME: ' + fallbackNameRule);
+      ? `${clientMemoryText ? clientMemoryText + '\n\n' : ''}HISTÓRICO DA CONVERSA:\n${conversationHistory}\n\n${knowledgeBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZ DE NOME: ${fallbackNameRule}${knowledgeInstruction}`
+      : (clientMemoryText ? clientMemoryText + '\n\n' + knowledgeBlock + 'NOVA MENSAGEM DO CLIENTE: ' + prompt + '\n\nDIRETRIZ DE NOME: ' + fallbackNameRule + knowledgeInstruction : prompt + '\n\nDIRETRIZ DE NOME: ' + fallbackNameRule + knowledgeInstruction);
     
     const response = await fetch(GEMINI_API_URL_FALLBACK, {
       method: 'POST',
