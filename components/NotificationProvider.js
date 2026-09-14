@@ -134,6 +134,7 @@ export function NotificationProvider({ children }) {
   const pendingListRef = useRef(null);
   const pendingCountRef = useRef(null);
   const lastListFetchRef = useRef(null);
+  const lastForcedListFetchRef = useRef(null);
   const lastCountFetchRef = useRef(null);
   const cooldownIntervalRef = useRef(null);
   const isMountedRef = useRef(true);
@@ -267,12 +268,23 @@ export function NotificationProvider({ children }) {
   const refreshNotifications = useCallback(async ({ force = false } = {}) => {
     if (!isMountedRef.current || stateRef.current.authExpired) return Promise.resolve();
     if (pendingListRef.current) return pendingListRef.current;
-    if (
-      !force &&
-      lastListFetchRef.current &&
-      Date.now() - lastListFetchRef.current < LIST_THROTTLE_MS
-    ) {
-      return Promise.resolve();
+    const now = Date.now();
+    if (force) {
+      if (
+        lastForcedListFetchRef.current &&
+        now - lastForcedListFetchRef.current < 3500
+      ) {
+        return Promise.resolve();
+      }
+      lastForcedListFetchRef.current = now;
+    } else {
+      if (
+        lastListFetchRef.current &&
+        now - lastListFetchRef.current < LIST_THROTTLE_MS
+      ) {
+        return Promise.resolve();
+      }
+      lastListFetchRef.current = now;
     }
 
     const controller = new AbortController();
@@ -288,7 +300,6 @@ export function NotificationProvider({ children }) {
         });
         if (!isMountedRef.current) return;
         await handleResponse(response, 'list');
-        lastListFetchRef.current = Date.now();
       } catch (err) {
         if (err.name === 'AbortError' || !isMountedRef.current) return;
         safeError('notifications_refresh_error', err, { component: 'NotificationProvider' });
@@ -316,8 +327,7 @@ export function NotificationProvider({ children }) {
     ) {
       refreshNotifications({ force: false });
     }
-    fetchNotificationCount({ force: false });
-  }, [refreshNotifications, fetchNotificationCount]);
+  }, [refreshNotifications]);
 
   const closePanel = useCallback(() => {
     panelOpenRef.current = false;
@@ -363,6 +373,19 @@ export function NotificationProvider({ children }) {
       }
     };
   }, [fetchNotificationCount]);
+
+  useEffect(() => {
+    const handleConversationRead = () => {
+      refreshNotifications({ force: true });
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('nc:conversation-read', handleConversationRead);
+      return () => {
+        window.removeEventListener('nc:conversation-read', handleConversationRead);
+      };
+    }
+    return undefined;
+  }, [refreshNotifications]);
 
   const value = {
     ...state,

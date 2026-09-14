@@ -279,6 +279,9 @@ export default function Home() {
                   setConversations(prev => prev.map(c =>
                     c.id === conv.id ? { ...c, unread: false } : c
                   ));
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('nc:conversation-read'));
+                  }
                 }
               });
           }
