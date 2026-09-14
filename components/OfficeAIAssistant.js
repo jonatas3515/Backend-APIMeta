@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import axios from 'axios';
 import { apiJson } from '../lib/apiClient';
 
 const AREAS = ['', 'civel', 'trabalhista', 'previdenciario', 'administrativo', 'consumidor', 'familia', 'tributario'];
@@ -11,7 +10,7 @@ const fetchTemplates = async (area, caseType) => {
     const params = new URLSearchParams();
     if (area) params.set('legal_area', area);
     if (caseType) params.set('case_type', caseType);
-    const { data } = await apiCall(`/api/templates?${params.toString()}`);
+    const data = await apiJson(`/api/templates?${params.toString()}`, { method: 'GET' });
     return Array.isArray(data) ? data : [];
   } catch (err) {
     console.error('[AI] Erro ao buscar templates:', err);

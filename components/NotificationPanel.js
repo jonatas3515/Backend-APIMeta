@@ -124,7 +124,7 @@ export default function NotificationPanel(props) {
             method: 'PATCH',
             body: JSON.stringify({ triage_status: 'revisado' })
           });
-          refreshNotifications({ force: true });
+          if (!rateLimited) refreshNotifications({ force: true });
         } catch (err) {
           console.error('[NOTIFICATIONS] Erro ao marcar triagem como revisada:', err);
         }

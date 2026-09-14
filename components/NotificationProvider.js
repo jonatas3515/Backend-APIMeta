@@ -264,19 +264,28 @@ export function NotificationProvider({ children }) {
 
   const LIST_THROTTLE_MS = 5000;
   const COUNT_THROTTLE_MS = 3500;
+  const FORCED_LIST_THROTTLE_MS = 3500;
 
   const refreshNotifications = useCallback(async ({ force = false } = {}) => {
-    if (!isMountedRef.current || stateRef.current.authExpired) return Promise.resolve();
+    if (
+      !isMountedRef.current ||
+      stateRef.current.rateLimited ||
+      stateRef.current.authExpired
+    ) {
+      return Promise.resolve();
+    }
     if (pendingListRef.current) return pendingListRef.current;
     const now = Date.now();
     if (force) {
       if (
         lastForcedListFetchRef.current &&
-        now - lastForcedListFetchRef.current < 3500
+        now - lastForcedListFetchRef.current < FORCED_LIST_THROTTLE_MS
       ) {
         return Promise.resolve();
       }
       lastForcedListFetchRef.current = now;
+      // Uma forçada também protege a próxima normal para evitar 429
+      lastListFetchRef.current = now;
     } else {
       if (
         lastListFetchRef.current &&
