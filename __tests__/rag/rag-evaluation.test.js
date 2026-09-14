@@ -191,6 +191,22 @@ describe('RAG Evaluation - baseline (sem limiar)', () => {
   });
 });
 
+describe('RAG Evaluation - calibração de limiares', () => {
+  it('gera relatórios para minRank de 0 a 0.30 sem degradação abrupta', () => {
+    const thresholds = [0, 0.05, 0.10, 0.15, 0.20, 0.25, 0.30];
+    const reports = thresholds.map(t => calculateReport(queries, documents, t));
+
+    for (const r of reports) {
+      expect(r.approvedOnlyRate).toBe(1);
+      expect(r.top1Relevance).toBeGreaterThanOrEqual(0.9);
+      expect(r.topKRelevance).toBeGreaterThanOrEqual(0.9);
+    }
+
+    // eslint-disable-next-line no-console
+    console.log('RAG Threshold Calibration:', JSON.stringify(reports, null, 2));
+  });
+});
+
 describe('RAG Evaluation - com limiar minRank=0.30', () => {
   it('mantém 100% de top-1 nas respondíveis e reduz ruído fora do domínio', () => {
     const threshold = 0.30;

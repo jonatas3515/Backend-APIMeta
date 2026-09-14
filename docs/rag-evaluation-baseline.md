@@ -31,7 +31,7 @@ pergunta
 ### 2.1 Mapeamento por etapa
 
 | Etapa | Arquivo/FUNÇÃO | Entrada | Saída | Limites | Tratamento de erro | Risco conhecido |
-|---|---|---|---|---|---|---|
+|---|---|---|---|---|---|---|---|
 | Autenticação | `pages/api/ai/ask.js` `getUserFromToken` | `Authorization: Bearer <JWT>` | `user` (id, email) | Token obrigatório | 401 / 403 | Tokens não devem vazar em logs |
 | Autorização | `pages/api/ai/ask.js` `canUseAssistant` | `user.id` | boolean | roles permitidas | 403 | — |
 | Normalização query | `pages/api/ai/ask.js` | `req.body.query` | `safeQuery` (≤1000, ≥3) | < 3 gera 400 | 400 | stopwords não são removidas nesta camada |
@@ -101,46 +101,44 @@ O dataset contém 9 documentos fictícios (6 aprovados, 1 rascunho, 1 irrelevant
 
 Execução com mocks do pipeline de recuperação (sem Gemini e sem Supabase):
 
-### 8.1 Antes do limiar (baseline)
+### 8.1 Tabela de calibração de limiares
 
-| Métrica | Valor |
-|---|---|---|
-| `retrieval_success_rate` | 84,21% (16/19 retornam ao menos 1 chunk) |
-| `empty_retrieval_rate` | 15,79% (3/19 sem resultados) |
-| `top_k_relevance` (top-3) | 93,75% (15/16 respondíveis com documento esperado no top-3) |
-| `top_1_relevance` | 93,75% (15/16 respondíveis com documento esperado em primeiro) |
-| `approved_only_rate` | 100% |
-| `out_of_domain_noise_rate` | 33,33% (1/3 com resultados irrelevantes) |
+| minRank | retrieval_success_rate | empty_retrieval_rate | top_1_relevance | top_k_relevance | approved_only_rate | out_of_domain_noise_rate | falsos_vazios_respondíveis | resultados_irrelevantes_mantidos | chunks_recuperados |
+|---|---|---|---|---|---|---|---|---|---|
+| 0,00 | 84,21% | 15,79% | 93,75% | 93,75% | 100% | 33,33% | 1 | 2 | 21 |
+| 0,05 | 84,21% | 15,79% | 93,75% | 93,75% | 100% | 33,33% | 1 | 2 | 21 |
+| 0,10 | 84,21% | 15,79% | 93,75% | 93,75% | 100% | 33,33% | 1 | 2 | 21 |
+| 0,15 | 84,21% | 15,79% | 93,75% | 93,75% | 100% | 33,33% | 1 | 2 | 21 |
+| 0,20 | 84,21% | 15,79% | 93,75% | 93,75% | 100% | 33,33% | 1 | 2 | 21 |
+| 0,25 | 84,21% | 15,79% | 93,75% | 93,75% | 100% | 33,33% | 1 | 2 | 21 |
+| 0,30 | 78,95% | 21,05% | 93,75% | 93,75% | 100% | 0% | 1 | 0 | 18 |
 
-### 8.2 Após limiar `minRank = 0.30`
+### 8.2 Perguntas afetadas
 
-| Métrica | Valor |
-|---|---|---|
-| `retrieval_success_rate` | 78,95% (15/19) |
-| `empty_retrieval_rate` | 21,05% (4/19) |
-| `top_k_relevance` (top-3) | 93,75% (15/16) |
-| `top_1_relevance` | 93,75% (15/16) |
-| `approved_only_rate` | 100% |
-| `out_of_domain_noise_rate` | 0% |
+- `q8 - direito empresarial e reestruturação societária` (out_of_domain): recuperou 2 chunks irrelevantes até `0.25`; ficou vazia a partir de `0.30`.
+- `q4 - defesa contra lançamento tributário` (answerable): recuperou 3 chunks no baseline; com `0.30` caiu para 2, removendo o chunk de prompt-injection `doc-injection` (score 0.25).
+- `q14 - rescisão indireta e consumidor cobrado indevidamente` (multi_area): manteve 2 resultados em todos os limiares (top-1 0.60, top-2 0.40).
+- `q15 - CLT` (short_query): manteve top-1 em todos os limiares (score 1.0).
+- `q16 - fui demitido sem receber e quero processar` (lay_language): manteve vazio em todos os limiares — problema lexical/sinônimo, não de limiar.
+- `q18 - período de férias no contrato de trabalho` (no_answer): manteve vazio em todos os limiares — abstinência correta.
 
-### 8.3 Comparativo
+### 8.3 Limitação fundamental dos mocks
 
-| Métrica | Sem limiar | Com limiar 0.30 | Δ |
-|---|---|---|---|
-| `retrieval_success_rate` | 84,21% | 78,95% | −5,26 pp |
-| `empty_retrieval_rate` | 15,79% | 21,05% | +5,26 pp |
-| `top_1_relevance` | 93,75% | 93,75% | 0 pp |
-| `top_k_relevance` | 93,75% | 93,75% | 0 pp |
-| `approved_only_rate` | 100% | 100% | 0 pp |
-| `out_of_domain_noise_rate` | 33,33% | 0% | −33,33 pp |
+O score usado nos mocks é a **proporção de tokens da query encontrados no chunk** após remoção de stopwords e normalização. Isso **não é equivalente** a `ts_rank_cd` do PostgreSQL, que leva em conta:
 
-### Observações
+- densidade de ocorrências;
+- normalização pelo comprimento do documento;
+- peso do tsvector (`A`, `B`, `C`, `D`);
+- distância entre os termos na query `tsquery`.
 
-- Aprovados: o documento `rascunho` nunca apareceu em nenhum cenário, confirmando o filtro de status.
-- Relevância: a introdução do limiar `0.30` não reduziu `top_1` nem `top_k` das perguntas respondíveis. A única falta de top-1 (`fui demitido sem receber e quero processar`) já ocorria no baseline por incompatibilidade lexical (sinônimos), não por score baixo.
-- Fora de domínio: a pergunta `direito empresarial e reestruturação societária` deixou de recuperar documentos irrelevantes com o limiar. A consulta `como regar orquídeas` continuou vazia. A consulta `período de férias no contrato de trabalho` também ficou vazia, ativando a abstinência corretamente.
-- Prompt injection: o documento malicioso continua aparecendo quando a pergunta é genuinamente sobre `propriedade intelectual`; o conteúdo com `ignore previous instructions` é neutralizado por `sanitizePromptInput` e `escapeContextDelimiters`, desde que o delimitador de contexto seja respeitado.
-- Limitações: a avaliação foi feita com simulação do FTS e sem chamada ao Gemini; os resultados de `abstention_rate`, `unsupported_answer_rate`, `source_alignment_rate` e `latency_ms` dependem de execução do `askRag` e devem ser medidos em fase posterior.
+Portanto, os números desta tabela mostram comportamento **relativo apenas ao dataset sintético**. Não permitem calibrar um `minRank` produtivo com segurança. O fato de nenhum limiar entre `0` e `0.25` alterar o resultado indica que não há consultas com scores intermediários no dataset, e não que todos os valores sejam iguais em produção.
+
+### 8.4 Observações
+
+- Aprovados: o documento `rascunho` nunca apareceu em nenhum cenário.
+- Ruído fora de domínio só desaparece em `0.30` no mock, porque o score do ruído é exatamente `0.25`.
+- Prompt injection: o documento malicioso continua aparecendo para a query sobre `propriedade intelectual` enquanto for relevante; o conteúdo com `ignore previous instructions` é neutralizado por `sanitizePromptInput` e `escapeContextDelimiters`.
+- `abstention_rate`, `unsupported_answer_rate` e `source_alignment` ainda não puderam ser medidos.
 
 ## 9. Implementação do Filtro de Relevância
 
@@ -156,20 +154,15 @@ A função SQL `search_knowledge` (migração 052) usa `to_tsquery` com operador
 - `lib/knowledge-embeddings.js` recebe o mesmo parâmetro e aplica o mesmo filtro.
 - O padrão é `minRank = 0`, ou seja, o filtro está desligado por padrão. O endpoint principal pode passar `minRank` via variável de ambiente se desejado.
 
-### 9.3 Valor do limiar e justificativa
+### 9.3 Valor do limiar
 
-O valor `0.30` foi observado no dataset sintético como o ponto que:
-- elimina o ruído de `direito empresarial e reestruturação societária`;
-- remove o chunk de prompt-injection secundário em `defesa contra lançamento tributário`;
-- preserva 100% do `top_k` e `top_1` das perguntas respondíveis no dataset.
-
-> A ativação em produção deve ser feita com um rollout controlado: iniciar com `minRank` muito baixo (ex.: `0.05`) e subir gradativamente, observando `approved_only_rate` e `empty_retrieval_rate` reais.
+O valor `0.30` eliminou o ruído no dataset sintético, mas **não está calibrado para o `ts_rank_cd` real do PostgreSQL**. Os limiares intermediários (`0.05` a `0.25`) não apresentam efeito no mock porque o dataset não gera scores nessa faixa.
 
 ## 10. Arquivos Criados/Alterados
 
 ### Criados
 - `__tests__/rag/evaluation-dataset.json` (atualizado com 19 perguntas, incluindo regressão)
-- `__tests__/rag/rag-evaluation.test.js` (baseline + comparação com threshold)
+- `__tests__/rag/rag-evaluation.test.js` (baseline + calibração + comparação com threshold)
 
 ### Alterados
 - `lib/aiRag.js`: `sanitizePromptInput` exportada para testes (sem alteração no comportamento produtivo).
@@ -185,7 +178,7 @@ O valor `0.30` foi observado no dataset sintético como o ponto que:
 
 ## 12. Riscos Remanescentes
 
-1. O limiar `0.30` foi calibrado em dataset sintético, não em dados reais do PostgreSQL. `ts_rank_cd` pode ter distribuição diferente.
+1. **Incompatibilidade de escala**: o score do mock não representa `ts_rank_cd`. Qualquer valor de `minRank` ativado em produção é um palpite até medição real.
 2. Consultas em linguagem leiga ou com sinônimos ainda podem retornar vazio (ex.: `fui demitido sem receber`).
 3. Chunks sobrepostos podem inflar o contexto sem agregar diversidade.
 4. `source_alignment` e `abstention_rate` ainda não podem ser validados sem executar `askRag` com o Gemini.
@@ -193,9 +186,11 @@ O valor `0.30` foi observado no dataset sintético como o ponto que:
 
 ## 13. Recomendação Expressa
 
-**Requer decisão humana antes de deploy em Production.**
+**Recomendação: manter `minRank = 0` (desligado) e medir o `ts_rank_cd` real antes de ativar.**
 
-O código de filtro está implementado e testado offline, mas o `minRank` padrão é `0` (desligado). Para ativar, recomendo:
-1. Criar variável de ambiente `RAG_MIN_RANK`;
-2. Iniciar com `0.05` em produção e monitorar `empty_retrieval_rate` e consultas sem resposta por 1–2 dias;
-3. Subir o valor em incrementos pequenos até atingir o balanço desejado, sem ultrapassar `0.30` sem nova avaliação.
+O código do filtro está implementado e testado offline, mas a avaliação não fornece uma calibração segura para produção. Antes de criar qualquer variável de ambiente:
+1. Coletar os valores reais de `rank` de um conjunto representativo de consultas no PostgreSQL.
+2. Construir um histograma de `ts_rank_cd` para consultas respondíveis, fora de domínio e ambíguas.
+3. Só então escolher um `minRank` com base em dados reais, iniciando com valor baixo e subindo gradualmente.
+
+Não ativar `RAG_MIN_RANK` apenas com base no dataset sintético.
