@@ -293,6 +293,12 @@ async function handlePatch(req, res) {
       updates.triaged_at = new Date().toISOString();
     }
 
+    // Sincroniza reviewed_at com triage finalizado, pois o notificador o utiliza
+    if (triage_status && triage_status !== 'novo' && triage_status !== 'em_analise' && !current.reviewed_at) {
+      updates.reviewed_by = req.user.id;
+      updates.reviewed_at = new Date().toISOString();
+    }
+
     // Atualizar movimentação
     const { data: updated, error: updateError } = await supabase
       .from('process_movements')

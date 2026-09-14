@@ -13,6 +13,7 @@ import {
   getSafeSourceLabels
 } from '../lib/notificationHelpers';
 import { useRouter } from 'next/router';
+import { apiJson } from '../lib/apiClient';
 import { useNotifications } from './NotificationProvider';
 
 export default function NotificationPanel(props) {
@@ -116,6 +117,19 @@ export default function NotificationPanel(props) {
   const handleAction = async (notification) => {
     if (notification.link && validateInternalNotificationRoute(notification.link)) {
       onClose();
+
+      if (notification.type === 'process_movement' && notification.reference_id) {
+        try {
+          await apiJson(`/api/triage?id=${notification.reference_id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ triage_status: 'revisado' })
+          });
+          refreshNotifications({ force: true });
+        } catch (err) {
+          console.error('[NOTIFICATIONS] Erro ao marcar triagem como revisada:', err);
+        }
+      }
+
       await router.push(notification.link);
     }
   };

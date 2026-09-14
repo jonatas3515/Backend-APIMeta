@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 
 const AREAS = ['', 'civel', 'trabalhista', 'previdenciario', 'administrativo', 'consumidor', 'familia', 'tributario'];
 const TIPOS = ['', 'modelo_peca', 'clausula', 'tese', 'checklist', 'jurisprudencia'];
@@ -50,17 +50,19 @@ export default function OfficeAIAssistant() {
     setError('');
 
     try {
-      
       const enriched = await buildEnrichedPrompt(query.trim(), area, '', type);
-      const { data } = await apiCall('/api/ai/ask', {
-        query: enriched,
-        area: area || null,
-        tribunal: tribunal || null,
-        type: type || null
+      const data = await apiJson('/api/ai/ask', {
+        method: 'POST',
+        body: JSON.stringify({
+          query: enriched,
+          area: area || null,
+          tribunal: tribunal || null,
+          type: type || null
+        })
       });
 
-      setAnswer(data.answer);
-      setSources(data.sources || []);
+      setAnswer(data?.answer || '');
+      setSources(data?.sources || []);
     } catch (err) {
       console.error('[AI] Erro:', err);
       setError(err.response?.data?.error || 'Erro ao consultar a IA.');
