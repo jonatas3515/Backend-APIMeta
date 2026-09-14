@@ -203,6 +203,46 @@
       "expectedAnswerable": true,
       "expectedAbstain": false,
       "category": "multi_area"
+    },
+    {
+      "id": "q15",
+      "query": "CLT",
+      "expectedDocumentIds": ["doc-trabalhista-rescisao"],
+      "expectedAnswerable": true,
+      "expectedAbstain": false,
+      "category": "short_query"
+    },
+    {
+      "id": "q16",
+      "query": "fui demitido sem receber e quero processar",
+      "expectedDocumentIds": ["doc-trabalhista-rescisao"],
+      "expectedAnswerable": true,
+      "expectedAbstain": false,
+      "category": "lay_language"
+    },
+    {
+      "id": "q17",
+      "query": "como funciona o divórcio",
+      "expectedDocumentIds": ["doc-familia-divorcio"],
+      "expectedAnswerable": true,
+      "expectedAbstain": false,
+      "category": "broad_answerable"
+    },
+    {
+      "id": "q18",
+      "query": "período de férias no contrato de trabalho",
+      "expectedDocumentIds": [],
+      "expectedAnswerable": false,
+      "expectedAbstain": true,
+      "category": "no_answer"
+    },
+    {
+      "id": "q19",
+      "query": "direito do consumidor e propriedade intelectual",
+      "expectedDocumentIds": ["doc-consumerista-cobranca", "doc-injection"],
+      "expectedAnswerable": true,
+      "expectedAbstain": false,
+      "category": "multi_area_generic"
     }
   ]
 }

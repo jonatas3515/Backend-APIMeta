@@ -95,65 +95,107 @@ pergunta
 
 Ver `__tests__/rag/evaluation-dataset.json` e `__tests__/rag/rag-evaluation.test.js`.
 
-O dataset contém 9 documentos fictícios (6 aprovados, 1 rascunho, 1 irrelevante, 1 com prompt injection simulado) e 14 perguntas, sem PII, usados para medir o pipeline sem conexão com banco de produção.
+O dataset contém 9 documentos fictícios (6 aprovados, 1 rascunho, 1 irrelevante, 1 com prompt injection simulado) e 19 perguntas, sem PII, incluindo casos de regressão para consultas curtas, linguagem leiga, amplas respondíveis, fora do domínio e sem resposta.
 
 ## 8. Resultados da Avaliação Offline
 
 Execução com mocks do pipeline de recuperação (sem Gemini e sem Supabase):
 
+### 8.1 Antes do limiar (baseline)
+
 | Métrica | Valor |
 |---|---|---|
-| `retrieval_success_rate` | 92,86% (13/14 retornam ao menos 1 chunk) |
-| `empty_retrieval_rate` | 7,14% (1/14 sem resultados) |
-| `top_k_relevance` (top-3) | 100% (12/12 respondíveis com documento esperado no top-3) |
-| `top_1_relevance` | 100% (12/12 respondíveis com documento esperado em primeiro) |
-| `approved_only_rate` | 100% (nenhum documento `rascunho` foi recuperado) |
-| `out_of_domain_empty_rate` | 50% (apenas 1/2 perguntas fora da base retornou vazio) |
+| `retrieval_success_rate` | 84,21% (16/19 retornam ao menos 1 chunk) |
+| `empty_retrieval_rate` | 15,79% (3/19 sem resultados) |
+| `top_k_relevance` (top-3) | 93,75% (15/16 respondíveis com documento esperado no top-3) |
+| `top_1_relevance` | 93,75% (15/16 respondíveis com documento esperado em primeiro) |
+| `approved_only_rate` | 100% |
+| `out_of_domain_noise_rate` | 33,33% (1/3 com resultados irrelevantes) |
+
+### 8.2 Após limiar `minRank = 0.30`
+
+| Métrica | Valor |
+|---|---|---|
+| `retrieval_success_rate` | 78,95% (15/19) |
+| `empty_retrieval_rate` | 21,05% (4/19) |
+| `top_k_relevance` (top-3) | 93,75% (15/16) |
+| `top_1_relevance` | 93,75% (15/16) |
+| `approved_only_rate` | 100% |
+| `out_of_domain_noise_rate` | 0% |
+
+### 8.3 Comparativo
+
+| Métrica | Sem limiar | Com limiar 0.30 | Δ |
+|---|---|---|---|
+| `retrieval_success_rate` | 84,21% | 78,95% | −5,26 pp |
+| `empty_retrieval_rate` | 15,79% | 21,05% | +5,26 pp |
+| `top_1_relevance` | 93,75% | 93,75% | 0 pp |
+| `top_k_relevance` | 93,75% | 93,75% | 0 pp |
+| `approved_only_rate` | 100% | 100% | 0 pp |
+| `out_of_domain_noise_rate` | 33,33% | 0% | −33,33 pp |
 
 ### Observações
 
-- Aprovados: o documento `rascunho` nunca apareceu nos resultados, confirmando o filtro de status.
-- Relevância: para perguntas respondíveis, o documento esperado foi sempre encontrado no top-3 e, na maioria, em primeiro. A simulação FTS com OR favoreceu correspondências de termos exatos.
-- Fora de domínio: a pergunta `direito empresarial e reestruturação societária` retornou documentos irrelevantes porque termos como `direito` aparecem em múltiplos documentos. Isso confirma o risco de ruído da busca OR sem limiar de score mínimo.
-- Prompt injection: o documento malicioso aparece para a query `propriedade intelectual`; o conteúdo com `ignore previous instructions` é neutralizado por `sanitizePromptInput` e `escapeContextDelimiters`, desde que o delimitador de contexto seja respeitado.
+- Aprovados: o documento `rascunho` nunca apareceu em nenhum cenário, confirmando o filtro de status.
+- Relevância: a introdução do limiar `0.30` não reduziu `top_1` nem `top_k` das perguntas respondíveis. A única falta de top-1 (`fui demitido sem receber e quero processar`) já ocorria no baseline por incompatibilidade lexical (sinônimos), não por score baixo.
+- Fora de domínio: a pergunta `direito empresarial e reestruturação societária` deixou de recuperar documentos irrelevantes com o limiar. A consulta `como regar orquídeas` continuou vazia. A consulta `período de férias no contrato de trabalho` também ficou vazia, ativando a abstinência corretamente.
+- Prompt injection: o documento malicioso continua aparecendo quando a pergunta é genuinamente sobre `propriedade intelectual`; o conteúdo com `ignore previous instructions` é neutralizado por `sanitizePromptInput` e `escapeContextDelimiters`, desde que o delimitador de contexto seja respeitado.
 - Limitações: a avaliação foi feita com simulação do FTS e sem chamada ao Gemini; os resultados de `abstention_rate`, `unsupported_answer_rate`, `source_alignment_rate` e `latency_ms` dependem de execução do `askRag` e devem ser medidos em fase posterior.
 
-## 9. Próximos Passos Recomendados
+## 9. Implementação do Filtro de Relevância
 
-1. Executar avaliação offline regularmente com o dataset sintético.
-2. Adicionar testes de regressão para `searchKnowledge` com mocks da função SQL.
-3. Considerar expansão de sinônimos na query antes do FTS.
-4. Avaliar `pgvector`/embeddings se o volume de documentos crescer.
-5. Implementar verificação de alinhamento resposta-fonte (pós-geração).
-6. Refinar a lista de padrões de prompt injection em `lib/aiRag.js`.
+### 9.1 Causa técnica do ruído
+
+A função SQL `search_knowledge` (migração 052) usa `to_tsquery` com operador OR entre todas as palavras-chave. Isso evita que perguntas longas sejam descartadas por ausência de um único termo, mas permite que termos genéricos (como `direito`) encontrem documentos com correspondência fraca. O `ts_rank_cd` é calculado e retornado na coluna `rank`, mas até esta tarefa o cliente JavaScript não aplicava nenhum corte mínimo.
+
+### 9.2 Estratégia escolhida
+
+- Nenhuma migration nem alteração de schema.
+- Nenhuma alteração na função SQL nem no prompt.
+- `lib/knowledgeSearch.js` passa a aceitar `minRank` e filtrar chunks com `r.rank < minRank` antes do `slice(0, limit)`.
+- `lib/knowledge-embeddings.js` recebe o mesmo parâmetro e aplica o mesmo filtro.
+- O padrão é `minRank = 0`, ou seja, o filtro está desligado por padrão. O endpoint principal pode passar `minRank` via variável de ambiente se desejado.
+
+### 9.3 Valor do limiar e justificativa
+
+O valor `0.30` foi observado no dataset sintético como o ponto que:
+- elimina o ruído de `direito empresarial e reestruturação societária`;
+- remove o chunk de prompt-injection secundário em `defesa contra lançamento tributário`;
+- preserva 100% do `top_k` e `top_1` das perguntas respondíveis no dataset.
+
+> A ativação em produção deve ser feita com um rollout controlado: iniciar com `minRank` muito baixo (ex.: `0.05`) e subir gradativamente, observando `approved_only_rate` e `empty_retrieval_rate` reais.
 
 ## 10. Arquivos Criados/Alterados
 
 ### Criados
-- `__tests__/rag/evaluation-dataset.json`
-- `__tests__/rag/rag-evaluation.test.js`
+- `__tests__/rag/evaluation-dataset.json` (atualizado com 19 perguntas, incluindo regressão)
+- `__tests__/rag/rag-evaluation.test.js` (baseline + comparação com threshold)
 
 ### Alterados
-- `lib/aiRag.js`: `sanitizePromptInput` agora é exportada para permitir teste de sanitização (sem alteração no comportamento produtivo).
-- `docs/rag-evaluation-baseline.md`: inclusão de dataset, metodologia e resultados.
+- `lib/aiRag.js`: `sanitizePromptInput` exportada para testes (sem alteração no comportamento produtivo).
+- `lib/knowledgeSearch.js`: aceita e aplica `minRank` no corte de resultados.
+- `lib/knowledge-embeddings.js`: aceita e aplica `minRank` no corte de resultados.
+- `docs/rag-evaluation-baseline.md`: comparação de baseline e análise do filtro.
 
 ## 11. Arquivos Não Alterados
 
-- `lib/knowledgeSearch.js` (lógica de busca intacta)
-- `pages/api/ai/ask.js` (endpoint intacto)
+- `pages/api/ai/ask.js` (endpoint intacto; não foi alterado para passar `minRank`)
 - `supabase/migrations/050_*.sql`, `051_*.sql`, `052_*.sql` (schema intacto)
 - Modelos e prompts ativos do bot (`lib/ai.js`, `lib/bot-responses.js`)
 
-> `lib/aiRag.js` teve apenas a exportação de `sanitizePromptInput` adicionada para testes; o prompt produtivo e a lógica de sanitização permanecem inalterados.
-
 ## 12. Riscos Remanescentes
 
-1. Busca OR sem limiar de score pode trazer contexto irrelevante para perguntas amplas.
-2. Chunks sobrepostos podem inflar o contexto sem agregar diversidade.
-3. `source_alignment` não pode ser validada sem executar `askRag` com o Gemini.
-4. `abstention_rate` depende de avaliação da resposta gerada, não medida nesta fase.
+1. O limiar `0.30` foi calibrado em dataset sintético, não em dados reais do PostgreSQL. `ts_rank_cd` pode ter distribuição diferente.
+2. Consultas em linguagem leiga ou com sinônimos ainda podem retornar vazio (ex.: `fui demitido sem receber`).
+3. Chunks sobrepostos podem inflar o contexto sem agregar diversidade.
+4. `source_alignment` e `abstention_rate` ainda não podem ser validados sem executar `askRag` com o Gemini.
 5. A simulação offline não reproduz o FTS do PostgreSQL; resultados podem diferir em produção.
 
-## 13. Recomendação do Próximo Passo
+## 13. Recomendação Expressa
 
-Aprovar ou rejeitar mudanças no RAG com base neste baseline. A primeira melhoria de baixo risco é adicionar um score threshold mínimo na `search_knowledge` para reduzir resultados irrelevantes em consultas amplas, sem alterar o modelo nem o prompt.
+**Requer decisão humana antes de deploy em Production.**
+
+O código de filtro está implementado e testado offline, mas o `minRank` padrão é `0` (desligado). Para ativar, recomendo:
+1. Criar variável de ambiente `RAG_MIN_RANK`;
+2. Iniciar com `0.05` em produção e monitorar `empty_retrieval_rate` e consultas sem resposta por 1–2 dias;
+3. Subir o valor em incrementos pequenos até atingir o balanço desejado, sem ultrapassar `0.30` sem nova avaliação.
