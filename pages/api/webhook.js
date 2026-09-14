@@ -326,6 +326,11 @@ export default async function handler(req, res) {
       // Resposta da IA para mídia
       let promptForAI = textBody;
       let isMediaAudio = messageType === 'audio' || messageType === 'video';
+      const isPlaceholderCaption = textBody === '[Imagem enviada]' ||
+        textBody === '[Áudio enviado]' ||
+        textBody === '[Vídeo enviado]' ||
+        textBody.startsWith('[Documento:') ||
+        textBody.startsWith('[Mensagem do tipo:');
       
       if (messageType !== 'text') {
         if (isMediaAudio) {
@@ -337,8 +342,8 @@ export default async function handler(req, res) {
             });
           }
           promptForAI = `Cliente enviou um ${messageType}. Diga: "Recebido! Estou analisando o áudio agora..." NUNCA mencione equipe, advogado ou retorno.`;
-        } else if (textBody && !textBody.includes('processando transcrição')) {
-          promptForAI = `O cliente enviou ${messageType} com a seguinte legenda/descrição: ${textBody}. Responda de forma breve, objetiva e educada.`;
+        } else if (textBody && !textBody.includes('processando transcrição') && !isPlaceholderCaption) {
+          promptForAI = `O cliente enviou ${messageType} com a seguinte legenda/descrição: ${textBody}. Responda apenas sobre essa legenda, sem descrever ou inventar o conteúdo do arquivo.`;
         } else {
           promptForAI = `Cliente enviou ${messageType}. Responda: "Recebido! Para agilizar, consegue me contar por texto o que é o arquivo?" NUNCA mencione equipe, advogado ou retorno.`;
         }
