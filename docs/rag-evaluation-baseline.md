@@ -194,3 +194,32 @@ O código do filtro está implementado e testado offline, mas a avaliação não
 3. Só então escolher um `minRank` com base em dados reais, iniciando com valor baixo e subindo gradualmente.
 
 Não ativar `RAG_MIN_RANK` apenas com base no dataset sintético.
+
+## 14. Plano de Medição Controlada do `ts_rank_cd` Real
+
+### 14.1 Fonte das amostras
+
+A fonte planejada é a função `search_knowledge` do PostgreSQL, executada contra o banco real com um conjunto de **queries sintéticas e não sensíveis**. Nenhum texto de pergunta real, chunk ou documento será coletado.
+
+### 14.2 Script preparado
+
+`scripts/rag-rank-sampler.js` está pronto para execução manual. Ele:
+
+- executa `search_knowledge` em modo somente leitura;
+- usa 15 queries fictícias categorizadas;
+- não registra o texto original das queries (apenas `sha256` truncado);
+- não registra `content`, `title`, `document_id` nem `chunk_id`;
+- coleta apenas estatísticas agregadas: mínimo, máximo, percentis e contagens por categoria;
+- produz um JSON sanitizado no console.
+
+### 14.3 O que não foi executado
+
+A execução em ambiente real depende de acesso ao Supabase com `SUPABASE_SERVICE_ROLE_KEY` e `NEXT_PUBLIC_SUPABASE_URL`. Esta tarefa **não executou** o sampler em Production nem em qualquer ambiente real por falta de confirmação de acesso seguro. O script foi criado e validado estaticamente.
+
+### 14.4 Próximos passos para medição real
+
+1. Executar `node scripts/rag-rank-sampler.js` em ambiente controlado (staging ou produção, somente leitura).
+2. Coletar pelo menos 50–100 consultas por categoria para estabilidade estatística.
+3. Comparar as distribuições de `ts_rank_cd` entre respondíveis, fora do domínio, ambíguas e linguagem leiga.
+4. Escolher um `minRank` que separe claramente as categorias, se existir.
+5. Se houver grande sobreposição, priorizar melhorias de sinônimos, embeddings ou reescrita da query antes de ativar o filtro.
