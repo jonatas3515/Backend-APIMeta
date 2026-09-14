@@ -59,7 +59,7 @@ async function handleGet(req, res) {
 
     const { data, error } = await supabase
       .from('consent_logs')
-      .select('id, conversation_id, consent_type, legal_basis, channel, term_version, value, notes, created_at, revoked_at')
+      .select('id, conversation_id, consent_type, value, ip_address, user_agent, created_at')
       .eq('conversation_id', clientId)
       .order('created_at', { ascending: false });
 
@@ -111,8 +111,7 @@ async function handlePost(req, res) {
       .select('id')
       .eq('conversation_id', clientId)
       .eq('consent_type', purpose)
-      .eq('term_version', version)
-      .is('revoked_at', null)
+      .eq('value', true)
       .limit(1);
 
     if (dupError) throw dupError;
@@ -125,18 +124,14 @@ async function handlePost(req, res) {
     const insert = {
       conversation_id: clientId,
       consent_type: purpose,
-      legal_basis: legalBasis,
-      channel,
-      term_version: version,
       value: !!value,
-      notes: notes || null,
       created_at: new Date().toISOString()
     };
 
     const { data: created, error: insertError } = await supabase
       .from('consent_logs')
       .insert(insert)
-      .select('id, conversation_id, consent_type, legal_basis, channel, term_version, value, notes, created_at, revoked_at')
+      .select('id, conversation_id, consent_type, value, ip_address, user_agent, created_at')
       .single();
 
     if (insertError) throw insertError;

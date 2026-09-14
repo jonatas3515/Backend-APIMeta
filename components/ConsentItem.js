@@ -16,9 +16,11 @@ export default function ConsentItem({ consent, onRevoke, canManage }) {
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <p className="font-medium text-nc-text truncate">{consent.purpose}</p>
-          <p className="text-xs text-nc-text-secondary">
-            Base: {consent.legalBasis} • Canal: {consent.channel} • Versão: {consent.version}
-          </p>
+          {(consent.legalBasis || consent.channel || consent.version) && (
+            <p className="text-xs text-nc-text-secondary">
+              Base: {consent.legalBasis || '—'} • Canal: {consent.channel || '—'} • Versão: {consent.version || '—'}
+            </p>
+          )}
           <p className="text-xs text-nc-text-secondary">
             Criado em: {new Date(consent.createdAt).toLocaleString('pt-BR')}
           </p>

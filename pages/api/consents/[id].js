@@ -34,7 +34,7 @@ async function handleGet(req, res) {
   try {
     const { data: consent, error } = await supabase
       .from('consent_logs')
-      .select('id, conversation_id, consent_type, legal_basis, channel, term_version, value, notes, created_at, revoked_at')
+      .select('id, conversation_id, consent_type, value, ip_address, user_agent, created_at')
       .eq('id', id)
       .single();
 
@@ -78,7 +78,7 @@ async function handleRevoke(req, res) {
   try {
     const { data: consent, error: findError } = await supabase
       .from('consent_logs')
-      .select('id, conversation_id, consent_type, revoked_at')
+      .select('id, conversation_id, consent_type, value')
       .eq('id', id)
       .single();
 
@@ -107,18 +107,16 @@ async function handleRevoke(req, res) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
-    if (consent.revoked_at) {
+    if (consent.value === false) {
       logger('warn', 'CONSENT_REVOKE_ALREADY_REVOKED', { httpStatus: 409, userId: user.id });
       return res.status(409).json({ error: 'Consentimento já revogado' });
     }
 
-    const revokedAt = new Date().toISOString();
-
     const { data: updated, error: updateError } = await supabase
       .from('consent_logs')
-      .update({ revoked_at: revokedAt })
+      .update({ value: false })
       .eq('id', id)
-      .select('id, conversation_id, consent_type, legal_basis, channel, term_version, value, notes, created_at, revoked_at')
+      .select('id, conversation_id, consent_type, value, ip_address, user_agent, created_at')
       .single();
 
     if (updateError) throw updateError;
@@ -130,7 +128,7 @@ async function handleRevoke(req, res) {
       p_action: 'revoke_consent',
       p_old_value: 'active',
       p_new_value: 'revoked',
-      p_details: JSON.stringify({ clientId: consent.conversation_id, purpose: consent.consent_type, revokedAt })
+      p_details: JSON.stringify({ clientId: consent.conversation_id, purpose: consent.consent_type })
     });
 
     logger('info', 'CONSENT_REVOKE_SUCCESS', { httpStatus: 200, userId: user.id });
