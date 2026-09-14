@@ -195,6 +195,46 @@ O código do filtro está implementado e testado offline, mas a avaliação não
 
 Não ativar `RAG_MIN_RANK` apenas com base no dataset sintético.
 
+## 15. Expansão de Query para Linguagem Leiga
+
+### 15.1 Diagnóstico
+
+A normalização existente em `lib/knowledgeSearch.js` remove acentos, stopwords e tokens menores que 3 caracteres, mas não faz stemming nem expansão de sinônimos. `lib/knowledge-embeddings.js` aplica apenas `trim().toLowerCase().slice(0, 500)`. A função SQL `search_knowledge` (migração 052) recebe a string de palavras-chave e monta uma `tsquery` OR. Consultas em linguagem leiga, como `fui demitido sem receber`, não recuperavam documentos porque o conteúdo técnico usa termos como `rescisão`, `verbas rescisórias` e `salários`, que nunca apareciam na query.
+
+### 15.2 Estratégia
+
+Criamos `lib/knowledgeQueryExpansion.js`:
+
+- Mapa estático e pequeno de expressões leigas → termos jurídicos (`fui demitido` → `demissao rescisao trabalhista`).
+- Preservação da consulta original: a expansão adiciona, nunca substitui.
+- Sem expansão para termos genéricos isolados (`direito`, `ação`, `processo`, `lei`).
+- Limite de 8 palavras adicionais para conter ruído.
+- Aplicação antes da `search_knowledge`, sem alterar `lib/aiRag.js`, prompts nem modelo.
+
+### 15.3 Resultados offline
+
+| Métrica | Sem expansão | Com expansão | Δ |
+|---|---|---|---|
+| `retrieval_success_rate` | 84,21% | 89,47% | +5,26 pp |
+| `empty_retrieval_rate` | 15,79% | 10,53% | −5,26 pp |
+| `top_1_relevance` | 93,75% | 100% | +6,25 pp |
+| `top_k_relevance` | 93,75% | 100% | +6,25 pp |
+| `approved_only_rate` | 100% | 100% | 0 pp |
+| `out_of_domain_noise_rate` | 33,33% | 33,33% | 0 pp |
+| `falsos_vazios_respondíveis` | 1 | 0 | −1 |
+
+### 15.4 Perguntas afetadas
+
+- `q16 - fui demitido sem receber e quero processar`: passou de vazio a recuperar `doc-trabalhista-rescisao` corretamente.
+- `q11 - consumidor cobrado indevidamente` e `q14 - rescisão indireta e consumidor cobrado indevidamente`: mantiveram resultados corretos.
+- `q8 - direito empresarial e reestruturação societária`: manteve o mesmo ruído, sem piora.
+
+### 15.5 Riscos
+
+1. O mapa é estático; novas expressões leigas exigem manutenção manual.
+2. Mesmo com limite de 8 palavras, expansões podem aumentar ruído se adicionarem termos polissêmicos.
+3. O dataset sintético é pequeno; testes em produção reais são necessários para validar segurança.
+
 ## 14. Plano de Medição Controlada do `ts_rank_cd` Real
 
 ### 14.1 Fonte das amostras

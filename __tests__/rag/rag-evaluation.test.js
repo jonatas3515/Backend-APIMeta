@@ -8,6 +8,7 @@
 
 import dataset from './evaluation-dataset.json';
 import { escapeContextDelimiters, sanitizePromptInput } from '../../lib/aiRag';
+import { expandQuery } from '../../lib/knowledgeQueryExpansion';
 
 function cleanText(text) {
   return (text || '')
@@ -57,8 +58,9 @@ function buildChunks(document) {
   return chunks.filter(c => c.content.length > 50);
 }
 
-function simulateSearch(query, documents, { filters = {}, minRank = 0 } = {}) {
-  const queryTokens = extractTokens(query);
+function simulateSearch(query, documents, { filters = {}, minRank = 0, useExpansion = false } = {}) {
+  const effectiveQuery = useExpansion ? expandQuery(query) : query;
+  const queryTokens = extractTokens(effectiveQuery);
   if (queryTokens.length === 0) return [];
 
   const approved = documents.filter(d => d.status === 'aprovado');
@@ -92,9 +94,10 @@ function buildContext(results, maxChars = 5000) {
   return context || '';
 }
 
-function calculateReport(queries, documents, minRank) {
+function calculateReport(queries, documents, minRank, useExpansion = false) {
   const report = {
     minRank,
+    useExpansion,
     totalQueries: queries.length,
     withResults: 0,
     emptyResults: 0,
@@ -109,7 +112,7 @@ function calculateReport(queries, documents, minRank) {
   };
 
   for (const q of queries) {
-    const results = simulateSearch(q.query, documents, { minRank });
+    const results = simulateSearch(q.query, documents, { minRank, useExpansion });
     if (results.length > 0) report.withResults += 1;
     else report.emptyResults += 1;
 
@@ -220,5 +223,22 @@ describe('RAG Evaluation - com limiar minRank=0.30', () => {
 
     // eslint-disable-next-line no-console
     console.log('RAG With Threshold Report:', JSON.stringify(filtered, null, 2));
+  });
+});
+
+describe('RAG Evaluation - expansão de query', () => {
+  it('melhora linguagem leiga sem degradar top-1 e sem aumentar ruído', () => {
+    const baseline = calculateReport(queries, documents, 0);
+    const expanded = calculateReport(queries, documents, 0, true);
+
+    expect(expanded.approvedOnlyRate).toBe(1);
+    expect(expanded.top1Relevance).toBeGreaterThanOrEqual(baseline.top1Relevance - 0.001);
+    expect(expanded.topKRelevance).toBeGreaterThanOrEqual(baseline.topKRelevance - 0.001);
+    expect(expanded.outOfDomainNoiseRate).toBeLessThanOrEqual(baseline.outOfDomainNoiseRate + 0.001);
+
+    // eslint-disable-next-line no-console
+    console.log('RAG Baseline Report:', JSON.stringify(baseline, null, 2));
+    // eslint-disable-next-line no-console
+    console.log('RAG With Expansion Report:', JSON.stringify(expanded, null, 2));
   });
 });
