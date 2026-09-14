@@ -30,6 +30,7 @@ export default function NotificationPanel(props) {
     authExpired,
     networkError,
     refreshNotifications,
+    fetchNotificationCount,
     openPanel,
     closePanel
   } = useNotifications();
@@ -117,6 +118,8 @@ export default function NotificationPanel(props) {
     if (notification.link && validateInternalNotificationRoute(notification.link)) {
       onClose();
       await router.push(notification.link);
+      // Solicita recontagem com invalidação de cache, respeitando o throttle do provider
+      fetchNotificationCount({ force: true });
     }
   };
 

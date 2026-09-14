@@ -267,11 +267,26 @@ export default function Home() {
         if (conv) {
           setSelectedConversation(conv);
           setActiveTab('chat');
+          if (conv.unread) {
+            supabase
+              .from('conversations')
+              .update({ unread: false })
+              .eq('id', conv.id)
+              .then(({ error }) => {
+                if (error) {
+                  console.error('[FRONTEND] Erro ao marcar como lida:', error);
+                } else {
+                  setConversations(prev => prev.map(c =>
+                    c.id === conv.id ? { ...c, unread: false } : c
+                  ));
+                }
+              });
+          }
         }
         lastConversationQuery.current = conversationId;
       }
     }
-  }, [router.isReady, router.query.conversation, conversations]);
+  }, [router.isReady, router.query.conversationId, router.query.conversation, conversations]);
 
   const fetchConversations = async () => {
     try {

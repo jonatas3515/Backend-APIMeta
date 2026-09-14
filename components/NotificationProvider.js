@@ -316,7 +316,7 @@ export function NotificationProvider({ children }) {
     ) {
       refreshNotifications({ force: false });
     }
-    fetchNotificationCount({ force: true });
+    fetchNotificationCount({ force: false });
   }, [refreshNotifications, fetchNotificationCount]);
 
   const closePanel = useCallback(() => {
