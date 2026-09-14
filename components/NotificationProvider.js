@@ -134,6 +134,7 @@ export function NotificationProvider({ children }) {
   const pendingListRef = useRef(null);
   const pendingCountRef = useRef(null);
   const lastListFetchRef = useRef(null);
+  const lastCountFetchRef = useRef(null);
   const cooldownIntervalRef = useRef(null);
   const isMountedRef = useRef(true);
   const panelOpenRef = useRef(false);
@@ -223,7 +224,14 @@ export function NotificationProvider({ children }) {
       return Promise.resolve();
     }
     if (pendingCountRef.current) return pendingCountRef.current;
+    if (
+      lastCountFetchRef.current &&
+      Date.now() - lastCountFetchRef.current < COUNT_THROTTLE_MS
+    ) {
+      return Promise.resolve();
+    }
 
+    lastCountFetchRef.current = Date.now();
     const controller = new AbortController();
     countControllerRef.current = controller;
     dispatch({ type: 'SET_LOADING_COUNT', payload: true });
@@ -254,6 +262,7 @@ export function NotificationProvider({ children }) {
   }, [handleResponse]);
 
   const LIST_THROTTLE_MS = 5000;
+  const COUNT_THROTTLE_MS = 3500;
 
   const refreshNotifications = useCallback(async ({ force = false } = {}) => {
     if (!isMountedRef.current || stateRef.current.authExpired) return Promise.resolve();
