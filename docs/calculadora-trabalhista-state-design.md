@@ -76,48 +76,50 @@ Definir, sem implementar, como manter o `state` do fluxo de cálculo de verbas t
 
 ## Recomendação final
 
-**Adotar a opção 4 (tabela específica com TTL) com criptografia opcional da coluna `collected` (opção 5) em uma fase posterior, se for exigido reforço de LGPD.**
+**Adotar a opção 4 (tabela específica com TTL) com criptografia obrigatória do `collected` (opção 5) desde a primeira implementação.**
+
+A migration e a biblioteca `lib/laborSettlementState.js` foram projetadas para cifrar `collected` via `lib/encryption.js` antes de persistir. Se a chave de criptografia não estiver configurada, a biblioteca bloqueia o salvamento e não persiste o payload em claro.
 
 Motivos:
 - Isola o estado do cálculo do funil principal.
-- TTL nativo (`expires_at`) permite expiração automática sem job externo complexo (basta `WHERE expires_at < now()` em worker/evento agendado).
+- TTL nativo (`expires_at`) permite expiração automática sem job externo complexo.
+- Criptografia impede leitura dos dados sensíveis mesmo que o service_role acesse a tabela.
 - Facilita exclusão manual, anonimização e auditoria.
-- Consome a mesma arquitetura Supabase/Vercel sem invenção de novo sistema.
 
-## Modelo de dados proposto
+## Modelo de dados implementado
+
+Migration: `supabase/migrations/059_add_conversation_labor_states.sql`
 
 Tabela: `conversation_labor_states`
 
 ```sql
 CREATE TABLE IF NOT EXISTS conversation_labor_states (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-  flow_version INTEGER NOT NULL DEFAULT 1,
+  conversation_id UUID NOT NULL UNIQUE REFERENCES conversations(id) ON DELETE CASCADE,
   active BOOLEAN NOT NULL DEFAULT false,
   intent VARCHAR(50),
-  collected JSONB NOT NULL DEFAULT '{}',
-  asked_fields TEXT[] NOT NULL DEFAULT '{}',
   status VARCHAR(50) NOT NULL DEFAULT 'idle',
-  last_message_hash VARCHAR(64),          -- hash da última mensagem processada (idempotência)
+  asked_fields TEXT[] NOT NULL DEFAULT '{}',
+  protected_payload TEXT NOT NULL,
+  last_message_hash VARCHAR(64),
+  flow_version VARCHAR(20) NOT NULL,
   expires_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_labor_states_conversation
+CREATE INDEX IF NOT EXISTS idx_conversation_labor_states_conversation_id
   ON conversation_labor_states(conversation_id);
-CREATE INDEX IF NOT EXISTS idx_labor_states_expires_at
+CREATE INDEX IF NOT EXISTS idx_conversation_labor_states_expires_at
   ON conversation_labor_states(expires_at);
-CREATE INDEX IF NOT EXISTS idx_labor_states_active
-  ON conversation_labor_states(conversation_id, active)
-  WHERE active = true;
 ```
 
 Campos:
-- `collected` deve conter apenas os valores normalizados; não armazenar o texto original da mensagem.
-- `last_message_hash` deve ser `sha256(wa_message_id)` ou `sha256(texto truncado)` para evitar reprocessamento de duplicatas do WhatsApp.
-- `expires_at` definido como `now() + interval '24 hours'` por padrão.
-- `flow_version` permite invalidar estados antigos quando o parser/orquestrador mudar.
+- `protected_payload` armazena `collected` cifrado (AES-256-GCM) pela aplicação.
+- `last_message_hash` é um hash da última mensagem processada; nunca o texto original.
+- `expires_at` definido para 24 horas a partir de `now()`.
+- `flow_version` invalida estados antigos quando o orquestrador muda.
+- `conversation_id` é `UNIQUE` e `ON DELETE CASCADE` com `conversations`.
 
 ## Fluxo de leitura/escrita/expiração
 
@@ -180,19 +182,47 @@ CREATE POLICY service_role_only_labor_states
 ## Concorrência e idempotência
 
 - `wa_message_id` é único; o webhook já verifica duplicatas em `messages`.
-- `last_message_hash` evita que o mesmo estado seja reprocessado.
-- Para mensagens muito próximas, usar `UPDATE ... WHERE updated_at < now() - interval '1 second'` ou lock otimista pelo `updated_at`.
-- Se duas requisições simultâneas atualizarem o mesmo `conversation_id`, o Supabase serializa; a última `UPDATE` ganha. O orquestrador é determinístico, então o resultado final será consistente se o `state` for carregado novamente.
+- `last_message_hash` evita reprocessamento.
+- `saveLaborSettlementState` exige `expectedUpdatedAt` para updates; `UPDATE ... WHERE updated_at = $1` é atômico.
+- Se duas requisições simultâneas atualizarem o mesmo `conversation_id`, a condição em `updated_at` faz com que uma delas retorne `CONCURRENCY_CONFLICT`.
+- O orquestrador é determinístico, então uma nova tentativa a partir de um recarregamento produz resultado consistente.
 
-## Criptografia (fase 2)
+## Criptografia
 
-Se for exigido:
+Implementada em `lib/laborSettlementState.js` via `lib/encryption.js` (AES-256-GCM):
 
-- Criar `LABOR_STATE_ENCRYPTION_KEY` no gerenciamento de segredos (não no `.env` do repositório).
-- Antes de salvar, criptografar `collected` com AES-256-GCM (`crypto` do Node.js).
-- Armazenar `collected` como `TEXT`/`BYTEA` (ciphertext + IV + tag).
-- O `state` em si (active, status, askedFields) pode permanecer descriptografado para indexação/limpeza.
+- O campo `collected` é serializado em JSON e cifrado antes de persistir.
+- O ciphertext é armazenado em `protected_payload` (TEXT).
+- `active`, `intent`, `status`, `asked_fields`, `last_message_hash`, `expires_at` e `flow_version` permanecem em colunas normais para indexação e TTL.
+- Se `lib/encryption.js` não estiver configurado (sem chave), `saveLaborSettlementState` lança `LaborStateError('ENCRYPTION_FAILED')` e **não persiste em claro**.
 - A chave nunca é logada, commitada ou retornada ao cliente.
+
+## Biblioteca `lib/laborSettlementState.js`
+
+Funções exportadas:
+- `loadLaborSettlementState({ conversationId, authorizationContext, now })`
+- `saveLaborSettlementState({ conversationId, state, authorizationContext, expectedUpdatedAt, now })`
+- `deleteLaborSettlementState({ conversationId, authorizationContext })`
+- `expireLaborSettlementState({ conversationId, authorizationContext, now })`
+- `isLaborSettlementStateExpired(state, now)`
+
+### authorizationContext
+
+Obrigatório. Aceita uma das formas:
+- `{ userId, allowedConversationId }`
+- `{ userId, allowedConversationIds: [...] }`
+- `{ userId, canAccessConversation: (id) => boolean }`
+
+Não basta passar `conversationId`; a aplicação deve provar o escopo.
+
+### Regras da biblioteca
+
+- Valida UUID de `conversationId`.
+- Não carrega estado expirado ou com `flow_version` incompatível; apaga esses registros.
+- `save` exige `expectedUpdatedAt` quando o registro já existe; `UPDATE ... WHERE updated_at = $1` evita sobrescrita silenciosa.
+- `last_message_hash` repetido torna `save` idempotente.
+- Não loga `collected`, mensagem ou resposta.
+- Não expõe stack traces; erros são `LaborStateError` com códios determinísticos.
 
 ## Auditoria
 
@@ -217,34 +247,28 @@ Justificativa: o cálculo é uma simulação temporária; o cliente pode repetir
 - Implementar `clearOutdatedLaborStates(version)` para apagar registros cuja `flow_version < min_allowed_version`.
 - Não migrar conteúdo JSON de versões antigas; apenas apagar.
 
-## Plano de implementação futura em etapas
+## Plano de integração futura
 
-### Etapa 1 — Migration
-- Criar `supabase/migrations/059_add_conversation_labor_states.sql`.
-- Criar políticas RLS, índices e trigger `update_updated_at`.
+### Etapa 1 — Aplicar migration
+- Executar `supabase/migrations/059_add_conversation_labor_states.sql` no ambiente autorizado.
+- Verificar RLS e políticas.
 
-### Etapa 2 — Repository
-- Criar `lib/laborSettlementState.js` com:
-  - `loadLaborState(conversationId)`
-  - `saveLaborState(conversationId, state, expiresInHours)`
-  - `deleteLaborState(conversationId)`
-  - `expireLaborStates()`
-- Sem logs de PII.
+### Etapa 2 — Configurar chave de criptografia
+- Definir `CALENDAR_ENCRYPTION_KEY` (ou uma chave dedicada futura) no gerenciamento de segredos.
+- Sem chave, `saveLaborSettlementState` bloqueia.
 
-### Etapa 3 — Integração no webhook
+### Etapa 3 — Integrar no webhook
 - Em `pages/api/webhook.js`, após `getOrCreateConversation`:
-  - carregar `conversation_id`;
-  - chamar `adaptLaborSettlement` com `state` carregado;
-  - persistir `state` se `handled === true`;
+  - construir `authorizationContext` com `allowedConversationId`;
+  - `loadLaborSettlementState`;
+  - `adaptLaborSettlement({ message, state: loadedState })`;
+  - `saveLaborSettlementState` com `lastMessageHash` se `handled === true`;
   - enviar `response.text`;
-- Continuar a permitir que mensagens `other` passem para o fluxo normal de IA.
+- Continuar permitindo mensagens `other` no fluxo normal de IA.
 
-### Etapa 4 — Criptografia (opcional)
-- Adicionar criptografia de `collected` em `lib/laborSettlementState.js`.
-
-### Etapa 5 — Testes
-- Testar com estados sintéticos, sem dados reais.
-- Verificar expiração, concorrência, exclusão em cascata e LGPD.
+### Etapa 4 — Limpeza expirada
+- Criar endpoint/edge function `DELETE FROM conversation_labor_states WHERE expires_at < now()`.
+- Não fazer sem autorização.
 
 ## Riscos
 
@@ -255,11 +279,12 @@ Justificativa: o cálculo é uma simulação temporária; o cliente pode repetir
 | Expiração não ocorrer | Índice em `expires_at` + worker/cron |
 | Concorrência quebra coleta | Re-carregar `state` antes de salvar; usar `updated_at` como versão |
 | Estado antigo incompatível | `flow_version` e limpeza obrigatória |
-| Chave de criptografia vazada | Guardar em variável de ambiente/secret, nunca commitar |
+| `collected` lido pelo service_role | Cifrar `collected`; RLS limita ao service_role; validar escopo na aplicação |
+| Chave de criptografia vazada | Guardar em secret/Vercel, nunca commitar; fallback bloqueia se ausente |
 
-## Limitações do presente documento
+## Limitações do presente trabalho
 
-- Nenhuma migration foi criada.
-- Nenhum banco foi alterado.
-- Nenhum endpoint, UI, WhatsApp ou Gemini foi conectado.
-- A escolha final requer aprovação humana antes da implementação.
+- A migration `059` foi criada, mas **não aplicada** em banco real.
+- Nenhum endpoint, UI, WhatsApp, Gemini, webhook, `lib/ai.js` ou `lib/aiRag.js` foi alterado.
+- Nenhuma variável de ambiente foi criada.
+- A integração ativa requer aprovação humana e configuração de chave de criptografia.
