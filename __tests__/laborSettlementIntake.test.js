@@ -218,7 +218,8 @@ describe('laborSettlementIntake - próximas perguntas', () => {
       salary: 3000,
       admissionDate: '2023-01-15',
       terminationDate: '2024-07-10',
-      terminationReason: 'dispensa sem justa causa'
+      terminationReason: 'dispensa sem justa causa',
+      noticeStatus: 'desconhecido'
     });
     expect(result.status).toBe('ready');
     expect(result.warnings.some(w => w.includes('estimativa'))).toBe(true);

@@ -265,4 +265,18 @@ describe('laborSettlementCalculator - mensagens obrigatórias', () => {
     expect(result.missingFields).toContain('terminationReason');
     expect(result.confidence).toBe('low');
   });
+
+  test('período e avos são retornados no inputSummary', () => {
+    const result = calculateLaborSettlement({
+      salary: 3000,
+      admissionDate: '2023-01-15',
+      terminationDate: '2024-07-10',
+      terminationReason: 'dispensa_sem_justa_causa',
+      noticeStatus: 'indenizado'
+    });
+    expect(result.inputSummary.period.monthsOfWork).toBe(17);
+    expect(result.inputSummary.period.thirteenthMonths).toBeGreaterThan(0);
+    expect(result.inputSummary.period.salaryBalanceDays).toBeGreaterThan(0);
+    expect(result.inputSummary.noticeStatus).toBe('indenizado');
+  });
 });

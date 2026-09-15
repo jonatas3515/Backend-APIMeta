@@ -38,7 +38,7 @@ describe('laborSettlementResponse - needs_information', () => {
       warnings: ['Data de desligamento não pode ser anterior à data de admissão.'],
       nextQuestions: ['Qual a data correta de desligamento?']
     });
-    expect(response.type).toBe('needs_information');
+    expect(response.type).toBe('invalid');
     expect(response.text).toContain('inconsistentes');
     expect(response.text).toContain('anterior');
   });
@@ -66,9 +66,8 @@ describe('laborSettlementResponse - ready', () => {
       nextQuestions: []
     });
     expect(response.type).toBe('labor_settlement_estimate');
-    expect(response.text).toContain('Verbas calculadas');
-    expect(response.text).toContain('Verbas condicionais');
-    expect(response.text).toContain('Verbas não incluídas');
+    expect(response.text).toContain('Valores estimados');
+    expect(response.text).toContain('Não incluídos');
     expect(response.text).toContain('Total estimado');
   });
 
@@ -154,7 +153,7 @@ describe('laborSettlementResponse - itens condicionais e não calculados', () =>
       nextQuestions: []
     });
     expect(response.text).toContain('FGTS');
-    expect(response.text).toContain('não incluído');
+    expect(response.text).toContain('Não incluídos');
     expect(response.text).toContain('Horas extras');
   });
 });
@@ -165,7 +164,8 @@ describe('laborSettlementResponse - segurança', () => {
       salary: 3000,
       admissionDate: '2023-01-15',
       terminationDate: '2024-07-10',
-      terminationReason: 'dispensa sem justa causa'
+      terminationReason: 'dispensa sem justa causa',
+      noticeStatus: 'desconhecido'
     });
     const response = formatLaborSettlementResponse({
       status: 'ready',

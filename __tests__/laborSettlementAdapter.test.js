@@ -63,7 +63,7 @@ describe('adaptLaborSettlement', () => {
 
   test('dados completos chegam ao cálculo correto', () => {
     const result = adaptLaborSettlement({
-      message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa'
+      message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa, aviso indenizado'
     });
     expect(result.handled).toBe(true);
     expect(result.flow).toBe('labor_settlement_estimate');
@@ -93,7 +93,7 @@ describe('adaptLaborSettlement', () => {
 
   test('adaptador não persiste dados', () => {
     const result = adaptLaborSettlement({
-      message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa'
+      message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa, aviso indenizado'
     });
     expect(result).not.toHaveProperty('persisted');
     expect(result).not.toHaveProperty('savedAt');
@@ -101,7 +101,7 @@ describe('adaptLaborSettlement', () => {
 
   test('adaptador não recalcula valores', () => {
     const result = adaptLaborSettlement({
-      message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa'
+      message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa, aviso indenizado'
     });
     const motorTotal = result.calculation.items
       .filter(i => i.status === 'calculated')
@@ -111,7 +111,7 @@ describe('adaptLaborSettlement', () => {
 
   test('resultado preserva warnings e itens condicionais', () => {
     const result = adaptLaborSettlement({
-      message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa'
+      message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa, aviso indenizado'
     });
     expect(result.warnings.length).toBeGreaterThan(0);
     expect(result.calculation.items.some(i => i.status === 'conditional')).toBe(true);
@@ -130,7 +130,7 @@ describe('adaptLaborSettlement', () => {
 
   test('execução é determinística', () => {
     const input = {
-      message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa'
+      message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa, aviso indenizado'
     };
     const r1 = adaptLaborSettlement(input);
     const r2 = adaptLaborSettlement(input);

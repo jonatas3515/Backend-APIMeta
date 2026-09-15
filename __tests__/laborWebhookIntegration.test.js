@@ -78,7 +78,7 @@ describe('laborWebhookIntegration (simplificado por histórico)', () => {
   test('cálculo completo usando dados da mensão atual', async () => {
     const messages = [botMessage('Para estimar sua rescisão, preciso das seguintes informações: Qual era o salário mensal? Qual foi a data de admissão? Qual foi a data de desligamento? Qual foi o motivo do desligamento?')];
     const result = await handleLaborSettlementWebhook(makeParams({
-      textBody: 'Recebia 3000 reais, entrei em 01/05/2023 e saí em 30/06/2024, fui demitido sem justa causa',
+      textBody: 'Recebia 3000 reais, entrei em 01/05/2023 e saí em 30/06/2024, fui demitido sem justa causa, aviso indenizado',
       messages
     }));
 
@@ -106,7 +106,7 @@ describe('laborWebhookIntegration (simplificado por histórico)', () => {
       botMessage('Qual foi a data de admissão?')
     ];
     const result = await handleLaborSettlementWebhook(makeParams({
-      textBody: 'Entrei em 01/05/2023 e saí em 30/06/2024, fui demitido sem justa causa',
+      textBody: 'Entrei em 01/05/2023 e saí em 30/06/2024, fui demitido sem justa causa, aviso indenizado',
       messages
     }));
 
@@ -132,6 +132,26 @@ describe('laborWebhookIntegration (simplificado por histórico)', () => {
     expect(result.handled).toBe(false);
     expect(result.reply).toBeFalsy();
     expect(result.errorCode).toBeFalsy();
+  });
+
+  test('"Foi hoje" normaliza a data de desligamento a partir do histórico', async () => {
+    process.env.LABOR_TODAY_DATE = '2026-09-15';
+    const messages = [
+      botMessage('Para estimar sua rescisão, preciso das seguintes informações: Qual era o salário mensal? Qual foi a data de admissão? Qual foi a data de desligamento? Qual foi o motivo do desligamento? O aviso-prévio foi trabalhado, indenizado, não cumprido ou você não sabe?'),
+      clientMessage('R$ 2.500'),
+      botMessage('Qual foi a data de admissão?'),
+      clientMessage('15/03/2025'),
+      botMessage('Qual foi a data de desligamento?')
+    ];
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'Foi hoje',
+      messages
+    }));
+
+    expect(result.handled).toBe(true);
+    expect(result.reply).toContain('Qual foi o motivo');
+    expect(result.flow).toBe('labor_settlement_estimate');
+    delete process.env.LABOR_TODAY_DATE;
   });
 
   test('nenhum log contém texto da mensagem, salário ou data', async () => {
