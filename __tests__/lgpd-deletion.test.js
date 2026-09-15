@@ -37,6 +37,11 @@ jest.mock('../lib/auth', () => ({
 
 jest.mock('../lib/logger', () => jest.fn());
 
+jest.mock('@/lib/laborSettlementState', () => ({
+  deleteLaborSettlementState: jest.fn().mockResolvedValue({})
+}));
+const laborSettlementStateMock = jest.requireMock('@/lib/laborSettlementState');
+
 const requestHandler = require('../pages/api/lgpd/deletion-request').default;
 const executeHandler = require('../pages/api/lgpd/deletion-execute').default;
 
@@ -44,7 +49,7 @@ const adminUser = { id: 'u1', role: 'admin' };
 const estagiarioUser = { id: 'u3', role: 'estagiario' };
 
 const mockConversation = {
-  id: 'c1',
+  id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
   client_name: 'Cliente Teste',
   client_phone: '5511999999999',
   client_email: 'teste@email.com',
@@ -54,7 +59,7 @@ const mockConversation = {
 
 const mockRequest = {
   id: 'req-1',
-  conversation_id: 'c1',
+  conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
   mode: 'anonymized',
   reason: 'lgpd_request',
   notes: null,
@@ -76,7 +81,7 @@ describe('API /api/lgpd/deletion-request', () => {
 
     const { req, res } = createMocks({
       method: 'POST',
-      body: { clientId: 'c1', mode: 'anonymized', reason: 'lgpd_request' },
+      body: { clientId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', mode: 'anonymized', reason: 'lgpd_request' },
       __testUser: adminUser
     });
 
@@ -84,7 +89,7 @@ describe('API /api/lgpd/deletion-request', () => {
 
     expect(res._getStatusCode()).toBe(201);
     const json = res._getJSONData();
-    expect(json.clientId).toBe('c1');
+    expect(json.clientId).toBe('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11');
     expect(json.mode).toBe('anonymized');
     expect(json.status).toBe('pending');
   });
@@ -92,7 +97,7 @@ describe('API /api/lgpd/deletion-request', () => {
   test('POST rejeita modo inválido', async () => {
     const { req, res } = createMocks({
       method: 'POST',
-      body: { clientId: 'c1', mode: 'invalid', reason: 'lgpd_request' },
+      body: { clientId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', mode: 'invalid', reason: 'lgpd_request' },
       __testUser: adminUser
     });
 
@@ -109,7 +114,7 @@ describe('API /api/lgpd/deletion-request', () => {
 
     const { req, res } = createMocks({
       method: 'POST',
-      body: { clientId: 'c1', mode: 'full', reason: 'lgpd_request' },
+      body: { clientId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', mode: 'full', reason: 'lgpd_request' },
       __testUser: adminUser
     });
 
@@ -124,7 +129,7 @@ describe('API /api/lgpd/deletion-request', () => {
 
     const { req, res } = createMocks({
       method: 'POST',
-      body: { clientId: 'c1', mode: 'anonymized', reason: 'lgpd_request' },
+      body: { clientId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', mode: 'anonymized', reason: 'lgpd_request' },
       __testUser: estagiarioUser
     });
 
@@ -139,9 +144,10 @@ describe('API /api/lgpd/deletion-execute', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockRpc.mockResolvedValue({ data: 'log-id', error: null });
+    laborSettlementStateMock.deleteLaborSettlementState.mockReset().mockResolvedValue({});
   });
 
-  test('POST executa anonimização e registra auditoria', async () => {
+  test('POST executa anonimização e remove estado trabalhista', async () => {
     mockFrom
       .mockImplementationOnce(() => mockFromChain(mockRequest))
       .mockImplementationOnce(() => mockFromChain(mockConversation))
@@ -162,6 +168,60 @@ describe('API /api/lgpd/deletion-execute', () => {
     const json = res._getJSONData();
     expect(json.status).toBe('completed');
     expect(json.mode).toBe('anonymized');
+    expect(laborSettlementStateMock.deleteLaborSettlementState).toHaveBeenCalledWith({
+      conversationId: mockConversation.id,
+      authorizationContext: {
+        userId: adminUser.id,
+        allowedConversationId: mockConversation.id
+      }
+    });
+    expect(mockRpc).toHaveBeenCalledWith('log_audit', expect.objectContaining({
+      p_action: 'labor_state_deleted_by_lgpd',
+      p_entity_type: 'conversation_labor_states',
+      p_details: expect.not.stringContaining('protected_payload')
+    }));
+  });
+
+  test('falha ao remover estado trabalhista impede conclusão', async () => {
+    laborSettlementStateMock.deleteLaborSettlementState.mockRejectedValueOnce({ code: 'DELETE_FAILED' });
+
+    mockFrom
+      .mockImplementationOnce(() => mockFromChain(mockRequest))
+      .mockImplementationOnce(() => mockFromChain(mockConversation));
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: { requestId: 'req-1', confirm: true },
+      __testUser: adminUser
+    });
+
+    await executeHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(500);
+    expect(res._getJSONData().error).toBe('Erro ao executar exclusão/anonimização');
+    expect(mockRpc).not.toHaveBeenCalledWith('log_audit', expect.objectContaining({ p_action: 'execute_anonymization' }));
+    expect(mockFrom).toHaveBeenCalledTimes(2);
+  });
+
+  test('estado ausente não impede anonimização', async () => {
+    mockFrom
+      .mockImplementationOnce(() => mockFromChain(mockRequest))
+      .mockImplementationOnce(() => mockFromChain(mockConversation))
+      .mockImplementationOnce(() => mockFromChain({}))
+      .mockImplementationOnce(() => mockFromChain({}))
+      .mockImplementationOnce(() => mockFromChain({}))
+      .mockImplementationOnce(() => mockFromChain({}));
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: { requestId: 'req-1', confirm: true },
+      __testUser: adminUser
+    });
+
+    await executeHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(laborSettlementStateMock.deleteLaborSettlementState).toHaveBeenCalled();
   });
 
   test('não-admin recebe 403', async () => {

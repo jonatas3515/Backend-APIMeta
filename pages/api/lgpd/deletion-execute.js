@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
 import { anonymizeClientProfile } from '@/lib/lgpd-deletion';
 import logger from '@/lib/logger';
+import { deleteLaborSettlementState } from '@/lib/laborSettlementState';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -69,6 +70,24 @@ async function handlePost(req, res) {
       logger('warn', 'LGPD_DELETION_EXECUTE_CLIENT_NOT_FOUND', { httpStatus: 404, userId: user.id });
       return res.status(404).json({ error: 'Titular não encontrado' });
     }
+
+    await deleteLaborSettlementState({
+      conversationId: conversation.id,
+      authorizationContext: {
+        userId: user.id,
+        allowedConversationId: conversation.id
+      }
+    });
+
+    await supabase.rpc('log_audit', {
+      p_user_id: user.id,
+      p_entity_type: 'conversation_labor_states',
+      p_entity_id: conversation.id,
+      p_action: 'labor_state_deleted_by_lgpd',
+      p_old_value: null,
+      p_new_value: null,
+      p_details: JSON.stringify({ requestId, mode, by: user.id })
+    });
 
     const anonPayload = anonymizeClientProfile(conversation);
 

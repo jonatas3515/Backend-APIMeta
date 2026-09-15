@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
+import * as laborSettlementState from '@/lib/laborSettlementState';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -135,9 +136,37 @@ async function handlePost(req, res) {
         return res.status(400).json({ error: 'conversation_id é obrigatório' });
       }
 
+      const { data: conversation, error: convError } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('id', conversation_id)
+        .single();
+
+      if (convError || !conversation) {
+        return res.status(404).json({ error: 'Conversa não encontrada' });
+      }
+
+      await laborSettlementState.deleteLaborSettlementState({
+        conversationId: conversation.id,
+        authorizationContext: {
+          userId: req.user.id,
+          allowedConversationId: conversation.id
+        }
+      });
+
+      await supabase.rpc('log_audit', {
+        p_user_id: req.user.id,
+        p_entity_type: 'conversation_labor_states',
+        p_entity_id: conversation.id,
+        p_action: 'labor_state_deleted_by_lgpd',
+        p_old_value: null,
+        p_new_value: null,
+        p_details: JSON.stringify({ by: req.user.id, reason })
+      });
+
       // Executa função de anonimização
       const { error } = await supabase.rpc('anonymize_lead', {
-        p_conversation_id: conversation_id,
+        p_conversation_id: conversation.id,
         p_reason: reason || null
       });
 
@@ -145,13 +174,13 @@ async function handlePost(req, res) {
 
       // Registra auditoria
       await supabase.rpc('log_audit', {
-        p_user_id: user_id || null,
+        p_user_id: req.user.id,
         p_entity_type: 'conversation',
-        p_entity_id: conversation_id,
+        p_entity_id: conversation.id,
         p_action: 'anonymize_lead',
         p_old_value: null,
         p_new_value: 'anonymized',
-        p_details: JSON.stringify({ reason })
+        p_details: JSON.stringify({ reason, by: req.user.id })
       });
 
       console.log(`[LGPD] Lead ${conversation_id} anonimizado`);
