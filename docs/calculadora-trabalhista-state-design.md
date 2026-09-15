@@ -164,17 +164,40 @@ Campos:
 ```sql
 ALTER TABLE conversation_labor_states ENABLE ROW LEVEL SECURITY;
 
--- Apenas service_role (backend) acessa diretamente
-CREATE POLICY service_role_only_labor_states
+-- Apenas service_role (backend) acessa diretamente.
+-- service_role bypassa RLS por padrão; por isso toda leitura/escrita DEVE passar por
+-- lib/laborSettlementState.js e validar o authorizationContext explicitamente.
+CREATE POLICY conversation_labor_states_service_role_only
   ON conversation_labor_states
   FOR ALL
   TO service_role
   USING (true)
   WITH CHECK (true);
+
+-- Negar explicitamente anon e authenticated
+CREATE POLICY conversation_labor_states_no_anon
+  ON conversation_labor_states
+  FOR ALL
+  TO anon
+  USING (false)
+  WITH CHECK (false);
+
+CREATE POLICY conversation_labor_states_no_authenticated
+  ON conversation_labor_states
+  FOR ALL
+  TO authenticated
+  USING (false)
+  WITH CHECK (false);
+
+-- Proteção formal do payload (formato AES-256-GCM deste projeto)
+ALTER TABLE conversation_labor_states
+  ADD CONSTRAINT protected_payload_ciphertext_check
+  CHECK (protected_payload ~ '^[0-9a-fA-F]{32}:[0-9a-fA-F]{32}:[0-9a-fA-F]+$');
 ```
 
 ### Controle no backend
 
+- `lib/laborSettlementState.js` é a única camada de acesso; nunca acessar `conversation_labor_states` diretamente.
 - O endpoint/webhook deve buscar o `conversation_id` pelo `phone`, garantindo que o estado pertence a essa conversa.
 - Nunca expor `conversation_labor_states` diretamente via API pública.
 - Verificar `conversation.assigned_user_id` se o fluxo for acessado por painel interno (escrita/leitura por advogado/admin).
@@ -193,8 +216,10 @@ Implementada em `lib/laborSettlementState.js` via `lib/encryption.js` (AES-256-G
 
 - O campo `collected` é serializado em JSON e cifrado antes de persistir.
 - O ciphertext é armazenado em `protected_payload` (TEXT).
+- A chave é `LABOR_STATE_ENCRYPTION_KEY`, **não** `CALENDAR_ENCRYPTION_KEY`.
+- `lib/encryption.js` foi parametrizado para aceitar o nome da variável de ambiente; `encrypt`/`decrypt` default continuam em `CALENDAR_ENCRYPTION_KEY`, preservando calendário.
 - `active`, `intent`, `status`, `asked_fields`, `last_message_hash`, `expires_at` e `flow_version` permanecem em colunas normais para indexação e TTL.
-- Se `lib/encryption.js` não estiver configurado (sem chave), `saveLaborSettlementState` lança `LaborStateError('ENCRYPTION_FAILED')` e **não persiste em claro**.
+- Se `LABOR_STATE_ENCRYPTION_KEY` não estiver configurada, `saveLaborSettlementState` lança `LaborStateError('ENCRYPTION_FAILED')` e **não persiste em claro**.
 - A chave nunca é logada, commitada ou retornada ao cliente.
 
 ## Biblioteca `lib/laborSettlementState.js`
@@ -211,7 +236,7 @@ Funções exportadas:
 Obrigatório. Aceita uma das formas:
 - `{ userId, allowedConversationId }`
 - `{ userId, allowedConversationIds: [...] }`
-- `{ userId, canAccessConversation: (id) => boolean }`
+- `{ userId, canAccessConversation: (id) => boolean }` — **deve ser síncrona e retornar exatamente `true`.**
 
 Não basta passar `conversationId`; a aplicação deve provar o escopo.
 
@@ -219,17 +244,27 @@ Não basta passar `conversationId`; a aplicação deve provar o escopo.
 
 - Valida UUID de `conversationId`.
 - Não carrega estado expirado ou com `flow_version` incompatível; apaga esses registros.
+- `save` inspeciona o registro existente: se expirado, apaga e rejeita com `STATE_EXPIRED`; se `flow_version` incompatível, apaga e rejeita com `FLOW_VERSION_INVALID`.
 - `save` exige `expectedUpdatedAt` quando o registro já existe; `UPDATE ... WHERE updated_at = $1` evita sobrescrita silenciosa.
+- `save` direto nunca ressuscita um registro expirado.
 - `last_message_hash` repetido torna `save` idempotente.
 - Não loga `collected`, mensagem ou resposta.
 - Não expõe stack traces; erros são `LaborStateError` com códios determinísticos.
 
 ## Auditoria
 
-Nunca registrar o conteúdo de `collected` em logs. Permitido:
-- `action: 'labor_state_created' | 'labor_state_updated' | 'labor_state_deleted'`
-- `details: { conversation_id, expires_at, flow_version }` sem salário, datas ou nome.
-- `audit_logs` recebe `entity_type = 'conversation_labor_states'`.
+Não há auditoria automática por mensagem/ler nesta etapa. A camada de integração futura poderá registrar eventos sanitizados:
+- `labor_state_created`
+- `labor_state_updated`
+- `labor_state_expired`
+- `labor_state_deleted`
+
+Esses eventos não devem conter `payload`, mensagem, salário, datas, prompts, respostas ou resultados completos. Permitido:
+- `action`;
+- `conversation_id` se necessário;
+- `expires_at`, `flow_version`.
+
+Nunca registrar o conteúdo de `collected` em logs.
 
 ## Retenção
 
@@ -254,8 +289,10 @@ Justificativa: o cálculo é uma simulação temporária; o cliente pode repetir
 - Verificar RLS e políticas.
 
 ### Etapa 2 — Configurar chave de criptografia
-- Definir `CALENDAR_ENCRYPTION_KEY` (ou uma chave dedicada futura) no gerenciamento de segredos.
-- Sem chave, `saveLaborSettlementState` bloqueia.
+- Definir `LABOR_STATE_ENCRYPTION_KEY` no gerenciamento de segredos.
+- Formato: 64 caracteres hexadecimais / 32 bytes para AES-256-GCM.
+- Nunca usar `CALENDAR_ENCRYPTION_KEY` como fallback.
+- Sem chave, `saveLaborSettlementState` bloqueia com `ENCRYPTION_FAILED`.
 
 ### Etapa 3 — Integrar no webhook
 - Em `pages/api/webhook.js`, após `getOrCreateConversation`:
@@ -280,11 +317,11 @@ Justificativa: o cálculo é uma simulação temporária; o cliente pode repetir
 | Concorrência quebra coleta | Re-carregar `state` antes de salvar; usar `updated_at` como versão |
 | Estado antigo incompatível | `flow_version` e limpeza obrigatória |
 | `collected` lido pelo service_role | Cifrar `collected`; RLS limita ao service_role; validar escopo na aplicação |
-| Chave de criptografia vazada | Guardar em secret/Vercel, nunca commitar; fallback bloqueia se ausente |
+| Chave de criptografia vazada | Guardar `LABOR_STATE_ENCRYPTION_KEY` em secret/Vercel; nunca commitar; sem fallback; bloqueia se ausente |
 
 ## Limitações do presente trabalho
 
-- A migration `059` foi criada, mas **não aplicada** em banco real.
+- A migration `059` continua **não aplicada** em banco real.
 - Nenhum endpoint, UI, WhatsApp, Gemini, webhook, `lib/ai.js` ou `lib/aiRag.js` foi alterado.
-- Nenhuma variável de ambiente foi criada.
-- A integração ativa requer aprovação humana e configuração de chave de criptografia.
+- Nenhuma variável de ambiente foi criada na Vercel ou em qualquer ambiente.
+- A integração ativa requer aprovação humana e configuração de `LABOR_STATE_ENCRYPTION_KEY`.

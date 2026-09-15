@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS conversation_labor_states (
   intent VARCHAR(50),
   status VARCHAR(50) NOT NULL DEFAULT 'idle',
   asked_fields TEXT[] NOT NULL DEFAULT '{}',
-  protected_payload TEXT NOT NULL,
+  protected_payload TEXT NOT NULL
+    CHECK (protected_payload ~ '^[0-9a-fA-F]{32}:[0-9a-fA-F]{32}:[0-9a-fA-F]+$'),
   last_message_hash VARCHAR(64),
   flow_version VARCHAR(20) NOT NULL,
   expires_at TIMESTAMPTZ NOT NULL,
@@ -74,7 +75,7 @@ BEGIN
   END IF;
 END $$;
 
--- Garante que não exista acesso anônimo/publico (política explícita de negação)
+-- Garante que não exista acesso anônimo/publico/autenticado
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -86,6 +87,22 @@ BEGIN
       ON conversation_labor_states
       FOR ALL
       TO anon
+      USING (false)
+      WITH CHECK (false);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE tablename = 'conversation_labor_states'
+      AND policyname = 'conversation_labor_states_no_authenticated'
+  ) THEN
+    CREATE POLICY conversation_labor_states_no_authenticated
+      ON conversation_labor_states
+      FOR ALL
+      TO authenticated
       USING (false)
       WITH CHECK (false);
   END IF;
