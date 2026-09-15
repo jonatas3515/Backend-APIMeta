@@ -240,6 +240,34 @@ describe('laborWebhookIntegration', () => {
     expect(mockLoad).not.toHaveBeenCalled();
   });
 
+  test('conversa com mode nulo (regressão) integra como bot', async () => {
+    mockLoad.mockResolvedValue(null);
+    mockAdapt.mockReturnValue(collectingResult('Qual era o salário mensal?'));
+    mockSave.mockResolvedValue({ id: UUID });
+
+    const result = await handleLaborSettlementWebhook(makeParams({
+      conversation: makeConversation({ mode: null })
+    }));
+
+    expect(result.handled).toBe(true);
+    expect(result.reply).toBe('Qual era o salário mensal?');
+    expect(mockLoad).toHaveBeenCalled();
+  });
+
+  test('conversa com status nulo (regressão) integra como aberta', async () => {
+    mockLoad.mockResolvedValue(null);
+    mockAdapt.mockReturnValue(collectingResult('Qual era o salário mensal?'));
+    mockSave.mockResolvedValue({ id: UUID });
+
+    const result = await handleLaborSettlementWebhook(makeParams({
+      conversation: makeConversation({ status: null })
+    }));
+
+    expect(result.handled).toBe(true);
+    expect(result.reply).toBe('Qual era o salário mensal?');
+    expect(mockLoad).toHaveBeenCalled();
+  });
+
   test('mensagem não textual não integra', async () => {
     const result = await handleLaborSettlementWebhook(makeParams({
       messageType: 'image',
