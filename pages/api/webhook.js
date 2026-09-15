@@ -9,6 +9,7 @@ import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '../../lib/whats
 import { evaluateFunnelAutomation, registerFunnelEvent } from '../../lib/funnel-whatsapp.js';
 import { detectThanks, getThanksReply, detectAgreement, getAcknowledgementReply, getToneInstructions, correctCommonMistakes } from '../../lib/bot-responses.js';
 import { semanticSearch } from '../../lib/knowledge-embeddings.js';
+import * as laborIntegration from '../../lib/laborWebhookIntegration.js';
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
@@ -248,6 +249,31 @@ export default async function handler(req, res) {
               trigger: 'automation'
             }
           });
+        }
+      }
+
+      // ================= CÁLCULO DE VERBAS TRABALHISTAS =================
+      if (conversation && messageType === 'text') {
+        const normalizedPhone = normalizePhoneForMatch(from);
+        const laborResult = await laborIntegration.handleLaborSettlementWebhook({
+          conversation,
+          normalizedPhone,
+          waMessageId,
+          textBody,
+          messageType,
+          log
+        });
+
+        if (laborResult && laborResult.handled) {
+          if (laborResult.reply) {
+            const savedLaborMsg = await saveMessage(conversation.id, laborResult.reply, 'ai');
+            const laborWaMessageId = await sendWhatsAppMessage(from, laborResult.reply);
+            if (savedLaborMsg && laborWaMessageId) {
+              await supabase.from('messages').update({ wa_message_id: laborWaMessageId, status: 'sent' }).eq('id', savedLaborMsg.id);
+            }
+            log('labor_replied', { phoneHash: hashPhone(from), replyLength: laborResult.reply?.length || 0 });
+          }
+          return res.status(200).json({ success: true, labor: true });
         }
       }
 
