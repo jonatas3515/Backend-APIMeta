@@ -9,7 +9,7 @@ import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '../../lib/whats
 import { evaluateFunnelAutomation, registerFunnelEvent } from '../../lib/funnel-whatsapp.js';
 import { detectThanks, getThanksReply, detectAgreement, getAcknowledgementReply, getToneInstructions, correctCommonMistakes } from '../../lib/bot-responses.js';
 import { semanticSearch } from '../../lib/knowledge-embeddings.js';
-import * as laborIntegration from '../../lib/laborWebhookIntegration.js';
+const laborIntegration = require('../../lib/laborWebhookIntegration.js');
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
@@ -253,27 +253,49 @@ export default async function handler(req, res) {
       }
 
       // ================= CÁLCULO DE VERBAS TRABALHISTAS =================
-      if (conversation && messageType === 'text') {
-        const normalizedPhone = normalizePhoneForMatch(from);
-        const laborResult = await laborIntegration.handleLaborSettlementWebhook({
-          conversation,
-          normalizedPhone,
-          waMessageId,
-          textBody,
-          messageType,
-          log
-        });
+      if (conversation && messageType === 'text' && laborIntegration && typeof laborIntegration.handleLaborSettlementWebhook === 'function') {
+        let laborResult;
+        try {
+          const normalizedPhone = normalizePhoneForMatch(from);
+          log('labor_integration_invoked');
+          laborResult = await laborIntegration.handleLaborSettlementWebhook({
+            conversation,
+            normalizedPhone,
+            waMessageId,
+            textBody,
+            messageType,
+            log
+          });
+          log('labor_integration_result', {
+            handled: !!(laborResult && laborResult.handled),
+            hasReply: !!(laborResult && laborResult.reply),
+            flow: (laborResult && laborResult.flow) || null,
+            errorCode: (laborResult && laborResult.errorCode) || null
+          });
+        } catch (err) {
+          log('labor_integration_exception', { error: sanitizeError(err) });
+          laborResult = { handled: false };
+        }
 
-        if (laborResult && laborResult.handled) {
-          if (laborResult.reply) {
+        if (laborResult && laborResult.handled && laborResult.reply) {
+          try {
             const savedLaborMsg = await saveMessage(conversation.id, laborResult.reply, 'ai');
             const laborWaMessageId = await sendWhatsAppMessage(from, laborResult.reply);
             if (savedLaborMsg && laborWaMessageId) {
               await supabase.from('messages').update({ wa_message_id: laborWaMessageId, status: 'sent' }).eq('id', savedLaborMsg.id);
             }
-            log('labor_replied', { phoneHash: hashPhone(from), replyLength: laborResult.reply?.length || 0 });
+            log('labor_reply_sent', { phoneHash: hashPhone(from), replyLength: laborResult.reply?.length || 0, hasWaMessageId: !!laborWaMessageId });
+            if (!laborWaMessageId) {
+              log('labor_whatsapp_send_failed', { reason: 'no_wa_message_id' });
+            }
+            return res.status(200).json({ success: true, labor: true });
+          } catch (err) {
+            log('labor_reply_send_exception', { error: sanitizeError(err) });
           }
-          return res.status(200).json({ success: true, labor: true });
+        } else if (laborResult && laborResult.handled) {
+          log('labor_handled_without_reply', { flow: laborResult.flow || null });
+        } else {
+          log('labor_normal_flow_fallback');
         }
       }
 
