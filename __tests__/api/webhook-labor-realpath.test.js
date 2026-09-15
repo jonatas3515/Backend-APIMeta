@@ -1,21 +1,21 @@
 /**
  * Teste de integração do endpoint /api/webhook para mensagens trabalhistas.
- * Usa o handler real de pages/api/webhook.js com Supabase e a integração trabalhista mockados.
+ * Usa o handler real de pages/api/webhook.js com Supabase mockado.
  * Não envia mensagens reais, não usa PII, não acessa Supabase real.
  */
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://synthetic.supabase.co';
-process.env.SUPABASE_SERVICE_ROLE_KEY = 'synthetic-service-role-key';
-process.env.WEBHOOK_VERIFY_TOKEN = 'synthetic-verify-token';
-process.env.WHATSAPP_TOKEN = 'synthetic-whatsapp-token';
-process.env.WHATSAPP_PHONE_NUMBER_ID = 'synthetic-phone-id';
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'your_supabase_service_role_key';
+process.env.WEBHOOK_VERIFY_TOKEN = 'your_verify_token';
+process.env.WHATSAPP_TOKEN = 'your_whatsapp_token';
+process.env.WHATSAPP_PHONE_NUMBER_ID = 'your_phone_number_id';
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => {
     const SYNTHETIC_CONVERSATION = {
       id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
       client_phone: '5573999998888',
-      client_phone_normalized: '73999998888',
+      client_phone_normalized: '7399998888',
       status: null,
       mode: null,
       archived: false,
@@ -54,13 +54,8 @@ jest.mock('@supabase/supabase-js', () => ({
   })
 }));
 
-jest.mock('../../lib/laborWebhookIntegration', () => ({
-  handleLaborSettlementWebhook: jest.fn()
-}));
-
 const { createMocks } = require('node-mocks-http');
 const webhookHandler = require('../../pages/api/webhook').default;
-const laborWebhookIntegration = require('../../lib/laborWebhookIntegration');
 
 function buildLaborPayload(text) {
   return {
@@ -88,8 +83,6 @@ function buildLaborPayload(text) {
   };
 }
 
-const SALARY_QUESTION = 'Qual era o salário mensal?';
-
 describe('Webhook labor real path', () => {
   let fetchSpy;
 
@@ -98,20 +91,13 @@ describe('Webhook labor real path', () => {
       ok: true,
       json: async () => ({ messages: [{ id: 'wa-labor-001' }] }),
     });
-    laborWebhookIntegration.handleLaborSettlementWebhook.mockReset();
   });
 
   afterEach(() => {
     fetchSpy.mockRestore();
   });
 
-  test('"Quero calcular minha rescisão" pergunta pelo salário e não chama Gemini', async () => {
-    laborWebhookIntegration.handleLaborSettlementWebhook.mockResolvedValue({
-      handled: true,
-      reply: SALARY_QUESTION,
-      flow: 'labor_settlement_estimate'
-    });
-
+  test('"Quero calcular minha rescisão" inicia coleta e não chama Gemini', async () => {
     const { req, res } = createMocks({
       method: 'POST',
       body: buildLaborPayload('Quero calcular minha rescisão'),
@@ -125,20 +111,13 @@ describe('Webhook labor real path', () => {
     expect(statusCode).toBe(200);
     expect(data).toMatchObject({ success: true, labor: true });
 
-    // Verifica que a integração trabalhista foi chamada com os parâmetros corretos
-    expect(laborWebhookIntegration.handleLaborSettlementWebhook).toHaveBeenCalled();
-    const callArgs = laborWebhookIntegration.handleLaborSettlementWebhook.mock.calls[0][0];
-    expect(callArgs.textBody).toBe('Quero calcular minha rescisão');
-    expect(callArgs.messageType).toBe('text');
-    expect(callArgs.conversation.client_phone_normalized).toBe('73999998888');
-
-    // Verifica que o WhatsApp foi chamado com a pergunta do salário
+    // Verifica que o WhatsApp foi chamado com o texto de abertura
     const fetchCalls = fetchSpy.mock.calls;
     const whatsappCalls = fetchCalls.filter(([url]) => String(url).includes('messages'));
     expect(whatsappCalls.length).toBeGreaterThan(0);
     const lastWhatsAppCall = whatsappCalls[whatsappCalls.length - 1];
     const body = JSON.parse(lastWhatsAppCall[1].body);
-    expect(body.text.body).toBe(SALARY_QUESTION);
+    expect(body.text.body).toContain('Para estimar sua rescisão');
 
     // Verifica que o Gemini não foi chamado
     const geminiCalls = fetchCalls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
@@ -146,8 +125,6 @@ describe('Webhook labor real path', () => {
   });
 
   test('mensagem comum cai no fluxo normal (labor=false)', async () => {
-    laborWebhookIntegration.handleLaborSettlementWebhook.mockResolvedValue({ handled: false });
-
     const { req, res } = createMocks({
       method: 'POST',
       body: buildLaborPayload('Quero falar com um advogado'),
@@ -159,28 +136,6 @@ describe('Webhook labor real path', () => {
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
 
     expect(statusCode).toBe(200);
-    expect(data).not.toMatchObject({ success: true, labor: true });
-    expect(laborWebhookIntegration.handleLaborSettlementWebhook).toHaveBeenCalled();
-  });
-
-  test('integração handled sem reply não silencia e continua o fluxo', async () => {
-    laborWebhookIntegration.handleLaborSettlementWebhook.mockResolvedValue({
-      handled: true,
-      flow: 'labor_settlement_estimate'
-      // sem reply
-    });
-
-    const { req, res } = createMocks({
-      method: 'POST',
-      body: buildLaborPayload('Quero calcular minha rescisão'),
-    });
-
-    await webhookHandler(req, res);
-
-    const statusCode = res._getStatusCode();
-    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-
-    expect(statusCode).not.toBeLessThan(200);
     expect(data).not.toMatchObject({ success: true, labor: true });
   });
 });

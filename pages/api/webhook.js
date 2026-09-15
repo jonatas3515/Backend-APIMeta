@@ -252,6 +252,21 @@ export default async function handler(req, res) {
         }
       }
 
+      // Carregar histórico da conversa para o contexto trabalhista
+      let conversationMessages = [];
+      if (conversation && supabase) {
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { data: dbMessages, error: historyError } = await supabase
+          .from('messages')
+          .select('text, sender_type, created_at')
+          .eq('conversation_id', conversation.id)
+          .gte('created_at', oneDayAgo)
+          .order('created_at', { ascending: true });
+
+        if (historyError) console.error('[WEBHOOK] Erro ao buscar histórico:', sanitizeError(historyError));
+        conversationMessages = (dbMessages || []).slice(-50);
+      }
+
       // ================= CÁLCULO DE VERBAS TRABALHISTAS =================
       if (conversation && messageType === 'text' && laborIntegration && typeof laborIntegration.handleLaborSettlementWebhook === 'function') {
         let laborResult;
@@ -264,6 +279,7 @@ export default async function handler(req, res) {
             waMessageId,
             textBody,
             messageType,
+            messages: conversationMessages,
             log
           });
           log('labor_integration_result', {
@@ -315,31 +331,15 @@ export default async function handler(req, res) {
         }
       }
 
-      // Buscar histórico da conversa para contexto
+      // Construir histórico legível para contexto
       let conversationHistory = '';
-      if (conversation && supabase) {
-        // Pega mensagens das últimas 24h ou até 50 mensagens (o que for maior)
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { data: messages, error: historyError } = await supabase
-          .from('messages')
-          .select('text, sender_type, created_at')
-          .eq('conversation_id', conversation.id)
-          .gte('created_at', oneDayAgo)  // mensagens das últimas 24h
-          .order('created_at', { ascending: true });
-        
-        if (historyError) console.error('[WEBHOOK] Erro ao buscar histórico:', sanitizeError(historyError));
-        
-        // Limita a 50 mensagens mais recentes se houver muitas
-        const recentMessages = messages?.slice(-50) || [];
-        
-        if (recentMessages.length > 0) {
-          conversationHistory = recentMessages.map(m => {
-            const role = m.sender_type === 'client' ? 'Cliente' : 'Jhon';
-            const time = new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-            return `[${time}] ${role}: ${m.text}`;
-          }).join('\n');
-          log('history_loaded', { messageCount: recentMessages.length });
-        }
+      if (conversationMessages.length > 0) {
+        conversationHistory = conversationMessages.map(m => {
+          const role = m.sender_type === 'client' ? 'Cliente' : 'Jhon';
+          const time = new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          return `[${time}] ${role}: ${m.text}`;
+        }).join('\n');
+        log('history_loaded', { messageCount: conversationMessages.length });
       }
 
       // === Resposta com imagem: confusão Neves Costa ===
