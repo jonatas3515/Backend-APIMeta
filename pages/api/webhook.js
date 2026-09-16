@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { createLogger, hashPhone, sanitizeError } from '../../lib/webhookLog';
-import { detectArea, getNextQuestion, isIntakeComplete, getFlow, getTriageQuestion, TRIAGE_FIELDS } from '../../lib/intakeFlows';
+import { detectArea, getNextQuestion, isIntakeComplete, getFlow, getTriageQuestion, TRIAGE_FIELDS, extractCivilTheme } from '../../lib/intakeFlows';
 import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
 import { normalizePhoneForMatch } from '../../lib/formatters';
 import { loadClientMemory, formatClientMemory } from '../../lib/clientMemory';
-import { getClientTitle } from '../../lib/genderFromName';
+import { getClientTitle, getClientGreeting } from '../../lib/genderFromName';
 import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '../../lib/whatsapp.js';
 import { evaluateFunnelAutomation, registerFunnelEvent } from '../../lib/funnel-whatsapp.js';
 import { detectThanks, getThanksReply, detectAgreement, getAcknowledgementReply, getToneInstructions, correctCommonMistakes } from '../../lib/bot-responses.js';
@@ -489,7 +489,7 @@ async function handleIntake(conversation, clientMessage) {
 
     const nextStep = currentStep + 1;
 
-    if (isIntakeComplete(currentArea, nextStep)) {
+    if (isIntakeComplete(currentArea, nextStep, intakeData.answers)) {
       const summary = generateIntakeSummary(currentArea, intakeData.answers || {});
       
       const { error: finalError } = await supabase
@@ -509,12 +509,12 @@ async function handleIntake(conversation, clientMessage) {
 
       return { reply: `Obrigado pelas informações! 📝\n\nResumo do seu caso:\n${summary}\n\nNossa equipe irá analisar e retornar em breve.`, completed: true };
     } else {
-      const nextQuestion = getNextQuestion(currentArea, nextStep);
+      const nextQuestion = getNextQuestion(currentArea, nextStep, intakeData.answers, clientMessage);
       if (!nextQuestion) {
         console.error('[INTAKE] Pergunta não encontrada para step:', nextStep);
         return null;
       }
-      intakeData.current_step = nextStep;
+      intakeData.current_step = nextQuestion.step;
       
       const { error: stepError } = await supabase
         .from('conversations')
@@ -562,12 +562,19 @@ async function handleIntake(conversation, clientMessage) {
 
     // Se terminou a triagem, inicia o intake detalhado
     if (nextIndex >= TRIAGE_FIELDS.length) {
+      const prefillAnswers = {};
+      const civilTheme = currentArea === 'civel' ? extractCivilTheme(clientMessage) : null;
+      if (civilTheme) prefillAnswers.area_especifica = civilTheme;
+
+      const firstQuestion = getNextQuestion(currentArea, 0, prefillAnswers, clientMessage);
+      if (!firstQuestion) return null;
+
       const nextIntakeData = {
         ...intakeData,
         triage,
         triage_completed: true,
-        current_step: 0,
-        answers: {},
+        current_step: firstQuestion.step,
+        answers: prefillAnswers,
         started_at: new Date().toISOString()
       };
 
@@ -588,7 +595,6 @@ async function handleIntake(conversation, clientMessage) {
         return null;
       }
 
-      const firstQuestion = getNextQuestion(currentArea, 0);
       return { reply: `Entendi. Vamos agora aos detalhes: ${firstQuestion.question}` };
     }
 
@@ -602,12 +608,20 @@ async function handleIntake(conversation, clientMessage) {
   if (currentArea && triageStep >= TRIAGE_FIELDS.length && !intakeData.triage_completed) {
     const lastField = TRIAGE_FIELDS[TRIAGE_FIELDS.length - 1].field;
     triage[lastField] = clientMessage;
+
+    const prefillAnswers = {};
+    const civilTheme = currentArea === 'civel' ? extractCivilTheme(clientMessage) : null;
+    if (civilTheme) prefillAnswers.area_especifica = civilTheme;
+
+    const firstQuestion = getNextQuestion(currentArea, 0, prefillAnswers, clientMessage);
+    if (!firstQuestion) return null;
+
     const nextIntakeData = {
       ...intakeData,
       triage,
       triage_completed: true,
-      current_step: 0,
-      answers: {},
+      current_step: firstQuestion.step,
+      answers: prefillAnswers,
       started_at: new Date().toISOString()
     };
 
@@ -628,7 +642,6 @@ async function handleIntake(conversation, clientMessage) {
       return null;
     }
 
-    const firstQuestion = getNextQuestion(currentArea, 0);
     return { reply: `Obrigado! Agora mais alguns detalhes: ${firstQuestion.question}` };
   }
 
@@ -638,14 +651,20 @@ async function handleIntake(conversation, clientMessage) {
   
   if (!currentArea && detectedArea) {
     const flow = getFlow(detectedArea);
-    const firstQuestion = getNextQuestion(detectedArea, 0);
+
+    const prefillAnswers = {};
+    const civilTheme = detectedArea === 'civel' ? extractCivilTheme(clientMessage) : null;
+    if (civilTheme) prefillAnswers.area_especifica = civilTheme;
+
+    const firstQuestion = getNextQuestion(detectedArea, 0, prefillAnswers, clientMessage);
+    if (!firstQuestion) return null;
 
     const nextIntakeData = {
       triage_step: TRIAGE_FIELDS.length,
       triage: { case_type: clientMessage },
       triage_completed: true,
-      current_step: 0,
-      answers: {},
+      current_step: firstQuestion.step,
+      answers: prefillAnswers,
       started_at: new Date().toISOString()
     };
 
@@ -653,7 +672,7 @@ async function handleIntake(conversation, clientMessage) {
       .from('conversations')
       .update({
         legal_area: detectedArea,
-        case_type: clientMessage,
+        case_type: prefillAnswers.area_especifica || clientMessage,
         intake_data: nextIntakeData,
         funnel_stage: 'intake'
       })
@@ -662,6 +681,10 @@ async function handleIntake(conversation, clientMessage) {
     if (startError) {
       console.error('[INTAKE] Erro ao iniciar triagem:', sanitizeError(startError));
       return null;
+    }
+
+    if (detectedArea === 'civel' && civilTheme === 'Contratos') {
+      return { reply: `Entendi. Você quer verificar a quitação de um contrato. ${firstQuestion.question}` };
     }
 
     return { reply: `Entendi que pode ser um caso de ${flow.displayName}. Vamos aos detalhes: ${firstQuestion.question}` };
@@ -973,12 +996,7 @@ function isMarketingMessage(text) {
   return hits >= 2;
 }
 
-function getClientGreeting(clientName) {
-  if (!clientName || clientName === 'Cliente') return 'Senhor(a)';
-  const title = getClientTitle(clientName);
-  const cap = title ? title[0].toUpperCase() + title.slice(1) : 'Senhor(a)';
-  return title ? `${cap} ${clientName}` : `${cap} ${clientName}`;
-}
+
 
 function isNevesCostaConfusion(text) {
   if (!text || !text.trim()) return false;
@@ -1095,7 +1113,7 @@ REGRAS DE CONVERSA (obrigatórias):
 6. NUNCA peça dados que já aparecem no histórico ou no contexto.
 7. Seja educado, objetivo e acolhedor.
 8. NUNCA prometa resultado ou análise jurídica conclusiva.
-9. Trate o cliente pelo nome quando souber. Se não souber o nome, use "Senhor(a)". Se souber o nome, identifique se é feminino ou masculino e use "senhora" ou "senhor" com o nome (ex: "senhora Emanuelly", "senhor João"). Se não conseguir ter certeza do gênero, use o nome sem título ou com "Senhor(a)".
+9. Trate o cliente pelo nome e gênero SOMENTE quando tiver certeza. Se souber o gênero, use "senhora" ou "senhor" com o primeiro nome (ex: "senhora Emanuelly", "senhor João"). Se não souber o gênero, prefira "Olá, [primeiro nome]!" na primeira mensagem e "você" ou o primeiro nome nas demais. NUNCA use "Senhor(a)".
 
 AVISO DE CONFUSÃO COM OUTRO ESCRITÓRIO:
 Apenas trate como confusão com outro escritório quando o cliente mencionar CNPJ, boleto, "Neves Costa" (sem &), "outro escritório" ou cobrança/boleto atribuídos a nós.
@@ -1120,7 +1138,7 @@ LEMBRETE FINAL:
 - Fale sempre como Jhon, em primeira pessoa. Use "posso", "nosso escritório". Evite "podemos" genérico.
 - Não ofereça nosso telefone sem ser solicitado explicitamente.
 - Responda APENAS ao que foi perguntado, sem informações extras.
-- Trate o cliente como "senhor" ou "senhora", com respeito e cordialidade.
+- Trate o cliente como "senhor" ou "senhora" somente quando tiver certeza do gênero; caso contrário, use "você" ou o primeiro nome.
 ${getToneInstructions()}`;
 
 async function getKnowledgeContext(prompt) {
@@ -1176,9 +1194,10 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     const knowledgeBlock = await getKnowledgeContext(prompt);
 
     const clientFullName = conversation?.client_name || '';
-    const clientTitle = clientFullName ? getClientTitle(clientFullName) : 'senhor(a)';
+    const clientTitle = clientFullName ? getClientTitle(clientFullName) : null;
     const clientFirstName = clientFullName ? clientFullName.trim().split(/\s+/)[0] : 'cliente';
-    const nameRule = `NUNCA use o nome completo do cliente. Na PRIMEIRA resposta, se usar nome, use APENAS o primeiro nome ("${clientFirstName}"). Nas demais respostas, use SOMENTE "${clientTitle}" SEM o nome. NUNCA diga "${clientTitle} ${clientFullName}".`;
+    const firstGreeting = clientTitle ? `Olá, ${clientTitle} ${clientFirstName}!` : `Olá, ${clientFirstName}!`;
+    const nameRule = `NUNCA use o nome completo do cliente. Na PRIMEIRA resposta, se for usar nome, use APENAS o primeiro nome ("${clientFirstName}"). Inicie com "${firstGreeting}". Nas demais respostas, use SOMENTE "${clientTitle || 'você'}" SEM o nome. NUNCA diga "${clientTitle ? clientTitle + ' ' + clientFullName : 'Olá, ' + clientFullName}". NUNCA use "Senhor(a)".`;
     
     const firstTurn = !conversationHistory || conversationHistory.trim() === '';
     const noRepeatRule = firstTurn
