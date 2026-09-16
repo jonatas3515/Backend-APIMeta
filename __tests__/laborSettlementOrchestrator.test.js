@@ -2,7 +2,7 @@
  * Testes puros para o orquestrador de cálculo de verbas trabalhistas.
  */
 
-const { handleLaborSettlementMessage } = require('../lib/laborSettlementOrchestrator');
+const { handleLaborSettlementMessage, extractLaborFields } = require('../lib/laborSettlementOrchestrator');
 
 const idleState = {
   active: false,
@@ -355,5 +355,22 @@ describe('handleLaborSettlementMessage - datas, motivo e resposta', () => {
     expect(result.response.text).toContain('📌 Dados usados');
     expect(result.response.text).toContain('💰 Valores estimados');
     expect(result.response.text).toContain('➡️ Total estimado');
+  });
+});
+
+describe('extractLaborFields - respostas diretas', () => {
+  test('"Indenizado" sozinho preenche noticeStatus quando perguntado', () => {
+    const result = extractLaborFields('Indenizado', ['noticeStatus'], {});
+    expect(result.noticeStatus).toBe('indenizado');
+  });
+
+  test('"foi indenizado" preenche noticeStatus quando perguntado', () => {
+    const result = extractLaborFields('foi indenizado', ['noticeStatus'], {});
+    expect(result.noticeStatus).toBe('indenizado');
+  });
+
+  test('"sim" preenche férias vencidas quando for a única pendência', () => {
+    const result = extractLaborFields('sim', ['hasVacationAccrued'], { salary: 1000, admissionDate: '2024-01-01', terminationDate: '2024-06-01', terminationReason: 'dispensa_sem_justa_causa', noticeStatus: 'trabalhado' });
+    expect(result.hasVacationAccrued).toBe('yes');
   });
 });

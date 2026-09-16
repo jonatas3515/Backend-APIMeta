@@ -169,4 +169,64 @@ describe('laborWebhookIntegration (simplificado por histórico)', () => {
     expect(allCalls).not.toContain('01/05/2023');
     expect(allCalls).not.toContain('Recebia 3000');
   });
+
+  test('saudação solta não repete pergunta trabalhista em loop', async () => {
+    const messages = [
+      botMessage('Para estimar sua rescisão, preciso das seguintes informações: O aviso-prévio foi trabalhado, indenizado, não cumprido ou você não sabe?')
+    ];
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'Bom dia Dr. Poderia me ajudar',
+      messages
+    }));
+    expect(result.handled).toBe(false);
+    expect(result.reply).toBeFalsy();
+  });
+
+  test('"Indenizado" é reconhecido como aviso-prévio quando perguntado', async () => {
+    const messages = [
+      botMessage('Para estimar sua rescisão, preciso das seguintes informações: Qual era o salário mensal? Qual foi a data de admissão? Qual foi a data de desligamento? Qual foi o motivo do desligamento? O aviso-prévio foi trabalhado, indenizado, não cumprido ou você não sabe?'),
+      clientMessage('Meu salário era 3000 reais'),
+      botMessage('Qual foi a data de admissão?'),
+      clientMessage('01/01/2023'),
+      botMessage('Qual foi a data de desligamento?'),
+      clientMessage('30/06/2024'),
+      botMessage('Qual foi o motivo do desligamento?'),
+      clientMessage('fui demitido sem justa causa'),
+      botMessage('O aviso-prévio foi trabalhado, indenizado, não cumprido ou você não sabe?')
+    ];
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'Indenizado',
+      messages
+    }));
+    expect(result.handled).toBe(true);
+    expect(result.reply).toContain('🧾 Estimativa preliminar');
+    expect(result.reply).not.toContain('O aviso-prévio foi');
+  });
+
+  test('respostas improdutivas consecutivas soltam o fluxo para o normal', async () => {
+    const messages = [
+      botMessage('Para estimar sua rescisão, preciso das seguintes informações: O aviso-prévio foi trabalhado, indenizado, não cumprido ou você não sabe?'),
+      clientMessage('não entendi'),
+      clientMessage('pode repetir a pergunta')
+    ];
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'pode repetir a pergunta',
+      messages
+    }));
+    expect(result.handled).toBe(false);
+    expect(result.reply).toBeFalsy();
+  });
+
+  test('pergunta trabalhista com mais de 2h não força continuação', async () => {
+    const oldDate = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+    const messages = [
+      { text: 'Para estimar sua rescisão, preciso das seguintes informações: O aviso-prévio foi trabalhado, indenizado, não cumprido ou você não sabe?', sender_type: 'ai', created_at: oldDate }
+    ];
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'Bom dia',
+      messages
+    }));
+    expect(result.handled).toBe(false);
+    expect(result.reply).toBeFalsy();
+  });
 });

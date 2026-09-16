@@ -267,6 +267,44 @@ export default async function handler(req, res) {
         conversationMessages = (dbMessages || []).slice(-50);
       }
 
+      // ================= ESCAPE / CANCELAMENTO / CONSENTIMENTO =================
+      if (conversation && messageType === 'text') {
+        const escape = detectEscapeIntent(textBody);
+        if (escape === 'human') {
+          const clearedIntake = { ...(conversation.intake_data || {}), current_step: -1, triage_step: -1 };
+          await supabase.from('conversations').update({ mode: 'human', intake_data: clearedIntake }).eq('id', conversation.id);
+          const handoffText = 'Vou encaminhar para nossa equipe. Aguarde o retorno.';
+          const savedHandoff = await saveMessage(conversation.id, handoffText, 'ai');
+          const handoffWaId = await sendWhatsAppMessage(from, handoffText);
+          if (savedHandoff && handoffWaId) {
+            await supabase.from('messages').update({ wa_message_id: handoffWaId, status: 'sent' }).eq('id', savedHandoff.id);
+          }
+          await notifyAdminHandoff({ clientName, from, textBody, log });
+          return res.status(200).json({ success: true, handoff: true });
+        }
+        if (escape === 'cancel') {
+          const hasLaborContext = laborIntegration && typeof laborIntegration.lastBotMessageIsLaborQuestion === 'function' &&
+            laborIntegration.lastBotMessageIsLaborQuestion(conversationMessages);
+          const hasIntakeContext = conversation.intake_data &&
+            (conversation.intake_data.current_step >= 0 || conversation.intake_data.triage_step >= 0) &&
+            !conversation.intake_data.completed;
+          if (hasLaborContext || hasIntakeContext) {
+            const clearedIntake = { ...(conversation.intake_data || {}), current_step: -1, triage_step: -1 };
+            await supabase.from('conversations').update({ intake_data: clearedIntake }).eq('id', conversation.id);
+            const cancelText = 'Certo, cancelei por aqui. Se precisar de ajuda com outro assunto, é só falar.';
+            const savedCancel = await saveMessage(conversation.id, cancelText, 'ai');
+            const cancelWaId = await sendWhatsAppMessage(from, cancelText);
+            if (savedCancel && cancelWaId) {
+              await supabase.from('messages').update({ wa_message_id: cancelWaId, status: 'sent' }).eq('id', savedCancel.id);
+            }
+            log('flow_cancelled', { phoneHash: hashPhone(from) });
+            return res.status(200).json({ success: true, cancel: true });
+          }
+        }
+        const { handled } = await handleConsent(conversation, textBody, from, req);
+        if (handled) return res.status(200).json({ success: true, consent: true });
+      }
+
       // ================= CÁLCULO DE VERBAS TRABALHISTAS =================
       if (conversation && messageType === 'text' && laborIntegration && typeof laborIntegration.handleLaborSettlementWebhook === 'function') {
         let laborResult;
@@ -464,6 +502,11 @@ async function handleIntake(conversation, clientMessage) {
   const triageStep = typeof intakeData.triage_step === 'number' ? intakeData.triage_step : -1;
   let triage = intakeData.triage || {};
   let currentStep = parseInt(intakeData.current_step || -1);
+
+  // Se o intake já foi concluído, não intercepta a mensagem
+  if (intakeData && intakeData.completed === true) {
+    return null;
+  }
 
   // Ignorar saudações e perguntas que não respondem a triagem/intake
   const GREETINGS = ['bom dia', 'boa tarde', 'boa noite', 'oi', 'olá', 'ola', 'opa', 'e aí', 'e ai', 'eae', 'tudo bem', 'tudo certo', 'tudo bom', 'tudo joia'];
@@ -723,37 +766,7 @@ function detectNeedsHuman(clientMessage, aiResponse, intakeCompleted = false) {
   const aiLower = aiResponse.toLowerCase();
   
   // Solicitação expressa do cliente (sempre atende, independente do estágio)
-  const expressRequest = [
-    'falar com advogado',
-    'falar com alguém',
-    'falar com humano',
-    'atendimento humano',
-    'quero um advogado',
-    'preciso de um advogado',
-    'quero falar com',
-    'preciso falar com',
-    'quero atendimento',
-    'preciso de atendimento',
-    'atende ai',
-    'atende aí',
-    'chama alguém',
-    'me transfere',
-    'me passa',
-    'passa pra pessoa',
-    'passa para a pessoa',
-    'passa pro advogado',
-    'passa para o advogado',
-    'pessoa de verdade',
-    'advogado de verdade',
-    'atendente',
-    'me liga',
-    'me ligue',
-    'liga pra mim',
-    'liga para mim',
-    'me chama',
-    'me chame',
-    'meu atendente'
-  ];
+  const expressRequest = EXPRESS_HUMAN_KEYWORDS;
   
   const hasExpressRequest = expressRequest.some(keyword => clientLower.includes(keyword));
   
@@ -801,18 +814,44 @@ async function getOrCreateConversation(phoneNumber, clientName) {
   }
 
   const normalizedPhone = normalizePhoneForMatch(phoneNumber);
+  const STALE_MS = 24 * 60 * 60 * 1000;
 
-  try {
-    // Busca a conversa mais antiga com o número normalizado
-    const { data: existing, error: searchError } = await supabase
+  const findLatestConversation = async () => {
+    const { data, error } = await supabase
       .from('conversations')
       .select('*')
       .eq('client_phone_normalized', normalizedPhone)
-      .order('created_at', { ascending: true })
+      .order('updated_at', { ascending: false })
       .limit(1)
       .single();
+    if (error) console.error('[SUPABASE] Erro ao buscar conversa:', sanitizeError(error));
+    return data || null;
+  };
+
+  try {
+    const existing = await findLatestConversation();
 
     if (existing) {
+      const lastActivity = new Date(existing.updated_at || existing.created_at || 0).getTime();
+      const isStale = Number.isFinite(lastActivity) && (Date.now() - lastActivity) > STALE_MS;
+      if (isStale) {
+        const resetIntake = { consent_request_status: 'pending', consent_request_sent_at: null, reset_at: new Date().toISOString() };
+        const { data: reset, error: resetError } = await supabase
+          .from('conversations')
+          .update({
+            intake_data: resetIntake,
+            legal_area: null,
+            case_type: null,
+            status: 'open'
+          })
+          .eq('id', existing.id)
+          .select()
+          .single();
+        if (!resetError && reset) {
+          console.log(`[SUPABASE] Conversa reativada após ${Math.round((Date.now() - lastActivity) / 3600000)}h: ${reset.id}`);
+          return reset;
+        }
+      }
       console.log(`[SUPABASE] Conversa encontrada: ${existing.id}`);
       return existing;
     }
@@ -837,14 +876,7 @@ async function getOrCreateConversation(phoneNumber, clientName) {
   } catch (error) {
     // Se ocorrer conflito de telefone único, reutiliza a existente
     if (error.code === '23505') {
-      const { data: existing, error: secondSearchError } = await supabase
-        .from('conversations')
-        .select('*')
-        .eq('client_phone_normalized', normalizedPhone)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .single();
-
+      const existing = await findLatestConversation();
       if (existing) {
         console.log(`[SUPABASE] Conversa encontrada após conflito: ${existing.id}`);
         return existing;
@@ -975,6 +1007,120 @@ function isConfirmationMessage(text) {
   const hasPositive = POSITIVE_EMOJIS.some(e => trimmed.includes(e));
   if (hasPositive && trimmed.length <= 25) return true;
   return false;
+}
+
+const EXPRESS_HUMAN_KEYWORDS = [
+  'falar com advogado',
+  'falar com alguém',
+  'falar com humano',
+  'atendimento humano',
+  'quero um advogado',
+  'preciso de um advogado',
+  'quero falar com',
+  'preciso falar com',
+  'quero atendimento',
+  'preciso de atendimento',
+  'atende ai',
+  'atende aí',
+  'chama alguém',
+  'me transfere',
+  'me passa',
+  'passa pra pessoa',
+  'passa para a pessoa',
+  'passa pro advogado',
+  'passa para o advogado',
+  'pessoa de verdade',
+  'advogado de verdade',
+  'atendente',
+  'me liga',
+  'me ligue',
+  'liga pra mim',
+  'liga para mim',
+  'me chama',
+  'me chame',
+  'meu atendente',
+  'humano',
+  'humana'
+];
+
+const CANCEL_EXACT = new Set([
+  'cancelar', 'cancela', 'cancele', 'sair', 'parar', 'pare', 'para', 'stop',
+  'desistir', 'desisto', 'deixa', 'deixe', 'esquece', 'esqueça', 'esqueca',
+  'nao quero mais', 'não quero mais', 'chega', 'ja deu', 'já deu', 'desliga', 'desligar'
+]);
+
+const CONSENT_ACCEPT = new Set(['1', 'aceito', 'concordo', 'sim', 'de acordo', 'ok', 'eu aceito', 'aceito os termos']);
+const CONSENT_DECLINE = new Set(['2', 'nao aceito', 'não aceito', 'nao concordo', 'não concordo', 'recuso', 'nao', 'não']);
+
+function detectEscapeIntent(text) {
+  if (!text || typeof text !== 'string') return null;
+  const normalized = normalizeForCheck(text).replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+  if (CANCEL_EXACT.has(normalized)) return 'cancel';
+  const lower = normalized;
+  if (EXPRESS_HUMAN_KEYWORDS.some(k => lower.includes(k))) return 'human';
+  return null;
+}
+
+async function notifyAdminHandoff({ clientName, from, textBody, log }) {
+  try {
+    if (!ADMIN_WHATSAPP_NUMBER) {
+      if (log && log.warn) log.warn('admin_notif_unconfigured');
+      return;
+    }
+    const notificationMessage = `🔔 *Atendimento Humano Solicitado*\n\nCliente: ${clientName}\nTelefone: ${from}\nÚltima mensagem: "${textBody}"\n\nAcesse: https://backend-apimeta.vercel.app/`;
+    await sendWhatsAppMessage(ADMIN_WHATSAPP_NUMBER, notificationMessage);
+    if (log) log('admin_notified');
+  } catch (notifError) {
+    if (log) log.error('admin_notify_failed', { error: sanitizeError(notifError) });
+  }
+}
+
+async function handleConsent(conversation, textBody, from, req) {
+  if (!conversation?.intake_data || conversation.intake_data.consent_request_status !== 'pending') {
+    return { handled: false };
+  }
+
+  const normalized = normalizeForCheck(textBody).replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+  let value = null;
+  if (CONSENT_ACCEPT.has(normalized)) value = true;
+  else if (CONSENT_DECLINE.has(normalized)) value = false;
+  else return { handled: false };
+
+  try {
+    await supabase.from('consent_logs').insert({
+      conversation_id: conversation.id,
+      consent_type: 'data_processing',
+      value,
+      ip_address: (req?.headers?.['x-forwarded-for'] || '').split(',')[0].trim() || null,
+      user_agent: req?.headers?.['user-agent'] || null,
+      created_at: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('[CONSENT] Erro ao registrar consentimento:', sanitizeError(err));
+  }
+
+  const nextIntake = {
+    ...(conversation.intake_data || {}),
+    consent_request_status: value ? 'granted' : 'declined',
+    consent: value,
+    consent_log: { type: 'data_processing', value, at: new Date().toISOString() }
+  };
+
+  try {
+    await supabase.from('conversations').update({ intake_data: nextIntake }).eq('id', conversation.id);
+  } catch (err) {
+    console.error('[CONSENT] Erro ao atualizar conversa:', sanitizeError(err));
+  }
+
+  const reply = value
+    ? 'Obrigado! Seu consentimento foi registrado. Podemos continuar o atendimento.'
+    : 'Entendido. Registramos sua decisão. Seus dados serão tratados conforme a política e você pode pedir ajustes quando quiser.';
+  const saved = await saveMessage(conversation.id, reply, 'ai');
+  const waId = await sendWhatsAppMessage(from, reply);
+  if (saved && waId) {
+    await supabase.from('messages').update({ wa_message_id: waId, status: 'sent' }).eq('id', saved.id);
+  }
+  return { handled: true };
 }
 
 const MARKETING_TERMS = [
