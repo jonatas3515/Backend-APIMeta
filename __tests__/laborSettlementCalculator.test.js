@@ -185,23 +185,28 @@ describe('laborSettlementCalculator - aviso-prévio', () => {
 });
 
 describe('laborSettlementCalculator - controle de inclusões indevidas', () => {
-  test('horas extras não entram no total', () => {
+  test('horas extras não entram no total (sem cálculo em reais)', () => {
     const result = calculateLaborSettlement(baseInput);
-    expect(itemByCode(result, 'overtime').status).toBe('not_calculated');
-    expect(itemByCode(result, 'overtime').amount).toBe(0);
-    expect(result.warnings.some(w => w.includes('horas extras'))).toBe(true);
+    expect(itemByCode(result, 'overtime')).toBeUndefined();
+  });
+
+  test('horas extras geram aviso textual quando detectadas', () => {
+    const result = calculateLaborSettlement({ ...baseInput, hasOvertime: true });
+    expect(result.warnings.some(w => w.includes('jornada'))).toBe(true);
   });
 
   test('FGTS/multa 40% não entra no total sem premissa suficiente', () => {
     const result = calculateLaborSettlement(baseInput);
     expect(itemByCode(result, 'fgts_deposits')).toBeUndefined();
     expect(itemByCode(result, 'fgts_penalty_40')).toBeUndefined();
-    expect(result.warnings.some(w => w.includes('FGTS'))).toBe(false);
+    expect(result.warnings.some(w => w.includes('FGTS'))).toBe(true);
   });
 
   test('convenção coletiva não é aplicada automaticamente', () => {
     const result = calculateLaborSettlement(baseInput);
-    expect(itemByCode(result, 'collective_agreement').status).toBe('not_calculated');
+    expect(itemByCode(result, 'collective_agreement')).toBeUndefined();
+    expect(result.warnings.some(w => w.includes('convenção'))).toBe(false);
+    expect(result.warnings.some(w => w.includes('Convenção'))).toBe(false);
   });
 
   test('contrato sem registro é tratado como hipótese condicionada sem afirmar vínculo', () => {

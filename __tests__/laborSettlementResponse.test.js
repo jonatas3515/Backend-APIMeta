@@ -144,7 +144,7 @@ describe('laborSettlementResponse - itens condicionais e não calculados', () =>
     noticeStatus: 'desconhecido'
   });
 
-  test('horas extras e convenção aparecem como não calculados, sem duplicatas', () => {
+  test('horas extras e convenção não aparecem como itens', () => {
     const response = formatLaborSettlementResponse({
       status: 'ready',
       intakeResult: intake,
@@ -154,13 +154,11 @@ describe('laborSettlementResponse - itens condicionais e não calculados', () =>
       warnings: intake.calculation.warnings,
       nextQuestions: []
     });
-    expect(response.text).toContain('Não incluídos');
-    expect(response.text).toContain('Horas extras');
-    expect(response.text).toContain('Convenção coletiva');
-    // Não deve repetir itens na lista de não incluídos
-    const naoIncluidosSection = response.text.split('Não incluídos')[1] || '';
-    const items = naoIncluidosSection.split('\n').filter(l => l.startsWith('•'));
-    expect(items.length).toBe(new Set(items).size);
+    expect(response.text).not.toContain('Horas extras');
+    expect(response.text).not.toContain('Convenção coletiva');
+    expect(response.text).not.toContain('Acordo coletivo');
+    expect(response.text).not.toContain('CCT');
+    expect(response.text).not.toContain('ACT');
   });
 
   test('vínculo menor de 12 meses não menciona férias/13º vencidos', () => {

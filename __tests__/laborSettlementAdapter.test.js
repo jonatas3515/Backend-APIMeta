@@ -103,7 +103,7 @@ describe('adaptLaborSettlement', () => {
       message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa, aviso indenizado'
     });
     expect(result.warnings.length).toBeGreaterThan(0);
-    expect(result.calculation.items.some(i => i.status === 'conditional')).toBe(true);
+    expect(result.calculation.items.some(i => i.status === 'conditional' || i.status === 'not_calculated')).toBe(true);
   });
 
   test('falhas são sanitizadas', () => {

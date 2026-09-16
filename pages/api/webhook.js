@@ -350,6 +350,11 @@ export default async function handler(req, res) {
           log('labor_handled_without_reply', { flow: laborResult.flow || null });
         } else {
           log('labor_normal_flow_fallback');
+          // Injeta resultado do cálculo trabalhista no contexto do Gemini
+          // quando a integração liberou para o modelo mas já tem estimativa pronta.
+          if (laborResult.calculation && conversation) {
+            conversation._laborCalculation = laborResult.calculation;
+          }
         }
       }
 
@@ -1181,6 +1186,8 @@ RACIOCÍNIO JURÍDICO-PRÁTICO TRABALHISTA:
 - Aplique a projeção do aviso-prévio indenizado no cálculo dos avos de férias proporcionais e 13º proporcional.
 - Em dispensas sem justa causa ou quando a carteira não foi assinada, inclua a estimativa dos depósitos de FGTS do período (8% sobre a remuneração) somados à multa rescisória de 40%.
 - Seja direto, claro e evite repetir ressalvas redundantes na mesma mensagem.
+- NUNCA repita a mesma mensagem de texto duas vezes seguidas quando o cliente insistir — reformule ou aprofunde a resposta.
+- Se houver uma estimativa trabalhista já calculada no contexto (ESTIMATIVA TRABALHISTA JÁ CALCULADA), use os valores exatos informados — NÃO recalcule, NÃO evada com respostas genéricas.
 
 ENCAMINHAMENTO HUMANO:
 - Encaminhe para a equipe quando o cliente pedir advogado/atendimento humano, prazo processual, audiência, contratação, urgência ou situação complexa.
@@ -1231,6 +1238,14 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
           .map(([k, v]) => `${k}: ${v}`)
           .join('; ');
         contextParts.push(`INFORMAÇÕES COLETADAS: ${answers}`);
+      }
+      if (conversation._laborCalculation && conversation._laborCalculation.totalEstimated !== null) {
+        const calc = conversation._laborCalculation;
+        const itemsSummary = calc.items
+          .filter(i => i.status === 'calculated' && i.amount > 0)
+          .map(i => `${i.name}: R$ ${i.amount.toFixed(2)}`)
+          .join('; ');
+        contextParts.push(`ESTIMATIVA TRABALHISTA JÁ CALCULADA: ${itemsSummary}. Total: R$ ${calc.totalEstimated.toFixed(2)}. Use esses valores exatos na resposta, sem recalcular.`);
       }
     }
     
