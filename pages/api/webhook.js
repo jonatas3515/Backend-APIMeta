@@ -9,6 +9,7 @@ import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '../../lib/whats
 import { evaluateFunnelAutomation, registerFunnelEvent } from '../../lib/funnel-whatsapp.js';
 import { detectThanks, getThanksReply, detectAgreement, getAcknowledgementReply, getToneInstructions, correctCommonMistakes } from '../../lib/bot-responses.js';
 import { semanticSearch } from '../../lib/knowledge-embeddings.js';
+import { detectNeedsHuman, notifyAdminHandoff, EXPRESS_HUMAN_KEYWORDS } from '../../lib/needsHuman.js';
 const laborIntegration = require('../../lib/laborWebhookIntegration.js');
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
@@ -17,7 +18,6 @@ const PHONE_NUMBER_ID = process.env.WHATSAPP_PHONE_NUMBER_ID || 'your_whatsapp_p
 const GEMINI_API_KEY = process.env.GOOGLE_AI_API_KEY;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const ADMIN_WHATSAPP_NUMBER = process.env.ADMIN_WHATSAPP_NUMBER || '557399348552';
 const NEVES_COSTA_IMAGE_URL = process.env.NEVES_COSTA_IMAGE_URL || 'https://backend-apimeta.vercel.app/Aviso.jpg';
 
 const WHATSAPP_API_URL = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
@@ -252,15 +252,15 @@ export default async function handler(req, res) {
         }
       }
 
-      // Carregar histórico da conversa para o contexto trabalhista
+      // Carregar histórico da conversa para o contexto (máximo 4h)
       let conversationMessages = [];
       if (conversation && supabase) {
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
         const { data: dbMessages, error: historyError } = await supabase
           .from('messages')
           .select('text, sender_type, created_at')
           .eq('conversation_id', conversation.id)
-          .gte('created_at', oneDayAgo)
+          .gte('created_at', fourHoursAgo)
           .order('created_at', { ascending: true });
 
         if (historyError) console.error('[WEBHOOK] Erro ao buscar histórico:', sanitizeError(historyError));
@@ -447,43 +447,32 @@ export default async function handler(req, res) {
       // Detectar se precisa de atendimento humano
       const intakeCompleted = conversation?.intake_data?.completed === true;
       const needsHuman = detectNeedsHuman(textBody, aiReply, intakeCompleted);
-      
+
       // Salvar resposta da IA
       let savedAiMsg = null;
       if (conversation) {
         savedAiMsg = await saveMessage(conversation.id, aiReply, 'ai');
-        
-        // Marcar conversa como precisando de humano
-        if (needsHuman && conversation.id) {
-          await supabase
-            .from('conversations')
-            .update({ mode: 'human' })
-            .eq('id', conversation.id);
-          
-          log('human_mode_marked');
-          
-          // Enviar notificação para o WhatsApp pessoal configurado
-          try {
-            const notificationMessage = `🔔 *Atendimento Humano Solicitado*\n\nCliente: ${clientName}\nTelefone: ${from}\nÚltima mensagem: "${textBody}"\n\nAcesse: https://backend-apimeta.vercel.app/`;
-            if (!ADMIN_WHATSAPP_NUMBER) {
-              log.warn('admin_notif_unconfigured');
-            } else {
-              await sendWhatsAppMessage(ADMIN_WHATSAPP_NUMBER, notificationMessage);
-              log('admin_notified');
-            }
-          } catch (notifError) {
-            log.error('admin_notify_failed', { error: sanitizeError(notifError) });
-          }
-        }
       }
 
-      // Enviar resposta via WhatsApp
+      // Enviar resposta via WhatsApp ANTES de travar o canal para humano/notificar admin
       const aiWaMessageId = await sendWhatsAppMessage(from, aiReply);
       // Atualizar mensagem com wa_message_id e status
       if (savedAiMsg && aiWaMessageId) {
         await supabase.from('messages').update({ wa_message_id: aiWaMessageId, status: 'sent' }).eq('id', savedAiMsg.id);
       }
       log('reply_sent', { phoneHash: hashPhone(from) });
+
+      // Só depois do envio confirmado: marcar modo humano e notificar admin
+      if (needsHuman && conversation?.id) {
+        await supabase
+          .from('conversations')
+          .update({ mode: 'human' })
+          .eq('id', conversation.id);
+
+        log('human_mode_marked');
+
+        await notifyAdminHandoff({ clientName, from, textBody, log });
+      }
       
       // Retorna sucesso após processar tudo
       res.status(200).json({ success: true });
@@ -758,54 +747,6 @@ function generateIntakeSummary(area, answers) {
   return summary;
 }
 
-// Função para detectar se cliente precisa de atendimento humano
-// Só ativa handoff durante coleta quando o cliente pede expressamente.
-// Após o intake completo, palavras de contexto jurídico também podem acionar.
-function detectNeedsHuman(clientMessage, aiResponse, intakeCompleted = false) {
-  const clientLower = clientMessage.toLowerCase();
-  const aiLower = aiResponse.toLowerCase();
-  
-  // Solicitação expressa do cliente (sempre atende, independente do estágio)
-  const expressRequest = EXPRESS_HUMAN_KEYWORDS;
-  
-  const hasExpressRequest = expressRequest.some(keyword => clientLower.includes(keyword));
-  
-  // Palavras de contexto jurídico só disparam handoff após intake completo
-  const contextKeywords = intakeCompleted ? [
-    'prazo processual',
-    'audiência',
-    'contratar',
-    'honorários',
-    'quanto custa',
-    'recurso',
-    'prazo',
-    'demissão',
-    'licitação',
-    'dispensado',
-    'justa causa',
-    'indenização',
-    'processo',
-    'ajuizar',
-    'entrar com ação',
-    'processo',
-    'entrada',
-    'colocar no pau',
-    'andar',
-    'andamento',
-    'urgente'
-  ] : [];
-  
-  // Verifica se a IA mencionou encaminhamento (desconsidera respostas automáticas de mídia)
-  const aiMentionsForwarding = !clientLower.includes('[áudio enviado]') &&
-                                (aiLower.includes('encaminhar') || 
-                                 aiLower.includes('equipe') ||
-                                 aiLower.includes('aguarde o retorno'));
-  
-  const hasContextKeyword = contextKeywords.some(keyword => clientLower.includes(keyword));
-  
-  return hasExpressRequest || hasContextKeyword || (intakeCompleted && aiMentionsForwarding);
-}
-
 // Função para buscar ou criar conversa
 async function getOrCreateConversation(phoneNumber, clientName) {
   if (!supabase) {
@@ -814,7 +755,7 @@ async function getOrCreateConversation(phoneNumber, clientName) {
   }
 
   const normalizedPhone = normalizePhoneForMatch(phoneNumber);
-  const STALE_MS = 24 * 60 * 60 * 1000;
+  const STALE_MS = 4 * 60 * 60 * 1000;
 
   const findLatestConversation = async () => {
     const { data, error } = await supabase
@@ -1009,40 +950,6 @@ function isConfirmationMessage(text) {
   return false;
 }
 
-const EXPRESS_HUMAN_KEYWORDS = [
-  'falar com advogado',
-  'falar com alguém',
-  'falar com humano',
-  'atendimento humano',
-  'quero um advogado',
-  'preciso de um advogado',
-  'quero falar com',
-  'preciso falar com',
-  'quero atendimento',
-  'preciso de atendimento',
-  'atende ai',
-  'atende aí',
-  'chama alguém',
-  'me transfere',
-  'me passa',
-  'passa pra pessoa',
-  'passa para a pessoa',
-  'passa pro advogado',
-  'passa para o advogado',
-  'pessoa de verdade',
-  'advogado de verdade',
-  'atendente',
-  'me liga',
-  'me ligue',
-  'liga pra mim',
-  'liga para mim',
-  'me chama',
-  'me chame',
-  'meu atendente',
-  'humano',
-  'humana'
-];
-
 const CANCEL_EXACT = new Set([
   'cancelar', 'cancela', 'cancele', 'sair', 'parar', 'pare', 'para', 'stop',
   'desistir', 'desisto', 'deixa', 'deixe', 'esquece', 'esqueça', 'esqueca',
@@ -1059,20 +966,6 @@ function detectEscapeIntent(text) {
   const lower = normalized;
   if (EXPRESS_HUMAN_KEYWORDS.some(k => lower.includes(k))) return 'human';
   return null;
-}
-
-async function notifyAdminHandoff({ clientName, from, textBody, log }) {
-  try {
-    if (!ADMIN_WHATSAPP_NUMBER) {
-      if (log && log.warn) log.warn('admin_notif_unconfigured');
-      return;
-    }
-    const notificationMessage = `🔔 *Atendimento Humano Solicitado*\n\nCliente: ${clientName}\nTelefone: ${from}\nÚltima mensagem: "${textBody}"\n\nAcesse: https://backend-apimeta.vercel.app/`;
-    await sendWhatsAppMessage(ADMIN_WHATSAPP_NUMBER, notificationMessage);
-    if (log) log('admin_notified');
-  } catch (notifError) {
-    if (log) log.error('admin_notify_failed', { error: sanitizeError(notifError) });
-  }
 }
 
 async function handleConsent(conversation, textBody, from, req) {
@@ -1333,8 +1226,8 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
       ? `${clientMemoryText}\n\n`
       : '';
     
-    const historyBlock = conversationHistory 
-      ? `HISTÓRICO DAS ÚLTIMAS 24H (MAIS RECENTES POR ÚLTIMO):\n${conversationHistory}\n\n` 
+    const historyBlock = conversationHistory
+      ? `HISTÓRICO DAS ÚLTIMAS 4H (MAIS RECENTES POR ÚLTIMO):\n${conversationHistory}\n\n`
       : '';
 
     const knowledgeBlock = await getKnowledgeContext(prompt);
@@ -1501,18 +1394,18 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType) {
       return;
     }
 
-    if (conversation.mode === 'human') {
-      console.log('[WEBHOOK] Conversa em modo humano, não respondendo automaticamente');
-      return;
+    const wasHuman = conversation.mode === 'human';
+    if (wasHuman) {
+      console.log('[WEBHOOK] Conversa em modo humano, mas áudio pendente será respondido para não perder a resposta gerada');
     }
 
-    // Busca histórico recente
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    // Busca histórico recente (máximo 4h)
+    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
     const { data: messages } = await supabase
       .from('messages')
       .select('text, sender_type, created_at')
       .eq('conversation_id', conversationId)
-      .gte('created_at', oneDayAgo)
+      .gte('created_at', fourHoursAgo)
       .order('created_at', { ascending: true });
 
     const conversationHistory = messages?.slice(-50).map(m => {
@@ -1543,10 +1436,28 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType) {
       return;
     }
 
-    // Envia resposta via WhatsApp
+    // Envia resposta via WhatsApp ANTES de qualquer retorno por modo humano
     const { sendWhatsAppMessage } = await import('../../lib/whatsapp.js');
     await sendWhatsAppMessage(conversation.client_phone, aiReply);
     console.log(`[WEBHOOK] ✅ Resposta automática enviada para áudio`);
+
+    // Só depois do envio: se a resposta indicar transbordo, atualiza modo e notifica admin
+    if (!wasHuman) {
+      const intakeCompleted = conversation?.intake_data?.completed === true;
+      const needsHuman = detectNeedsHuman(transcript, aiReply, intakeCompleted);
+      if (needsHuman) {
+        await supabase
+          .from('conversations')
+          .update({ mode: 'human' })
+          .eq('id', conversation.id);
+        await notifyAdminHandoff({
+          clientName: conversation.client_name,
+          from: conversation.client_phone,
+          textBody: transcript,
+          log: console
+        });
+      }
+    }
   } catch (error) {
     console.error('[WEBHOOK] Erro na transcrição assíncrona:', error.message);
   }

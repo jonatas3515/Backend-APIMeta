@@ -10,6 +10,8 @@ process.env.WEBHOOK_VERIFY_TOKEN = 'your_verify_token';
 process.env.WHATSAPP_TOKEN = 'your_whatsapp_token';
 process.env.WHATSAPP_PHONE_NUMBER_ID = 'your_phone_number_id';
 
+global.__testMessages = [];
+
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => {
     const SYNTHETIC_CONVERSATION = {
@@ -23,14 +25,30 @@ jest.mock('@supabase/supabase-js', () => ({
     };
     const SYNTHETIC_MESSAGE = { id: 1 };
 
-    const context = { table: null, operation: null, resultType: 'array' };
+    const context = {
+      table: null,
+      operation: null,
+      resultType: 'array',
+      gte: null,
+      eqFilters: []
+    };
 
     function resolveData() {
       if (context.table === 'conversations' && context.resultType === 'object') return SYNTHETIC_CONVERSATION;
       if (context.table === 'conversations' && context.resultType === 'array') return [];
       if (context.table === 'conversations' && context.operation === 'insert') return SYNTHETIC_CONVERSATION;
       if (context.table === 'messages' && context.resultType === 'object') return SYNTHETIC_MESSAGE;
-      if (context.table === 'messages' && context.resultType === 'array') return [];
+      if (context.table === 'messages' && context.resultType === 'array') {
+        let messages = global.__testMessages || [];
+        if (context.eqFilters.length > 0) {
+          messages = messages.filter(m => context.eqFilters.every(({ field, value }) => m[field] === value));
+        }
+        if (context.gte) {
+          const threshold = new Date(context.gte).getTime();
+          messages = messages.filter(m => new Date(m.created_at).getTime() >= threshold);
+        }
+        return messages;
+      }
       if (context.table === 'messages' && context.operation === 'insert') return SYNTHETIC_MESSAGE;
       return null;
     }
@@ -41,10 +59,18 @@ jest.mock('@supabase/supabase-js', () => ({
           return (onFulfilled) => onFulfilled({ data: resolveData(), error: null });
         }
         return (...args) => {
-          if (prop === 'from') { context.table = args[0]; context.operation = null; context.resultType = 'array'; }
+          if (prop === 'from') {
+            context.table = args[0];
+            context.operation = null;
+            context.resultType = 'array';
+            context.gte = null;
+            context.eqFilters = [];
+          }
           if (['select', 'insert', 'update', 'delete'].includes(prop)) context.operation = prop;
           if (prop === 'single') context.resultType = 'object';
           if (prop === 'limit') context.resultType = 'array';
+          if (prop === 'gte') context.gte = args[0];
+          if (prop === 'eq') context.eqFilters.push({ field: args[0], value: args[1] });
           return chain;
         };
       }
@@ -87,6 +113,7 @@ describe('Webhook labor real path', () => {
   let fetchSpy;
 
   beforeEach(() => {
+    global.__testMessages = [];
     fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({ messages: [{ id: 'wa-labor-001' }] }),
@@ -137,5 +164,36 @@ describe('Webhook labor real path', () => {
 
     expect(statusCode).toBe(200);
     expect(data).not.toMatchObject({ success: true, labor: true });
+  });
+
+  test('histórico com inatividade superior a 4h não é injetado no prompt do Gemini', async () => {
+    const staleText = 'MENSAGEM_MUITO_ANTIGA_NAO_DEVE_APARECER';
+    global.__testMessages = [{
+      conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      text: staleText,
+      sender_type: 'client',
+      created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
+    }];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildLaborPayload('Bom dia, gostaria de tirar uma dúvida'),
+    });
+
+    await webhookHandler(req, res);
+
+    const statusCode = res._getStatusCode();
+    expect(statusCode).toBe(200);
+
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) =>
+      String(url).includes('generativelanguage.googleapis.com')
+    );
+    expect(geminiCalls.length).toBeGreaterThan(0);
+
+    const geminiBody = JSON.parse(geminiCalls[0][1].body);
+    const prompt = geminiBody.contents?.[0]?.parts?.[0]?.text || '';
+    expect(prompt).not.toContain(staleText);
+    expect(prompt).not.toContain('HISTÓRICO DAS ÚLTIMAS 24H');
+    expect(prompt).not.toContain('HISTÓRICO DAS ÚLTIMAS 4H');
   });
 });

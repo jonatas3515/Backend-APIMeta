@@ -3,6 +3,7 @@ import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
 import { sanitizeError } from '../../lib/webhookLog';
 import { askGemini } from '../../lib/ai';
 import { sendWhatsAppMessage } from '../../lib/whatsapp';
+import { detectNeedsHuman, notifyAdminHandoff } from '../../lib/needsHuman.js';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -171,9 +172,9 @@ async function replyToClient(message, transcript, summary) {
       return;
     }
 
-    if (conversation.mode === 'human') {
-      console.log('[MEDIA_PROCESS] Conversa em modo humano, não respondendo automaticamente');
-      return;
+    const wasHuman = conversation.mode === 'human';
+    if (wasHuman) {
+      console.log('[MEDIA_PROCESS] Conversa em modo humano, mas resposta do áudio será entregue antes de retornar');
     }
 
     const clientPhone = conversation.client_phone;
@@ -182,13 +183,13 @@ async function replyToClient(message, transcript, summary) {
       return;
     }
 
-    // Busca histórico recente para contexto
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    // Busca histórico recente para contexto (máximo 4h)
+    const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
     const { data: messages } = await supabase
       .from('messages')
       .select('text, sender_type, created_at')
       .eq('conversation_id', conversation.id)
-      .gte('created_at', oneDayAgo)
+      .gte('created_at', fourHoursAgo)
       .order('created_at', { ascending: true });
 
     const conversationHistory = messages?.slice(-50).map(m => {
@@ -219,9 +220,27 @@ async function replyToClient(message, transcript, summary) {
       console.error('[MEDIA_PROCESS] Erro ao salvar resposta automática:', saveError);
     }
 
-    // Envia resposta via WhatsApp
+    // Envia resposta via WhatsApp ANTES de qualquer retorno por modo humano
     console.log('[MEDIA_PROCESS] Enviando resposta automática');
     await sendWhatsAppMessage(clientPhone, aiReply);
+
+    // Só depois do envio confirmado: se a resposta indica transbordo, atualiza modo e notifica admin
+    if (!wasHuman) {
+      const intakeCompleted = conversation?.intake_data?.completed === true;
+      const needsHuman = detectNeedsHuman(transcript, aiReply, intakeCompleted);
+      if (needsHuman) {
+        await supabase
+          .from('conversations')
+          .update({ mode: 'human' })
+          .eq('id', conversation.id);
+        await notifyAdminHandoff({
+          clientName: conversation.client_name,
+          from: clientPhone,
+          textBody: transcript,
+          log: console
+        });
+      }
+    }
   } catch (error) {
     console.error('[MEDIA_PROCESS] Erro na resposta automática:', error.message);
   }

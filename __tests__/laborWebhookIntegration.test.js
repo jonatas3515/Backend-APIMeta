@@ -217,6 +217,18 @@ describe('laborWebhookIntegration (simplificado por histórico)', () => {
     expect(result.reply).toBeFalsy();
   });
 
+  test('mensagem após estimativa preliminar não reativa o fluxo', async () => {
+    const messages = [
+      botMessage('🧾 Estimativa preliminar da rescisão\n\n📌 Dados usados\n• Salário: R$ 3000,00')
+    ];
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'mas e minhas férias?',
+      messages
+    }));
+    expect(result.handled).toBe(false);
+    expect(result.reply).toBeFalsy();
+  });
+
   test('pergunta trabalhista com mais de 2h não força continuação', async () => {
     const oldDate = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
     const messages = [
