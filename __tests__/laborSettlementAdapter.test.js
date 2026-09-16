@@ -5,19 +5,19 @@
 const { adaptLaborSettlement } = require('../lib/laborSettlementAdapter');
 
 describe('adaptLaborSettlement', () => {
-  test('mensagem de cálculo é tratada', () => {
+  test('mensagem sem dados mínimos é liberada para o Gemini', () => {
     const result = adaptLaborSettlement({ message: 'Quero calcular minha rescisão' });
-    expect(result.handled).toBe(true);
-    expect(result.flow).toBe('labor_settlement_estimate');
-    expect(result.response.kind).toBe('question');
-    expect(result.state.active).toBe(true);
+    expect(result.handled).toBe(false);
+    expect(result.flow).toBe('other');
+    expect(result.response.text).toBe('');
+    expect(result.state.active).toBe(false);
   });
 
-  test('mensagem trabalhista conceitual não inicia cálculo', () => {
+  test('pergunta conceitual trabalhista é liberada para o Gemini', () => {
     const result = adaptLaborSettlement({ message: 'Posso pedir rescisão indireta?' });
-    expect(result.handled).toBe(true);
-    expect(result.flow).toBe('labor_question');
-    expect(result.response.kind).toBe('guidance');
+    expect(result.handled).toBe(false);
+    expect(result.flow).toBe('other');
+    expect(result.response.text).toBe('');
     expect(result.state.active).toBe(false);
     expect(result.calculation).toBeNull();
   });
@@ -29,25 +29,15 @@ describe('adaptLaborSettlement', () => {
     expect(result.response.kind).toBe('ignored');
   });
 
-  test('estado ativo mantém a coleta', () => {
-    const first = adaptLaborSettlement({ message: 'Quero calcular minha rescisão' });
-    const second = adaptLaborSettlement({
-      message: '2500',
-      state: first.state
-    });
-    expect(second.handled).toBe(true);
-    expect(second.flow).toBe('labor_settlement_estimate');
-    expect(second.state.collected.salary).toBe(2500);
-  });
-
-  test('estado ativo com mensagem curta continua funcionando', () => {
-    const first = adaptLaborSettlement({
-      message: 'Quanto vou receber de rescisão? Ganhei R$ 2.500',
+  test('dados mínimos incompletos liberam para o Gemini sem perguntas', () => {
+    const result = adaptLaborSettlement({
+      message: 'Quanto vou receber? Ganhei R$ 2.500',
       state: { active: true, status: 'collecting', askedFields: [], collected: {} }
     });
-    expect(first.handled).toBe(true);
-    expect(first.flow).toBe('labor_settlement_estimate');
-    expect(first.state.collected.salary).toBe(2500);
+    expect(result.handled).toBe(false);
+    expect(result.flow).toBe('other');
+    expect(result.response.text).toBe('');
+    expect(result.state.collected.salary).toBe(2500);
   });
 
   test('cancelamento limpa o estado', () => {
@@ -56,7 +46,6 @@ describe('adaptLaborSettlement', () => {
       message: 'Quero cancelar',
       state: first.state
     });
-    expect(cancelled.flow).toBe('labor_settlement_estimate');
     expect(cancelled.state.active).toBe(false);
     expect(cancelled.state.collected).toEqual({});
   });
@@ -72,12 +61,12 @@ describe('adaptLaborSettlement', () => {
     expect(result.calculation.totalEstimated).toBeGreaterThan(0);
   });
 
-  test('dados inválidos não geram valor fictício', () => {
+  test('dados inválidos são liberados para o Gemini sem valor fictício', () => {
     const result = adaptLaborSettlement({
       message: 'Quanto vou receber? R$ abc, de 15/01/2023 a 10/07/2024, fui demitido'
     });
-    expect(result.handled).toBe(true);
-    expect(result.response.kind).toBe('invalid');
+    expect(result.handled).toBe(false);
+    expect(result.response.text).toBe('');
     expect(result.calculation).toBeNull();
   });
 

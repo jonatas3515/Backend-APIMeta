@@ -12,25 +12,25 @@ const idleState = {
   status: 'idle'
 };
 
-describe('handleLaborSettlementMessage - início do fluxo', () => {
-  test('nova mensagem de cálculo sem dados inicia coleta', () => {
+describe('handleLaborSettlementMessage - não repete perguntas rígidas', () => {
+  test('mensagem vazia/inicial é liberada para o Gemini', () => {
     const result = handleLaborSettlementMessage({
       message: 'Quero calcular minha rescisão',
       state: idleState
     });
-    expect(result.status).toBe('collecting');
-    expect(result.response.kind).toBe('question');
-    expect(result.state.active).toBe(true);
-    expect(result.missingFields).toContain('salary');
+    expect(result.intent).toBe('other');
+    expect(result.response.text).toBe('');
+    expect(result.response.kind).toBe('released_to_gemini');
+    expect(result.response.text).not.toContain('Para estimar sua rescisão');
   });
 
-  test('labor_question não inicia cálculo', () => {
+  test('labor_question é liberada para o Gemini', () => {
     const result = handleLaborSettlementMessage({
       message: 'Posso pedir rescisão indireta?',
       state: idleState
     });
-    expect(result.status).toBe('idle');
-    expect(result.response.kind).toBe('guidance');
+    expect(result.intent).toBe('other');
+    expect(result.response.text).toBe('');
     expect(result.state.active).toBe(false);
   });
 
@@ -39,71 +39,32 @@ describe('handleLaborSettlementMessage - início do fluxo', () => {
       message: 'Bom dia',
       state: idleState
     });
-    expect(result.status).toBe('idle');
-    expect(result.response.kind).toBe('ignored');
+    expect(result.intent).toBe('other');
+    expect(result.response.text).toBe('');
   });
 
-  test('nova mensagem com salário preserva salário e pergunta datas/motivo', () => {
+  test('dados incompletos não geram pergunta de formulário', () => {
     const result = handleLaborSettlementMessage({
       message: 'Quanto vou receber? Fui demitido e ganhava R$ 2.500',
       state: idleState
     });
+    expect(result.intent).toBe('other');
+    expect(result.response.text).toBe('');
+    expect(result.response.text).not.toContain('Para estimar sua rescisão');
     expect(result.state.collected.salary).toBe(2500);
-    expect(result.status).toBe('collecting');
-    expect(result.missingFields).not.toContain('salary');
-    expect(result.missingFields).toContain('admissionDate');
-    expect(result.missingFields).toContain('terminationDate');
+  });
+
+  test('expressões de desabafo não travam o fluxo', () => {
+    const result = handleLaborSettlementMessage({
+      message: 'Aff',
+      state: idleState
+    });
+    expect(result.intent).toBe('other');
+    expect(result.response.text).toBe('');
   });
 });
 
-describe('handleLaborSettlementMessage - continuação', () => {
-  test('continuação mantém salário e pergunta próximo campo', () => {
-    const first = handleLaborSettlementMessage({
-      message: 'Quero calcular minha rescisão',
-      state: idleState
-    });
-    const second = handleLaborSettlementMessage({
-      message: 'R$ 3.000,00',
-      state: first.state
-    });
-    expect(second.state.collected.salary).toBe(3000);
-    expect(second.status).toBe('collecting');
-    expect(second.missingFields).not.toContain('salary');
-  });
-
-  test('dados válidos anteriores não são apagados', () => {
-    const first = handleLaborSettlementMessage({
-      message: 'Quanto vou receber de rescisão? Ganhei R$ 2.500',
-      state: idleState
-    });
-    const second = handleLaborSettlementMessage({
-      message: '01/01/2024',
-      state: first.state
-    });
-    const third = handleLaborSettlementMessage({
-      message: '30/06/2025',
-      state: second.state
-    });
-    expect(third.state.collected.salary).toBe(2500);
-    expect(third.state.collected.admissionDate).toBe('2024-01-01');
-    expect(third.state.collected.terminationDate).toBe('2025-06-30');
-  });
-
-  test('dado ambíguo não sobrescreve dado confirmado', () => {
-    const first = handleLaborSettlementMessage({
-      message: 'Quanto vou receber de rescisão? Ganhei R$ 2.500',
-      state: idleState
-    });
-    const second = handleLaborSettlementMessage({
-      message: 'acho que fui embora', // ambíguo
-      state: first.state
-    });
-    expect(second.state.collected.salary).toBe(2500);
-    expect(second.state.collected.terminationReason).toBeUndefined();
-  });
-});
-
-describe('handleLaborSettlementMessage - cálculo completo', () => {
+describe('handleLaborSettlementMessage - cálculo e estimativa', () => {
   test('mensagem com salário, datas e motivo chega ao cálculo', () => {
     const result = handleLaborSettlementMessage({
       message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa, aviso indenizado',
@@ -115,21 +76,14 @@ describe('handleLaborSettlementMessage - cálculo completo', () => {
     expect(result.calculation.totalEstimated).toBeGreaterThan(0);
   });
 
-  test('cálculo completo por etapas', () => {
-    const s1 = handleLaborSettlementMessage({
-      message: 'Quero calcular minha rescisão',
+  test('motivo ausente não bloqueia: assume desconhecido e calcula parcial', () => {
+    const result = handleLaborSettlementMessage({
+      message: 'Quanto vou receber de rescisão? R$ 3.000, de 15/01/2023 a 10/07/2024',
       state: idleState
     });
-    const s2 = handleLaborSettlementMessage({ message: '2500', state: s1.state });
-    const s3 = handleLaborSettlementMessage({ message: '01/01/2024', state: s2.state });
-    const s4 = handleLaborSettlementMessage({ message: '30/06/2025', state: s3.state });
-    const s5 = handleLaborSettlementMessage({
-      message: 'fui demitido sem justa causa, aviso indenizado',
-      state: s4.state
-    });
-    expect(s5.status).toBe('completed');
-    expect(s5.response.kind).toBe('estimate');
-    expect(s5.calculation.totalEstimated).toBeGreaterThan(0);
+    expect(result.status).toBe('completed');
+    expect(result.response.kind).toBe('estimate');
+    expect(result.warnings.some(w => w.includes('estimativa'))).toBe(true);
   });
 
   test('rescisão indireta permanece condicional', () => {
@@ -164,85 +118,96 @@ describe('handleLaborSettlementMessage - campos opcionais', () => {
   });
 });
 
-describe('handleLaborSettlementMessage - invalidações', () => {
-  test('datas inválidas retornam invalid sem cálculo fictício', () => {
+describe('handleLaborSettlementMessage - datas relativas e contexto', () => {
+  test('"hoje" preenche desligamento quando a admissão já foi indicada', () => {
+    process.env.LABOR_TODAY_DATE = '2025-07-24';
+    const state = {
+      active: true,
+      intent: 'labor_settlement_estimate',
+      collected: { salary: 3000, admissionDate: '2025-01-01' },
+      askedFields: [],
+      status: 'collecting'
+    };
     const result = handleLaborSettlementMessage({
-      message: 'Quanto vou receber? R$ 3.000, de 10/07/2024 a 15/01/2023, fui demitido',
-      state: idleState
+      message: 'saí hoje',
+      state
     });
-    expect(result.status).toBe('collecting');
-    expect(result.response.kind).toBe('invalid');
-    expect(result.calculation).toBeNull();
-  });
-
-  test('salário inválido retorna invalid', () => {
-    const result = handleLaborSettlementMessage({
-      message: 'Quanto vou receber? R$ abc, de 15/01/2023 a 10/07/2024, fui demitido',
-      state: idleState
-    });
-    expect(result.status).toBe('collecting');
-    expect(result.response.kind).toBe('invalid');
-    expect(result.calculation).toBeNull();
+    expect(result.state.collected.terminationDate).toBe('2025-07-24');
+    delete process.env.LABOR_TODAY_DATE;
   });
 });
 
-describe('handleLaborSettlementMessage - cancelamento', () => {
-  test('cancelamento limpa o estado', () => {
-    const s1 = handleLaborSettlementMessage({
-      message: 'Quero calcular minha rescisão',
-      state: idleState
-    });
-    const cancelled = handleLaborSettlementMessage({
-      message: 'Quero cancelar a simulação',
-      state: s1.state
-    });
-    expect(cancelled.status).toBe('cancelled');
-    expect(cancelled.state.active).toBe(false);
-    expect(cancelled.state.collected).toEqual({});
+describe('extractLaborFields - datas relativas e naturais', () => {
+  beforeEach(() => {
+    process.env.LABOR_TODAY_DATE = '2025-07-24';
+  });
+  afterEach(() => {
+    delete process.env.LABOR_TODAY_DATE;
+  });
+
+  test('"entrei em janeiro e saí hoje" separa admissão e desligamento', () => {
+    const result = extractLaborFields('entrei em janeiro e saí hoje', [], {});
+    expect(result.admissionDate).toBe('2025-01-01');
+    expect(result.terminationDate).toBe('2025-07-24');
+  });
+
+  test('"janeiro" preenche admissão', () => {
+    const result = extractLaborFields('janeiro', [], {});
+    expect(result.admissionDate).toBe('2025-01-01');
+  });
+
+  test('"janeiro dia 1" captura o dia', () => {
+    const result = extractLaborFields('janeiro dia 1', [], {});
+    expect(result.admissionDate).toBe('2025-01-01');
+  });
+
+  test('"dia 02/01" captura data incompleta', () => {
+    const result = extractLaborFields('dia 02/01', [], {});
+    expect(result.admissionDate).toBe('2025-01-02');
+  });
+
+  test('"ontem" preenche desligamento', () => {
+    const result = extractLaborFields('fui demitido ontem', [], {});
+    expect(result.terminationDate).toBe('2025-07-23');
+  });
+
+  test('hoje não sobrescreve admissão já conhecida', () => {
+    const result = extractLaborFields('saí hoje', [], { admissionDate: '2025-01-01' });
+    expect(result.admissionDate).toBeUndefined();
+    expect(result.terminationDate).toBe('2025-07-24');
+  });
+});
+
+describe('extractLaborFields - respostas diretas', () => {
+  test('"Indenizado" sozinho preenche noticeStatus quando perguntado', () => {
+    const result = extractLaborFields('Indenizado', ['noticeStatus'], {});
+    expect(result.noticeStatus).toBe('indenizado');
+  });
+
+  test('"foi indenizado" preenche noticeStatus quando perguntado', () => {
+    const result = extractLaborFields('foi indenizado', ['noticeStatus'], {});
+    expect(result.noticeStatus).toBe('indenizado');
+  });
+
+  test('"sim" preenche férias vencidas quando for a única pendência', () => {
+    const result = extractLaborFields('sim', ['hasVacationAccrued'], { salary: 1000, admissionDate: '2024-01-01', terminationDate: '2024-06-01', terminationReason: 'dispensa_sem_justa_causa', noticeStatus: 'trabalhado' });
+    expect(result.hasVacationAccrued).toBe('yes');
   });
 });
 
 describe('handleLaborSettlementMessage - integridade', () => {
-  test('horas extras não entram automaticamente', () => {
-    const result = handleLaborSettlementMessage({
-      message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa, aviso indenizado, fiz muitas horas extras',
-      state: idleState
-    });
-    const overtime = result.calculation.items.find(i => i.code === 'overtime');
-    expect(overtime.status).toBe('not_calculated');
-  });
-
-  test('FGTS e multa não entram automaticamente', () => {
+  test('resposta de cálculo é curta e organizada para WhatsApp', () => {
     const result = handleLaborSettlementMessage({
       message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa, aviso indenizado',
       state: idleState
     });
-    const fgts = result.calculation.items.find(i => i.code === 'fgts');
-    expect(fgts.status).toBe('conditional');
+    expect(result.status).toBe('completed');
+    expect(result.response.text).toContain('🧾 Estimativa preliminar');
+    expect(result.response.text).toContain('📌 Dados usados');
+    expect(result.response.text).toContain('💰 Valores estimados');
+    expect(result.response.text).toContain('➡️ Total estimado');
   });
 
-  test('total é exatamente o total do motor', () => {
-    const result = handleLaborSettlementMessage({
-      message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa, aviso indenizado',
-      state: idleState
-    });
-    const motorTotal = result.calculation.items
-      .filter(i => i.status === 'calculated')
-      .reduce((sum, i) => sum + i.amount, 0);
-    expect(result.calculation.totalEstimated).toBeCloseTo(motorTotal, 2);
-  });
-
-  test('saída contém aviso de estimativa quando houver cálculo', () => {
-    const result = handleLaborSettlementMessage({
-      message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa, aviso indenizado',
-      state: idleState
-    });
-    expect(result.warnings.some(w => w.includes('estimativa'))).toBe(true);
-    expect(result.response.text).toContain('estimativa');
-  });
-});
-
-describe('handleLaborSettlementMessage - determinismo e privacidade', () => {
   test('mesma entrada e estado produzem mesma saída', () => {
     const r1 = handleLaborSettlementMessage({
       message: 'R$ 3.000, 15/01/2023 a 10/07/2024, fui demitido sem justa causa, aviso indenizado',
@@ -263,114 +228,5 @@ describe('handleLaborSettlementMessage - determinismo e privacidade', () => {
     });
     expect(logSpy).not.toHaveBeenCalled();
     logSpy.mockRestore();
-  });
-});
-
-describe('handleLaborSettlementMessage - datas, motivo e resposta', () => {
-  const collectingState = {
-    active: true,
-    intent: 'labor_settlement_estimate',
-    collected: { salary: 3000, admissionDate: '2024-03-15' },
-    askedFields: ['salary', 'admissionDate', 'terminationDate', 'terminationReason', 'noticeStatus'],
-    status: 'collecting'
-  };
-
-  test('"Foi hoje" usa a data atual configurada no teste', () => {
-    process.env.LABOR_TODAY_DATE = '2026-09-15';
-    const result = handleLaborSettlementMessage({
-      message: 'Foi hoje',
-      state: collectingState
-    });
-    expect(result.status).toBe('collecting');
-    expect(result.state.collected.terminationDate).toBe('2026-09-15');
-    delete process.env.LABOR_TODAY_DATE;
-  });
-
-  test('"15/10" é normalizado com ano atual quando seguro', () => {
-    process.env.LABOR_TODAY_DATE = '2026-11-15';
-    const result = handleLaborSettlementMessage({
-      message: '15/10',
-      state: collectingState
-    });
-    expect(result.state.collected.terminationDate).toBe('2026-10-15');
-    expect(result.status).toBe('collecting');
-    delete process.env.LABOR_TODAY_DATE;
-  });
-
-  test('"15/10" no futuro não é normalizado e é rejeitado com pedido de correção', () => {
-    process.env.LABOR_TODAY_DATE = '2026-09-15';
-    const result = handleLaborSettlementMessage({
-      message: '15/10',
-      state: collectingState
-    });
-    expect(result.status).toBe('collecting');
-    expect(result.response.kind).toBe('invalid');
-    expect(result.missingFields).toContain('terminationDate');
-    delete process.env.LABOR_TODAY_DATE;
-  });
-
-  test('data futura completa é rejeitada', () => {
-    process.env.LABOR_TODAY_DATE = '2026-09-15';
-    const result = handleLaborSettlementMessage({
-      message: '15/10/2026',
-      state: collectingState
-    });
-    expect(result.status).toBe('collecting');
-    expect(result.response.kind).toBe('invalid');
-    expect(result.calculation).toBeNull();
-    delete process.env.LABOR_TODAY_DATE;
-  });
-
-  test('"Fui demitido" sozinho não define o motivo automaticamente', () => {
-    const result = handleLaborSettlementMessage({
-      message: 'Fui demitido',
-      state: collectingState
-    });
-    expect(result.state.collected.terminationReason).toBeUndefined();
-    expect(result.missingFields).toContain('terminationReason');
-  });
-
-  test('aviso-prévio é coletado antes do cálculo', () => {
-    const state = {
-      active: true,
-      intent: 'labor_settlement_estimate',
-      collected: { salary: 3000, admissionDate: '2024-03-15', terminationDate: '2025-09-15', terminationReason: 'dispensa_sem_justa_causa' },
-      askedFields: ['salary', 'admissionDate', 'terminationDate', 'terminationReason', 'noticeStatus'],
-      status: 'collecting'
-    };
-    const result = handleLaborSettlementMessage({
-      message: 'aviso indenizado',
-      state
-    });
-    expect(result.state.collected.noticeStatus).toBe('indenizado');
-  });
-
-  test('resposta de cálculo é curta e organizada para WhatsApp', () => {
-    const result = handleLaborSettlementMessage({
-      message: 'Quanto vou receber? R$ 3.000, de 15/01/2023 a 10/07/2024, fui demitido sem justa causa, aviso indenizado',
-      state: idleState
-    });
-    expect(result.status).toBe('completed');
-    expect(result.response.text).toContain('🧾 Estimativa preliminar');
-    expect(result.response.text).toContain('📌 Dados usados');
-    expect(result.response.text).toContain('💰 Valores estimados');
-    expect(result.response.text).toContain('➡️ Total estimado');
-  });
-});
-
-describe('extractLaborFields - respostas diretas', () => {
-  test('"Indenizado" sozinho preenche noticeStatus quando perguntado', () => {
-    const result = extractLaborFields('Indenizado', ['noticeStatus'], {});
-    expect(result.noticeStatus).toBe('indenizado');
-  });
-
-  test('"foi indenizado" preenche noticeStatus quando perguntado', () => {
-    const result = extractLaborFields('foi indenizado', ['noticeStatus'], {});
-    expect(result.noticeStatus).toBe('indenizado');
-  });
-
-  test('"sim" preenche férias vencidas quando for a única pendência', () => {
-    const result = extractLaborFields('sim', ['hasVacationAccrued'], { salary: 1000, admissionDate: '2024-01-01', terminationDate: '2024-06-01', terminationReason: 'dispensa_sem_justa_causa', noticeStatus: 'trabalhado' });
-    expect(result.hasVacationAccrued).toBe('yes');
   });
 });

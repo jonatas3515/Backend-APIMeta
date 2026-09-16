@@ -8,13 +8,13 @@ function runInNode(script) {
 }
 
 describe('labor settlement CJS interop (raw Node require)', () => {
-  test('"Quero calcular minha rescisão" é tratada e pede o salário', () => {
+  test('"Quero calcular minha rescisão" não faz pergunta rígida (handled=false)', () => {
     const script = "const { adaptLaborSettlement } = require('./lib/laborSettlementAdapter'); "
       + "const result = adaptLaborSettlement({ message: 'Quero calcular minha rescisão' }); "
-      + "if (!result || !result.handled) { process.stdout.write('NOT_HANDLED'); process.exit(1); } "
+      + "if (result && result.handled) { process.stdout.write('HANDLED'); process.exit(1); } "
       + "process.stdout.write(result.response.text);";
     const output = runInNode(script);
-    expect(output).toContain('Qual era o salário mensal?');
+    expect(output).toBe('');
   });
 
   test('mensagem comum continua não trabalhista (handled=false)', () => {
@@ -25,12 +25,12 @@ describe('labor settlement CJS interop (raw Node require)', () => {
     expect(output).toBe('NOT_HANDLED');
   });
 
-  test('pergunta conceitual trabalhista é orientada e não inicia cálculo', () => {
+  test('pergunta conceitual trabalhista é liberada para o Gemini (handled=false)', () => {
     const script = "const { adaptLaborSettlement } = require('./lib/laborSettlementAdapter'); "
       + "const result = adaptLaborSettlement({ message: 'O que é rescisão indireta?' }); "
-      + "if (!result.handled || result.flow !== 'labor_question') { process.stdout.write('FAIL'); process.exit(1); } "
+      + "if (result && result.handled) { process.stdout.write('HANDLED'); process.exit(1); } "
       + "process.stdout.write(result.response.text);";
     const output = runInNode(script);
-    expect(output).toContain('dúvida trabalhista');
+    expect(output).toBe('');
   });
 });

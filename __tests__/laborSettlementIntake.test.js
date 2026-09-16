@@ -43,10 +43,10 @@ describe('laborSettlementIntake - dados mínimos', () => {
     expect(result.missingFields).toContain('terminationDate');
   });
 
-  test('falta motivo gera needs_information', () => {
+  test('falta motivo assume desconhecido e gera estimativa parcial', () => {
     const result = processLaborSettlementIntake({ ...completeInput, terminationReason: null });
-    expect(result.status).toBe('needs_information');
-    expect(result.missingFields).toContain('terminationReason');
+    expect(result.status).toBe('ready');
+    expect(result.warnings.some(w => w.includes('estimativa'))).toBe(true);
   });
 });
 

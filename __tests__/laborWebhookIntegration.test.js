@@ -28,6 +28,8 @@ function botMessage(text) {
   return { text, sender_type: 'ai', created_at: new Date().toISOString() };
 }
 
+const openingQuestion = 'Para estimar sua rescisão, preciso das seguintes informações: Qual era o salário mensal? Qual foi a data de admissão? Qual foi a data de desligamento? Qual foi o motivo do desligamento?';
+
 function makeParams(overrides = {}) {
   return {
     conversation: makeConversation(),
@@ -41,158 +43,153 @@ function makeParams(overrides = {}) {
   };
 }
 
-describe('laborWebhookIntegration (simplificado por histórico)', () => {
-  test('início da coleta: "Quero calcular minha rescisão" pergunta todos os campos', async () => {
+describe('laborWebhookIntegration - desativação de perguntas rígidas', () => {
+  test('início simples não emite lista de perguntas', async () => {
     const result = await handleLaborSettlementWebhook(makeParams());
-
-    expect(result.handled).toBe(true);
-    expect(result.reply).toContain('Para estimar sua rescisão');
-    expect(result.reply).toContain('salário');
-    expect(result.reply).toContain('admissão');
-    expect(result.reply).toContain('desligamento');
-    expect(result.reply).toContain('motivo');
-    expect(result.stateSaved).toBe(false);
+    expect(result.handled).toBe(false);
+    expect(result.reply).toBeFalsy();
+    if (result.reply) {
+      expect(result.reply).not.toContain('Para estimar sua rescisão');
+    }
   });
 
-  test('"Fui demitido, quero resolver" entra na coleta', async () => {
+  test('solicitação com dados insuficientes é liberada para o Gemini', async () => {
     const result = await handleLaborSettlementWebhook(makeParams({
-      textBody: 'Fui demitido, quero resolver'
+      textBody: 'Quero calcular minha rescisão'
     }));
-
-    expect(result.handled).toBe(true);
-    expect(result.reply).toContain('Para estimar sua rescisão');
-    expect(result.flow).toBe('labor_settlement_estimate');
-  });
-
-  test('extração de salário e datas de uma mensão', async () => {
-    const messages = [botMessage('Para estimar sua rescisão, preciso das seguintes informações: Qual era o salário mensal? Qual foi a data de admissão? Qual foi a data de desligamento? Qual foi o motivo do desligamento?')];
-    const result = await handleLaborSettlementWebhook(makeParams({
-      textBody: 'Recebia 3000 reais, entrei em 01/05/2023 e saí em 30/06/2024',
-      messages
-    }));
-
-    expect(result.handled).toBe(true);
-    expect(result.reply).toContain('motivo');
-  });
-
-  test('cálculo completo usando dados da mensão atual', async () => {
-    const messages = [botMessage('Para estimar sua rescisão, preciso das seguintes informações: Qual era o salário mensal? Qual foi a data de admissão? Qual foi a data de desligamento? Qual foi o motivo do desligamento?')];
-    const result = await handleLaborSettlementWebhook(makeParams({
-      textBody: 'Recebia 3000 reais, entrei em 01/05/2023 e saí em 30/06/2024, fui demitido sem justa causa, aviso indenizado',
-      messages
-    }));
-
-    expect(result.handled).toBe(true);
-    expect(result.reply).toContain('Estimativa preliminar');
-    expect(result.reply).not.toContain('Qual foi a data');
-  });
-
-  test('campo faltante: pergunta apenas o que ainda falta', async () => {
-    const messages = [botMessage('Para estimar sua rescisão, preciso das seguintes informações: Qual era o salário mensal? Qual foi a data de admissão? Qual foi a data de desligamento? Qual foi o motivo do desligamento?')];
-    const result = await handleLaborSettlementWebhook(makeParams({
-      textBody: 'Recebia 3000 reais e trabalhei de 01/05/2023 até 30/06/2024',
-      messages
-    }));
-
-    expect(result.handled).toBe(true);
-    expect(result.reply).toContain('motivo');
-    expect(result.reply).not.toContain('salário');
-  });
-
-  test('histórico reconstruído: salário vem de mensagem anterior', async () => {
-    const messages = [
-      botMessage('Para estimar sua rescisão, preciso das seguintes informações: Qual era o salário mensal? Qual foi a data de admissão? Qual foi a data de desligamento? Qual foi o motivo do desligamento?'),
-      clientMessage('Meu salário era 3000 reais'),
-      botMessage('Qual foi a data de admissão?')
-    ];
-    const result = await handleLaborSettlementWebhook(makeParams({
-      textBody: 'Entrei em 01/05/2023 e saí em 30/06/2024, fui demitido sem justa causa, aviso indenizado',
-      messages
-    }));
-
-    expect(result.handled).toBe(true);
-    expect(result.reply).toContain('Estimativa preliminar');
-  });
-
-  test('mensagem comum não ativa o fluxo trabalhista', async () => {
-    const result = await handleLaborSettlementWebhook(makeParams({
-      textBody: 'Bom dia, gostaria de falar com um advogado'
-    }));
-
     expect(result.handled).toBe(false);
     expect(result.reply).toBeFalsy();
   });
+});
 
-  test('erro técnico não emite fallback enganoso para mensagens inválidas', async () => {
-    const result = await handleLaborSettlementWebhook(makeParams({
-      textBody: '   ',
-      messageType: 'text'
-    }));
-
-    expect(result.handled).toBe(false);
-    expect(result.reply).toBeFalsy();
-    expect(result.errorCode).toBeFalsy();
+describe('laborWebhookIntegration - extração de datas relativas', () => {
+  beforeEach(() => {
+    process.env.LABOR_TODAY_DATE = '2025-07-24';
   });
-
-  test('"Foi hoje" normaliza a data de desligamento a partir do histórico', async () => {
-    process.env.LABOR_TODAY_DATE = '2026-09-15';
-    const messages = [
-      botMessage('Para estimar sua rescisão, preciso das seguintes informações: Qual era o salário mensal? Qual foi a data de admissão? Qual foi a data de desligamento? Qual foi o motivo do desligamento? O aviso-prévio foi trabalhado, indenizado, não cumprido ou você não sabe?'),
-      clientMessage('R$ 2.500'),
-      botMessage('Qual foi a data de admissão?'),
-      clientMessage('15/03/2025'),
-      botMessage('Qual foi a data de desligamento?')
-    ];
-    const result = await handleLaborSettlementWebhook(makeParams({
-      textBody: 'Foi hoje',
-      messages
-    }));
-
-    expect(result.handled).toBe(true);
-    expect(result.reply).toContain('Qual foi o motivo');
-    expect(result.flow).toBe('labor_settlement_estimate');
+  afterEach(() => {
     delete process.env.LABOR_TODAY_DATE;
   });
 
-  test('nenhum log contém texto da mensagem, salário ou data', async () => {
-    const logFn = jest.fn();
-    const messages = [botMessage('Para estimar sua rescisão, preciso das seguintes informações: Qual era o salário mensal?')];
-
-    await handleLaborSettlementWebhook(makeParams({
-      textBody: 'Recebia 3000 reais e entrei em 01/05/2023',
-      messages,
-      log: logFn
+  test('"entrei em janeiro e saí hoje" calcula estimativa com admissão em janeiro e desligamento hoje', async () => {
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'Recebia 2500 por mês, entrei em janeiro e saí hoje, fui demitido',
+      messages: [botMessage(openingQuestion)]
     }));
-
-    const allCalls = logFn.mock.calls.map(c => JSON.stringify(c)).join(' ');
-    expect(allCalls).not.toContain('3000');
-    expect(allCalls).not.toContain('01/05/2023');
-    expect(allCalls).not.toContain('Recebia 3000');
+    expect(result.handled).toBe(true);
+    expect(result.reply).toContain('🧾 Estimativa preliminar');
+    expect(result.reply).not.toContain('Para estimar sua rescisão');
+    expect(result.reply).not.toContain('Qual foi a data de desligamento');
   });
 
-  test('saudação solta não repete pergunta trabalhista em loop', async () => {
+  test('"hoje" preenche desligamento sem sobrescrever admissão conhecida', async () => {
     const messages = [
-      botMessage('Para estimar sua rescisão, preciso das seguintes informações: O aviso-prévio foi trabalhado, indenizado, não cumprido ou você não sabe?')
+      botMessage(openingQuestion),
+      clientMessage('Recebia 2500 por mês, entrei em janeiro')
     ];
     const result = await handleLaborSettlementWebhook(makeParams({
-      textBody: 'Bom dia Dr. Poderia me ajudar',
+      textBody: 'saí hoje',
       messages
+    }));
+    expect(result.handled).toBe(true);
+    expect(result.reply).toContain('🧾 Estimativa preliminar');
+  });
+
+  test('"ontem" preenche desligamento', async () => {
+    const messages = [
+      botMessage(openingQuestion),
+      clientMessage('Recebia 2500 por mês, entrei em janeiro')
+    ];
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'fui demitido ontem',
+      messages
+    }));
+    expect(result.handled).toBe(true);
+    expect(result.reply).toContain('🧾 Estimativa preliminar');
+  });
+
+  test('"janeiro" sozinho preenche admissão e libera para o Gemini até ter datas completas', async () => {
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'entrei em janeiro',
+      messages: [botMessage(openingQuestion)]
     }));
     expect(result.handled).toBe(false);
     expect(result.reply).toBeFalsy();
   });
 
-  test('"Indenizado" é reconhecido como aviso-prévio quando perguntado', async () => {
+  test('"janeiro dia 1" preenche admissão', async () => {
     const messages = [
-      botMessage('Para estimar sua rescisão, preciso das seguintes informações: Qual era o salário mensal? Qual foi a data de admissão? Qual foi a data de desligamento? Qual foi o motivo do desligamento? O aviso-prévio foi trabalhado, indenizado, não cumprido ou você não sabe?'),
+      botMessage(openingQuestion),
+      clientMessage('Recebia 2500 por mês')
+    ];
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'janeiro dia 1',
+      messages
+    }));
+    expect(result.handled).toBe(false); // ainda falta desligamento; não repete pergunta
+    expect(result.reply).toBeFalsy();
+  });
+
+  test('"dia 02/01" é reconhecido como admissão', async () => {
+    const messages = [
+      botMessage(openingQuestion),
+      clientMessage('Recebia 2500 por mês')
+    ];
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'dia 02/01',
+      messages
+    }));
+    expect(result.handled).toBe(false);
+    expect(result.reply).toBeFalsy();
+  });
+});
+
+describe('laborWebhookIntegration - Gemini assume diálogo', () => {
+  test('"Aff" libera o fluxo para o Gemini', async () => {
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'Aff',
+      messages: [botMessage(openingQuestion)]
+    }));
+    expect(result.handled).toBe(false);
+    expect(result.reply).toBeFalsy();
+  });
+
+  test('"Oxi" libera o fluxo para o Gemini', async () => {
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'Oxi',
+      messages: [botMessage(openingQuestion)]
+    }));
+    expect(result.handled).toBe(false);
+    expect(result.reply).toBeFalsy();
+  });
+
+  test('saudação solta não repete pergunta trabalhista', async () => {
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'Bom dia Dr. Poderia me ajudar',
+      messages: [botMessage(openingQuestion)]
+    }));
+    expect(result.handled).toBe(false);
+    expect(result.reply).toBeFalsy();
+  });
+});
+
+describe('laborWebhookIntegration - fluxo completo e reconhecimento', () => {
+  test('dados completos em uma mensagem geram estimativa preliminar', async () => {
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'Quanto vou receber? Recebia R$ 3.000, entrei em 01/01/2023 e saí em 30/06/2024, fui demitido sem justa causa, aviso indenizado',
+      messages: [botMessage(openingQuestion)]
+    }));
+    expect(result.handled).toBe(true);
+    expect(result.reply).toContain('🧾 Estimativa preliminar');
+  });
+
+  test('"Indenizado" é reconhecido como aviso-prévio quando perguntado', async () => {
+    const noticeQuestion = 'Para estimar sua rescisão, preciso das seguintes informações: Qual era o salário mensal? Qual foi a data de admissão? Qual foi a data de desligamento? Qual foi o motivo do desligamento? O aviso-prévio foi trabalhado, indenizado, não cumprido ou você não sabe?';
+    const messages = [
+      botMessage(noticeQuestion),
       clientMessage('Meu salário era 3000 reais'),
-      botMessage('Qual foi a data de admissão?'),
       clientMessage('01/01/2023'),
-      botMessage('Qual foi a data de desligamento?'),
       clientMessage('30/06/2024'),
-      botMessage('Qual foi o motivo do desligamento?'),
-      clientMessage('fui demitido sem justa causa'),
-      botMessage('O aviso-prévio foi trabalhado, indenizado, não cumprido ou você não sabe?')
+      clientMessage('fui demitido sem justa causa')
     ];
     const result = await handleLaborSettlementWebhook(makeParams({
       textBody: 'Indenizado',
@@ -201,20 +198,6 @@ describe('laborWebhookIntegration (simplificado por histórico)', () => {
     expect(result.handled).toBe(true);
     expect(result.reply).toContain('🧾 Estimativa preliminar');
     expect(result.reply).not.toContain('O aviso-prévio foi');
-  });
-
-  test('respostas improdutivas consecutivas soltam o fluxo para o normal', async () => {
-    const messages = [
-      botMessage('Para estimar sua rescisão, preciso das seguintes informações: O aviso-prévio foi trabalhado, indenizado, não cumprido ou você não sabe?'),
-      clientMessage('não entendi'),
-      clientMessage('pode repetir a pergunta')
-    ];
-    const result = await handleLaborSettlementWebhook(makeParams({
-      textBody: 'pode repetir a pergunta',
-      messages
-    }));
-    expect(result.handled).toBe(false);
-    expect(result.reply).toBeFalsy();
   });
 
   test('mensagem após estimativa preliminar não reativa o fluxo', async () => {
@@ -232,7 +215,7 @@ describe('laborWebhookIntegration (simplificado por histórico)', () => {
   test('pergunta trabalhista com mais de 2h não força continuação', async () => {
     const oldDate = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
     const messages = [
-      { text: 'Para estimar sua rescisão, preciso das seguintes informações: O aviso-prévio foi trabalhado, indenizado, não cumprido ou você não sabe?', sender_type: 'ai', created_at: oldDate }
+      { text: openingQuestion, sender_type: 'ai', created_at: oldDate }
     ];
     const result = await handleLaborSettlementWebhook(makeParams({
       textBody: 'Bom dia',
@@ -240,5 +223,21 @@ describe('laborWebhookIntegration (simplificado por histórico)', () => {
     }));
     expect(result.handled).toBe(false);
     expect(result.reply).toBeFalsy();
+  });
+
+  test('nenhum log contém texto da mensagem, salário ou data', async () => {
+    const logFn = jest.fn();
+    const messages = [botMessage(openingQuestion)];
+
+    await handleLaborSettlementWebhook(makeParams({
+      textBody: 'Recebia 3000 reais e entrei em 01/05/2023',
+      messages,
+      log: logFn
+    }));
+
+    const allCalls = logFn.mock.calls.map(c => JSON.stringify(c)).join(' ');
+    expect(allCalls).not.toContain('3000');
+    expect(allCalls).not.toContain('01/05/2023');
+    expect(allCalls).not.toContain('Recebia 3000');
   });
 });

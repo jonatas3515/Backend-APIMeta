@@ -124,7 +124,7 @@ describe('Webhook labor real path', () => {
     fetchSpy.mockRestore();
   });
 
-  test('"Quero calcular minha rescisão" inicia coleta e não chama Gemini', async () => {
+  test('"Quero calcular minha rescisão" é liberada para o Gemini sem perguntas rígidas', async () => {
     const { req, res } = createMocks({
       method: 'POST',
       body: buildLaborPayload('Quero calcular minha rescisão'),
@@ -136,19 +136,18 @@ describe('Webhook labor real path', () => {
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
 
     expect(statusCode).toBe(200);
-    expect(data).toMatchObject({ success: true, labor: true });
+    expect(data).toMatchObject({ success: true });
+    expect(data).not.toHaveProperty('labor', true);
 
-    // Verifica que o WhatsApp foi chamado com o texto de abertura
     const fetchCalls = fetchSpy.mock.calls;
-    const whatsappCalls = fetchCalls.filter(([url]) => String(url).includes('messages'));
-    expect(whatsappCalls.length).toBeGreaterThan(0);
-    const lastWhatsAppCall = whatsappCalls[whatsappCalls.length - 1];
-    const body = JSON.parse(lastWhatsAppCall[1].body);
-    expect(body.text.body).toContain('Para estimar sua rescisão');
 
-    // Verifica que o Gemini não foi chamado
-    const geminiCalls = fetchCalls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
-    expect(geminiCalls.length).toBe(0);
+    // Não deve sair a mensagem rígida de abertura
+    const whatsappCalls = fetchCalls.filter(([url]) => String(url).includes('messages'));
+    if (whatsappCalls.length > 0) {
+      const lastWhatsAppCall = whatsappCalls[whatsappCalls.length - 1];
+      const body = JSON.parse(lastWhatsAppCall[1].body);
+      expect(body.text.body).not.toContain('Para estimar sua rescisão');
+    }
   });
 
   test('mensagem comum cai no fluxo normal (labor=false)', async () => {
