@@ -194,9 +194,9 @@ describe('laborSettlementCalculator - controle de inclusões indevidas', () => {
 
   test('FGTS/multa 40% não entra no total sem premissa suficiente', () => {
     const result = calculateLaborSettlement(baseInput);
-    expect(itemByCode(result, 'fgts').status).toBe('conditional');
-    expect(itemByCode(result, 'fgts').amount).toBe(0);
-    expect(result.warnings.some(w => w.includes('FGTS'))).toBe(true);
+    expect(itemByCode(result, 'fgts_deposits')).toBeUndefined();
+    expect(itemByCode(result, 'fgts_penalty_40')).toBeUndefined();
+    expect(result.warnings.some(w => w.includes('FGTS'))).toBe(false);
   });
 
   test('convenção coletiva não é aplicada automaticamente', () => {
@@ -241,6 +241,69 @@ describe('laborSettlementCalculator - datas e arredondamento', () => {
     });
     expect(itemByCode(result, 'salary_balance').amount).toBe(1000);
     expect(itemByCode(result, 'salary_balance').assumptions[0]).toContain('10/30');
+  });
+});
+
+describe('laborSettlementCalculator - inteligência jurídica CLT', () => {
+  test('vínculo menor de 12 meses omite férias vencidas e 13º vencido', () => {
+    const result = calculateLaborSettlement({
+      salary: 2500,
+      admissionDate: '2024-01-15',
+      terminationDate: '2024-09-10',
+      terminationReason: 'dispensa_sem_justa_causa',
+      hasVacationAccrued: 'yes',
+      hasThirteenthAccrued: 'yes',
+      noticeStatus: 'indenizado'
+    });
+    expect(itemByCode(result, 'vacation_accrued')).toBeUndefined();
+    expect(itemByCode(result, 'thirteenth_accrued')).toBeUndefined();
+    expect(itemByCode(result, 'vacation_proportional').status).toBe('calculated');
+    expect(itemByCode(result, 'thirteenth_proportional').status).toBe('calculated');
+  });
+
+  test('aviso-prévio indenizado projeta 30 dias e adiciona reflexo em 13º', () => {
+    const result = calculateLaborSettlement({
+      salary: 3000,
+      admissionDate: '2024-01-15',
+      terminationDate: '2024-07-10',
+      terminationReason: 'dispensa_sem_justa_causa',
+      noticeStatus: 'indenizado'
+    });
+    expect(itemByCode(result, 'notice_indemnity').amount).toBe(3000);
+    expect(result.inputSummary.effectiveTerminationDate).toBe('2024-08-09');
+    expect(result.assumptions.some(a => a.includes('projetado'))).toBe(true);
+  });
+
+  test('sem carteira assinada inclui FGTS 8% e multa de 40%', () => {
+    const result = calculateLaborSettlement({
+      salary: 2500,
+      admissionDate: '2024-01-15',
+      terminationDate: '2024-09-10',
+      terminationReason: 'dispensa_sem_justa_causa',
+      noticeStatus: 'indenizado',
+      hasCtps: 'no'
+    });
+    const fgts = itemByCode(result, 'fgts_deposits');
+    const penalty = itemByCode(result, 'fgts_penalty_40');
+    expect(fgts.status).toBe('calculated');
+    expect(fgts.amount).toBeCloseTo(1400, 2); // 8% × 2500 × 7 meses
+    expect(penalty.status).toBe('calculated');
+    expect(penalty.amount).toBeCloseTo(560, 2); // 40% × 1400
+    expect(result.assumptions.some(a => a.includes('CTPS'))).toBe(true);
+  });
+
+  test('carteira assinada não inclui FGTS no total', () => {
+    const result = calculateLaborSettlement({
+      salary: 2500,
+      admissionDate: '2024-01-15',
+      terminationDate: '2024-09-10',
+      terminationReason: 'dispensa_sem_justa_causa',
+      noticeStatus: 'indenizado',
+      hasCtps: 'yes'
+    });
+    expect(itemByCode(result, 'fgts_deposits')).toBeUndefined();
+    expect(itemByCode(result, 'fgts_penalty_40')).toBeUndefined();
+    expect(result.assumptions.some(a => a.includes('CTPS'))).toBe(true);
   });
 });
 

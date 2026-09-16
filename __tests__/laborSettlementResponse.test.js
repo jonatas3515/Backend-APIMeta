@@ -66,7 +66,7 @@ describe('laborSettlementResponse - ready', () => {
       nextQuestions: []
     });
     expect(response.type).toBe('labor_settlement_estimate');
-    expect(response.text).toContain('Valores estimados');
+    expect(response.text).toContain('Verbas estimadas');
     expect(response.text).toContain('Não incluídos');
     expect(response.text).toContain('Total estimado');
   });
@@ -82,7 +82,8 @@ describe('laborSettlementResponse - ready', () => {
       nextQuestions: []
     });
     expect(response.totalEstimated).toBe(intake.calculation.totalEstimated);
-    expect(response.text).toContain(response.totalEstimated.toFixed(2).replace('.', ','));
+    const formatted = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(response.totalEstimated);
+    expect(response.text).toContain(formatted);
   });
 
   test('warnings obrigatórios permanecem', () => {
@@ -95,8 +96,8 @@ describe('laborSettlementResponse - ready', () => {
       warnings: intake.calculation.warnings,
       nextQuestions: []
     });
-    expect(response.text).toContain('estimativa preliminar');
-    expect(response.text).toContain('profissional');
+    expect(response.text).toContain('Estimativa preliminar');
+    expect(response.disclaimers.some(d => d.includes('profissional'))).toBe(true);
     expect(response.disclaimers.length).toBeGreaterThan(0);
   });
 
@@ -111,7 +112,8 @@ describe('laborSettlementResponse - ready', () => {
       nextQuestions: []
     });
     const salaryBalance = intake.calculation.items.find(i => i.code === 'salary_balance').amount;
-    expect(response.text).toContain(salaryBalance.toFixed(2).replace('.', ','));
+    const formattedBalance = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(salaryBalance);
+    expect(response.text).toContain(formattedBalance);
   });
 });
 
@@ -142,7 +144,7 @@ describe('laborSettlementResponse - itens condicionais e não calculados', () =>
     noticeStatus: 'desconhecido'
   });
 
-  test('FGTS e horas extras aparecem como condicionais/não calculados', () => {
+  test('horas extras e convenção aparecem como não calculados, sem duplicatas', () => {
     const response = formatLaborSettlementResponse({
       status: 'ready',
       intakeResult: intake,
@@ -152,14 +154,65 @@ describe('laborSettlementResponse - itens condicionais e não calculados', () =>
       warnings: intake.calculation.warnings,
       nextQuestions: []
     });
-    expect(response.text).toContain('FGTS');
     expect(response.text).toContain('Não incluídos');
     expect(response.text).toContain('Horas extras');
+    expect(response.text).toContain('Convenção coletiva');
+    // Não deve repetir itens na lista de não incluídos
+    const naoIncluidosSection = response.text.split('Não incluídos')[1] || '';
+    const items = naoIncluidosSection.split('\n').filter(l => l.startsWith('•'));
+    expect(items.length).toBe(new Set(items).size);
+  });
+
+  test('vínculo menor de 12 meses não menciona férias/13º vencidos', () => {
+    const intake2 = processLaborSettlementIntake({
+      salary: 2500,
+      admissionDate: '2024-01-15',
+      terminationDate: '2024-09-10',
+      terminationReason: 'dispensa sem justa causa',
+      noticeStatus: 'indenizado',
+      hasCtps: 'no'
+    });
+    const response = formatLaborSettlementResponse({
+      status: 'ready',
+      intakeResult: intake2,
+      calculation: intake2.calculation,
+      intent: estimateIntent,
+      missingFields: [],
+      warnings: intake2.calculation.warnings,
+      nextQuestions: []
+    });
+    expect(response.text).not.toContain('Férias vencidas');
+    expect(response.text).not.toContain('13º vencido');
+    expect(response.text).toContain('Férias proporcionais');
+    expect(response.text).toContain('13º proporcional');
+  });
+
+  test('sem carteira inclui FGTS e multa no total', () => {
+    const intake2 = processLaborSettlementIntake({
+      salary: 2500,
+      admissionDate: '2024-01-15',
+      terminationDate: '2024-09-10',
+      terminationReason: 'dispensa sem justa causa',
+      noticeStatus: 'indenizado',
+      hasCtps: 'no'
+    });
+    const response = formatLaborSettlementResponse({
+      status: 'ready',
+      intakeResult: intake2,
+      calculation: intake2.calculation,
+      intent: estimateIntent,
+      missingFields: [],
+      warnings: intake2.calculation.warnings,
+      nextQuestions: []
+    });
+    expect(response.text).toContain('FGTS');
+    expect(response.text).toContain('Multa de 40%');
+    expect(response.text).toContain('registro em carteira');
   });
 });
 
 describe('laborSettlementResponse - segurança', () => {
-  test('não expõe salário literal no texto', () => {
+  test('não expõe dados sensíveis no texto', () => {
     const intake = processLaborSettlementIntake({
       salary: 3000,
       admissionDate: '2023-01-15',
@@ -176,7 +229,7 @@ describe('laborSettlementResponse - segurança', () => {
       warnings: intake.calculation.warnings,
       nextQuestions: []
     });
-    expect(response.text).not.toContain('3.000,00');
+    expect(response.text).toContain('3.000,00');
     expect(response.text).not.toMatch(/\d{11}/);
   });
 });

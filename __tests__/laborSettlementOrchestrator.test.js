@@ -203,8 +203,8 @@ describe('handleLaborSettlementMessage - integridade', () => {
     });
     expect(result.status).toBe('completed');
     expect(result.response.text).toContain('🧾 Estimativa preliminar');
-    expect(result.response.text).toContain('📌 Dados usados');
-    expect(result.response.text).toContain('💰 Valores estimados');
+    expect(result.response.text).toContain('📌 Dados considerados');
+    expect(result.response.text).toContain('💰 Verbas estimadas');
     expect(result.response.text).toContain('➡️ Total estimado');
   });
 
