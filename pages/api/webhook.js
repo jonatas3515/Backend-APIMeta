@@ -331,6 +331,26 @@ export default async function handler(req, res) {
           laborResult = { handled: false };
         }
 
+        // Persiste o cálculo trabalhista no estado da conversa (intake_data é JSONB)
+        // para que as próximas mensagens injetem a estimativa no contexto do Gemini.
+        if (laborResult && laborResult.calculation && laborResult.calculation.totalEstimated != null && conversation && supabase) {
+          try {
+            const calc = laborResult.calculation;
+            const laborCalculation = {
+              totalEstimated: calc.totalEstimated,
+              currency: calc.currency || 'BRL',
+              calculatedAt: new Date().toISOString(),
+              items: (calc.items || []).map(i => ({ name: i.name, amount: i.amount, status: i.status }))
+            };
+            conversation._laborCalculation = laborCalculation;
+            const nextIntakeData = { ...(conversation.intake_data || {}), laborCalculation };
+            await supabase.from('conversations').update({ intake_data: nextIntakeData }).eq('id', conversation.id);
+            conversation.intake_data = nextIntakeData;
+          } catch (err) {
+            log('labor_calculation_persist_failed', { error: sanitizeError(err) });
+          }
+        }
+
         if (laborResult && laborResult.handled && laborResult.reply) {
           try {
             const savedLaborMsg = await saveMessage(conversation.id, laborResult.reply, 'ai');
@@ -350,11 +370,6 @@ export default async function handler(req, res) {
           log('labor_handled_without_reply', { flow: laborResult.flow || null });
         } else {
           log('labor_normal_flow_fallback');
-          // Injeta resultado do cálculo trabalhista no contexto do Gemini
-          // quando a integração liberou para o modelo mas já tem estimativa pronta.
-          if (laborResult.calculation && conversation) {
-            conversation._laborCalculation = laborResult.calculation;
-          }
         }
       }
 
@@ -1175,9 +1190,15 @@ ATENDIMENTO TRABALHISTA E RESCISÃO:
 - Se o cliente relatar demissão, falta de pagamento ou pedir cálculo de rescisão:
   1. Acolha com empatia em 1-2 frases. Reconheça a situação (especialmente se relatar que não assinaram a carteira ou não pagaram direitos).
   2. NUNCA fique repetindo perguntas burocráticas sobre datas exatas se o cliente já deu uma estimativa (ex.: 'desde janeiro', 'fui demitido hoje').
-  3. Se houver dados suficientes no histórico (ex.: R$ 2.500/mês de janeiro a setembro), dê uma noção geral e pontue que ele tem direito a saldo de salário, 13º e férias proporcionais, além da discussão sobre o aviso-prévio e FGTS com multa.
+  3. Se houver dados suficientes no histórico (ex.: R$ 2.500/mês de janeiro a setembro), pontue que ele tem direito a saldo de salário, 13º e férias proporcionais, além da discussão sobre o aviso-prévio e FGTS com multa.
   4. Informe que, havendo falta de anotação na carteira (CTPS), essas verbas e o próprio vínculo devem ser regularizados.
   5. Peça para ele enviar os comprovantes ou holerites/extratos que tiver para análise da nossa equipe e avise que um advogado vai avaliar o caso.
+
+APRESENTAÇÃO OBRIGATÓRIA DE VALORES:
+- Se houver o bloco 'ESTIMATIVA TRABALHISTA JÁ CALCULADA' no contexto, os números já foram calculados pelo nosso sistema — você NÃO recalcula nada, apenas informa.
+- Se o cliente perguntar diretamente sobre valores ('Quanto dá?', 'Qual o valor do FGTS?', 'E a multa?'), você É OBRIGADO a informar o valor numérico em reais que consta na estimativa calculada (ex.: informe o valor do FGTS e da multa de 40% que constam no cálculo, e o total se perguntarem o valor geral).
+- NUNCA dê respostas evasivas como 'pode ser uma parte significativa' ou 'nossa equipe analisará' sem antes fornecer os números estimados que constam na estimativa calculada.
+- Se NÃO houver estimativa calculada no contexto e os dados forem insuficientes, explique as verbas devidas de forma geral e peça os dados que faltam — nunca invente valores.
 
 RACIOCÍNIO JURÍDICO-PRÁTICO TRABALHISTA:
 - Se o tempo total de serviço for inferior a 12 meses, NÃO mencione "férias vencidas" como pendência a confirmar. Elas não existem no plano fático.
@@ -1239,13 +1260,13 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
           .join('; ');
         contextParts.push(`INFORMAÇÕES COLETADAS: ${answers}`);
       }
-      if (conversation._laborCalculation && conversation._laborCalculation.totalEstimated !== null) {
-        const calc = conversation._laborCalculation;
-        const itemsSummary = calc.items
+      const laborCalc = conversation._laborCalculation || conversation.intake_data?.laborCalculation;
+      if (laborCalc && laborCalc.totalEstimated != null && Array.isArray(laborCalc.items)) {
+        const itemsSummary = laborCalc.items
           .filter(i => i.status === 'calculated' && i.amount > 0)
           .map(i => `${i.name}: R$ ${i.amount.toFixed(2)}`)
           .join('; ');
-        contextParts.push(`ESTIMATIVA TRABALHISTA JÁ CALCULADA: ${itemsSummary}. Total: R$ ${calc.totalEstimated.toFixed(2)}. Use esses valores exatos na resposta, sem recalcular.`);
+        contextParts.push(`ESTIMATIVA TRABALHISTA JÁ CALCULADA: ${itemsSummary}. Total: R$ ${laborCalc.totalEstimated.toFixed(2)}. Use esses valores exatos na resposta, sem recalcular.`);
       }
     }
     

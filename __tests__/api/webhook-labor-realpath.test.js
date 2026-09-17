@@ -11,6 +11,8 @@ process.env.WHATSAPP_TOKEN = 'your_whatsapp_token';
 process.env.WHATSAPP_PHONE_NUMBER_ID = 'your_phone_number_id';
 
 global.__testMessages = [];
+global.__testConversation = null;
+global.__testUpdates = [];
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => {
@@ -34,7 +36,9 @@ jest.mock('@supabase/supabase-js', () => ({
     };
 
     function resolveData() {
-      if (context.table === 'conversations' && context.resultType === 'object') return SYNTHETIC_CONVERSATION;
+      if (context.table === 'conversations' && context.resultType === 'object') {
+        return { ...SYNTHETIC_CONVERSATION, ...(global.__testConversation || {}) };
+      }
       if (context.table === 'conversations' && context.resultType === 'array') return [];
       if (context.table === 'conversations' && context.operation === 'insert') return SYNTHETIC_CONVERSATION;
       if (context.table === 'messages' && context.resultType === 'object') return SYNTHETIC_MESSAGE;
@@ -66,7 +70,12 @@ jest.mock('@supabase/supabase-js', () => ({
             context.gte = null;
             context.eqFilters = [];
           }
-          if (['select', 'insert', 'update', 'delete'].includes(prop)) context.operation = prop;
+          if (['select', 'insert', 'update', 'delete'].includes(prop)) {
+            context.operation = prop;
+            if (prop === 'update' && context.table === 'conversations') {
+              global.__testUpdates.push(args[0]);
+            }
+          }
           if (prop === 'single') context.resultType = 'object';
           if (prop === 'limit') context.resultType = 'array';
           if (prop === 'gte') context.gte = args[0];
@@ -114,6 +123,8 @@ describe('Webhook labor real path', () => {
 
   beforeEach(() => {
     global.__testMessages = [];
+    global.__testConversation = null;
+    global.__testUpdates = [];
     fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({ messages: [{ id: 'wa-labor-001' }] }),
@@ -194,5 +205,75 @@ describe('Webhook labor real path', () => {
     expect(prompt).not.toContain(staleText);
     expect(prompt).not.toContain('HISTÓRICO DAS ÚLTIMAS 24H');
     expect(prompt).not.toContain('HISTÓRICO DAS ÚLTIMAS 4H');
+  });
+
+  test('estimativa calculada é persistida em intake_data da conversa', async () => {
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildLaborPayload('Fui mandado embora hoje, ganhava 2500 por mês, entrei em janeiro e não assinaram minha carteira'),
+    });
+
+    await webhookHandler(req, res);
+
+    const statusCode = res._getStatusCode();
+    expect(statusCode).toBe(200);
+
+    const persisted = (global.__testUpdates || []).find(u => u && u.intake_data && u.intake_data.laborCalculation);
+    expect(persisted).toBeDefined();
+
+    const calc = persisted.intake_data.laborCalculation;
+    expect(calc.totalEstimated).not.toBeNull();
+    expect(calc.items.some(i => /FGTS/.test(i.name) && i.amount > 0)).toBe(true);
+    expect(calc.items.some(i => /Aviso/.test(i.name) && i.amount > 0)).toBe(true);
+  });
+
+  test('pergunta posterior sobre FGTS injeta estimativa persistida no prompt do Gemini', async () => {
+    global.__testConversation = {
+      intake_data: {
+        laborCalculation: {
+          totalEstimated: 9520.5,
+          currency: 'BRL',
+          calculatedAt: new Date().toISOString(),
+          items: [
+            { name: 'Saldo de salário', amount: 1333.33, status: 'calculated' },
+            { name: 'Aviso-prévio indenizado', amount: 2500, status: 'calculated' },
+            { name: 'FGTS estimado (8% mensal)', amount: 1600, status: 'calculated' },
+            { name: 'Multa de 40% sobre FGTS', amount: 640, status: 'calculated' }
+          ]
+        }
+      }
+    };
+    global.__testMessages = [{
+      conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      text: '🧾 Estimativa preliminar da rescisão\nTotal estimado: R$ 9.520,50',
+      sender_type: 'ai',
+      created_at: new Date().toISOString()
+    }];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildLaborPayload('Quanto dá só de FGTS com essa multa?'),
+    });
+
+    await webhookHandler(req, res);
+
+    const statusCode = res._getStatusCode();
+    expect(statusCode).toBe(200);
+
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) =>
+      String(url).includes('generativelanguage.googleapis.com')
+    );
+    expect(geminiCalls.length).toBeGreaterThan(0);
+
+    const geminiBody = JSON.parse(geminiCalls[0][1].body);
+    const prompt = geminiBody.contents?.[0]?.parts?.[0]?.text || '';
+    const systemPrompt = geminiBody.system_instruction?.parts?.[0]?.text || '';
+
+    expect(prompt).toContain('ESTIMATIVA TRABALHISTA JÁ CALCULADA');
+    expect(prompt).toContain('FGTS estimado (8% mensal): R$ 1600.00');
+    expect(prompt).toContain('Multa de 40% sobre FGTS: R$ 640.00');
+    expect(prompt).toContain('Total: R$ 9520.50');
+    expect(systemPrompt).toContain('APRESENTAÇÃO OBRIGATÓRIA DE VALORES');
+    expect(systemPrompt).toContain('NUNCA dê respostas evasivas');
   });
 });

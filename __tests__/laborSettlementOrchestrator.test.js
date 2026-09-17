@@ -195,6 +195,76 @@ describe('extractLaborFields - respostas diretas', () => {
   });
 });
 
+describe('extractLaborFields - dispensa imediata e informalidade', () => {
+  beforeEach(() => {
+    process.env.LABOR_TODAY_DATE = '2025-07-24';
+  });
+  afterEach(() => {
+    delete process.env.LABOR_TODAY_DATE;
+  });
+
+  test.each([
+    'fui mandado embora hoje',
+    'fui mandada embora hoje',
+    'mandaram embora',
+    'me mandaram embora',
+    'falaram para não ir mais',
+    'não precisa voltar mais',
+    'demitida hoje',
+    'me dispensaram'
+  ])('dispensa imediata "%s" infere aviso indenizado e dispensa sem justa causa', (phrase) => {
+    const result = extractLaborFields(phrase, [], {});
+    expect(result.noticeStatus).toBe('indenizado');
+    expect(result.terminationReason).toBe('dispensa_sem_justa_causa');
+  });
+
+  test('dispensa imediata não sobrescreve motivo já coletado', () => {
+    const result = extractLaborFields('pedi demissão e falaram para não ir mais', [], {});
+    expect(result.terminationReason).toBe('pedido_demissao');
+    expect(result.noticeStatus).toBeUndefined();
+  });
+
+  test.each([
+    'não assinaram carteira',
+    'não assinaram minha carteira',
+    'sem registro',
+    'sem carteira assinada',
+    'trabalhava sem registro',
+    'carteira não foi assinada'
+  ])('informalidade "%s" preenche hasCtps=no', (phrase) => {
+    const result = extractLaborFields(phrase, [], {});
+    expect(result.hasCtps).toBe('no');
+  });
+
+  test('"carteira assinada" preenche hasCtps=yes', () => {
+    const result = extractLaborFields('tinha carteira assinada', [], {});
+    expect(result.hasCtps).toBe('yes');
+  });
+
+  test('relato completo sem pedido de valor gera estimativa com FGTS e aviso indenizado', () => {
+    const result = handleLaborSettlementMessage({
+      message: 'Fui mandada embora hoje, ganhava 2500 por mês, entrei em janeiro e não assinaram minha carteira',
+      state: idleState
+    });
+    expect(result.status).toBe('completed');
+    expect(result.calculation).not.toBeNull();
+    expect(result.calculation.totalEstimated).toBeGreaterThan(0);
+    const codes = result.calculation.items.map(i => i.code);
+    expect(codes).toContain('notice_indemnity');
+    expect(codes).toContain('fgts_deposits');
+    expect(codes).toContain('fgts_penalty_40');
+    expect(result.response.text).toContain('Total estimado');
+  });
+
+  test('mensagem não trabalhista com números e datas soltas não dispara estimativa', () => {
+    const result = handleLaborSettlementMessage({
+      message: 'entrei na academia em janeiro e hoje paguei 250 reais',
+      state: idleState
+    });
+    expect(result.calculation).toBeNull();
+  });
+});
+
 describe('handleLaborSettlementMessage - integridade', () => {
   test('resposta de cálculo é curta e organizada para WhatsApp', () => {
     const result = handleLaborSettlementMessage({
