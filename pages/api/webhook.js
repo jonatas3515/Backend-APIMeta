@@ -308,6 +308,39 @@ export default async function handler(req, res) {
         if (handled) return res.status(200).json({ success: true, consent: true });
       }
 
+      // ================= TROCA DE DOMÍNIO ANTES DO MOTOR TRABALHISTA =================
+      // Se houver contexto trabalhista ativo e a mensagem claramente mudar de área,
+      // invalida o contexto trabalhista antes de qualquer resposta determinística.
+      const hasActiveLaborContext = (conversation?._laborCalculation || conversation?.intake_data?.laborCalculation) &&
+        conversation?.intake_data?.laborContextActive !== false;
+      if (hasActiveLaborContext && textBody && conversation && supabase) {
+        const detectedArea = detectArea(textBody);
+        const { intent } = classifyLaborIntent(textBody);
+        if (detectedArea && detectedArea !== 'trabalhista' && intent === 'other') {
+          try {
+            const resetIntakeData = laborIntegration.buildLaborContextReset(conversation.intake_data);
+            conversation._laborCalculation = null;
+            const { error: resetError } = await supabase
+              .from('conversations')
+              .update({ intake_data: resetIntakeData })
+              .eq('id', conversation.id)
+              .select();
+            if (resetError) {
+              log('topic_reset_failed', { error: sanitizeError(resetError), reason: 'domain_switch' });
+              log('labor_context_invalidated', { success: false, errorCode: 'PERSIST_FAILED' });
+              return res.status(200).json({ success: false, domainSwitch: false, error: 'reset_persist_failed' });
+            }
+            conversation.intake_data = resetIntakeData;
+            log('topic_reset_persisted', { success: true, reason: 'domain_switch', newArea: detectedArea });
+            log('labor_context_invalidated', { success: true, reason: 'domain_switch' });
+            log('labor_estimate_injection_blocked', { reason: 'domain_switch' });
+          } catch (err) {
+            log('topic_reset_failed', { error: sanitizeError(err), reason: 'domain_switch' });
+            return res.status(200).json({ success: false, domainSwitch: false });
+          }
+        }
+      }
+
       // ================= CÁLCULO DE VERBAS TRABALHISTAS =================
       if (conversation && messageType === 'text' && laborIntegration && typeof laborIntegration.handleLaborSettlementWebhook === 'function') {
         let laborResult;
@@ -563,11 +596,13 @@ async function handleIntake(conversation, clientMessage) {
     return null;
   }
 
-  // Ignorar saudações e perguntas que não respondem a triagem/intake
+  // Ignorar saudações e perguntas trabalhistas genéricas, que seguem para o motor/Gemini.
+  // Perguntas com palavras-chave de outras áreas (ex: divórcio, financiamento) devem iniciar a triagem.
   const GREETINGS = ['bom dia', 'boa tarde', 'boa noite', 'oi', 'olá', 'ola', 'opa', 'e aí', 'e ai', 'eae', 'tudo bem', 'tudo certo', 'tudo bom', 'tudo joia'];
   const isGreeting = GREETINGS.some(g => msg.startsWith(g));
   const isQuestion = msg.includes('?');
-  if (isGreeting || isQuestion) {
+  const detectedArea = detectArea(clientMessage);
+  if (isGreeting || (isQuestion && detectedArea === 'trabalhista')) {
     return null;
   }
 
@@ -745,7 +780,7 @@ async function handleIntake(conversation, clientMessage) {
 
   // ========== DETECÇÃO INICIAL DE ÁREA ==========
   // Só detecta a área na primeira mensagem do fluxo (quando ainda não há área definida)
-  const detectedArea = detectArea(clientMessage);
+  // detectedArea já foi calculada no início da função.
   
   if (!currentArea && detectedArea) {
     const flow = getFlow(detectedArea);
@@ -783,6 +818,10 @@ async function handleIntake(conversation, clientMessage) {
 
     if (detectedArea === 'civel' && civilTheme === 'Contratos') {
       return { reply: `Entendi. Podemos avaliar essa situação. ${firstQuestion.question}` };
+    }
+
+    if (detectedArea === 'familia') {
+      return { reply: `Sim, podemos avaliar questões de família. ${firstQuestion.question}` };
     }
 
     return { reply: `Entendi que pode ser um caso de ${flow.displayName}. Vamos aos detalhes: ${firstQuestion.question}` };
