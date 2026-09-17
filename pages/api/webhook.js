@@ -255,6 +255,7 @@ export default async function handler(req, res) {
 
       // Carregar histórico da conversa para o contexto (máximo 4h)
       let conversationMessages = [];
+      let activeMessages = [];
       if (conversation && supabase) {
         const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
         const { data: dbMessages, error: historyError } = await supabase
@@ -266,6 +267,7 @@ export default async function handler(req, res) {
 
         if (historyError) console.error('[WEBHOOK] Erro ao buscar histórico:', sanitizeError(historyError));
         conversationMessages = (dbMessages || []).slice(-50);
+        activeMessages = laborIntegration.getActiveMessages(conversationMessages, conversation?.intake_data);
       }
 
       // ================= ESCAPE / CANCELAMENTO / CONSENTIMENTO =================
@@ -285,7 +287,7 @@ export default async function handler(req, res) {
         }
         if (escape === 'cancel') {
           const hasLaborContext = laborIntegration && typeof laborIntegration.lastBotMessageIsLaborQuestion === 'function' &&
-            laborIntegration.lastBotMessageIsLaborQuestion(conversationMessages);
+            laborIntegration.lastBotMessageIsLaborQuestion(activeMessages);
           const hasIntakeContext = conversation.intake_data &&
             (conversation.intake_data.current_step >= 0 || conversation.intake_data.triage_step >= 0) &&
             !conversation.intake_data.completed;
@@ -318,7 +320,7 @@ export default async function handler(req, res) {
             waMessageId,
             textBody,
             messageType,
-            messages: conversationMessages,
+            messages: activeMessages,
             log
           });
           log('labor_integration_result', {
@@ -332,9 +334,42 @@ export default async function handler(req, res) {
           laborResult = { handled: false };
         }
 
+        // Comando de troca de assunto: invalida contexto laboral, persiste e responde diretamente.
+        if (laborResult && laborResult.reset && conversation && supabase) {
+          try {
+            const resetIntakeData = laborIntegration.buildLaborContextReset(conversation.intake_data);
+            if (conversation) conversation._laborCalculation = null;
+            const { data: resetData, error: resetError } = await supabase
+              .from('conversations')
+              .update({ intake_data: resetIntakeData })
+              .eq('id', conversation.id)
+              .select();
+            if (resetError) {
+              log('topic_reset_failed', { error: sanitizeError(resetError) });
+              log('labor_context_invalidated', { success: false, errorCode: 'PERSIST_FAILED' });
+              return res.status(200).json({ success: false, topicReset: false, error: 'reset_persist_failed' });
+            }
+            conversation.intake_data = resetIntakeData;
+            log('topic_reset_persisted', { success: true });
+            log('labor_context_invalidated', { success: true });
+            log('labor_estimate_injection_blocked', { reason: 'topic_reset' });
+            const resetReply = laborIntegration.RESET_REPLY_TEXT;
+            const savedReset = await saveMessage(conversation.id, resetReply, 'ai');
+            const resetWaId = await sendWhatsAppMessage(from, resetReply);
+            if (savedReset && resetWaId) {
+              await supabase.from('messages').update({ wa_message_id: resetWaId, status: 'sent' }).eq('id', savedReset.id);
+            }
+            log('new_topic_started', { success: true, phoneHash: hashPhone(from) });
+            return res.status(200).json({ success: true, topicReset: true });
+          } catch (err) {
+            log('topic_reset_failed', { error: sanitizeError(err) });
+            return res.status(200).json({ success: false, topicReset: false });
+          }
+        }
+
         // Persiste o cálculo trabalhista no estado da conversa (intake_data é JSONB)
         // para que as próximas mensagens injetem a estimativa no contexto do Gemini.
-        if (laborResult && laborResult.calculation && laborResult.calculation.totalEstimated != null && conversation && supabase) {
+        if (laborResult && !laborResult.reset && laborResult.calculation && laborResult.calculation.totalEstimated != null && conversation && supabase) {
           try {
             const calc = laborResult.calculation;
             const laborCalculation = {
@@ -344,7 +379,8 @@ export default async function handler(req, res) {
               items: (calc.items || []).map(i => ({ code: i.code, name: i.name, amount: i.amount, status: i.status }))
             };
             conversation._laborCalculation = laborCalculation;
-            const nextIntakeData = { ...(conversation.intake_data || {}), laborCalculation };
+            const nextIntakeData = { ...(conversation.intake_data || {}), laborCalculation, laborContextActive: true };
+            delete nextIntakeData.laborContextResetAt;
             const { data, error: laborCalcUpdateError } = await supabase
               .from('conversations')
               .update({ intake_data: nextIntakeData })
@@ -399,15 +435,15 @@ export default async function handler(req, res) {
         }
       }
 
-      // Construir histórico legível para contexto
+      // Construir histórico legível para contexto (somente mensagens ativas, respeitando resets)
       let conversationHistory = '';
-      if (conversationMessages.length > 0) {
-        conversationHistory = conversationMessages.map(m => {
+      if (activeMessages.length > 0) {
+        conversationHistory = activeMessages.map(m => {
           const role = m.sender_type === 'client' ? 'Cliente' : 'Jhon';
           const time = new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
           return `[${time}] ${role}: ${m.text}`;
         }).join('\n');
-        log('history_loaded', { messageCount: conversationMessages.length });
+        log('history_loaded', { messageCount: activeMessages.length });
       }
 
       // === Resposta com imagem: confusão Neves Costa ===
@@ -1270,7 +1306,8 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
           .join('; ');
         contextParts.push(`INFORMAÇÕES COLETADAS: ${answers}`);
       }
-      const laborCalc = conversation._laborCalculation || conversation.intake_data?.laborCalculation;
+      const laborContextActive = conversation?.intake_data?.laborContextActive !== false;
+      const laborCalc = (laborContextActive && (conversation._laborCalculation || conversation.intake_data?.laborCalculation)) || null;
       if (laborCalc && laborCalc.totalEstimated != null && Array.isArray(laborCalc.items)) {
         const itemsSummary = laborCalc.items
           .filter(i => i.status === 'calculated' && i.amount > 0)
@@ -1280,23 +1317,24 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
         console.log('[LABOR] labor_estimate_context_injected', JSON.stringify({ itemsCount: laborCalc.items.length }));
       }
     }
-    
-    const contextBlock = contextParts.length > 0 
-      ? `CONTEXTO ATUAL DO ATENDIMENTO:\n${contextParts.join('\n')}\n\n` 
+
+    const contextBlock = contextParts.length > 0
+      ? `CONTEXTO ATUAL DO ATENDIMENTO:\n${contextParts.join('\n')}\n\n`
       : '';
-    
+
     const memoryBlock = clientMemoryText
       ? `${clientMemoryText}\n\n`
       : '';
-    
+
     const historyBlock = conversationHistory
       ? `HISTÓRICO DAS ÚLTIMAS 4H (MAIS RECENTES POR ÚLTIMO):\n${conversationHistory}\n\n`
       : '';
 
     // Em contexto trabalhista, a base de conhecimento não é injetada:
     // evita poluir o modelo com peças de outras áreas (consumidor, bancário).
-    const isLaborContext = !!conversation?._laborCalculation ||
-      !!conversation?.intake_data?.laborCalculation ||
+    const hasActiveLaborContext = (conversation?._laborCalculation || conversation?.intake_data?.laborCalculation) &&
+      conversation?.intake_data?.laborContextActive !== false;
+    const isLaborContext = hasActiveLaborContext ||
       classifyLaborIntent(prompt).intent !== 'other';
     const knowledgeBlock = isLaborContext ? '' : await getKnowledgeContext(prompt);
 
@@ -1509,7 +1547,8 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType) {
             items: (calc.items || []).map(i => ({ code: i.code, name: i.name, amount: i.amount, status: i.status }))
           };
           conversation._laborCalculation = laborCalculation;
-          const nextIntakeData = { ...(conversation.intake_data || {}), laborCalculation };
+          const nextIntakeData = { ...(conversation.intake_data || {}), laborCalculation, laborContextActive: true };
+          delete nextIntakeData.laborContextResetAt;
           const { data, error: laborCalcUpdateError } = await supabase
             .from('conversations')
             .update({ intake_data: nextIntakeData })

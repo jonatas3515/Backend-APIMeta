@@ -30,6 +30,7 @@ jest.mock('@supabase/supabase-js', () => ({
     const context = {
       table: null,
       operation: null,
+      writeOperation: null,
       resultType: 'array',
       gte: null,
       eqFilters: []
@@ -60,18 +61,26 @@ jest.mock('@supabase/supabase-js', () => ({
     const chain = new Proxy({}, {
       get(target, prop) {
         if (prop === 'then') {
-          return (onFulfilled) => onFulfilled({ data: resolveData(), error: null });
+          return (onFulfilled) => {
+            const shouldFail = global.__testUpdateShouldFail && context.writeOperation === 'update' && context.table === 'conversations';
+            const error = shouldFail ? { message: 'forced update error' } : null;
+            return onFulfilled({ data: error ? null : resolveData(), error });
+          };
         }
         return (...args) => {
           if (prop === 'from') {
             context.table = args[0];
             context.operation = null;
+            context.writeOperation = null;
             context.resultType = 'array';
             context.gte = null;
             context.eqFilters = [];
           }
           if (['select', 'insert', 'update', 'delete'].includes(prop)) {
             context.operation = prop;
+            if (prop !== 'select') {
+              context.writeOperation = prop;
+            }
             if (prop === 'update' && context.table === 'conversations') {
               global.__testUpdates.push(args[0]);
             }
@@ -131,6 +140,7 @@ describe('Webhook labor real path', () => {
     global.__testMessages = [];
     global.__testConversation = null;
     global.__testUpdates = [];
+    global.__testUpdateShouldFail = false;
     fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({ messages: [{ id: 'wa-labor-001' }] }),
@@ -502,5 +512,179 @@ describe('Webhook labor real path', () => {
     const geminiBody = JSON.parse(geminiCalls[0][1].body);
     const prompt = geminiBody.contents?.[0]?.parts?.[0]?.text || '';
     expect(prompt).toContain('TRECHO_CONSUMIDOR_NAO_DEVE_APARECER');
+  });
+
+  test('comando "É outro assunto" invalida contexto trabalhista e responde sem Gemini', async () => {
+    global.__testConversation = {
+      intake_data: {
+        laborContextActive: true,
+        laborCalculation: {
+          totalEstimated: 5573.33,
+          currency: 'BRL',
+          calculatedAt: new Date().toISOString(),
+          items: [
+            { code: 'salary_balance', name: 'Saldo de salário', amount: 1333.33, status: 'calculated' },
+            { code: 'fgts', name: 'FGTS estimado', amount: 1600, status: 'calculated' }
+          ]
+        }
+      }
+    };
+    global.__testMessages = [{
+      conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      text: '🧾 Estimativa preliminar da rescisão\n➡️ Total estimado: R$ 5.573,33',
+      sender_type: 'ai',
+      created_at: new Date().toISOString()
+    }];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildLaborPayload('É outro assunto'),
+    });
+
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(res._getStatusCode()).toBe(200);
+    expect(data).toMatchObject({ success: true, topicReset: true });
+
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) =>
+      String(url).includes('generativelanguage.googleapis.com')
+    );
+    expect(geminiCalls.length).toBe(0);
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).toBe('Claro. Qual assunto você gostaria de tratar?');
+    expect(body.text.body).not.toContain('Estimativa');
+
+    const persistedReset = (global.__testUpdates || []).find(u => u && u.intake_data && u.intake_data.laborContextActive === false);
+    expect(persistedReset).toBeDefined();
+    expect(persistedReset.intake_data.laborContextResetAt).toBeTruthy();
+    expect(persistedReset.intake_data.laborCalculation).toBeUndefined();
+  });
+
+  test('após reset, nova mensagem cível não carrega estimativa trabalhista no prompt', async () => {
+    const resetAt = new Date().toISOString();
+    global.__testConversation = {
+      intake_data: {
+        laborContextActive: false,
+        laborContextResetAt: resetAt
+      }
+    };
+    global.__testMessages = [
+      {
+        conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+        text: '🧾 Estimativa preliminar da rescisão\n➡️ Total estimado: R$ 5.573,33',
+        sender_type: 'ai',
+        created_at: new Date(Date.now() - 2 * 60 * 1000).toISOString()
+      },
+      {
+        conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+        text: 'Claro. Qual assunto você gostaria de tratar?',
+        sender_type: 'ai',
+        created_at: resetAt
+      }
+    ];
+    fetchSpy.mockClear();
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildLaborPayload('Financiamento atrasado'),
+    });
+
+    await webhookHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) =>
+      String(url).includes('generativelanguage.googleapis.com')
+    );
+    expect(geminiCalls.length).toBeGreaterThan(0);
+
+    const geminiBody = JSON.parse(geminiCalls[0][1].body);
+    const prompt = geminiBody.contents?.[0]?.parts?.[0]?.text || '';
+    expect(prompt).not.toContain('ESTIMATIVA TRABALHISTA JÁ CALCULADA');
+    expect(prompt).not.toContain('R$ 5.573,33');
+    expect(prompt).toContain('Financiamento atrasado');
+  });
+
+  test('após reset, novo cálculo trabalhista pode ser iniciado', async () => {
+    process.env.LABOR_TODAY_DATE = '2025-09-16';
+    try {
+      const resetAt = new Date().toISOString();
+      global.__testConversation = {
+        intake_data: {
+          laborContextActive: false,
+          laborContextResetAt: resetAt
+        }
+      };
+      global.__testMessages = [
+        {
+          conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+          text: 'Claro. Qual assunto você gostaria de tratar?',
+          sender_type: 'ai',
+          created_at: resetAt
+        }
+      ];
+      fetchSpy.mockClear();
+
+      const { req, res } = createMocks({
+        method: 'POST',
+        body: buildLaborPayload('Quero calcular outra rescisão, ganhava 2500, entrei em janeiro e hoje me mandaram embora. Não assinaram carteira.'),
+      });
+
+      await webhookHandler(req, res);
+
+      expect(res._getStatusCode()).toBe(200);
+      const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+      expect(data).toMatchObject({ success: true, labor: true });
+
+      const geminiCalls = fetchSpy.mock.calls.filter(([url]) =>
+        String(url).includes('generativelanguage.googleapis.com')
+      );
+      expect(geminiCalls.length).toBe(0);
+
+      const persisted = (global.__testUpdates || []).find(u => u && u.intake_data && u.intake_data.laborCalculation);
+      expect(persisted).toBeDefined();
+      expect(persisted.intake_data.laborContextActive).not.toBe(false);
+    } finally {
+      delete process.env.LABOR_TODAY_DATE;
+    }
+  });
+
+  test('falha na persistência do reset não envia confirmação nem permite reuso do cálculo antigo', async () => {
+    global.__testUpdateShouldFail = true;
+    global.__testConversation = {
+      intake_data: {
+        laborContextActive: true,
+        laborCalculation: {
+          totalEstimated: 5573.33,
+          currency: 'BRL',
+          items: [{ code: 'fgts', name: 'FGTS', amount: 1600, status: 'calculated' }]
+        }
+      }
+    };
+    global.__testMessages = [];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildLaborPayload('É outro assunto'),
+    });
+
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(res._getStatusCode()).toBe(200);
+    expect(data).toMatchObject({ success: false, topicReset: false });
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const resetCalls = whatsappCalls.filter(c => {
+      try {
+        const b = JSON.parse(c[1].body);
+        return b.text && b.text.body === 'Claro. Qual assunto você gostaria de tratar?';
+      } catch { return false; }
+    });
+    expect(resetCalls.length).toBe(0);
+
+    global.__testUpdateShouldFail = false;
   });
 });

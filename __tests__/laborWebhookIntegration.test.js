@@ -6,7 +6,13 @@
 
 const UUID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
 
-const { handleLaborSettlementWebhook } = require('../lib/laborWebhookIntegration');
+const {
+  handleLaborSettlementWebhook,
+  isTopicResetCommand,
+  buildLaborContextReset,
+  getActiveMessages,
+  RESET_REPLY_TEXT
+} = require('../lib/laborWebhookIntegration');
 
 function makeConversation(overrides = {}) {
   return {
@@ -350,5 +356,66 @@ describe('laborWebhookIntegration - fluxo completo e reconhecimento', () => {
     expect(allCalls).not.toContain('3000');
     expect(allCalls).not.toContain('01/05/2023');
     expect(allCalls).not.toContain('Recebia 3000');
+  });
+});
+
+describe('laborWebhookIntegration - troca de assunto', () => {
+  test.each([
+    'É outro assunto',
+    'quero falar de outra coisa',
+    'quero tratar de outro assunto',
+    'mudar de assunto',
+    'assunto diferente',
+    'não é sobre isso',
+    'esquece isso',
+    'quero perguntar outra coisa',
+    'eh outro asunto',
+    'vamos falar de outra coisa'
+  ])('"%s" é reconhecido como comando de troca de assunto', (text) => {
+    expect(isTopicResetCommand(text)).toBe(true);
+  });
+
+  test('comando de troca retorna resposta fixa e não chama o Gemini', async () => {
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'É outro assunto',
+      conversation: makeConversation({
+        intake_data: {
+          laborCalculation: {
+            totalEstimated: 5000,
+            currency: 'BRL',
+            calculatedAt: new Date().toISOString(),
+            items: [{ code: 'salary_balance', name: 'Saldo de salário', amount: 1000, status: 'calculated' }]
+          }
+        }
+      }),
+      messages: [botMessage('🧾 Estimativa preliminar')]
+    }));
+    expect(result.handled).toBe(true);
+    expect(result.reset).toBe(true);
+    expect(result.flow).toBe('topic_reset');
+    expect(result.reply).toBe(RESET_REPLY_TEXT);
+    expect(result.reply).not.toContain('Estimativa');
+    expect(result.calculation).toBeFalsy();
+  });
+
+  test('após reset, cálculo antigo não é carregado', () => {
+    const intake = buildLaborContextReset({
+      laborCalculation: { totalEstimated: 1234 },
+      laborFields: { salary: 2500 },
+      answers: { nome: 'Cliente' }
+    });
+    expect(intake.laborCalculation).toBeUndefined();
+    expect(intake.laborFields).toBeUndefined();
+    expect(intake.laborContextActive).toBe(false);
+    expect(intake.laborContextResetAt).toBeTruthy();
+    expect(intake.answers).toEqual({ nome: 'Cliente' });
+  });
+
+  test('mensagens anteriores ao reset não fazem parte do contexto ativo', () => {
+    const resetAt = new Date().toISOString();
+    const oldMsg = { ...clientMessage('salário 3000'), created_at: new Date(Date.now() - 1000).toISOString() };
+    const newMsg = { ...clientMessage('Bom dia'), created_at: new Date(Date.now() + 1000).toISOString() };
+    const active = getActiveMessages([oldMsg, newMsg], { laborContextActive: false, laborContextResetAt: resetAt });
+    expect(active).toEqual([newMsg]);
   });
 });
