@@ -264,8 +264,8 @@ describe('laborWebhookIntegration - fluxo completo e reconhecimento', () => {
       expect(result.handled).toBe(true);
       expect(result.flow).toBe('labor_value_answer');
       expect(result.calculation).toBeTruthy();
-      const deposits = result.calculation.items.find(i => i.code === 'fgts_deposits');
-      const penalty = result.calculation.items.find(i => i.code === 'fgts_penalty_40');
+      const deposits = result.calculation.items.find(i => i.code === 'fgts');
+      const penalty = result.calculation.items.find(i => i.code === 'fgts_fine');
       expect(deposits.amount).toBeGreaterThan(0);
       expect(penalty.amount).toBeGreaterThan(0);
       const fmt = n => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });

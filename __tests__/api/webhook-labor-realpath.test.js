@@ -415,8 +415,8 @@ describe('Webhook labor real path', () => {
       const persisted = (global.__testUpdates || []).find(u => u && u.intake_data && u.intake_data.laborCalculation);
       expect(persisted).toBeDefined();
       const laborCalculation = persisted.intake_data.laborCalculation;
-      expect(laborCalculation.items.some(i => i.code === 'fgts_deposits' && i.amount > 0)).toBe(true);
-      expect(laborCalculation.items.some(i => i.code === 'fgts_penalty_40' && i.amount > 0)).toBe(true);
+      expect(laborCalculation.items.some(i => i.code === 'fgts' && i.amount > 0)).toBe(true);
+      expect(laborCalculation.items.some(i => i.code === 'fgts_fine' && i.amount > 0)).toBe(true);
 
       // Turno 2: nova requisição — conversa vem do banco com intake_data persistido
       global.__testConversation = { intake_data: { laborCalculation } };
@@ -450,8 +450,8 @@ describe('Webhook labor real path', () => {
       );
       expect(geminiCalls.length).toBe(0);
 
-      const fgtsDeposits = laborCalculation.items.find(i => i.code === 'fgts_deposits');
-      const fgtsPenalty = laborCalculation.items.find(i => i.code === 'fgts_penalty_40');
+      const fgtsDeposits = laborCalculation.items.find(i => i.code === 'fgts');
+      const fgtsPenalty = laborCalculation.items.find(i => i.code === 'fgts_fine');
       const expectedTotal = fgtsDeposits.amount + fgtsPenalty.amount;
       const fmt = n => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
