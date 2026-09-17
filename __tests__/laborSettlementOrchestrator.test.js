@@ -263,6 +263,23 @@ describe('extractLaborFields - dispensa imediata e informalidade', () => {
     });
     expect(result.calculation).toBeNull();
   });
+
+  test.each([
+    'anhava 2500 por mes, entrei em janeiro e hoje o patrao me mandou embora',
+    'anhava 2500, entrei em janeiro e hoje me mandou embora',
+    'salario 2500, entrei em janeiro e me mandaram embora hoje',
+    'ganhava 2.500/mes, entrei em janeiro e fui demitida hoje'
+  ])('digitação imperfeita "%s" ainda extrai salário e gera estimativa', (phrase) => {
+    const result = handleLaborSettlementMessage({
+      message: phrase,
+      state: idleState
+    });
+    expect(result.status).toBe('completed');
+    expect(result.calculation).not.toBeNull();
+    expect(result.calculation.totalEstimated).toBeGreaterThan(0);
+    const codes = result.calculation.items.map(i => i.code);
+    expect(codes).toContain('notice_indemnity');
+  });
 });
 
 describe('handleLaborSettlementMessage - integridade', () => {

@@ -89,6 +89,12 @@ jest.mock('@supabase/supabase-js', () => ({
   })
 }));
 
+jest.mock('../../lib/knowledge-embeddings', () => ({
+  semanticSearch: jest.fn(async () => ({
+    chunks: [{ title: 'Repetição de Indébito', type: 'consumidor', content: 'TRECHO_CONSUMIDOR_NAO_DEVE_APARECER' }]
+  }))
+}));
+
 const { createMocks } = require('node-mocks-http');
 const webhookHandler = require('../../pages/api/webhook').default;
 
@@ -273,7 +279,46 @@ describe('Webhook labor real path', () => {
     expect(prompt).toContain('FGTS estimado (8% mensal): R$ 1600.00');
     expect(prompt).toContain('Multa de 40% sobre FGTS: R$ 640.00');
     expect(prompt).toContain('Total: R$ 9520.50');
-    expect(systemPrompt).toContain('APRESENTAÇÃO OBRIGATÓRIA DE VALORES');
-    expect(systemPrompt).toContain('NUNCA dê respostas evasivas');
+    expect(systemPrompt).toContain('REGRA CRÍTICA DE VALORES NUMÉRICOS');
+    expect(systemPrompt).toContain('NUNCA deve fazer contas de cabeça');
+  });
+
+  test('mensagem trabalhista não injeta trechos de outras áreas do RAG', async () => {
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildLaborPayload('Fui demitido hoje, quais são meus direitos trabalhistas?'),
+    });
+
+    await webhookHandler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) =>
+      String(url).includes('generativelanguage.googleapis.com')
+    );
+    expect(geminiCalls.length).toBeGreaterThan(0);
+
+    const geminiBody = JSON.parse(geminiCalls[0][1].body);
+    const prompt = geminiBody.contents?.[0]?.parts?.[0]?.text || '';
+    expect(prompt).not.toContain('TRECHO_CONSUMIDOR_NAO_DEVE_APARECER');
+    expect(prompt).not.toContain('Repetição de Indébito');
+  });
+
+  test('mensagem não trabalhista continua injetando a base de conhecimento', async () => {
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildLaborPayload('Bom dia, tenho uma dúvida sobre um contrato'),
+    });
+
+    await webhookHandler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) =>
+      String(url).includes('generativelanguage.googleapis.com')
+    );
+    expect(geminiCalls.length).toBeGreaterThan(0);
+
+    const geminiBody = JSON.parse(geminiCalls[0][1].body);
+    const prompt = geminiBody.contents?.[0]?.parts?.[0]?.text || '';
+    expect(prompt).toContain('TRECHO_CONSUMIDOR_NAO_DEVE_APARECER');
   });
 });
