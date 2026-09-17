@@ -345,15 +345,16 @@ export default async function handler(req, res) {
             };
             conversation._laborCalculation = laborCalculation;
             const nextIntakeData = { ...(conversation.intake_data || {}), laborCalculation };
-            const { error: laborCalcUpdateError } = await supabase
+            const { data, error: laborCalcUpdateError } = await supabase
               .from('conversations')
               .update({ intake_data: nextIntakeData })
-              .eq('id', conversation.id);
+              .eq('id', conversation.id)
+              .select();
             if (laborCalcUpdateError) {
               log('labor_calculation_persist_failed', { error: sanitizeError(laborCalcUpdateError) });
             } else {
               conversation.intake_data = nextIntakeData;
-              log('labor_calculation_persisted', { itemsCount: laborCalculation.items.length });
+              log('labor_calculation_persisted', { success: true, itemsCount: laborCalculation.items.length });
             }
           } catch (err) {
             log('labor_calculation_persist_failed', { error: sanitizeError(err) });
@@ -1509,15 +1510,16 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType) {
           };
           conversation._laborCalculation = laborCalculation;
           const nextIntakeData = { ...(conversation.intake_data || {}), laborCalculation };
-          const { error: laborCalcUpdateError } = await supabase
+          const { data, error: laborCalcUpdateError } = await supabase
             .from('conversations')
             .update({ intake_data: nextIntakeData })
-            .eq('id', conversation.id);
+            .eq('id', conversation.id)
+            .select();
           if (laborCalcUpdateError) {
             audioLog('labor_calculation_persist_failed', { error: sanitizeError(laborCalcUpdateError) });
           } else {
             conversation.intake_data = nextIntakeData;
-            audioLog('labor_calculation_persisted', { itemsCount: laborCalculation.items.length });
+            audioLog('labor_calculation_persisted', { success: true, itemsCount: laborCalculation.items.length });
           }
         } catch (err) {
           audioLog('labor_calculation_persist_failed', { error: sanitizeError(err) });
