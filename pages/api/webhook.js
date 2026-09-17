@@ -341,12 +341,20 @@ export default async function handler(req, res) {
               totalEstimated: calc.totalEstimated,
               currency: calc.currency || 'BRL',
               calculatedAt: new Date().toISOString(),
-              items: (calc.items || []).map(i => ({ name: i.name, amount: i.amount, status: i.status }))
+              items: (calc.items || []).map(i => ({ code: i.code, name: i.name, amount: i.amount, status: i.status }))
             };
             conversation._laborCalculation = laborCalculation;
             const nextIntakeData = { ...(conversation.intake_data || {}), laborCalculation };
-            await supabase.from('conversations').update({ intake_data: nextIntakeData }).eq('id', conversation.id);
-            conversation.intake_data = nextIntakeData;
+            const { error: laborCalcUpdateError } = await supabase
+              .from('conversations')
+              .update({ intake_data: nextIntakeData })
+              .eq('id', conversation.id);
+            if (laborCalcUpdateError) {
+              log('labor_calculation_persist_failed', { error: sanitizeError(laborCalcUpdateError) });
+            } else {
+              conversation.intake_data = nextIntakeData;
+              log('labor_calculation_persisted', { itemsCount: laborCalculation.items.length });
+            }
           } catch (err) {
             log('labor_calculation_persist_failed', { error: sanitizeError(err) });
           }
@@ -1191,7 +1199,7 @@ ATENDIMENTO TRABALHISTA E RESCISÃO:
 - Se o cliente relatar demissão, falta de pagamento ou pedir cálculo de rescisão:
   1. Acolha com empatia em 1-2 frases. Reconheça a situação (especialmente se relatar que não assinaram a carteira ou não pagaram direitos).
   2. NUNCA fique repetindo perguntas burocráticas sobre datas exatas se o cliente já deu uma estimativa (ex.: 'desde janeiro', 'fui demitido hoje').
-  3. Se houver dados suficientes no histórico (ex.: R$ 2.500/mês de janeiro a setembro), pontue que ele tem direito a saldo de salário, 13º e férias proporcionais, além da discussão sobre o aviso-prévio e FGTS com multa.
+  3. Se o cliente já informou salário e período aproximado, pontue que ele tem direito a saldo de salário, 13º e férias proporcionais, além da discussão sobre o aviso-prévio e FGTS com multa — sem estimar valores: isso é exclusivo do sistema de cálculo.
   4. Informe que, havendo falta de anotação na carteira (CTPS), essas verbas e o próprio vínculo devem ser regularizados.
   5. Peça para ele enviar os comprovantes ou holerites/extratos que tiver para análise da nossa equipe e avise que um advogado vai avaliar o caso.
 
@@ -1200,6 +1208,7 @@ REGRA CRÍTICA DE VALORES NUMÉRICOS:
 - Você SOMENTE pode informar valores em reais se eles constarem expressamente no bloco 'ESTIMATIVA TRABALHISTA JÁ CALCULADA' no seu contexto — nesse caso, repita os números exatos desse bloco.
 - Se o cliente perguntar valores ('Quanto dá?', 'E o FGTS?', 'Quanto tenho a receber?') e NÃO houver o bloco 'ESTIMATIVA TRABALHISTA JÁ CALCULADA' no contexto, responda explicando quais são as verbas devidas, mas NÃO invente números. Diga: 'Para fornecer os valores exatos da sua estimativa, preciso apenas confirmar o valor do seu salário e as datas aproximadas de início e término.'
 - Sempre que apresentar valores da estimativa calculada, adicione a ressalva: 'Lembrando que esta é uma estimativa preliminar para sua orientação, e a apuração exata de todos os reflexos será feita pela nossa equipe jurídica.'
+- Valores monetários que apareçam no histórico da conversa (inclusive em respostas anteriores suas) NÃO são cálculo válido. Ignore-os: a única fonte autorizada de números é o bloco 'ESTIMATIVA TRABALHISTA JÁ CALCULADA'.
 
 RACIOCÍNIO JURÍDICO-PRÁTICO TRABALHISTA:
 - Se o tempo total de serviço for inferior a 12 meses, NÃO mencione "férias vencidas" como pendência a confirmar. Elas não existem no plano fático.
@@ -1266,7 +1275,8 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
           .filter(i => i.status === 'calculated' && i.amount > 0)
           .map(i => `${i.name}: R$ ${i.amount.toFixed(2)}`)
           .join('; ');
-        contextParts.push(`ESTIMATIVA TRABALHISTA JÁ CALCULADA: ${itemsSummary}. Total: R$ ${laborCalc.totalEstimated.toFixed(2)}. Use esses valores exatos na resposta, sem recalcular.`);
+        contextParts.push(`ESTIMATIVA TRABALHISTA JÁ CALCULADA: ${itemsSummary}. Total: R$ ${laborCalc.totalEstimated.toFixed(2)}. Use esses valores exatos na resposta, sem recalcular. Valores monetários citados no histórico da conversa NÃO são cálculo válido e devem ser ignorados.`);
+        console.log('[LABOR] labor_estimate_context_injected', JSON.stringify({ itemsCount: laborCalc.items.length }));
       }
     }
     
@@ -1473,9 +1483,58 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType) {
 
     const prompt = `O cliente enviou um áudio com a seguinte transcrição:\n\n"${transcript}"\n\nResponda de forma breve, objetiva e educada como se estivesse respondendo diretamente ao cliente. NUNCA mencione que é uma transcrição.`;
 
-    console.log('[WEBHOOK] Gerando resposta automática para áudio');
-    const { askGemini } = await import('../../lib/ai.js');
-    const aiReply = await askGemini(prompt, conversationHistory, conversation);
+    // O pipeline trabalhista também se aplica ao áudio transcrito: extração,
+    // cálculo determinístico e respostas de valor nunca passam pelo Gemini.
+    const audioLog = (event, data) => console.log(`[LABOR] ${event}`, JSON.stringify(data || {}));
+    let aiReply = null;
+    try {
+      const normalizedPhone = normalizePhoneForMatch(conversation.client_phone || '');
+      const laborResult = await laborIntegration.handleLaborSettlementWebhook({
+        conversation,
+        normalizedPhone,
+        waMessageId: null,
+        textBody: transcript,
+        messageType: 'text',
+        messages: messages || [],
+        log: audioLog
+      });
+      if (laborResult && laborResult.calculation && laborResult.calculation.totalEstimated != null) {
+        try {
+          const calc = laborResult.calculation;
+          const laborCalculation = {
+            totalEstimated: calc.totalEstimated,
+            currency: calc.currency || 'BRL',
+            calculatedAt: new Date().toISOString(),
+            items: (calc.items || []).map(i => ({ code: i.code, name: i.name, amount: i.amount, status: i.status }))
+          };
+          conversation._laborCalculation = laborCalculation;
+          const nextIntakeData = { ...(conversation.intake_data || {}), laborCalculation };
+          const { error: laborCalcUpdateError } = await supabase
+            .from('conversations')
+            .update({ intake_data: nextIntakeData })
+            .eq('id', conversation.id);
+          if (laborCalcUpdateError) {
+            audioLog('labor_calculation_persist_failed', { error: sanitizeError(laborCalcUpdateError) });
+          } else {
+            conversation.intake_data = nextIntakeData;
+            audioLog('labor_calculation_persisted', { itemsCount: laborCalculation.items.length });
+          }
+        } catch (err) {
+          audioLog('labor_calculation_persist_failed', { error: sanitizeError(err) });
+        }
+      }
+      if (laborResult && laborResult.handled && laborResult.reply) {
+        aiReply = laborResult.reply;
+      }
+    } catch (err) {
+      audioLog('labor_integration_exception', { error: sanitizeError(err) });
+    }
+
+    if (!aiReply) {
+      console.log('[WEBHOOK] Gerando resposta automática para áudio');
+      const { askGemini } = await import('../../lib/ai.js');
+      aiReply = await askGemini(prompt, conversationHistory, conversation);
+    }
 
     // Salva resposta no banco
     const { error: saveError } = await supabase

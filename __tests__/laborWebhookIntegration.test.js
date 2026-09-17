@@ -225,6 +225,117 @@ describe('laborWebhookIntegration - fluxo completo e reconhecimento', () => {
     expect(result.reply).toBeFalsy();
   });
 
+  test('pergunta de FGTS com estimativa persistida é respondida pelo JS, sem Gemini', async () => {
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'Quanto dá só de FGTS com essa multa aí?',
+      conversation: makeConversation({
+        intake_data: {
+          laborCalculation: {
+            totalEstimated: 2240,
+            currency: 'BRL',
+            calculatedAt: new Date().toISOString(),
+            items: [
+              { code: 'fgts_deposits', name: 'FGTS estimado (8% mensal)', amount: 1600, status: 'calculated' },
+              { code: 'fgts_penalty_40', name: 'Multa de 40% sobre FGTS', amount: 640, status: 'calculated' }
+            ]
+          }
+        }
+      }),
+      messages: [botMessage('🧾 Estimativa preliminar da rescisão')]
+    }));
+    expect(result.handled).toBe(true);
+    expect(result.flow).toBe('labor_value_answer');
+    expect(result.reply).toContain('1.600,00');
+    expect(result.reply).toContain('640,00');
+    expect(result.reply).toContain('2.240,00');
+    expect(result.reply).toContain('estimativa');
+  });
+
+  test('pergunta de FGTS sem estimativa persistida recalcula a partir dos dados coletados', async () => {
+    process.env.LABOR_TODAY_DATE = '2025-09-16';
+    try {
+      const result = await handleLaborSettlementWebhook(makeParams({
+        textBody: 'Quanto dá só de FGTS com essa multa aí?',
+        messages: [
+          clientMessage('anhava 2500 por mes, entrei em janeiro e hoje o patrao me mandou embora e disse que nao era pra voltar. eles nunca assinaram minha carteira.'),
+          botMessage('🧾 Estimativa preliminar da rescisão')
+        ]
+      }));
+      expect(result.handled).toBe(true);
+      expect(result.flow).toBe('labor_value_answer');
+      expect(result.calculation).toBeTruthy();
+      const deposits = result.calculation.items.find(i => i.code === 'fgts_deposits');
+      const penalty = result.calculation.items.find(i => i.code === 'fgts_penalty_40');
+      expect(deposits.amount).toBeGreaterThan(0);
+      expect(penalty.amount).toBeGreaterThan(0);
+      const fmt = n => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      expect(result.reply).toContain(fmt(deposits.amount));
+      expect(result.reply).toContain(fmt(penalty.amount));
+      expect(result.reply).toContain(fmt(deposits.amount + penalty.amount));
+    } finally {
+      delete process.env.LABOR_TODAY_DATE;
+    }
+  });
+
+  test('valores alucinados em mensagens antigas do bot não contaminam a resposta', async () => {
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'Quanto dá só de FGTS com essa multa aí?',
+      conversation: makeConversation({
+        intake_data: {
+          laborCalculation: {
+            totalEstimated: 2240,
+            currency: 'BRL',
+            calculatedAt: new Date().toISOString(),
+            items: [
+              { code: 'fgts_deposits', name: 'FGTS estimado (8% mensal)', amount: 1600, status: 'calculated' },
+              { code: 'fgts_penalty_40', name: 'Multa de 40% sobre FGTS', amount: 640, status: 'calculated' }
+            ]
+          }
+        }
+      }),
+      messages: [
+        botMessage('🧾 Estimativa preliminar da rescisão'),
+        botMessage('O FGTS totalizaria aproximadamente R$ 2.800,00 e o total R$ 5.500,00.')
+      ]
+    }));
+    expect(result.handled).toBe(true);
+    expect(result.reply).toContain('1.600,00');
+    expect(result.reply).not.toContain('2.800');
+    expect(result.reply).not.toContain('5.500');
+  });
+
+  test('pergunta de valor sem estimativa nem dados retorna mensagem segura', async () => {
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'Quanto dá só de FGTS?',
+      messages: [botMessage(openingQuestion)]
+    }));
+    expect(result.handled).toBe(true);
+    expect(result.flow).toBe('labor_value_blocked');
+    expect(result.reply).toBe('Ainda não tenho uma estimativa calculada para informar esse valor. Vou confirmar os dados de salário e período antes de calcular.');
+    expect(result.calculation).toBeNull();
+  });
+
+  test('pergunta de horas extras não recebe valor inventado', async () => {
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'E as horas extras, quanto dá?',
+      conversation: makeConversation({
+        intake_data: {
+          laborCalculation: {
+            totalEstimated: 2240,
+            currency: 'BRL',
+            items: [
+              { code: 'fgts_deposits', name: 'FGTS estimado (8% mensal)', amount: 1600, status: 'calculated' }
+            ]
+          }
+        }
+      }),
+      messages: [botMessage('🧾 Estimativa preliminar da rescisão')]
+    }));
+    expect(result.handled).toBe(true);
+    expect(result.reply).toContain('equipe jurídica');
+    expect(result.reply).not.toMatch(/R\$\s*\d/);
+  });
+
   test('nenhum log contém texto da mensagem, salário ou data', async () => {
     const logFn = jest.fn();
     const messages = [botMessage(openingQuestion)];
