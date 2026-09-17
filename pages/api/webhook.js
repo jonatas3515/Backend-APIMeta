@@ -782,7 +782,7 @@ async function handleIntake(conversation, clientMessage) {
     }
 
     if (detectedArea === 'civel' && civilTheme === 'Contratos') {
-      return { reply: `Entendi. Você quer verificar a quitação de um contrato. ${firstQuestion.question}` };
+      return { reply: `Entendi. Podemos avaliar essa situação. ${firstQuestion.question}` };
     }
 
     return { reply: `Entendi que pode ser um caso de ${flow.displayName}. Vamos aos detalhes: ${firstQuestion.question}` };
@@ -1195,8 +1195,15 @@ IDENTIDADE E LIMITES:
 
 ÁREAS DE ATUAÇÃO:
 - Atuamos em várias áreas do direito: Trabalhista, Previdenciário, Administrativo (servidor público), Cível, Consumidor, Família e Sucessões, Imobiliário, Criminal e outras áreas por meio de parcerias especializadas.
-- A classificação provisória deste atendimento (ex: Consumidor) é apenas uma etiqueta inicial, NÃO limita as áreas de atuação do escritório.
+- A classificação provisória deste atendimento (ex: Consumidor) é APENAS uma etiqueta interna, NÃO limita as áreas de atuação do escritório e NUNCA recusa atendimento.
 - Se o cliente perguntar "Vocês trabalham na área X?" ou "Atuam em Y?", responda afirmativamente citando que atuamos em várias áreas e incluindo X quando cabível, e ofereça ajuda.
+
+REGRA DE ACOLHIMENTO E ÁREA (obrigatória):
+- NUNCA diga que o escritório não atende, não se encaixa, não pode ajudar, está fora do perfil ou recuse qualquer assunto jurídico.
+- A classificação de área é APENAS uma etiqueta interna; nunca é motivo para recusar, dispensar ou encaminhar para outro escritório sem antes coletar contexto.
+- Para qualquer assunto, incluindo financiamento, banco, cobrança, contrato, dívida, consórcio, veículo, imóvel ou tema incomum: acolha, peça o tipo/marca/instituição e os fatos, e ofereça ouvir e encaminhar para avaliação.
+- Se a situação for complexa ou você não souber orientar, encaminhe respeitosamente: "Vou encaminhar para nossa equipe. Aguarde o retorno."
+- NUNCA liste áreas de atuação como resposta a uma nova dúvida.
 
 PRIMEIRA MENSAGEM (OBRIGATÓRIO):
 Se esta for a PRIMEIRA interação (sem histórico), você DEVE iniciar sua resposta EXATAMENTE com o seguinte texto:
@@ -1295,7 +1302,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
         const title = getClientTitle(conversation.client_name);
         const firstName = String(conversation.client_name).trim().split(/\s+/)[0];
         contextParts.push(`PRIMEIRO NOME DO CLIENTE (uso restrito): ${firstName}${title ? `; TRATAMENTO: ${title}` : ''}`);
-        contextParts.push(`REGRA DE NOME: O nome completo NUNCA deve ser usado. Na PRIMEIRA resposta, use apenas o primeiro nome no cumprimento. Nas demais respostas, use SOMENTE "${title || 'senhor(a)'}" SEM o nome.`);
+        contextParts.push(`REGRA DE NOME: O nome completo NUNCA deve ser usado. Na PRIMEIRA resposta, se for saudar, use apenas "Olá!" e, se desejar, o primeiro nome ("${firstName}") sem vírgula. Depois trate-o como "${title || 'senhor(a)'}". Nas demais respostas, NUNCA diga "Olá" e NUNCA use o nome no início da frase; use SOMENTE "${title || 'senhor(a)'}" ou "você".`);
       }
       if (conversation.case_summary) {
         contextParts.push(`RESUMO DO CASO: ${conversation.case_summary}`);
@@ -1341,15 +1348,20 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     const clientFullName = conversation?.client_name || '';
     const clientTitle = clientFullName ? getClientTitle(clientFullName) : null;
     const clientFirstName = clientFullName ? clientFullName.trim().split(/\s+/)[0] : 'cliente';
-    const firstGreeting = clientTitle ? `Olá, ${clientTitle} ${clientFirstName}!` : `Olá, ${clientFirstName}!`;
-    const nameRule = `NUNCA use o nome completo do cliente. Na PRIMEIRA resposta, se for usar nome, use APENAS o primeiro nome ("${clientFirstName}"). Inicie com "${firstGreeting}". Nas demais respostas, use SOMENTE "${clientTitle || 'você'}" SEM o nome. NUNCA diga "${clientTitle ? clientTitle + ' ' + clientFullName : 'Olá, ' + clientFullName}". NUNCA use "Senhor(a)".`;
-    
+
     const firstTurn = !conversationHistory || conversationHistory.trim() === '';
+    const firstGreeting = 'Olá!';
+    const nameRule = firstTurn
+      ? `NUNCA use o nome completo. Se for usar nome na PRIMEIRA resposta, use APENAS o primeiro nome ("${clientFirstName}") SEM vírgula. Se houver saudação, inicie com "${firstGreeting}". NUNCA diga o nome completo em saudação. NUNCA use "Senhor(a)".`
+      : `NUNCA inicie com "Olá", "Oi", "Bom dia" ou cumprimentos. NUNCA use o nome do cliente em saudação ou início de frase. NUNCA digar "Olá" seguido do nome. Responda DIRETAMENTE ao assunto usando "você" ou pronomes naturais.`;
+
+    const areaAcolhimentoRule = `REGRA DE ACOLHIMENTO E ÁREA: NUNCA diga que o assunto "não se encaixa", "não posso auxiliar", "não atendemos" ou "está fora do perfil". classificação de área é APENAS uma etiqueta interna, nunca limita o atendimento. Acolha qualquer assunto, peça o tipo/marca/instituição e os fatos, ou encaminhe: "Vou encaminhar para nossa equipe. Aguarde o retorno."`;
+
     const noRepeatRule = firstTurn
       ? 'Se a primeira mensagem for uma saudação (oi, olá, bom dia), responda APENAS a saudação e NÃO pergunte nada. Se a mensagem já apresentar um caso ou pergunta, responda diretamente e NÃO diga "Olá".'
       : 'O histórico já existe. NÃO se apresente, NÃO diga "Olá", "Oi" ou "Bom dia" em nenhuma circunstância. Responda DIRETAMENTE ao assunto.';
 
-    const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}${knowledgeBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- Responda DIRETAMENTE à NOVA MENSAGEM do cliente, usando o contexto e a memória apenas como referência. Não fique preso a uma informação anterior se o cliente mudou de assunto.\n- Se a mensagem mencionar CNPJ, boleto, "Neves Costa" (sem &), "outro escritório" ou cobrança atribuída a nós e o esclarecimento ainda NÃO tiver sido dito no histórico, o esclarecimento ENXUTO é a prioridade máxima. NUNCA trate "financiamento", "consórcio", "banco" ou "dívida" sozinhos como confusão — são tipos de caso. Depois de esclarecer, NÃO ofereça outros serviços.
+    const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}${knowledgeBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- ${areaAcolhimentoRule}\n- Responda DIRETAMENTE à NOVA MENSAGEM do cliente, usando o contexto e a memória apenas como referência. Não fique preso a uma informação anterior se o cliente mudou de assunto.\n- Se a mensagem mencionar CNPJ, boleto, "Neves Costa" (sem &), "outro escritório" ou cobrança atribuída a nós e o esclarecimento ainda NÃO tiver sido dito no histórico, o esclarecimento ENXUTO é a prioridade máxima. NUNCA trate "financiamento", "consórcio", "banco" ou "dívida" sozinhos como confusão — são tipos de caso. Depois de esclarecer, NÃO ofereça outros serviços.
 - Se o esclarecimento sobre boleto/cobrança/Neves Costa JÁ tiver sido dito no histórico e o cliente apenas pedir ajuda sem apresentar uma nova dúvida jurídica, NÃO repita o esclarecimento. Diga respeitosamente que não podemos intervir, pois não somos a empresa do boleto, e ofereça-se a ouvir caso haja outro assunto jurídico — sem listar áreas de atuação.\n- Não peça nome, e-mail ou telefone que já estiverem no histórico, contexto ou memória.\n- ${nameRule}
 - Se TRECHOS DA BASE DE CONHECIMENTO forem fornecidos, use-os apenas se forem diretamente relevantes e cite a fonte (ex: "Conforme jurisprudência..."). Se não forem relevantes, ignore-os.
 - Responda como Jhon, 1-3 frases, sem listas, sem telefone a menos que o cliente peça explicitamente.`;

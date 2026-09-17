@@ -589,7 +589,7 @@ describe('Webhook labor real path', () => {
 
     const { req, res } = createMocks({
       method: 'POST',
-      body: buildLaborPayload('Financiamento atrasado'),
+      body: buildLaborPayload('Bom dia, gostaria de falar sobre um assunto'),
     });
 
     await webhookHandler(req, res);
@@ -604,7 +604,7 @@ describe('Webhook labor real path', () => {
     const prompt = geminiBody.contents?.[0]?.parts?.[0]?.text || '';
     expect(prompt).not.toContain('ESTIMATIVA TRABALHISTA JÁ CALCULADA');
     expect(prompt).not.toContain('R$ 5.573,33');
-    expect(prompt).toContain('Financiamento atrasado');
+    expect(prompt).toContain('Bom dia, gostaria de falar sobre um assunto');
   });
 
   test('após reset, novo cálculo trabalhista pode ser iniciado', async () => {
@@ -687,4 +687,187 @@ describe('Webhook labor real path', () => {
 
     global.__testUpdateShouldFail = false;
   });
+
+  describe('Webhook triagem de área e acolhimento', () => {
+    function mockFetchWithText(text) {
+    fetchSpy.mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('generativelanguage.googleapis.com')) {
+        return {
+          ok: true,
+          json: async () => ({
+            candidates: [{ content: { parts: [{ text }] } }]
+          })
+        };
+      }
+      return { ok: true, json: async () => ({ messages: [{ id: 'wa-area-001' }] }) };
+    });
+  }
+
+  test('"Financiamento atrasado" aciona triagem cível e não é recusado', async () => {
+    global.__testConversation = {
+      client_name: 'Jonatas Silva',
+      intake_data: {}
+    };
+    global.__testMessages = [];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildLaborPayload('Financiamento atrasado'),
+    });
+
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(res._getStatusCode()).toBe(200);
+    expect(data).toMatchObject({ success: true, intake: true });
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).not.toMatch(/não (se encaixa|atendo|posso auxiliar|atendemos)/i);
+    expect(body.text.body).not.toMatch(/fora (do perfil|do escopo)/i);
+    expect(body.text.body).toContain('Podemos avaliar');
+    expect(body.text.body).toMatch(/Que tipo de contrato/i);
+    expect(body.text.body).not.toMatch(/^Olá,\s*Jonatas/i);
+  });
+
+  test('"Financiamento de veículo" gera triagem', async () => {
+    global.__testConversation = { intake_data: {} };
+    global.__testMessages = [];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildLaborPayload('Financiamento de veículo'),
+    });
+
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(res._getStatusCode()).toBe(200);
+    expect(data).toMatchObject({ success: true, intake: true });
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).not.toMatch(/não (se encaixa|atendo|posso auxiliar|atendemos)/i);
+    expect(body.text.body).toMatch(/contrato|financiamento/i);
+  });
+
+  test('"Cobrança indevida" gera triagem', async () => {
+    global.__testConversation = { intake_data: {} };
+    global.__testMessages = [];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildLaborPayload('Cobrança indevida'),
+    });
+
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(res._getStatusCode()).toBe(200);
+    expect(data).toMatchObject({ success: true, intake: true });
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).not.toMatch(/não (se encaixa|atendo|posso auxiliar|atendemos)/i);
+  });
+
+  test('tema não mapeado não gera recusa e o prompt não repete cumprimento', async () => {
+    global.__testConversation = {
+      client_name: 'Jonatas Silva',
+      intake_data: {}
+    };
+    global.__testMessages = [
+      {
+        conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+        text: 'Olá',
+        sender_type: 'client',
+        created_at: new Date(Date.now() - 2 * 60 * 1000).toISOString()
+      },
+      {
+        conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+        text: 'Olá! Seja bem-vindo(a)',
+        sender_type: 'ai',
+        created_at: new Date(Date.now() - 1 * 60 * 1000).toISOString()
+      }
+    ];
+    mockFetchWithText('Entendi. Conte mais sobre o que aconteceu para eu organizar as informações.');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildLaborPayload('Questão sobre patente desconhecida'),
+    });
+
+    await webhookHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) =>
+      String(url).includes('generativelanguage.googleapis.com')
+    );
+    expect(geminiCalls.length).toBeGreaterThan(0);
+
+    const prompt = JSON.parse(geminiCalls[0][1].body).contents[0].parts[0].text;
+    expect(prompt).toContain('REGRA DE ACOLHIMENTO E ÁREA');
+    expect(prompt).toContain('classificação de área é APENAS uma etiqueta interna');
+    expect(prompt).not.toContain('Olá, Jonatas');
+    expect(prompt).not.toMatch(/Olá,\s*Jonatas/i);
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const replyBody = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(replyBody.text.body).not.toMatch(/não (se encaixa|atendo|posso auxiliar|atendemos)/i);
+    expect(replyBody.text.body).not.toMatch(/fora (do perfil|do escopo)/i);
+    expect(replyBody.text.body).not.toMatch(/^Olá,\s*Jonatas/i);
+  });
+
+  test('reset de assunto continua funcionando e não gera recusa no próximo tema', async () => {
+    global.__testConversation = {
+      client_name: 'Jonatas Silva',
+      intake_data: {
+        laborContextActive: true,
+        laborCalculation: {
+          totalEstimated: 5000,
+          items: [{ code: 'salary_balance', name: 'Saldo de salário', amount: 1000, status: 'calculated' }]
+        }
+      }
+    };
+    global.__testMessages = [];
+
+    const turn1 = createMocks({
+      method: 'POST',
+      body: buildLaborPayload('É outro assunto'),
+    });
+    await webhookHandler(turn1.req, turn1.res);
+    const data1 = typeof turn1.res._getData() === 'string' ? JSON.parse(turn1.res._getData()) : turn1.res._getData();
+    expect(data1).toMatchObject({ success: true, topicReset: true });
+
+    const resetUpdate = (global.__testUpdates || []).find(u => u && u.intake_data && u.intake_data.laborContextActive === false);
+    expect(resetUpdate).toBeDefined();
+
+    global.__testConversation = { client_name: 'Jonatas Silva', intake_data: resetUpdate.intake_data };
+    global.__testMessages = [
+      {
+        conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+        text: 'Claro. Qual assunto você gostaria de tratar?',
+        sender_type: 'ai',
+        created_at: new Date().toISOString()
+      }
+    ];
+    fetchSpy.mockClear();
+
+    const turn2 = createMocks({
+      method: 'POST',
+      body: buildLaborPayload('Financiamento de veículo'),
+    });
+    await webhookHandler(turn2.req, turn2.res);
+
+    const data2 = typeof turn2.res._getData() === 'string' ? JSON.parse(turn2.res._getData()) : turn2.res._getData();
+    expect(turn2.res._getStatusCode()).toBe(200);
+    expect(data2).toMatchObject({ success: true, intake: true });
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).not.toMatch(/não (se encaixa|atendo|posso auxiliar|atendemos)/i);
+    expect(body.text.body).not.toMatch(/^Olá,\s*Jonatas/i);
+  });
+});
 });
