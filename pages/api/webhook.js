@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { createLogger, hashPhone, sanitizeError } from '../../lib/webhookLog';
 import { detectArea, getNextQuestion, isIntakeComplete, getFlow, getTriageQuestion, TRIAGE_FIELDS, extractCivilTheme } from '../../lib/intakeFlows';
+const { triagePrevidenciario } = require('../../lib/previdenciarioTriage');
 import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
 import { normalizePhoneForMatch } from '../../lib/formatters';
 import { loadClientMemory, formatClientMemory } from '../../lib/clientMemory';
@@ -604,6 +605,45 @@ async function handleIntake(conversation, clientMessage) {
   const detectedArea = detectArea(clientMessage);
   if (isGreeting || (isQuestion && detectedArea === 'trabalhista')) {
     return null;
+  }
+
+  // ========== TRIAGEM CONTEXTUAL PREVIDENCIÁRIA ==========
+  // Não usa o formulário rígido de 10 perguntas; interpreta o que falta.
+  if (currentArea === 'previdenciario' || (detectedArea === 'previdenciario' && !currentArea)) {
+    const previousFacts = (intakeData.answers && intakeData.answers.previdenciario_facts) || {};
+    const { reply, facts, handoff } = triagePrevidenciario(clientMessage, previousFacts);
+
+    const nextIntakeData = {
+      ...intakeData,
+      triage_step: TRIAGE_FIELDS.length,
+      triage: { case_type: clientMessage },
+      triage_completed: true,
+      current_step: 0,
+      answers: { ...(intakeData.answers || {}), previdenciario_facts: facts },
+      started_at: intakeData.started_at || new Date().toISOString()
+    };
+
+    const updatePayload = {
+      intake_data: nextIntakeData,
+      funnel_stage: 'intake'
+    };
+
+    if (detectedArea === 'previdenciario' && !currentArea) {
+      updatePayload.legal_area = 'previdenciario';
+      updatePayload.case_type = clientMessage;
+    }
+
+    const { error } = await supabase
+      .from('conversations')
+      .update(updatePayload)
+      .eq('id', conversation.id);
+
+    if (error) {
+      console.error('[INTAKE] Erro ao salvar triagem previdenciária:', sanitizeError(error));
+      return null;
+    }
+
+    return { reply };
   }
 
   // ========== INTAKE DETALHADO ==========

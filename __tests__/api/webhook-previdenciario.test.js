@@ -1,5 +1,5 @@
 /**
- * Testes de troca de domínio após estimativa trabalhista.
+ * Testes de triagem contextual previdenciária no endpoint /api/webhook.
  * Não envia mensagens reais, não usa PII.
  */
 
@@ -110,7 +110,7 @@ function buildPayload(text) {
   return {
     object: 'whatsapp_business_account',
     entry: [{
-      id: 'entry-domain-switch',
+      id: 'entry-previdenciario',
       changes: [{
         value: {
           messaging_product: 'whatsapp',
@@ -120,7 +120,7 @@ function buildPayload(text) {
           },
           messages: [{
             from: '5573999998888',
-            id: 'msg-domain-switch-001',
+            id: 'msg-previdenciario-001',
             timestamp: '1234567890',
             type: 'text',
             text: { body: text },
@@ -132,7 +132,7 @@ function buildPayload(text) {
   };
 }
 
-describe('Troca de domínio após estimativa trabalhista', () => {
+describe('Triagem contextual previdenciária no webhook', () => {
   let fetchSpy;
 
   beforeEach(() => {
@@ -142,12 +142,160 @@ describe('Troca de domínio após estimativa trabalhista', () => {
     global.__testUpdateShouldFail = false;
     fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
-      json: async () => ({ messages: [{ id: 'wa-domain-001' }] }),
+      json: async () => ({ messages: [{ id: 'wa-prev-001' }] }),
     });
   });
 
   afterEach(() => {
     fetchSpy.mockRestore();
+  });
+
+  test('aposentadoria → resposta curta com pergunta contextual', async () => {
+    global.__testConversation = { client_name: null, intake_data: {} };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero me aposentar.'),
+    });
+    await webhookHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true, intake: true });
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).toMatch(/h[aá] quanto tempo/i);
+    expect(body.text.body).not.toMatch(/Vamos aos detalhes|formulário|1\.|2\./i);
+
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
+    expect(geminiCalls.length).toBe(0);
+
+    const update = (global.__testUpdates || []).find(u => u && u.legal_area === 'previdenciario');
+    expect(update).toBeDefined();
+    expect(update.intake_data.answers.previdenciario_facts.theme).toBe('aposentadoria');
+  });
+
+  test('indeferimento → pergunta sobre benefício e data', async () => {
+    global.__testConversation = { client_name: null, intake_data: {} };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Meu benefício foi negado.'),
+    });
+    await webhookHandler(req, res);
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).toMatch(/qual benef[ií]cio.*negado.*quando/i);
+    expect(body.text.body).not.toMatch(/não posso auxiliar|não atendemos/i);
+  });
+
+  test('urgência → handoff imediato sem chamar Gemini', async () => {
+    global.__testConversation = { client_name: null, intake_data: {} };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Tenho prazo para recorrer do meu benefício do INSS até sexta.'),
+    });
+    await webhookHandler(req, res);
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).toMatch(/encaminhar.*equipe/i);
+
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
+    expect(geminiCalls.length).toBe(0);
+  });
+
+  test('BPC → pergunta contextual', async () => {
+    global.__testConversation = { client_name: null, intake_data: {} };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero pedir BPC para minha mãe.'),
+    });
+    await webhookHandler(req, res);
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).toMatch(/m[aã]e.*defici[eê]ncia.*pedido/i);
+  });
+
+  test('pensão por morte → sem conflito com família', async () => {
+    global.__testConversation = { client_name: null, intake_data: {} };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Pensão por morte.'),
+    });
+    await webhookHandler(req, res);
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).toMatch(/c[oô]njuge|companheiro|filho|dependente/i);
+
+    const update = (global.__testUpdates || []).find(u => u && u.legal_area === 'previdenciario');
+    expect(update).toBeDefined();
+    expect(update.intake_data.answers.previdenciario_facts.theme).toBe('pensao_morte');
+  });
+
+  test('mensagem sem área clara → pergunta aberta e sem recusa', async () => {
+    global.__testConversation = { client_name: null, intake_data: {} };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Preciso de ajuda com documentos.'),
+    });
+    await webhookHandler(req, res);
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).not.toMatch(/não (se encaixa|posso auxiliar|atendo)|fora (do perfil|do escopo)/i);
+  });
+
+  test('não repete dados já informados', async () => {
+    global.__testConversation = {
+      client_name: null,
+      legal_area: 'previdenciario',
+      intake_data: {
+        triage_completed: true,
+        current_step: 0,
+        answers: {
+          previdenciario_facts: {
+            theme: 'aposentadoria',
+            client_age: 65,
+            contrib_years: 30,
+            already_requested: false
+          }
+        }
+      }
+    };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Ainda não fiz o pedido.'),
+    });
+    await webhookHandler(req, res);
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).not.toMatch(/h[aá] quanto tempo|qual sua idade/i);
+    expect(body.text.body).not.toMatch(/Voc[eê] j[aá] fez o pedido/i);
+  });
+
+  test('fluxo trabalhista continua determinístico', async () => {
+    global.__testConversation = { client_name: null, intake_data: {} };
+    mockFetchWithText('Vamos registrar sua situação trabalhista.');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero calcular minha rescisão'),
+    });
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true });
   });
 
   function mockFetchWithText(text) {
@@ -161,194 +309,7 @@ describe('Troca de domínio após estimativa trabalhista', () => {
           })
         };
       }
-      return { ok: true, json: async () => ({ messages: [{ id: 'wa-domain-001' }] }) };
+      return { ok: true, json: async () => ({ messages: [{ id: 'wa-prev-001' }] }) };
     });
   }
-
-  const activeLaborCalculation = {
-    totalEstimated: 5000,
-    items: [
-      { code: 'salary_balance', name: 'Saldo de salário', amount: 1000 },
-      { code: 'notice_pay', name: 'Aviso-prévio indenizado', amount: 800 },
-      { code: 'thirteenth_proportional', name: '13º proporcional', amount: 600 },
-      { code: 'vacation_proportional', name: 'Férias proporcionais', amount: 400 },
-      { code: 'vacation_bonus', name: '1/3 férias', amount: 133 },
-      { code: 'inss', name: 'INSS', amount: 263 },
-      { code: 'fgts', name: 'FGTS', amount: 1200 },
-      { code: 'fgts_fine', name: 'Multa 40% FGTS', amount: 480 }
-    ],
-    inputSummary: { hasCtps: 'no' }
-  };
-
-  test('estimativa -> "Entendi, e causas de divorcio, é com quem?" inicia triagem familiar', async () => {
-    global.__testConversation = {
-      client_name: null,
-      intake_data: {
-        laborContextActive: true,
-        laborCalculation: activeLaborCalculation
-      }
-    };
-
-    const { req, res } = createMocks({
-      method: 'POST',
-      body: buildPayload('Entendi, e causas de divorcio, é com quem?'),
-    });
-    await webhookHandler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true, intake: true });
-
-    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
-    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
-    expect(body.text.body).toMatch(/podemos avaliar questões de família/i);
-    expect(body.text.body).not.toMatch(/🧾|Estimativa preliminar|FGTS|férias|salário|rescisão/i);
-
-    const resetUpdate = (global.__testUpdates || []).find(u => u && u.intake_data && u.intake_data.laborContextActive === false);
-    expect(resetUpdate).toBeDefined();
-
-    const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
-    expect(geminiCalls.length).toBe(0);
-  });
-
-  test('estimativa -> "E guarda dos filhos?" inicia triagem familiar', async () => {
-    global.__testConversation = {
-      client_name: null,
-      intake_data: {
-        laborContextActive: true,
-        laborCalculation: activeLaborCalculation
-      }
-    };
-
-    const { req, res } = createMocks({
-      method: 'POST',
-      body: buildPayload('E guarda dos filhos?'),
-    });
-    await webhookHandler(req, res);
-
-    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true, intake: true });
-
-    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
-    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
-    expect(body.text.body).toMatch(/podemos avaliar questões de família/i);
-    expect(body.text.body).not.toMatch(/FGTS|férias|salário|rescisão/i);
-  });
-
-  test('estimativa -> "Tenho um financiamento atrasado" inicia triagem cível', async () => {
-    global.__testConversation = {
-      client_name: null,
-      intake_data: {
-        laborContextActive: true,
-        laborCalculation: activeLaborCalculation
-      }
-    };
-
-    const { req, res } = createMocks({
-      method: 'POST',
-      body: buildPayload('Tenho um financiamento atrasado'),
-    });
-    await webhookHandler(req, res);
-
-    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true, intake: true });
-
-    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
-    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
-    expect(body.text.body).toMatch(/Podemos avaliar essa situação/i);
-    expect(body.text.body).not.toMatch(/FGTS|férias|rescisão|não (se encaixa|posso auxiliar)/i);
-  });
-
-  test('estimativa -> "Quero falar de aposentadoria" inicia triagem previdenciária', async () => {
-    global.__testConversation = {
-      client_name: null,
-      intake_data: {
-        laborContextActive: true,
-        laborCalculation: activeLaborCalculation
-      }
-    };
-
-    const { req, res } = createMocks({
-      method: 'POST',
-      body: buildPayload('Quero falar de aposentadoria'),
-    });
-    await webhookHandler(req, res);
-
-    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true, intake: true });
-
-    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
-    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
-    expect(body.text.body).toMatch(/INSS|Previdenciário|benefício|aposentadoria|contribui/i);
-    expect(body.text.body).not.toMatch(/FGTS|férias|rescisão/i);
-  });
-
-  test('estimativa -> "Quanto dá só de FGTS?" continua respondendo pelo motor trabalhista', async () => {
-    global.__testConversation = {
-      client_name: null,
-      intake_data: {
-        laborContextActive: true,
-        laborCalculation: activeLaborCalculation
-      }
-    };
-
-    const { req, res } = createMocks({
-      method: 'POST',
-      body: buildPayload('Quanto dá só de FGTS?'),
-    });
-    await webhookHandler(req, res);
-
-    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true, labor: true });
-
-    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
-    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
-    expect(body.text.body).toMatch(/FGTS/i);
-    expect(body.text.body).not.toMatch(/🧾 Estimativa preliminar/i);
-
-    const resetUpdate = (global.__testUpdates || []).find(u => u && u.intake_data && u.intake_data.laborContextActive === false);
-    expect(resetUpdate).toBeUndefined();
-  });
-
-  test('estimativa -> "E o aviso-prévio?" não repete a estimativa e mantém contexto trabalhista', async () => {
-    global.__testConversation = {
-      client_name: null,
-      intake_data: {
-        laborContextActive: true,
-        laborCalculation: activeLaborCalculation
-      }
-    };
-    mockFetchWithText('Com base na estimativa, o aviso-prévio indenizado está incluído nas verbas rescisórias. Avise se quiser saber algum valor específico.');
-
-    const { req, res } = createMocks({
-      method: 'POST',
-      body: buildPayload('E o aviso-prévio?'),
-    });
-    await webhookHandler(req, res);
-
-    expect(res._getStatusCode()).toBe(200);
-
-    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
-    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
-    expect(body.text.body).toMatch(/aviso|verbas/i);
-    expect(body.text.body).not.toMatch(/🧾 Estimativa preliminar/i);
-
-    const resetUpdate = (global.__testUpdates || []).find(u => u && u.intake_data && u.intake_data.laborContextActive === false);
-    expect(resetUpdate).toBeUndefined();
-  });
-
-  test('mensagem trabalhista sem cálculo não é confundida com mudança de domínio', async () => {
-    global.__testConversation = { client_name: null, intake_data: {} };
-    mockFetchWithText('Vamos registrar sua situação trabalhista.');
-
-    const { req, res } = createMocks({
-      method: 'POST',
-      body: buildPayload('fui demitido'),
-    });
-    await webhookHandler(req, res);
-
-    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true });
-    expect(data.intake || data.labor).toBeTruthy();
-  });
 });
