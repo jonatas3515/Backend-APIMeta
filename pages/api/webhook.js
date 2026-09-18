@@ -271,6 +271,17 @@ export default async function handler(req, res) {
         activeMessages = laborIntegration.getActiveMessages(conversationMessages, conversation?.intake_data);
       }
 
+      // Construir histórico legível para contexto (somente mensagens ativas, respeitando resets)
+      let conversationHistory = '';
+      if (activeMessages.length > 0) {
+        conversationHistory = activeMessages.map(m => {
+          const role = m.sender_type === 'client' ? 'Cliente' : 'Jhon';
+          const time = new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          return `[${time}] ${role}: ${m.text}`;
+        }).join('\n');
+        log('history_loaded', { messageCount: activeMessages.length });
+      }
+
       // ================= ESCAPE / CANCELAMENTO / CONSENTIMENTO =================
       if (conversation && messageType === 'text') {
         const escape = detectEscapeIntent(textBody);
@@ -453,6 +464,57 @@ export default async function handler(req, res) {
         }
       }
 
+      // ================= BOLETO / CONFUSÃO NEVES COSTA =================
+      // Prioridade sobre intake: se a mensagem é sobre boleto/cobrança/CNPJ/Neves Costa,
+      // invalida contexto previdenciário ativo e responde diretamente.
+      const boletoReply = getSpecialReply(textBody, clientName, conversationHistory, log);
+      const isBoleto = boletoReply && boletoReply !== 'NO_REPLY';
+      const isNevesCosta = messageType === 'text' && isNevesCostaConfusion(textBody);
+      log('boleto_identity_state', { isBoleto: !!isBoleto, isNevesCosta: !!isNevesCosta, currentArea: conversation.legal_area || 'none' });
+      if (isBoleto || isNevesCosta) {
+        log('boleto_handler_selected', { isIdentity: !!isBoleto, isNevesCosta: !!isNevesCosta });
+        // Invalida pergunta pendente do domínio anterior, mas mantém fatos históricos
+        const resetIntake = {
+          ...(conversation.intake_data || {}),
+          current_step: -1,
+          triage_step: -1,
+          triage_completed: false,
+          completed: false
+        };
+        if (conversation && supabase) {
+          const { error: resetError } = await supabase
+            .from('conversations')
+            .update({ intake_data: resetIntake, legal_area: null })
+            .eq('id', conversation.id);
+          if (resetError) {
+            log('topic_reset_failed', { error: sanitizeError(resetError), reason: 'boleto_domain_switch' });
+          } else {
+            conversation.intake_data = resetIntake;
+            conversation.legal_area = null;
+            log('domain_switch_detected', { previousArea: 'previdenciario', newDomain: 'boleto_identity' });
+            log('previdenciario_handler_skipped', { reason: 'domain_switch' });
+          }
+        }
+        if (isNevesCosta) {
+          log('neves_costa_confusion', { phoneHash: hashPhone(from) });
+          const protocol = req.headers['x-forwarded-proto'] || 'https';
+          const imageUrl = `${protocol}://${req.headers.host}/Aviso.jpg`;
+          const imageSent = await sendNevesCostaImage(from, conversation.id, imageUrl);
+          if (imageSent) {
+            return res.status(200).json({ success: true, neves_costa: true });
+          }
+        }
+        if (isBoleto) {
+          const savedMsg = await saveMessage(conversation.id, boletoReply, 'ai');
+          const waMessageId = await sendWhatsAppMessage(from, boletoReply);
+          if (savedMsg && waMessageId) {
+            await supabase.from('messages').update({ wa_message_id: waMessageId, status: 'sent' }).eq('id', savedMsg.id);
+          }
+          log('response_sent', { handler: 'boleto', replyLength: boletoReply?.length || 0 });
+          return res.status(200).json({ success: true, special: true });
+        }
+      }
+
       // ================= COLETA GUIADA DE INFORMAÇÕES =================
       if (conversation && messageType === 'text') {
         log('intake_handler_invoked', { currentArea: conversation.legal_area || 'none' });
@@ -470,45 +532,7 @@ export default async function handler(req, res) {
         }
       }
 
-      // Construir histórico legível para contexto (somente mensagens ativas, respeitando resets)
-      let conversationHistory = '';
-      if (activeMessages.length > 0) {
-        conversationHistory = activeMessages.map(m => {
-          const role = m.sender_type === 'client' ? 'Cliente' : 'Jhon';
-          const time = new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-          return `[${time}] ${role}: ${m.text}`;
-        }).join('\n');
-        log('history_loaded', { messageCount: activeMessages.length });
-      }
-
-      // === Resposta com imagem: confusão Neves Costa ===
-      if (messageType === 'text' && isNevesCostaConfusion(textBody)) {
-        log('neves_costa_confusion', { phoneHash: hashPhone(from) });
-        const protocol = req.headers['x-forwarded-proto'] || 'https';
-        const imageUrl = `${protocol}://${req.headers.host}/Aviso.jpg`;
-        const imageSent = await sendNevesCostaImage(from, conversation.id, imageUrl);
-        if (imageSent) {
-          return res.status(200).json({ success: true, neves_costa: true });
-        }
-      }
-
-      // === Respostas especiais: identidade, confirmação e marketing ===
-      if (messageType === 'text') {
-        const specialReply = getSpecialReply(textBody, clientName, conversationHistory, log);
-        if (specialReply === 'NO_REPLY') {
-          log('marketing_detected', { phoneHash: hashPhone(from) });
-          return res.status(200).json({ success: true, marketing: true });
-        }
-        if (specialReply) {
-          const savedMsg = await saveMessage(conversation.id, specialReply, 'ai');
-          const waMessageId = await sendWhatsAppMessage(from, specialReply);
-          if (savedMsg && waMessageId) {
-            await supabase.from('messages').update({ wa_message_id: waMessageId, status: 'sent' }).eq('id', savedMsg.id);
-          }
-          log('response_sent', { handler: 'boleto', replyLength: specialReply?.length || 0 });
-          return res.status(200).json({ success: true, special: true });
-        }
-      }
+      // Boleto / Neves Costa já processado acima com prioridade sobre intake.
 
       // Resposta da IA para mídia
       let promptForAI = textBody;
@@ -608,6 +632,35 @@ async function handleIntake(conversation, clientMessage, log = () => {}) {
   const isGreeting = GREETINGS.some(g => msg.startsWith(g));
   const isQuestion = msg.includes('?');
   const detectedArea = detectArea(clientMessage);
+
+  log('current_message_domain', { detectedArea: detectedArea || 'none', previousArea: currentArea || 'none' });
+
+  // Se a mensagem atual indica mudança de domínio, invalida a pergunta pendente,
+  // mantendo fatos históricos. Não faz isso se o cliente está respondendo a uma pergunta pendente.
+  if (currentArea && detectedArea && detectedArea !== currentArea && !looksLikeAnswer(clientMessage)) {
+    log('domain_switch_detected', { previousArea: currentArea, newArea: detectedArea });
+    const resetIntake = {
+      ...intakeData,
+      current_step: -1,
+      triage_step: -1,
+      triage_completed: false,
+      completed: false
+    };
+    if (conversation && supabase) {
+      const { error: switchError } = await supabase
+        .from('conversations')
+        .update({ intake_data: resetIntake, legal_area: detectedArea })
+        .eq('id', conversation.id);
+      if (switchError) {
+        log('topic_reset_failed', { error: sanitizeError(switchError), reason: 'domain_switch' });
+      } else {
+        conversation.intake_data = resetIntake;
+        conversation.legal_area = detectedArea;
+        currentArea = detectedArea;
+      }
+    }
+  }
+
   if (isGreeting || (isQuestion && detectedArea === 'trabalhista')) {
     return null;
   }
@@ -1095,6 +1148,16 @@ async function saveMessage(conversationId, text, sender, messageType = 'text', m
 
 function normalizeForCheck(text) {
   return (text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
+function looksLikeAnswer(text) {
+  if (!text || typeof text !== 'string') return false;
+  const n = normalizeForCheck(text).replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  // Resposta a pergunta pendente: contém número, sim/não, afirmativa direta ou tempo/dado aproximado.
+  if (/\b\d+\b/.test(n)) return true;
+  if (/\b(sim|nao|não|claro|certo|isso|exato|exatamente|aproximadamente|ja|já|ainda nao|ainda não|não sei|nao sei|uns? \d+|metade|metade de)\b/.test(n)) return true;
+  if (n.length <= 25 && /\b(ok|entendi|obrigado|obrigada|beleza|blz|fechado| combinado)\b/.test(n)) return true;
+  return false;
 }
 
 const POSITIVE_EMOJIS = [

@@ -284,6 +284,68 @@ describe('Triagem contextual previdenciária no webhook', () => {
     expect(body.text.body).not.toMatch(/Voc[eê] j[aá] fez o pedido/i);
   });
 
+  test('previdenciário → boleto não repete pergunta previdenciária', async () => {
+    global.__testConversation = {
+      client_name: null,
+      legal_area: 'previdenciario',
+      intake_data: {
+        triage_step: 1,
+        triage_completed: true,
+        current_step: 0,
+        answers: {
+          previdenciario_facts: {
+            theme: 'aposentadoria',
+            benefit_denied: true,
+            benefit_type: null
+          }
+        }
+      }
+    };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Queria saber de um boleto emitido no meu nome'),
+    });
+    await webhookHandler(req, res);
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).toMatch(/não emitimos boletos|não possu[ií]mos cnpj/i);
+    expect(body.text.body).not.toMatch(/qual benefício foi negado/i);
+
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
+    expect(geminiCalls.length).toBe(0);
+  });
+
+  test('previdenciário → divórcio invalida contexto previdenciário', async () => {
+    global.__testConversation = {
+      client_name: null,
+      legal_area: 'previdenciario',
+      intake_data: {
+        triage_step: 1,
+        triage_completed: true,
+        current_step: 0,
+        answers: {
+          previdenciario_facts: {
+            theme: 'aposentadoria'
+          }
+        }
+      }
+    };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero me divorciar'),
+    });
+    await webhookHandler(req, res);
+
+    const update = (global.__testUpdates || []).find(u => u && u.legal_area === 'familia');
+    expect(update).toBeDefined();
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true });
+  });
+
   test('fluxo trabalhista continua determinístico', async () => {
     global.__testConversation = { client_name: null, intake_data: {} };
     mockFetchWithText('Vamos registrar sua situação trabalhista.');

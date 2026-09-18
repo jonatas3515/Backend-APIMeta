@@ -186,4 +186,91 @@ describe('Fluxo de boleto/cobrança no webhook', () => {
     expect(body.text.body).not.toMatch(/\d{10,}/);
     expect(body.text.body).not.toMatch(/se houver outra dúvida/i);
   });
+
+  test('boleto após previdenciário não repete pergunta de benefício', async () => {
+    global.__testConversation = {
+      client_name: 'Andreza',
+      legal_area: 'previdenciario',
+      intake_data: {
+        triage_step: 1,
+        triage_completed: true,
+        current_step: 0,
+        answers: {
+          previdenciario_facts: {
+            theme: 'aposentadoria',
+            benefit_denied: true,
+            benefit_type: null
+          }
+        }
+      }
+    };
+    const now = new Date().toISOString();
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
+    global.__testMessages = [
+      { conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', sender_type: 'client', text: 'Meu benefício foi negado', created_at: oneMinuteAgo },
+      { conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', sender_type: 'ai', text: 'Entendi. Qual benefício foi negado e quando você recebeu essa decisão?', created_at: now }
+    ];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Queria saber de um boleto emitido no meu nome'),
+    });
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true, special: true });
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).toMatch(/não emitimos boletos|não possu[ií]mos cnpj|não fazemos cobranças/i);
+    expect(body.text.body).not.toMatch(/qual benefício foi negado/i);
+
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
+    expect(geminiCalls.length).toBe(0);
+  });
+
+  test('segunda insistência após previdenciário mantém resposta contextual', async () => {
+    global.__testConversation = {
+      client_name: 'Andreza',
+      legal_area: 'previdenciario',
+      intake_data: {
+        triage_step: 1,
+        triage_completed: true,
+        current_step: 0,
+        answers: {
+          previdenciario_facts: {
+            theme: 'aposentadoria',
+            benefit_denied: true,
+            benefit_type: null
+          }
+        }
+      }
+    };
+    const now = new Date().toISOString();
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    global.__testMessages = [
+      { conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', sender_type: 'client', text: 'Queria saber de um boleto emitido no meu nome', created_at: twoMinutesAgo },
+      { conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', sender_type: 'ai', text: 'Andreza, somos a Neves & Costa Advocacia (com &). Informamos que não emitimos boletos, e nem fazemos cobranças, além de não possuirmos CNPJ. Não temos relação nenhuma com a "Advocacia Neves Costa".', created_at: oneMinuteAgo },
+      { conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', sender_type: 'client', text: 'Mas tem um boleto que está no nome de vocês', created_at: now }
+    ];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Mas tem um boleto que está no nome de vocês'),
+    });
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true, special: true });
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).toMatch(/grafia|CNPJ|não faça o pagamento|não pagar/i);
+    expect(body.text.body).not.toMatch(/qual benefício foi negado/i);
+    expect(body.text.body).not.toMatch(/\d{10,}/);
+
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
+    expect(geminiCalls.length).toBe(0);
+  });
 });
