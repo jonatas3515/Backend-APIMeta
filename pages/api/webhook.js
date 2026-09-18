@@ -455,7 +455,8 @@ export default async function handler(req, res) {
 
       // ================= COLETA GUIADA DE INFORMAÇÕES =================
       if (conversation && messageType === 'text') {
-        const intakeResult = await handleIntake(conversation, textBody);
+        log('intake_handler_invoked', { currentArea: conversation.legal_area || 'none' });
+        const intakeResult = await handleIntake(conversation, textBody, log);
         if (intakeResult && intakeResult.reply) {
           // Enviar próxima pergunta do intake
           const savedMsg = await saveMessage(conversation.id, intakeResult.reply, 'ai');
@@ -464,7 +465,7 @@ export default async function handler(req, res) {
           if (savedMsg && waMessageId) {
             await supabase.from('messages').update({ wa_message_id: waMessageId, status: 'sent' }).eq('id', savedMsg.id);
           }
-          log('intake_replied', { phoneHash: hashPhone(from), replyLength: intakeResult.reply?.length || 0 });
+          log('response_sent', { handler: intakeResult.handler || 'intake', handoff: !!intakeResult.handoff, replyLength: intakeResult.reply?.length || 0 });
           return res.status(200).json({ success: true, intake: true });
         }
       }
@@ -493,7 +494,7 @@ export default async function handler(req, res) {
 
       // === Respostas especiais: identidade, confirmação e marketing ===
       if (messageType === 'text') {
-        const specialReply = getSpecialReply(textBody, clientName, conversationHistory);
+        const specialReply = getSpecialReply(textBody, clientName, conversationHistory, log);
         if (specialReply === 'NO_REPLY') {
           log('marketing_detected', { phoneHash: hashPhone(from) });
           return res.status(200).json({ success: true, marketing: true });
@@ -504,7 +505,7 @@ export default async function handler(req, res) {
           if (savedMsg && waMessageId) {
             await supabase.from('messages').update({ wa_message_id: waMessageId, status: 'sent' }).eq('id', savedMsg.id);
           }
-          log('special_replied', { phoneHash: hashPhone(from), replyLength: specialReply?.length || 0 });
+          log('response_sent', { handler: 'boleto', replyLength: specialReply?.length || 0 });
           return res.status(200).json({ success: true, special: true });
         }
       }
@@ -540,6 +541,7 @@ export default async function handler(req, res) {
       const clientMemoryText = formatClientMemory(clientMemory);
 
       // Chamar Gemini com await (timeout de 15s)
+      log('gemini_called', { hasHistory: !!conversationHistory, hasMemory: !!clientMemoryText });
       let aiReply = await askGemini(promptForAI, conversationHistory, conversation, clientMemoryText);
       aiReply = correctCommonMistakes(promptForAI, aiReply);
       log('ai_reply_generated', { length: aiReply?.length || 0 });
@@ -547,6 +549,9 @@ export default async function handler(req, res) {
       // Detectar se precisa de atendimento humano
       const intakeCompleted = conversation?.intake_data?.completed === true;
       const needsHuman = detectNeedsHuman(textBody, aiReply, intakeCompleted);
+      if (needsHuman) {
+        log('handoff_reason', { source: 'detectNeedsHuman', intakeCompleted: !!intakeCompleted });
+      }
 
       // Salvar resposta da IA
       let savedAiMsg = null;
@@ -560,7 +565,7 @@ export default async function handler(req, res) {
       if (savedAiMsg && aiWaMessageId) {
         await supabase.from('messages').update({ wa_message_id: aiWaMessageId, status: 'sent' }).eq('id', savedAiMsg.id);
       }
-      log('reply_sent', { phoneHash: hashPhone(from) });
+      log('response_sent', { handler: 'gemini', replyLength: aiReply?.length || 0 });
 
       // Só depois do envio confirmado: marcar modo humano e notificar admin
       if (needsHuman && conversation?.id) {
@@ -584,7 +589,7 @@ export default async function handler(req, res) {
 }
 
 // Função para gerenciar coleta guiada de informações (intake) com triagem estruturada
-async function handleIntake(conversation, clientMessage) {
+async function handleIntake(conversation, clientMessage, log = () => {}) {
   const msg = clientMessage.toLowerCase().trim();
   let intakeData = conversation.intake_data || {};
   let currentArea = conversation.legal_area;
@@ -612,6 +617,18 @@ async function handleIntake(conversation, clientMessage) {
   if (currentArea === 'previdenciario' || (detectedArea === 'previdenciario' && !currentArea)) {
     const previousFacts = (intakeData.answers && intakeData.answers.previdenciario_facts) || {};
     const { reply, facts, handoff } = triagePrevidenciario(clientMessage, previousFacts);
+
+    log('previdenciario_triage_result', {
+      handoff: !!handoff,
+      theme: facts.theme || 'unknown',
+      benefitDenied: !!facts.benefit_denied,
+      hasDeadline: !!facts.has_deadline,
+      urgency: !!facts.urgent
+    });
+
+    if (handoff) {
+      log('handoff_reason', { source: 'previdenciario', theme: facts.theme || 'unknown', hasDeadline: !!facts.has_deadline, urgency: !!facts.urgent });
+    }
 
     const nextIntakeData = {
       ...intakeData,
@@ -643,7 +660,7 @@ async function handleIntake(conversation, clientMessage) {
       return null;
     }
 
-    return { reply };
+    return { reply, handler: 'previdenciario', handoff: !!handoff };
   }
 
   // ========== INTAKE DETALHADO ==========
@@ -1235,7 +1252,7 @@ const IDENTITY_ALREADY_SAID = [
   'não emitimos', 'não fazemos cobrança'
 ];
 
-function getSpecialReply(text, clientName, history = '') {
+function getSpecialReply(text, clientName, history = '', log = () => {}) {
   const lower = normalizeForCheck(text);
   const historyLower = normalizeForCheck(history);
 
@@ -1247,6 +1264,8 @@ function getSpecialReply(text, clientName, history = '') {
 
   const isIdentity = IDENTITY_KEYWORDS.some(k => lower.includes(k));
   const alreadySaid = IDENTITY_ALREADY_SAID.some(s => historyLower.includes(s));
+
+  log('boleto_handler_selected', { isIdentity: !!isIdentity, alreadySaid: !!alreadySaid });
 
   if (isIdentity) {
     const name = getClientGreeting(clientName);
