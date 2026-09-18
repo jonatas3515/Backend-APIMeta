@@ -1229,9 +1229,10 @@ const IDENTITY_KEYWORDS = [
 ];
 
 const IDENTITY_ALREADY_SAID = [
-  'não possuímos cnpj', 'não possuimos cnpj', 'não emitimos boletos',
+  'não possuímos cnpj', 'não possuimos cnpj', 'não possuirmos cnpj', 'não emitimos boletos',
   'não emite boletos', 'não fazemos cobranças', 'não temos relação',
-  'sem relação com a', 'não temos relacao'
+  'sem relação com a', 'não temos relacao', 'neves & costa', 'advocacia neves costa',
+  'não emitimos', 'não fazemos cobrança'
 ];
 
 function getSpecialReply(text, clientName, history = '') {
@@ -1250,7 +1251,7 @@ function getSpecialReply(text, clientName, history = '') {
   if (isIdentity) {
     const name = getClientGreeting(clientName);
     if (alreadySaid) {
-      return `${name}, entendido. Se houver outra dúvida, estamos à disposição.`;
+      return `${name}, entendo a sua preocupação. Mesmo que o documento mencione um nome parecido, confira a grafia exata e o CNPJ: a Neves & Costa Advocacia, com "&", não emite boletos nem faz cobranças. Não faça o pagamento antes de confirmar a origem.`;
     }
     return `${name}, somos a Neves & Costa Advocacia (com &). Informamos que não emitimos boletos, e nem fazemos cobranças, além de não possuirmos CNPJ. Não temos relação nenhuma com a "Advocacia Neves Costa".`;
   }
@@ -1316,7 +1317,7 @@ Se houver confusão:
 4. Oriente o cliente a buscar a empresa responsável pelo boleto/cobrança, preferencialmente pelo CNPJ constante no documento.
 5. Se perguntarem se conhecemos o outro escritório, diga: "Não conhecemos e não temos relação. A única informação que sabemos é que, segundo relatos de clientes, eles são de São Paulo."
 6. Depois do esclarecimento, NÃO ofereça outros serviços e NÃO liste áreas de atuação.
-7. Se o esclarecimento já tiver sido dito e o cliente apenas confirmar, responda apenas "Entendido. Estamos à disposição." e NÃO repita o esclarecimento.
+7. Se o esclarecimento sobre boleto/cobrança/Neves Costa JÁ tiver sido dito e o cliente continuar mencionando o boleto/nome no documento, NÃO repita o esclarecimento inicial. Em vez disso, reconheça a preocupação, peça para conferir a grafia exata e o CNPJ no documento, e oriente a não fazer o pagamento antes de confirmar a origem.
 
 ATENDIMENTO TRABALHISTA E RESCISÃO:
 - Se o cliente relatar demissão, falta de pagamento ou pedir cálculo de rescisão:
@@ -1441,7 +1442,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
       : 'O histórico já existe. NÃO se apresente, NÃO diga "Olá", "Oi" ou "Bom dia" em nenhuma circunstância. Responda DIRETAMENTE ao assunto.';
 
     const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}${knowledgeBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- ${areaAcolhimentoRule}\n- Responda DIRETAMENTE à NOVA MENSAGEM do cliente, usando o contexto e a memória apenas como referência. Não fique preso a uma informação anterior se o cliente mudou de assunto.\n- Se a mensagem mencionar CNPJ, boleto, "Neves Costa" (sem &), "outro escritório" ou cobrança atribuída a nós e o esclarecimento ainda NÃO tiver sido dito no histórico, o esclarecimento ENXUTO é a prioridade máxima. NUNCA trate "financiamento", "consórcio", "banco" ou "dívida" sozinhos como confusão — são tipos de caso. Depois de esclarecer, NÃO ofereça outros serviços.
-- Se o esclarecimento sobre boleto/cobrança/Neves Costa JÁ tiver sido dito no histórico e o cliente apenas pedir ajuda sem apresentar uma nova dúvida jurídica, NÃO repita o esclarecimento. Diga respeitosamente que não podemos intervir, pois não somos a empresa do boleto, e ofereça-se a ouvir caso haja outro assunto jurídico — sem listar áreas de atuação.\n- Não peça nome, e-mail ou telefone que já estiverem no histórico, contexto ou memória.\n- ${nameRule}
+- Se o esclarecimento sobre boleto/cobrança/Neves Costa JÁ tiver sido dito no histórico e o cliente continuar mencionando o boleto/nome no documento, NÃO repita o esclarecimento inicial. Reconheça a preocupação, peça para conferir a grafia exata e o CNPJ no documento, e oriente a não fazer o pagamento antes de confirmar a origem. Não ofereça telefone.\n- Não peça nome, e-mail ou telefone que já estiverem no histórico, contexto ou memória.\n- ${nameRule}
 - Se TRECHOS DA BASE DE CONHECIMENTO forem fornecidos, use-os apenas se forem diretamente relevantes e cite a fonte (ex: "Conforme jurisprudência..."). Se não forem relevantes, ignore-os.
 - Responda como Jhon, 1-3 frases, sem listas, sem telefone a menos que o cliente peça explicitamente.`;
     

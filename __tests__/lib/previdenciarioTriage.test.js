@@ -67,6 +67,24 @@ describe('Previdenciário - triagem contextual', () => {
     expect(reply).toMatch(/per[ií]cia.*benef[ií]cio/i);
   });
 
+  test('aposentadoria → indeferimento muda a pergunta', () => {
+    const turn1 = triagePrevidenciario('Quero me aposentar.');
+    expect(turn1.reply).toMatch(/h[aá] quanto tempo/i);
+
+    const turn2 = triagePrevidenciario('Meu benefício foi negado.', turn1.facts);
+    expect(turn2.facts.benefit_denied).toBe(true);
+    expect(turn2.reply).not.toMatch(/h[aá] quanto tempo/i);
+    expect(turn2.reply).toMatch(/qual benef[ií]cio.*negado.*quando/i);
+  });
+
+  test('aposentadoria → prazo de recurso gera handoff', () => {
+    const turn1 = triagePrevidenciario('Quero me aposentar.');
+    const turn2 = triagePrevidenciario('Tenho prazo para recorrer até sexta.', turn1.facts);
+    expect(turn2.handoff).toBe(true);
+    expect(turn2.reply).toMatch(/encaminhar.*equipe/i);
+    expect(turn2.reply).not.toMatch(/h[aá] quanto tempo/i);
+  });
+
   test('Tempo de contribuição → pergunta CNIS/CTPS', () => {
     const { reply } = triagePrevidenciario('Tenho dúvidas sobre meu tempo de contribuição.');
     expect(reply).toMatch(/CNIS|carteira de trabalho/i);
