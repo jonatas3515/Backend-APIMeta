@@ -224,15 +224,12 @@ async function replyToClient(message, transcript, summary) {
     console.log('[MEDIA_PROCESS] Enviando resposta automática');
     await sendWhatsAppMessage(clientPhone, aiReply);
 
-    // Só depois do envio confirmado: se a resposta indica transbordo, atualiza modo e notifica admin
+    // Só depois do envio confirmado: pedido explícito de humano notifica o admin.
+    // NÃO marca mode='human' — handoff automático não deve silenciar a conversa
+    // sem confirmação de que um humano assumiu.
     if (!wasHuman) {
-      const intakeCompleted = conversation?.intake_data?.completed === true;
-      const needsHuman = detectNeedsHuman(transcript, aiReply, intakeCompleted);
+      const needsHuman = detectNeedsHuman(transcript);
       if (needsHuman) {
-        await supabase
-          .from('conversations')
-          .update({ mode: 'human' })
-          .eq('id', conversation.id);
         await notifyAdminHandoff({
           clientName: conversation.client_name,
           from: clientPhone,

@@ -1,7 +1,8 @@
 /**
  * Teste de integração do endpoint /api/process-media.
  * Garante que a resposta automática de áudio/vídeo seja enviada ao cliente
- * antes de marcar o canal como humano.
+ * e que um pedido explícito de humano apenas notifique o admin —
+ * sem marcar mode='human' automaticamente (handoff não silencia a conversa).
  */
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://synthetic.supabase.co';
@@ -106,7 +107,7 @@ describe('POST /api/process-media - ordem de envio e handoff', () => {
     detectNeedsHuman.mockClear();
   });
 
-  test('envia resposta do áudio antes de marcar modo humano', async () => {
+  test('envia resposta do áudio e notifica admin sem marcar modo humano', async () => {
     const { req, res } = createMocks({
       method: 'POST',
       body: {}
@@ -123,13 +124,11 @@ describe('POST /api/process-media - ordem de envio e handoff', () => {
       'Vou encaminhar para nossa equipe. Aguarde o retorno.'
     );
 
-    expect(detectNeedsHuman).toHaveBeenCalledWith(
-      'Preciso falar com advogado',
-      'Vou encaminhar para nossa equipe. Aguarde o retorno.',
-      false
-    );
+    expect(detectNeedsHuman).toHaveBeenCalledWith('Preciso falar com advogado');
 
+    // Resposta enviada; notificação ao admin ocorre, mas NENHUMA atualização
+    // com mode='human' pode acontecer por handoff automático.
     expect(global.__replySentFlag).toBe(true);
-    expect(global.__humanUpdateAfterReplyFlag).toBe(true);
+    expect(global.__humanUpdateAfterReplyFlag).toBe(false);
   });
 });

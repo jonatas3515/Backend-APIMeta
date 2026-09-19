@@ -7,9 +7,10 @@ import { loadClientMemory, formatClientMemory } from '../../lib/clientMemory';
 import { getClientTitle, getClientGreeting } from '../../lib/genderFromName';
 import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '../../lib/whatsapp.js';
 import { evaluateFunnelAutomation, registerFunnelEvent } from '../../lib/funnel-whatsapp.js';
-import { detectThanks, getThanksReply, detectAgreement, getAcknowledgementReply, getToneInstructions, correctCommonMistakes } from '../../lib/bot-responses.js';
+import { detectThanks, getThanksReply, detectAgreement, getAcknowledgementReply, correctCommonMistakes } from '../../lib/bot-responses.js';
 import { semanticSearch } from '../../lib/knowledge-embeddings.js';
 import { detectNeedsHuman, notifyAdminHandoff, EXPRESS_HUMAN_KEYWORDS } from '../../lib/needsHuman.js';
+import { SYSTEM_PROMPT } from '../../lib/systemPrompt.js';
 const laborIntegration = require('../../lib/laborWebhookIntegration.js');
 const { classifyLaborIntent } = require('../../lib/laborSettlementIntent.js');
 
@@ -136,23 +137,33 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: false, error: 'Conversa inválida' });
       }
       
-      // Verificar se o bot está pausado e se deve reativar automaticamente
+      // Verificar se o bot está pausado e se deve reativar automaticamente.
+      // Um modo 'human' só silencia o bot quando um humano realmente assumiu
+      // (mensagem com sender_type='human' dentro da janela de 30 minutos).
+      // Handoff automático antigo sem humano ativo não deve silenciar o cliente.
       if (conversation.mode === 'human') {
-        // Verificar se passou 30 minutos desde a última atualização
-        const lastUpdate = new Date(conversation.updated_at);
-        const now = new Date();
-        const diffMinutes = (now - lastUpdate) / (1000 * 60);
-        
-        if (diffMinutes >= 30) {
-          // Reativar bot automaticamente após 30 minutos
-          log('bot_reactivated');
+        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+        const { data: recentHumanMsgs } = await supabase
+          .from('messages')
+          .select('id')
+          .eq('conversation_id', conversation.id)
+          .eq('sender_type', 'human')
+          .gte('created_at', thirtyMinutesAgo)
+          .limit(1);
+
+        const humanAssumed = Array.isArray(recentHumanMsgs) && recentHumanMsgs.length > 0;
+
+        if (!humanAssumed) {
+          log('bot_reactivated', { reason: 'no_human_assumed' });
           await supabase
             .from('conversations')
             .update({ mode: 'bot' })
             .eq('id', conversation.id);
-          
+
           conversation.mode = 'bot'; // Atualiza localmente para continuar processamento
         } else {
+          const lastUpdate = new Date(conversation.updated_at);
+          const diffMinutes = (Date.now() - lastUpdate.getTime()) / (1000 * 60);
           log('bot_human_mode', { diffMinutes: Math.round(diffMinutes) });
           
           // Salvar mensagem do cliente mesmo com bot pausado
@@ -600,14 +611,36 @@ export default async function handler(req, res) {
       log('gemini_called', { hasHistory: !!conversationHistory, hasMemory: !!clientMemoryText });
       let aiReply = await askGemini(promptForAI, conversationHistory, conversation, clientMemoryText, log);
       aiReply = correctCommonMistakes(promptForAI, aiReply);
+
+      // Aviso LGPD controlado pelo código: exibido uma única vez, na primeira
+      // interação (quando não consta no histórico nem foi registrado), junto com
+      // a resposta ao assunto da mensagem. Se o próprio Gemini já incluiu o aviso,
+      // não duplica. Recusa registrada impede reenvio.
+      const lgpdAlreadySent = !!conversation?.intake_data?.consent_request_sent_at ||
+        (activeMessages || []).some(m => m.sender_type === 'ai' && typeof m.text === 'string' && m.text.includes('politica-de-privacidade'));
+      const consentDeclined = conversation?.intake_data?.consent_request_status === 'declined';
+      if (conversation && !lgpdAlreadySent && !consentDeclined && !String(aiReply || '').includes('politica-de-privacidade')) {
+        aiReply = `${LGPD_NOTICE}\n\n${aiReply}`;
+        const lgpdIntakeData = { ...(conversation.intake_data || {}), consent_request_sent_at: new Date().toISOString() };
+        const { error: lgpdError } = await supabase
+          .from('conversations')
+          .update({ intake_data: lgpdIntakeData })
+          .eq('id', conversation.id);
+        if (lgpdError) {
+          log('lgpd_notice_persist_failed', { error: sanitizeError(lgpdError) });
+        } else {
+          conversation.intake_data = lgpdIntakeData;
+          log('lgpd_notice_sent');
+        }
+      }
+
       log('ai_reply_generated', { length: aiReply?.length || 0 });
       __stageMs.gemini_ms = Date.now() - __tGemini;
 
-      // Detectar se precisa de atendimento humano
-      const intakeCompleted = conversation?.intake_data?.completed === true;
-      const needsHuman = detectNeedsHuman(textBody, aiReply, intakeCompleted);
+      // Detectar se precisa de atendimento humano (somente pedido explícito)
+      const needsHuman = detectNeedsHuman(textBody);
       if (needsHuman) {
-        log('handoff_reason', { source: 'detectNeedsHuman', intakeCompleted: !!intakeCompleted });
+        log('handoff_reason', { source: 'detectNeedsHuman' });
       }
 
       // Salvar resposta da IA
@@ -625,15 +658,10 @@ export default async function handler(req, res) {
       log('response_sent', { handler: 'gemini', replyLength: aiReply?.length || 0 });
       logPipelineTiming('gemini');
 
-      // Só depois do envio confirmado: marcar modo humano e notificar admin
+      // Só depois do envio confirmado: notificar admin. NÃO marca mode='human'
+      // aqui — um handoff automático não deve silenciar mensagens posteriores
+      // sem confirmação de que um humano assumiu a conversa.
       if (needsHuman && conversation?.id) {
-        await supabase
-          .from('conversations')
-          .update({ mode: 'human' })
-          .eq('id', conversation.id);
-
-        log('human_mode_marked');
-
         await notifyAdminHandoff({ clientName, from, textBody, log });
       }
       
@@ -1120,98 +1148,14 @@ function getSpecialReply(text, clientName, history = '', log = () => {}) {
   return null;
 }
 
-const SYSTEM_PROMPT = `Você é o Jhon, assistente virtual da Neves & Costa Advocacia e Consultoria.
+// Aviso LGPD exibido pelo código na primeira interação (mesmo texto do SYSTEM_PROMPT).
+const LGPD_NOTICE = `Olá! Seja bem-vindo(a) à Neves & Costa Advocacia e Consultoria. Meu nome é Jhon, assistente virtual do escritório.
 
-IDENTIDADE E LIMITES:
-- Nosso nome completo é "Neves & Costa Advocacia e Consultoria" (com &).
-- Não emitimos boletos, não fazemos cobranças e não possuímos CNPJ.
-- Não temos relação com a empresa "Advocacia Neves Costa" (sem &) de São Paulo.
-- Atendemos de forma 100% digital, sem endereço físico.
-- Não faça análise jurídica conclusiva, não prometa resultados e não afirme "você tem direito".
+Em conformidade com a LGPD, os dados fornecidos nesta conversa serão tratados com sigilo e utilizados exclusivamente para o atendimento solicitado. Ao continuar a conversa, você concorda com esse tratamento. Consulte nossa Política de Privacidade: https://chatnevesecosta.vercel.app/politica-de-privacidade
 
-ÁREAS DE ATUAÇÃO:
-- Atuamos em várias áreas do direito: Trabalhista, Previdenciário, Administrativo (servidor público), Cível, Consumidor, Família e Sucessões, Imobiliário, Criminal e outras áreas por meio de parcerias especializadas.
-- A classificação provisória deste atendimento (ex: Consumidor) é APENAS uma etiqueta interna, NÃO limita as áreas de atuação do escritório e NUNCA recusa atendimento.
-- Se o cliente perguntar "Vocês trabalham na área X?" ou "Atuam em Y?", responda afirmativamente citando que atuamos em várias áreas e incluindo X quando cabível, e ofereça ajuda.
+Como posso ajudar?`;
 
-REGRA DE ACOLHIMENTO E ÁREA (obrigatória):
-- NUNCA diga que o escritório não atende, não se encaixa, não pode ajudar, está fora do perfil ou recuse qualquer assunto jurídico.
-- A classificação de área é APENAS uma etiqueta interna; nunca é motivo para recusar, dispensar ou encaminhar para outro escritório sem antes coletar contexto.
-- Para qualquer assunto, incluindo financiamento, banco, cobrança, contrato, dívida, consórcio, veículo, imóvel ou tema incomum: acolha, peça o tipo/marca/instituição e os fatos, e ofereça ouvir e encaminhar para avaliação.
-- Se a situação for complexa ou você não souber orientar, encaminhe respeitosamente: "Vou encaminhar para nossa equipe. Aguarde o retorno."
-- NUNCA liste áreas de atuação como resposta a uma nova dúvida.
 
-PRIMEIRA MENSAGEM (OBRIGATÓRIO):
-Se esta for a PRIMEIRA interação (sem histórico), você DEVE iniciar sua resposta EXATAMENTE com o seguinte texto:
-
-"Olá! Seja bem-vindo(a) à Neves & Costa Advocacia! Meu nome é Jhon, o assistente virtual do escritório.
-
-Informamos que, em conformidade com a LGPD, os dados fornecidos nesta conversa serão tratados com total sigilo exclusivamente para a realização do seu atendimento. Ao continuar a conversa, você concorda com os nossos termos de tratamento de dados. Acesse nossa Política de Privacidade: https://chatnevesecosta.vercel.app/politica-de-privacidade
-
-Como posso ajudar você hoje?"
-
-IMPORTANTE: Use EXATAMENTE este texto na primeira mensagem, sem alterações. Depois disso, responda normalmente às próximas mensagens do cliente.
-
-REGRAS DE CONVERSA (obrigatórias):
-1. NUNCA se apresente mais de uma vez. Se o histórico já contiver uma mensagem sua, NÃO diga "Eu sou o Jhon..." ou "Olá" novamente.
-2. Se a PRIMEIRA mensagem vier com nome, e-mail, telefone e/ou assunto (ex: formulário do site), use o texto de boas-vindas LGPD acima e depois agradeça brevemente e trate o assunto. NÃO peça nome, e-mail ou telefone novamente.
-3. Respostas: 1-3 frases curtas. Sem listas, bullets ou asteriscos.
-4. Uma pergunta por vez, somente quando necessário.
-5. NUNCA repasse nosso WhatsApp/telefone, a menos que o cliente pergunte EXPLICITAMENTE "qual o contato" ou "como falar com vocês".
-6. NUNCA peça dados que já aparecem no histórico ou no contexto.
-7. Seja educado, objetivo e acolhedor.
-8. NUNCA prometa resultado ou análise jurídica conclusiva.
-9. Trate o cliente pelo nome e gênero SOMENTE quando tiver certeza. Se souber o gênero, use "senhora" ou "senhor" com o primeiro nome (ex: "senhora Emanuelly", "senhor João"). Se não souber o gênero, prefira "Olá, [primeiro nome]!" na primeira mensagem e "você" ou o primeiro nome nas demais. NUNCA use "Senhor(a)".
-
-AVISO DE CONFUSÃO COM OUTRO ESCRITÓRIO:
-Apenas trate como confusão com outro escritório quando o cliente mencionar CNPJ, boleto, "Neves Costa" (sem &), "outro escritório" ou cobrança/boleto atribuídos a nós.
-Palavras como "financiamento", "consórcio", "banco" ou "dívida" sozinhas, sem relação a CNPJ/boleto do nosso escritório, são tipos de caso e NÃO devem gerar esclarecimento.
-Se houver confusão:
-1. Responda IMEDIATAMENTE e ENXUTO: a Neves & Costa Advocacia (com &) não emite boletos, não faz cobranças e não possui CNPJ.
-2. Deixe claro que NÃO temos relação com a "Advocacia Neves Costa".
-3. NÃO repasse nosso telefone/contato nesse esclarecimento.
-4. Oriente o cliente a buscar a empresa responsável pelo boleto/cobrança, preferencialmente pelo CNPJ constante no documento.
-5. Se perguntarem se conhecemos o outro escritório, diga: "Não conhecemos e não temos relação. A única informação que sabemos é que, segundo relatos de clientes, eles são de São Paulo."
-6. Depois do esclarecimento, NÃO ofereça outros serviços e NÃO liste áreas de atuação.
-7. Se o esclarecimento sobre boleto/cobrança/Neves Costa JÁ tiver sido dito e o cliente continuar mencionando o boleto/nome no documento, NÃO repita o esclarecimento inicial. Em vez disso, reconheça a preocupação, peça para conferir a grafia exata e o CNPJ no documento, e oriente a não fazer o pagamento antes de confirmar a origem.
-
-ATENDIMENTO TRABALHISTA E RESCISÃO:
-- Se o cliente relatar demissão, falta de pagamento ou pedir cálculo de rescisão:
-  1. Acolha com empatia em 1-2 frases. Reconheça a situação (especialmente se relatar que não assinaram a carteira ou não pagaram direitos).
-  2. NUNCA fique repetindo perguntas burocráticas sobre datas exatas se o cliente já deu uma estimativa (ex.: 'desde janeiro', 'fui demitido hoje').
-  3. Se o cliente já informou salário e período aproximado, pontue que ele tem direito a saldo de salário, 13º e férias proporcionais, além da discussão sobre o aviso-prévio e FGTS com multa — sem estimar valores: isso é exclusivo do sistema de cálculo.
-  4. Informe que, havendo falta de anotação na carteira (CTPS), essas verbas e o próprio vínculo devem ser regularizados.
-  5. Peça para ele enviar os comprovantes ou holerites/extratos que tiver para análise da nossa equipe e avise que um advogado vai avaliar o caso.
-
-REGRA CRÍTICA DE VALORES NUMÉRICOS:
-- Você NUNCA deve fazer contas de cabeça e NUNCA deve inventar valores em reais.
-- Você SOMENTE pode informar valores em reais se eles constarem expressamente no bloco 'ESTIMATIVA TRABALHISTA JÁ CALCULADA' no seu contexto — nesse caso, repita os números exatos desse bloco.
-- Se o cliente perguntar valores ('Quanto dá?', 'E o FGTS?', 'Quanto tenho a receber?') e NÃO houver o bloco 'ESTIMATIVA TRABALHISTA JÁ CALCULADA' no contexto, responda explicando quais são as verbas devidas, mas NÃO invente números. Diga: 'Para fornecer os valores exatos da sua estimativa, preciso apenas confirmar o valor do seu salário e as datas aproximadas de início e término.'
-- Sempre que apresentar valores da estimativa calculada, adicione a ressalva: 'Lembrando que esta é uma estimativa preliminar para sua orientação, e a apuração exata de todos os reflexos será feita pela nossa equipe jurídica.'
-- Valores monetários que apareçam no histórico da conversa (inclusive em respostas anteriores suas) NÃO são cálculo válido. Ignore-os: a única fonte autorizada de números é o bloco 'ESTIMATIVA TRABALHISTA JÁ CALCULADA'.
-
-RACIOCÍNIO JURÍDICO-PRÁTICO TRABALHISTA:
-- Se o tempo total de serviço for inferior a 12 meses, NÃO mencione "férias vencidas" como pendência a confirmar. Elas não existem no plano fático.
-- Considere apenas férias e 13º proporcionais para vínculos menores de 1 ano.
-- Se o usuário disser que foi dispensado imediatamente ("não precisa voltar mais", "fui mandado embora hoje"), presuma AVISO-PRÉVIO INDENIZADO (30 dias base).
-- Aplique a projeção do aviso-prévio indenizado no cálculo dos avos de férias proporcionais e 13º proporcional.
-- Em dispensas sem justa causa ou quando a carteira não foi assinada, o sistema de cálculo já inclui os depósitos de FGTS do período (8% sobre a remuneração) e a multa rescisória de 40% — você apenas informa, nunca calcula.
-- Seja direto, claro e evite repetir ressalvas redundantes na mesma mensagem.
-- NUNCA repita a mesma mensagem de texto duas vezes seguidas quando o cliente insistir — reformule ou aprofunde a resposta.
-
-ENCAMINHAMENTO HUMANO:
-- Encaminhe para a equipe quando o cliente pedir advogado/atendimento humano, prazo processual, audiência, contratação, urgência ou situação complexa.
-- Quando encaminhar, diga apenas: "Vou encaminhar para nossa equipe. Aguarde o retorno."
-
-LEMBRETE FINAL:
-- Não se apresente se já houver resposta sua no histórico.
-- NUNCA diga "Olá", "Oi" ou "Bom dia" após a primeira mensagem. Responda diretamente ao assunto.
-- Se a PRIMEIRA mensagem for uma saudação, responda apenas a saudação. NÃO pergunte "Em que posso ajudar?" ou "O que gostaria de tratar?". Aguarde o cliente falar.
-- Fale sempre como Jhon, em primeira pessoa. Use "posso", "nosso escritório". Evite "podemos" genérico.
-- Não ofereça nosso telefone sem ser solicitado explicitamente.
-- Responda APENAS ao que foi perguntado, sem informações extras.
-- Trate o cliente como "senhor" ou "senhora" somente quando tiver certeza do gênero; caso contrário, use "você" ou o primeiro nome.
-${getToneInstructions()}`;
 
 async function getKnowledgeContext(prompt) {
   if (!supabase || prompt.length < 15) return '';
@@ -1306,7 +1250,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
       ? `NUNCA use o nome completo. Se for usar nome na PRIMEIRA resposta, use APENAS o primeiro nome ("${clientFirstName}") SEM vírgula. Se houver saudação, inicie com "${firstGreeting}". NUNCA diga o nome completo em saudação. NUNCA use "Senhor(a)".`
       : `NUNCA inicie com "Olá", "Oi", "Bom dia" ou cumprimentos. NUNCA use o nome do cliente em saudação ou início de frase. NUNCA digar "Olá" seguido do nome. Responda DIRETAMENTE ao assunto usando "você" ou pronomes naturais.`;
 
-    const areaAcolhimentoRule = `REGRA DE ACOLHIMENTO E ÁREA: NUNCA diga que o assunto "não se encaixa", "não posso auxiliar", "não atendemos" ou "está fora do perfil". classificação de área é APENAS uma etiqueta interna, nunca limita o atendimento. Acolha qualquer assunto, peça o tipo/marca/instituição e os fatos, ou encaminhe: "Vou encaminhar para nossa equipe. Aguarde o retorno."`;
+    const areaAcolhimentoRule = `REGRA DE ACOLHIMENTO E ÁREA: NUNCA diga que o assunto "não se encaixa", "não posso auxiliar", "não atendemos" ou "está fora do perfil". A classificação de área é APENAS uma etiqueta interna, nunca limita o atendimento. Acolha qualquer assunto e responda ao conteúdo atual.`;
 
     const noRepeatRule = firstTurn
       ? 'Se a primeira mensagem for uma saudação (oi, olá, bom dia), responda APENAS a saudação e NÃO pergunte nada. Se a mensagem já apresentar um caso ou pergunta, responda diretamente e NÃO diga "Olá".'
@@ -1561,15 +1505,12 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType) {
     await sendWhatsAppMessage(conversation.client_phone, aiReply);
     console.log(`[WEBHOOK] ✅ Resposta automática enviada para áudio`);
 
-    // Só depois do envio: se a resposta indicar transbordo, atualiza modo e notifica admin
+    // Só depois do envio: pedido explícito de humano no áudio notifica o admin.
+    // NÃO marca mode='human' — handoff automático não deve silenciar a conversa
+    // sem confirmação de que um humano assumiu.
     if (!wasHuman) {
-      const intakeCompleted = conversation?.intake_data?.completed === true;
-      const needsHuman = detectNeedsHuman(transcript, aiReply, intakeCompleted);
+      const needsHuman = detectNeedsHuman(transcript);
       if (needsHuman) {
-        await supabase
-          .from('conversations')
-          .update({ mode: 'human' })
-          .eq('id', conversation.id);
         await notifyAdminHandoff({
           clientName: conversation.client_name,
           from: conversation.client_phone,

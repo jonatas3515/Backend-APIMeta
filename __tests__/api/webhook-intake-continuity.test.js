@@ -206,7 +206,7 @@ describe('Continuidade de fluxos rígidos diante de palavras de boleto/CNPJ', ()
 
     const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
     const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
-    expect(body.text.body).not.toMatch(/não emitimos boletos|não possu[ií]mos cnpj|neves & costa/i);
+    expect(body.text.body).not.toMatch(/não emite boletos|não emitimos boletos|não possu[ií]mos cnpj|"Advocacia Neves Costa"/i);
 
     const resetUpdate = (global.__testUpdates || []).find(u => u && u.legal_area === null);
     expect(resetUpdate).toBeUndefined();
@@ -298,7 +298,7 @@ describe('Estágio A: gatilhos de identidade, sinal forte de troca de área e na
     await webhookHandler(req, res);
 
     const body = lastWhatsappBody();
-    expect(body.text.body).not.toMatch(/não emitimos boletos|não possu[ií]mos cnpj|neves & costa/i);
+    expect(body.text.body).not.toMatch(/não emite boletos|não emitimos boletos|não possu[ií]mos cnpj|"Advocacia Neves Costa"/i);
   });
 
   test('"boleto da compra" (1ª mensagem) não gera resposta institucional', async () => {
@@ -311,7 +311,7 @@ describe('Estágio A: gatilhos de identidade, sinal forte de troca de área e na
     await webhookHandler(req, res);
 
     const body = lastWhatsappBody();
-    expect(body.text.body).not.toMatch(/não emitimos boletos|não possu[ií]mos cnpj|neves & costa/i);
+    expect(body.text.body).not.toMatch(/não emite boletos|não emitimos boletos|não possu[ií]mos cnpj|"Advocacia Neves Costa"/i);
   });
 
   test('"boleto em nome de vocês" gera resposta institucional', async () => {
@@ -380,13 +380,15 @@ describe('Estágio A: gatilhos de identidade, sinal forte de troca de área e na
     expect(data.success).toBe(true);
     expect(data.intake).not.toBe(true);
 
-    // Troca para familia: apenas a etiqueta muda — intake_data/answers não são
-    // tocados, então as respostas já coletadas permanecem preservadas no banco.
+    // Troca para familia: apenas a etiqueta muda — respostas já coletadas
+    // permanecem preservadas (nenhum update apaga nem sobrescreve answers).
     const switchUpdate = (global.__testUpdates || []).find(u => u && u.legal_area === 'familia');
     expect(switchUpdate).toBeDefined();
     expect(switchUpdate.intake_data).toBeUndefined();
-    const answersWrite = (global.__testUpdates || []).find(u => u && u.intake_data && u.intake_data.answers);
-    expect(answersWrite).toBeUndefined();
+    const answersWrites = (global.__testUpdates || []).filter(u => u && u.intake_data && u.intake_data.answers);
+    for (const u of answersWrites) {
+      expect(u.intake_data.answers).toMatchObject({ area_especifica: 'Contratos' });
+    }
   });
 
   test('menção isolada a outra área dentro de resposta não troca de domínio', async () => {
@@ -516,7 +518,7 @@ describe('Conversa livre conduzida pelo Gemini (sem formulário rígido)', () =>
 
       expect(geminiCalls().length).toBeGreaterThan(0);
       const body = lastWhatsappBody();
-      expect(body.text.body).not.toMatch(/não emitimos boletos|não possu[ií]mos cnpj|neves & costa/i);
+      expect(body.text.body).not.toMatch(/não emite boletos|não emitimos boletos|não possu[ií]mos cnpj|"Advocacia Neves Costa"/i);
       expect(body.text.body).not.toMatch(/Quais documentos|documentos\/comprovantes|parte contr[aá]ria|valor estimado|Resuma os fatos|melhor e-mail/i);
       expect(pipelineTiming(logSpy).some(e => e.handler === 'gemini')).toBe(true);
     } finally {
@@ -724,6 +726,235 @@ describe('Conversa livre conduzida pelo Gemini (sem formulário rígido)', () =>
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
     expect(data).toMatchObject({ success: true, handoff: true });
     expect(lastWhatsappBody().text.body).toMatch(/encaminhar para nossa equipe/i);
+    expect(geminiCalls().length).toBe(0);
+  });
+
+  test('primeira mensagem com assunto recebe aviso LGPD + resposta ao assunto', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+    mockFetchWithText('Posso te ajudar com o divórcio. É consensual ou litigioso?');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero me divorciar'),
+    });
+    await webhookHandler(req, res);
+
+    const body = lastWhatsappBody();
+    expect(body.text.body).toMatch(/LGPD|politica-de-privacidade/i);
+    expect(body.text.body).toMatch(/div[oó]rcio/i);
+    const sentAt = (global.__testUpdates || []).find(u => u && u.intake_data && u.intake_data.consent_request_sent_at);
+    expect(sentAt).toBeDefined();
+  });
+
+  test('aviso LGPD não é repetido quando já consta no histórico', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: { consent_request_sent_at: new Date().toISOString() } };
+    global.__testMessages = [{
+      conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      text: 'Olá! Seja bem-vindo(a). Política de Privacidade: https://chatnevesecosta.vercel.app/politica-de-privacidade',
+      sender_type: 'ai',
+      created_at: new Date().toISOString()
+    }];
+    mockFetchWithText('Sobre o divórcio: é consensual ou litigioso?');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('É sobre o divórcio mesmo'),
+    });
+    await webhookHandler(req, res);
+
+    const body = lastWhatsappBody();
+    expect(body.text.body).toMatch(/div[oó]rcio/i);
+    expect(body.text.body).not.toMatch(/politica-de-privacidade|LGPD/i);
+  });
+
+  test('continuação após o aviso segue o diálogo normalmente', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      intake_data: { consent_request_status: 'granted', consent_request_sent_at: new Date().toISOString() }
+    };
+    mockFetchWithText('Claro. Me conta o que aconteceu com o contrato?');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero processar a empresa pelo contrato que assinei'),
+    });
+    await webhookHandler(req, res);
+
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    const body = lastWhatsappBody();
+    expect(body.text.body).toMatch(/contrato/i);
+    expect(body.text.body).not.toMatch(/consentimento foi registrado|politica-de-privacidade/i);
+  });
+
+  test('recusa de tratamento de dados aciona o fluxo de privacidade', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: { consent_request_status: 'pending' } };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('não aceito'),
+    });
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true, consent: true });
+    const body = lastWhatsappBody();
+    expect(body.text.body).toMatch(/registramos sua decis[aã]o/i);
+    expect(geminiCalls().length).toBe(0);
+  });
+
+  test('"Quero me divorciar" não gera handoff automático nem modo humano', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+    mockFetchWithText('Posso te ajudar com o divórcio. É consensual ou litigioso?');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero me divorciar'),
+    });
+    await webhookHandler(req, res);
+
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data.handoff).not.toBe(true);
+    const humanMode = (global.__testUpdates || []).find(u => u && u.mode === 'human');
+    expect(humanMode).toBeUndefined();
+  });
+
+  test('mensagem posterior ao divórcio recebe resposta normal', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'familia',
+      intake_data: { consent_request_sent_at: new Date().toISOString() }
+    };
+    mockFetchWithText('Certo. Há filhos menores ou bens a dividir?');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Temos dois filhos pequenos e um apartamento'),
+    });
+    await webhookHandler(req, res);
+
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    const body = lastWhatsappBody();
+    expect(body.text.body).toMatch(/filhos|bens/i);
+  });
+
+  test('mensagem ambígua recebe pedido de esclarecimento do Gemini', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: { consent_request_sent_at: new Date().toISOString() } };
+    mockFetchWithText('Você pode me contar um pouco mais sobre o que aconteceu?');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Preciso de ajuda'),
+    });
+    await webhookHandler(req, res);
+
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    const body = lastWhatsappBody();
+    expect(body.text.body).toMatch(/contar|aconteceu/i);
+  });
+
+  test('mensagem seguinte ao esclarecimento recebe resposta normal', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'consumidor',
+      intake_data: { consent_request_sent_at: new Date().toISOString() }
+    };
+    global.__testMessages = [
+      {
+        conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+        text: 'Preciso de ajuda',
+        sender_type: 'client',
+        created_at: new Date(Date.now() - 2 * 60 * 1000).toISOString()
+      },
+      {
+        conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+        text: 'Você pode me contar um pouco mais sobre o que aconteceu?',
+        sender_type: 'ai',
+        created_at: new Date(Date.now() - 1 * 60 * 1000).toISOString()
+      }
+    ];
+    mockFetchWithText('Entendi, cobrança indevida na fatura do cartão. Qual é o banco?');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Veio uma cobrança indevida na fatura do meu cartão'),
+    });
+    await webhookHandler(req, res);
+
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    const body = lastWhatsappBody();
+    expect(body.text.body).toMatch(/cobran[cç]a|cart[aã]o|banco/i);
+  });
+
+  test('assunto complexo não gera handoff automático', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: { consent_request_sent_at: new Date().toISOString() } };
+    mockFetchWithText('Isso pode envolver uma ação de usucapião com discussão entre herdeiros. A equipe poderá avaliar os documentos do imóvel.');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Estou numa disputa de usucapião complicada com vários herdeiros e o processo está parado'),
+    });
+    await webhookHandler(req, res);
+
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data.handoff).not.toBe(true);
+    const humanMode = (global.__testUpdates || []).find(u => u && u.mode === 'human');
+    expect(humanMode).toBeUndefined();
+  });
+
+  test('handoff automático antigo não silencia mensagens posteriores sem humano assumido', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      mode: 'human',
+      updated_at: new Date().toISOString(),
+      intake_data: { consent_request_sent_at: new Date().toISOString() }
+    };
+    global.__testMessages = [{
+      conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      text: 'Vou encaminhar sua solicitação para nossa equipe. Aguarde o retorno.',
+      sender_type: 'ai',
+      created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    }];
+    mockFetchWithText('Claro, posso te ajudar com o divórcio. É consensual ou litigioso?');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero me divorciar'),
+    });
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data.bot_paused).not.toBe(true);
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    const body = lastWhatsappBody();
+    expect(body.text.body).toMatch(/div[oó]rcio/i);
+    const reactivate = (global.__testUpdates || []).find(u => u && u.mode === 'bot');
+    expect(reactivate).toBeDefined();
+  });
+
+  test('conversa em modo humano com humano ativo permanece pausada', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      mode: 'human',
+      updated_at: new Date().toISOString(),
+      intake_data: { consent_request_sent_at: new Date().toISOString() }
+    };
+    global.__testMessages = [{
+      conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      text: 'Olá, aqui é o Dr. Silva. Assumi seu atendimento.',
+      sender_type: 'human',
+      created_at: new Date(Date.now() - 2 * 60 * 1000).toISOString()
+    }];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Obrigado, aguardo'),
+    });
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true, bot_paused: true });
     expect(geminiCalls().length).toBe(0);
   });
 });
