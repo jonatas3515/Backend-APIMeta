@@ -90,6 +90,35 @@ describe('Previdenciário - triagem contextual', () => {
     expect(reply).toMatch(/CNIS|carteira de trabalho/i);
   });
 
+  test('estado contaminado com benefit_denied não afeta aposentadoria', () => {
+    const turn1 = triagePrevidenciario('Meu benefício foi negado.');
+    expect(turn1.facts.benefit_denied).toBe(true);
+    expect(turn1.reply).toMatch(/qual benef[ií]cio.*negado.*quando/i);
+
+    const turn2 = triagePrevidenciario('Quero me aposentar.', turn1.facts);
+    expect(turn2.facts.benefit_denied).toBe(false);
+    expect(turn2.reply).not.toMatch(/qual benef[ií]cio.*negado/i);
+    expect(turn2.reply).toMatch(/h[aá] quanto tempo/i);
+  });
+
+  test('estado contaminado com prazo não afeta novo negado', () => {
+    const turn1 = triagePrevidenciario('Tenho prazo para recorrer até sexta.');
+    expect(turn1.handoff).toBe(true);
+
+    const turn2 = triagePrevidenciario('Meu benefício foi negado.', turn1.facts);
+    expect(turn2.handoff).toBe(false);
+    expect(turn2.facts.has_deadline).toBe(false);
+    expect(turn2.facts.urgent).toBe(false);
+    expect(turn2.reply).toMatch(/qual benef[ií]cio.*negado.*quando/i);
+  });
+
+  test('resposta repetida é bloqueada para reformulação', () => {
+    const turn1 = triagePrevidenciario('Meu benefício foi negado.');
+    const sameMessage = triagePrevidenciario('Meu benefício foi negado.', turn1.facts, () => {}, turn1.reply);
+    expect(sameMessage.reply).not.toBe(turn1.reply);
+    expect(sameMessage.reply).toMatch(/qual benef[ií]cio|consegue informar/i);
+  });
+
   test('Respostas têm no máximo 3 frases', () => {
     const samples = [
       'Quero me aposentar.',

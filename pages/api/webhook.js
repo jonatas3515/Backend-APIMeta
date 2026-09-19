@@ -517,8 +517,10 @@ export default async function handler(req, res) {
 
       // ================= COLETA GUIADA DE INFORMAÇÕES =================
       if (conversation && messageType === 'text') {
-        log('intake_handler_invoked', { currentArea: conversation.legal_area || 'none' });
-        const intakeResult = await handleIntake(conversation, textBody, log);
+        const lastBotMessage = activeMessages.slice().reverse().find(m => m.sender_type === 'ai');
+        const lastReply = lastBotMessage ? lastBotMessage.text : '';
+        log('intake_handler_invoked', { currentArea: conversation.legal_area || 'none', hasLastReply: !!lastReply });
+        const intakeResult = await handleIntake(conversation, textBody, log, lastReply);
         if (intakeResult && intakeResult.reply) {
           // Enviar próxima pergunta do intake
           const savedMsg = await saveMessage(conversation.id, intakeResult.reply, 'ai');
@@ -613,7 +615,7 @@ export default async function handler(req, res) {
 }
 
 // Função para gerenciar coleta guiada de informações (intake) com triagem estruturada
-async function handleIntake(conversation, clientMessage, log = () => {}) {
+async function handleIntake(conversation, clientMessage, log = () => {}, lastReply = '') {
   const msg = clientMessage.toLowerCase().trim();
   let intakeData = conversation.intake_data || {};
   let currentArea = conversation.legal_area;
@@ -669,19 +671,8 @@ async function handleIntake(conversation, clientMessage, log = () => {}) {
   // Não usa o formulário rígido de 10 perguntas; interpreta o que falta.
   if (currentArea === 'previdenciario' || (detectedArea === 'previdenciario' && !currentArea)) {
     const previousFacts = (intakeData.answers && intakeData.answers.previdenciario_facts) || {};
-    const { reply, facts, handoff } = triagePrevidenciario(clientMessage, previousFacts);
-
-    log('previdenciario_triage_result', {
-      handoff: !!handoff,
-      theme: facts.theme || 'unknown',
-      benefitDenied: !!facts.benefit_denied,
-      hasDeadline: !!facts.has_deadline,
-      urgency: !!facts.urgent
-    });
-
-    if (handoff) {
-      log('handoff_reason', { source: 'previdenciario', theme: facts.theme || 'unknown', hasDeadline: !!facts.has_deadline, urgency: !!facts.urgent });
-    }
+    log('previdenciario_triage_input', { previousFactKeys: Object.keys(previousFacts).sort(), hasLastReply: !!lastReply });
+    const { reply, facts, handoff } = triagePrevidenciario(clientMessage, previousFacts, log, lastReply);
 
     const nextIntakeData = {
       ...intakeData,
