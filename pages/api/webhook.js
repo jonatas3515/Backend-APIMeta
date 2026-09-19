@@ -467,10 +467,16 @@ export default async function handler(req, res) {
       // ================= BOLETO / CONFUSÃO NEVES COSTA =================
       // Prioridade sobre intake: se a mensagem é sobre boleto/cobrança/CNPJ/Neves Costa,
       // invalida contexto previdenciário ativo e responde diretamente.
-      const boletoReply = getSpecialReply(textBody, clientName, conversationHistory, log);
+      // Restrito a conversas sem fluxo rígido ativo de outra área: palavras como "cnpj" e
+      // "boleto" podem aparecer legitimamente no meio de um caso cível/consumidor/família
+      // (ex: informando o CNPJ da empresa ré). Nesses casos, não interromper o fluxo.
+      const previousAreaBeforeBoleto = conversation.legal_area || null;
+      const currentStepBeforeBoleto = parseInt(conversation.intake_data?.current_step ?? -1, 10);
+      const hasActiveOtherAreaFlow = !!previousAreaBeforeBoleto && previousAreaBeforeBoleto !== 'previdenciario' && currentStepBeforeBoleto >= 0;
+      const boletoReply = hasActiveOtherAreaFlow ? null : getSpecialReply(textBody, clientName, conversationHistory, log);
       const isBoleto = boletoReply && boletoReply !== 'NO_REPLY';
-      const isNevesCosta = messageType === 'text' && isNevesCostaConfusion(textBody);
-      log('boleto_identity_state', { isBoleto: !!isBoleto, isNevesCosta: !!isNevesCosta, currentArea: conversation.legal_area || 'none' });
+      const isNevesCosta = !hasActiveOtherAreaFlow && messageType === 'text' && isNevesCostaConfusion(textBody);
+      log('boleto_identity_state', { isBoleto: !!isBoleto, isNevesCosta: !!isNevesCosta, currentArea: conversation.legal_area || 'none', skippedForActiveFlow: hasActiveOtherAreaFlow });
       if (isBoleto || isNevesCosta) {
         log('boleto_handler_selected', { isIdentity: !!isBoleto, isNevesCosta: !!isNevesCosta });
         // Invalida pergunta pendente do domínio anterior, mas mantém fatos históricos
@@ -639,7 +645,11 @@ async function handleIntake(conversation, clientMessage, log = () => {}, lastRep
 
   // Se a mensagem atual indica mudança de domínio, invalida a pergunta pendente,
   // mantendo fatos históricos. Não faz isso se o cliente está respondendo a uma pergunta pendente.
-  if (currentArea && detectedArea && detectedArea !== currentArea && !looksLikeAnswer(clientMessage)) {
+  // Restrito à triagem contextual previdenciária (não rígida): nos fluxos rígidos de
+  // outras áreas (cível, família, administrativo, consumidor), palavras-chave de outra
+  // área podem aparecer legitimamente dentro de uma resposta detalhada e não devem
+  // reiniciar o fluxo em andamento.
+  if (currentArea === 'previdenciario' && detectedArea && detectedArea !== currentArea && !looksLikeAnswer(clientMessage)) {
     log('domain_switch_detected', { previousArea: currentArea, newArea: detectedArea });
     const resetIntake = {
       ...intakeData,
