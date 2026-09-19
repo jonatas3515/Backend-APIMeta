@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { createLogger, hashPhone, sanitizeError } from '../../lib/webhookLog';
-import { detectArea, getNextQuestion, isIntakeComplete, getFlow, getTriageQuestion, TRIAGE_FIELDS, extractCivilTheme } from '../../lib/intakeFlows';
-const { triagePrevidenciario } = require('../../lib/previdenciarioTriage');
+import { detectArea, getFlow } from '../../lib/intakeFlows';
 import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
 import { normalizePhoneForMatch } from '../../lib/formatters';
 import { loadClientMemory, formatClientMemory } from '../../lib/clientMemory';
@@ -599,7 +598,7 @@ export default async function handler(req, res) {
 
       // Chamar Gemini com await (timeout de 15s)
       log('gemini_called', { hasHistory: !!conversationHistory, hasMemory: !!clientMemoryText });
-      let aiReply = await askGemini(promptForAI, conversationHistory, conversation, clientMemoryText);
+      let aiReply = await askGemini(promptForAI, conversationHistory, conversation, clientMemoryText, log);
       aiReply = correctCommonMistakes(promptForAI, aiReply);
       log('ai_reply_generated', { length: aiReply?.length || 0 });
       __stageMs.gemini_ms = Date.now() - __tGemini;
@@ -648,352 +647,51 @@ export default async function handler(req, res) {
 }
 
 // Função para gerenciar coleta guiada de informações (intake) com triagem estruturada
+// Mantém apenas a etiqueta legal_area como CONTEXTO para o Gemini.
+// A conversa é conduzida pelo Gemini: esta função NÃO gera perguntas fixas,
+// NÃO grava a mensagem em campos de formulário e NÃO emite resumo automático.
 async function handleIntake(conversation, clientMessage, log = () => {}, lastReply = '') {
-  const msg = clientMessage.toLowerCase().trim();
-  let intakeData = conversation.intake_data || {};
-  let currentArea = conversation.legal_area;
-  const triageStep = typeof intakeData.triage_step === 'number' ? intakeData.triage_step : -1;
-  let triage = intakeData.triage || {};
-  let currentStep = parseInt(intakeData.current_step || -1);
-
-  // Se o intake já foi concluído, não intercepta a mensagem
-  if (intakeData && intakeData.completed === true) {
-    return null;
-  }
-
-  // Ignorar saudações e perguntas trabalhistas genéricas, que seguem para o motor/Gemini.
-  // Perguntas com palavras-chave de outras áreas (ex: divórcio, financiamento) devem iniciar a triagem.
-  const GREETINGS = ['bom dia', 'boa tarde', 'boa noite', 'oi', 'olá', 'ola', 'opa', 'e aí', 'e ai', 'eae', 'tudo bem', 'tudo certo', 'tudo bom', 'tudo joia'];
-  const isGreeting = GREETINGS.some(g => msg.startsWith(g));
-  const isQuestion = msg.includes('?');
+  const currentArea = conversation.legal_area;
   const detectedArea = detectArea(clientMessage);
 
   log('current_message_domain', { detectedArea: detectedArea || 'none', previousArea: currentArea || 'none' });
 
-  // Se a mensagem atual indica mudança de domínio, invalida a pergunta pendente,
-  // mantendo fatos históricos (answers/intake_data preservados). Não faz isso se
-  // o cliente está respondendo a uma pergunta pendente, e exige sinal forte de
-  // novo assunto — uma keyword isolada dentro de uma narrativa não troca de área.
+  // Mudança clara de assunto: atualiza apenas a etiqueta de área.
+  // Histórico, intake_data e answers/fatos já coletados permanecem intactos.
   if (currentArea && detectedArea && detectedArea !== currentArea && !looksLikeAnswer(clientMessage) && hasStrongAreaSignal(detectedArea, clientMessage)) {
     log('domain_switch_detected', { previousArea: currentArea, newArea: detectedArea });
-    const resetIntake = {
-      ...intakeData,
-      current_step: -1,
-      triage_step: -1,
-      triage_completed: false,
-      completed: false
-    };
     if (conversation && supabase) {
       const { error: switchError } = await supabase
         .from('conversations')
-        .update({ intake_data: resetIntake, legal_area: detectedArea })
+        .update({ legal_area: detectedArea })
         .eq('id', conversation.id);
       if (switchError) {
         log('topic_reset_failed', { error: sanitizeError(switchError), reason: 'domain_switch' });
       } else {
-        conversation.intake_data = resetIntake;
         conversation.legal_area = detectedArea;
-        currentArea = detectedArea;
       }
     }
-  }
-
-  if (isGreeting || (isQuestion && detectedArea === 'trabalhista')) {
     return null;
   }
 
-  // ========== TRIAGEM CONTEXTUAL PREVIDENCIÁRIA ==========
-  // Não usa o formulário rígido de 10 perguntas; interpreta o que falta.
-  if (currentArea === 'previdenciario' || (detectedArea === 'previdenciario' && !currentArea)) {
-    const previousFacts = (intakeData.answers && intakeData.answers.previdenciario_facts) || {};
-    log('previdenciario_triage_input', { previousFactKeys: Object.keys(previousFacts).sort(), hasLastReply: !!lastReply });
-    const { reply, facts, handoff } = triagePrevidenciario(clientMessage, previousFacts, log, lastReply);
-
-    const nextIntakeData = {
-      ...intakeData,
-      triage_step: TRIAGE_FIELDS.length,
-      triage: { case_type: clientMessage },
-      triage_completed: true,
-      current_step: 0,
-      answers: { ...(intakeData.answers || {}), previdenciario_facts: facts },
-      started_at: intakeData.started_at || new Date().toISOString()
-    };
-
-    const updatePayload = {
-      intake_data: nextIntakeData,
-      funnel_stage: 'intake'
-    };
-
-    if (detectedArea === 'previdenciario' && !currentArea) {
-      updatePayload.legal_area = 'previdenciario';
-      updatePayload.case_type = clientMessage;
-    }
-
-    const { error } = await supabase
-      .from('conversations')
-      .update(updatePayload)
-      .eq('id', conversation.id);
-
-    if (error) {
-      console.error('[INTAKE] Erro ao salvar triagem previdenciária:', sanitizeError(error));
-      return null;
-    }
-
-    return { reply, handler: 'previdenciario', handoff: !!handoff };
-  }
-
-  // ========== INTAKE DETALHADO ==========
-  // Sempre prioriza o fluxo de intake se ele já começou (currentStep >= 0).
-  // Isso evita que a triagem seja reexecutada acidentalmente.
-  if (currentArea && currentStep >= 0) {
-    const flow = getFlow(currentArea);
-    if (!flow) return null;
-
-    // Narrativa rica: não grava a mensagem inteira como resposta simples da
-    // pergunta pendente nem dispara a próxima pergunta enlatada. Retorna null
-    // para o Gemini responder com o contexto já coletado (histórico + respostas).
-    if (isRichNarrative(clientMessage)) {
-      log('rich_narrative_to_gemini', { currentArea, currentStep });
-      return null;
-    }
-
-    const previousQuestion = flow.questions[currentStep];
-    if (previousQuestion) {
-      intakeData[previousQuestion.field] = clientMessage;
-      intakeData.answers = intakeData.answers || {};
-      intakeData.answers[previousQuestion.field] = clientMessage;
-    }
-
-    const nextStep = currentStep + 1;
-
-    if (isIntakeComplete(currentArea, nextStep, intakeData.answers)) {
-      const summary = generateIntakeSummary(currentArea, intakeData.answers || {});
-      
-      const { error: finalError } = await supabase
-        .from('conversations')
-        .update({
-          intake_data: { ...intakeData, completed: true, completed_at: new Date().toISOString() },
-          case_summary: summary,
-          funnel_stage: 'qualificacao',
-          legal_area: currentArea
-        })
-        .eq('id', conversation.id);
-
-      if (finalError) {
-        console.error('[INTAKE] Erro ao finalizar intake:', sanitizeError(finalError));
-        return null;
-      }
-
-      return { reply: `Obrigado pelas informações! 📝\n\nResumo do seu caso:\n${summary}\n\nNossa equipe irá analisar e retornar em breve.`, completed: true };
-    } else {
-      const nextQuestion = getNextQuestion(currentArea, nextStep, intakeData.answers, clientMessage);
-      if (!nextQuestion) {
-        console.error('[INTAKE] Pergunta não encontrada para step:', nextStep);
-        return null;
-      }
-      intakeData.current_step = nextQuestion.step;
-      
-      const { error: stepError } = await supabase
-        .from('conversations')
-        .update({
-          intake_data: intakeData,
-          legal_area: currentArea,
-          funnel_stage: 'intake'
-        })
-        .eq('id', conversation.id);
-
-      if (stepError) {
-        console.error('[INTAKE] Erro ao avançar intake:', sanitizeError(stepError));
-        return null;
-      }
-
-      return { reply: nextQuestion.question };
-    }
-  }
-
-  // ========== TRIAGEM ESTRUTURADA ==========
-  // Salva a resposta da pergunta de triagem atual e, se terminou, inicia o intake detalhado
-  if (currentArea && triageStep >= 0 && triageStep < TRIAGE_FIELDS.length) {
-    const currentField = TRIAGE_FIELDS[triageStep].field;
-    triage[currentField] = clientMessage;
-    intakeData.triage = triage;
-
-    const nextIndex = triageStep + 1;
-    intakeData.triage_step = nextIndex;
-
-    const { error: triageError } = await supabase
-      .from('conversations')
-      .update({
-        intake_data: intakeData,
-        municipality: triage.municipality || null,
-        agency: triage.agency || null,
-        client_role: triage.client_role || null,
-        case_type: triage.case_type || null
-      })
-      .eq('id', conversation.id);
-
-    if (triageError) {
-      console.error('[INTAKE] Erro ao atualizar triagem:', sanitizeError(triageError));
-      return null;
-    }
-
-    // Se terminou a triagem, inicia o intake detalhado
-    if (nextIndex >= TRIAGE_FIELDS.length) {
-      const prefillAnswers = {};
-      const civilTheme = currentArea === 'civel' ? extractCivilTheme(clientMessage) : null;
-      if (civilTheme) prefillAnswers.area_especifica = civilTheme;
-
-      const firstQuestion = getNextQuestion(currentArea, 0, prefillAnswers, clientMessage);
-      if (!firstQuestion) return null;
-
-      const nextIntakeData = {
-        ...intakeData,
-        triage,
-        triage_completed: true,
-        current_step: firstQuestion.step,
-        answers: prefillAnswers,
-        started_at: new Date().toISOString()
-      };
-
-      const { error: finishTriageError } = await supabase
-        .from('conversations')
-        .update({
-          intake_data: nextIntakeData,
-          municipality: triage.municipality || null,
-          agency: triage.agency || null,
-          client_role: triage.client_role || null,
-          case_type: triage.case_type || null,
-          funnel_stage: 'intake'
-        })
-        .eq('id', conversation.id);
-
-      if (finishTriageError) {
-        console.error('[INTAKE] Erro ao finalizar triagem e iniciar intake:', sanitizeError(finishTriageError));
-        return null;
-      }
-
-      return { reply: `Entendi. Vamos agora aos detalhes: ${firstQuestion.question}` };
-    }
-
-    // Ainda há perguntas de triagem
-    const nextField = TRIAGE_FIELDS[nextIndex].field;
-    const question = getTriageQuestion(currentArea, nextField);
-    return { reply: question };
-  }
-
-  // Triagem completa: salva a última resposta (case_type) e inicia o intake detalhado
-  if (currentArea && triageStep >= TRIAGE_FIELDS.length && !intakeData.triage_completed) {
-    const lastField = TRIAGE_FIELDS[TRIAGE_FIELDS.length - 1].field;
-    triage[lastField] = clientMessage;
-
-    const prefillAnswers = {};
-    const civilTheme = currentArea === 'civel' ? extractCivilTheme(clientMessage) : null;
-    if (civilTheme) prefillAnswers.area_especifica = civilTheme;
-
-    const firstQuestion = getNextQuestion(currentArea, 0, prefillAnswers, clientMessage);
-    if (!firstQuestion) return null;
-
-    const nextIntakeData = {
-      ...intakeData,
-      triage,
-      triage_completed: true,
-      current_step: firstQuestion.step,
-      answers: prefillAnswers,
-      started_at: new Date().toISOString()
-    };
-
-    const { error: finishTriageError } = await supabase
-      .from('conversations')
-      .update({
-        intake_data: nextIntakeData,
-        municipality: triage.municipality || null,
-        agency: triage.agency || null,
-        client_role: triage.client_role || null,
-        case_type: triage.case_type || null,
-        funnel_stage: 'intake'
-      })
-      .eq('id', conversation.id);
-
-    if (finishTriageError) {
-      console.error('[INTAKE] Erro ao finalizar triagem e iniciar intake:', sanitizeError(finishTriageError));
-      return null;
-    }
-
-    return { reply: `Obrigado! Agora mais alguns detalhes: ${firstQuestion.question}` };
-  }
-
-  // ========== DETECÇÃO INICIAL DE ÁREA ==========
-  // Só detecta a área na primeira mensagem do fluxo (quando ainda não há área definida)
-  // detectedArea já foi calculada no início da função.
-  
+  // Primeira detecção de área: grava apenas a etiqueta (usada pelo Gemini como
+  // contexto, não como ordem) e segue sem gerar perguntas de formulário.
   if (!currentArea && detectedArea) {
-    const flow = getFlow(detectedArea);
-
-    const prefillAnswers = {};
-    const civilTheme = detectedArea === 'civel' ? extractCivilTheme(clientMessage) : null;
-    if (civilTheme) prefillAnswers.area_especifica = civilTheme;
-
-    const firstQuestion = getNextQuestion(detectedArea, 0, prefillAnswers, clientMessage);
-    if (!firstQuestion) return null;
-
-    const nextIntakeData = {
-      triage_step: TRIAGE_FIELDS.length,
-      triage: { case_type: clientMessage },
-      triage_completed: true,
-      current_step: firstQuestion.step,
-      answers: prefillAnswers,
-      started_at: new Date().toISOString()
-    };
-
-    const { error: startError } = await supabase
-      .from('conversations')
-      .update({
-        legal_area: detectedArea,
-        case_type: prefillAnswers.area_especifica || clientMessage,
-        intake_data: nextIntakeData,
-        funnel_stage: 'intake'
-      })
-      .eq('id', conversation.id);
-
-    if (startError) {
-      console.error('[INTAKE] Erro ao iniciar triagem:', sanitizeError(startError));
-      return null;
+    if (conversation && supabase) {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ legal_area: detectedArea, funnel_stage: 'intake', case_type: clientMessage })
+        .eq('id', conversation.id);
+      if (!error) {
+        conversation.legal_area = detectedArea;
+      } else {
+        log('area_label_persist_failed', { error: sanitizeError(error) });
+      }
     }
-
-    if (detectedArea === 'civel' && civilTheme === 'Contratos') {
-      return { reply: `Entendi. Podemos avaliar essa situação. ${firstQuestion.question}` };
-    }
-
-    if (detectedArea === 'familia') {
-      return { reply: `Sim, podemos avaliar questões de família. ${firstQuestion.question}` };
-    }
-
-    return { reply: `Entendi que pode ser um caso de ${flow.displayName}. Vamos aos detalhes: ${firstQuestion.question}` };
+    return null;
   }
 
   return null;
-}
-
-// Função para gerar resumo de intake
-function generateIntakeSummary(area, answers) {
-  const flow = getFlow(area);
-  if (!flow) return 'Resumo não disponível.';
-
-  let summary = `*Área:* ${flow.displayName}\n`;
-  summary += `*Data:* ${new Date().toLocaleDateString('pt-BR')}\n\n`;
-
-  const questionLabels = {};
-  flow.questions.forEach(q => {
-    questionLabels[q.field] = q.question.replace('?', '').replace('(ex:', '(');
-  });
-
-  for (const [field, value] of Object.entries(answers)) {
-    if (value && value.trim() && questionLabels[field]) {
-      summary += `• ${questionLabels[field]}: ${value}\n`;
-    }
-  }
-
-  return summary;
 }
 
 // Função para buscar ou criar conversa
@@ -1223,17 +921,6 @@ function hasStrongAreaSignal(area, message) {
   // uma menção incidental ("a empresa é ligada ao INSS").
   if (hits >= 1 && /\b(quero|queria|preciso|gostaria|tenho|estou|vim|sofri|recebi|vou|posso)\b/.test(n)) return true;
   return false;
-}
-
-// Narrativa rica: mensagem longa/composta que não parece resposta direta à
-// pergunta pendente. Não deve ser gravada como resposta de um único campo do
-// questionário — segue para o Gemini com o contexto já coletado.
-function isRichNarrative(text) {
-  if (!text || typeof text !== 'string') return false;
-  const t = text.trim();
-  if (!t || looksLikeAnswer(t)) return false;
-  const sentences = t.split(/[.!?\n]+/).filter(s => s.trim().length > 0).length;
-  return t.length >= 50 || sentences >= 3;
 }
 
 const POSITIVE_EMOJIS = [
@@ -1538,7 +1225,18 @@ async function getKnowledgeContext(prompt) {
   }
 }
 
-async function askGemini(prompt, conversationHistory = '', conversation = null, clientMemoryText = '') {
+// RAG só roda quando a mensagem sinaliza necessidade de base normativa,
+// documento, prazo, procedimento ou informação específica — não em toda narrativa.
+const KNOWLEDGE_TRIGGER_RE = /\b(como|qual|quais|quando|onde|porque|por que|posso|devo|duvida|duvidas|documento|documentos|prazo|prazos|lei|artigo|jurisprudencia|recurso|recorrer|modelo|requerimento|peticao|procedimento|honorarios?|quanto custa|tabela|oab)\b/;
+
+function shouldUseKnowledge(text) {
+  if (!text || text.length < 15) return false;
+  const n = normalizeForCheck(text);
+  if (n.includes('?')) return true;
+  return KNOWLEDGE_TRIGGER_RE.test(n);
+}
+
+async function askGemini(prompt, conversationHistory = '', conversation = null, clientMemoryText = '', log = () => {}) {
   try {
     console.log('[GEMINI] Tentando Gemini 2.5 Flash-Lite...');
     console.log('[GEMINI] API Key presente?', GEMINI_API_KEY ? 'Sim' : 'NÃO');
@@ -1592,7 +1290,11 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
       conversation?.intake_data?.laborContextActive !== false;
     const isLaborContext = hasActiveLaborContext ||
       classifyLaborIntent(prompt).intent !== 'other';
-    const knowledgeBlock = isLaborContext ? '' : await getKnowledgeContext(prompt);
+    const useKnowledge = !isLaborContext && shouldUseKnowledge(prompt);
+    const knowledgeBlock = useKnowledge ? await getKnowledgeContext(prompt) : '';
+    log(useKnowledge ? 'rag_called' : 'rag_skipped', {
+      reason: isLaborContext ? 'labor_context' : (useKnowledge ? 'knowledge_signal' : 'no_knowledge_signal')
+    });
 
     const clientFullName = conversation?.client_name || '';
     const clientTitle = clientFullName ? getClientTitle(clientFullName) : null;

@@ -704,12 +704,13 @@ describe('Webhook labor real path', () => {
     });
   }
 
-  test('"Financiamento atrasado" aciona triagem cível e não é recusado', async () => {
+  test('"Financiamento atrasado" rotula cível e responde via Gemini sem recusa', async () => {
     global.__testConversation = {
       client_name: 'Jonatas Silva',
       intake_data: {}
     };
     global.__testMessages = [];
+    mockFetchWithText('Podemos avaliar essa situação. Que tipo de contrato é — financiamento ou prestação de serviços?');
 
     const { req, res } = createMocks({
       method: 'POST',
@@ -720,7 +721,14 @@ describe('Webhook labor real path', () => {
 
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
     expect(res._getStatusCode()).toBe(200);
-    expect(data).toMatchObject({ success: true, intake: true });
+    expect(data.success).toBe(true);
+    expect(data.intake).not.toBe(true);
+
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
+    expect(geminiCalls.length).toBeGreaterThan(0);
+
+    const labelUpdate = (global.__testUpdates || []).find(u => u && u.legal_area === 'civel');
+    expect(labelUpdate).toBeDefined();
 
     const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
     const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
@@ -731,9 +739,10 @@ describe('Webhook labor real path', () => {
     expect(body.text.body).not.toMatch(/^Olá,\s*Jonatas/i);
   });
 
-  test('"Financiamento de veículo" gera triagem', async () => {
+  test('"Financiamento de veículo" vai ao Gemini com etiqueta cível', async () => {
     global.__testConversation = { intake_data: {} };
     global.__testMessages = [];
+    mockFetchWithText('Vamos analisar o contrato de financiamento do veículo. Quantas parcelas estão em atraso?');
 
     const { req, res } = createMocks({
       method: 'POST',
@@ -744,7 +753,8 @@ describe('Webhook labor real path', () => {
 
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
     expect(res._getStatusCode()).toBe(200);
-    expect(data).toMatchObject({ success: true, intake: true });
+    expect(data.success).toBe(true);
+    expect(data.intake).not.toBe(true);
 
     const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
     const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
@@ -752,9 +762,10 @@ describe('Webhook labor real path', () => {
     expect(body.text.body).toMatch(/contrato|financiamento/i);
   });
 
-  test('"Cobrança indevida" gera triagem', async () => {
+  test('"Cobrança indevida" vai ao Gemini sem recusa', async () => {
     global.__testConversation = { intake_data: {} };
     global.__testMessages = [];
+    mockFetchWithText('Entendi, cobrança indevida. De qual empresa é essa cobrança?');
 
     const { req, res } = createMocks({
       method: 'POST',
@@ -765,7 +776,8 @@ describe('Webhook labor real path', () => {
 
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
     expect(res._getStatusCode()).toBe(200);
-    expect(data).toMatchObject({ success: true, intake: true });
+    expect(data.success).toBe(true);
+    expect(data.intake).not.toBe(true);
 
     const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
     const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
@@ -853,6 +865,7 @@ describe('Webhook labor real path', () => {
       }
     ];
     fetchSpy.mockClear();
+    mockFetchWithText('Claro, vamos falar do financiamento do veículo. O que aconteceu?');
 
     const turn2 = createMocks({
       method: 'POST',
@@ -862,7 +875,8 @@ describe('Webhook labor real path', () => {
 
     const data2 = typeof turn2.res._getData() === 'string' ? JSON.parse(turn2.res._getData()) : turn2.res._getData();
     expect(turn2.res._getStatusCode()).toBe(200);
-    expect(data2).toMatchObject({ success: true, intake: true });
+    expect(data2.success).toBe(true);
+    expect(data2.intake).not.toBe(true);
 
     const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
     const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);

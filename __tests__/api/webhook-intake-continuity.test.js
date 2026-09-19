@@ -99,6 +99,11 @@ jest.mock('@supabase/supabase-js', () => ({
   })
 }));
 
+jest.mock('../../lib/knowledge-embeddings', () => ({
+  semanticSearch: jest.fn(async () => ({ chunks: [] }))
+}));
+
+const { semanticSearch } = require('../../lib/knowledge-embeddings');
 const { createMocks } = require('node-mocks-http');
 const webhookHandler = require('../../pages/api/webhook').default;
 
@@ -166,7 +171,11 @@ describe('Continuidade de fluxos rígidos diante de palavras de boleto/CNPJ', ()
     await webhookHandler(req, res);
 
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true, intake: true });
+    expect(data.success).toBe(true);
+    expect(data.intake).not.toBe(true);
+
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage'));
+    expect(geminiCalls.length).toBeGreaterThan(0);
 
     const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
     const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
@@ -253,6 +262,7 @@ describe('Estágio A: gatilhos de identidade, sinal forte de troca de área e na
     global.__testConversation = null;
     global.__testUpdates = [];
     global.__testUpdateShouldFail = false;
+    semanticSearch.mockClear();
     fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
       json: async () => ({ messages: [{ id: 'wa-intake-001' }] }),
@@ -268,6 +278,15 @@ describe('Estágio A: gatilhos de identidade, sinal forte de troca de área e na
     return JSON.parse(calls[calls.length - 1][1].body);
   };
   const geminiCalls = () => fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage'));
+  const mockFetchWithText = (text) => {
+    fetchSpy.mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('generativelanguage.googleapis.com')) {
+        return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }) };
+      }
+      return { ok: true, json: async () => ({ messages: [{ id: 'wa-intake-001' }] }) };
+    });
+  };
 
   test('"CNPJ informado no contrato" (1ª mensagem) não gera resposta institucional', async () => {
     global.__testConversation = { client_name: 'Cliente', intake_data: {} };
@@ -358,12 +377,16 @@ describe('Estágio A: gatilhos de identidade, sinal forte de troca de área e na
     await webhookHandler(req, res);
 
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true, intake: true });
+    expect(data.success).toBe(true);
+    expect(data.intake).not.toBe(true);
 
-    // Troca para familia preservando respostas já coletadas
+    // Troca para familia: apenas a etiqueta muda — intake_data/answers não são
+    // tocados, então as respostas já coletadas permanecem preservadas no banco.
     const switchUpdate = (global.__testUpdates || []).find(u => u && u.legal_area === 'familia');
     expect(switchUpdate).toBeDefined();
-    expect(switchUpdate.intake_data.answers).toMatchObject({ area_especifica: 'Contratos' });
+    expect(switchUpdate.intake_data).toBeUndefined();
+    const answersWrite = (global.__testUpdates || []).find(u => u && u.intake_data && u.intake_data.answers);
+    expect(answersWrite).toBeUndefined();
   });
 
   test('menção isolada a outra área dentro de resposta não troca de domínio', async () => {
@@ -439,5 +462,268 @@ describe('Estágio A: gatilhos de identidade, sinal forte de troca de área e na
     } finally {
       logSpy.mockRestore();
     }
+  });
+});
+
+describe('Conversa livre conduzida pelo Gemini (sem formulário rígido)', () => {
+  let fetchSpy;
+
+  beforeEach(() => {
+    global.__testMessages = [];
+    global.__testConversation = null;
+    global.__testUpdates = [];
+    global.__testUpdateShouldFail = false;
+    semanticSearch.mockClear();
+    fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ messages: [{ id: 'wa-intake-001' }] }),
+    });
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+  });
+
+  const lastWhatsappBody = () => {
+    const calls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    return JSON.parse(calls[calls.length - 1][1].body);
+  };
+  const geminiCalls = () => fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage'));
+  const pipelineTiming = (logSpy) => logSpy.mock.calls
+    .map(([arg]) => { try { return JSON.parse(arg); } catch { return null; } })
+    .filter(e => e && e.event === 'pipeline_timing');
+  const mockFetchWithText = (text) => {
+    fetchSpy.mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('generativelanguage.googleapis.com')) {
+        return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }) };
+      }
+      return { ok: true, json: async () => ({ messages: [{ id: 'wa-intake-001' }] }) };
+    });
+  };
+
+  test('"CNPJ informado no contrato" → Gemini, sem institucional e sem pergunta fixa de documentos', async () => {
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+      mockFetchWithText('Entendi. Me conta o que aconteceu com esse contrato?');
+
+      const { req, res } = createMocks({
+        method: 'POST',
+        body: buildPayload('Quero processar a empresa pelo CNPJ informado no contrato'),
+      });
+      await webhookHandler(req, res);
+
+      expect(geminiCalls().length).toBeGreaterThan(0);
+      const body = lastWhatsappBody();
+      expect(body.text.body).not.toMatch(/não emitimos boletos|não possu[ií]mos cnpj|neves & costa/i);
+      expect(body.text.body).not.toMatch(/Quais documentos|documentos\/comprovantes|parte contr[aá]ria|valor estimado|Resuma os fatos|melhor e-mail/i);
+      expect(pipelineTiming(logSpy).some(e => e.handler === 'gemini')).toBe(true);
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  test('"boleto da compra" → Gemini, sem institucional e sem pergunta automática de prazo', async () => {
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+      mockFetchWithText('Entendi, cobrança indevida no boleto. A compra foi feita onde?');
+
+      const { req, res } = createMocks({
+        method: 'POST',
+        body: buildPayload('O boleto da compra veio com cobrança indevida'),
+      });
+      await webhookHandler(req, res);
+
+      expect(geminiCalls().length).toBeGreaterThan(0);
+      const body = lastWhatsappBody();
+      expect(body.text.body).not.toMatch(/não emitimos boletos|não possu[ií]mos cnpj/i);
+      expect(body.text.body).not.toMatch(/prazo importante|prescri[cç][aã]o|decad[eê]ncia|Existe algum prazo/i);
+      expect(pipelineTiming(logSpy).some(e => e.handler === 'gemini')).toBe(true);
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+
+  test('"Quero me divorciar" → resposta contextual do Gemini, sem pergunta fixa de e-mail', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+    mockFetchWithText('Posso te ajudar com o divórcio. É consensual ou litigioso?');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero me divorciar'),
+    });
+    await webhookHandler(req, res);
+
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    const body = lastWhatsappBody();
+    expect(body.text.body).toMatch(/div[oó]rcio/i);
+    expect(body.text.body).not.toMatch(/melhor e-mail|e-mail para envio/i);
+
+    const labelUpdate = (global.__testUpdates || []).find(u => u && u.legal_area === 'familia');
+    expect(labelUpdate).toBeDefined();
+  });
+
+  test('narrativa trabalhista rica → Gemini, sem perguntas fixas de parte contrária/valor/resumo/documentos', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+    mockFetchWithText('Entendi, você foi demitido e trabalhava de segunda a sábado. Sabe me dizer se tinha carteira assinada?');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Fui demitido, recebia 1621 e trabalhava de segunda a sábado há mais de um ano'),
+    });
+    await webhookHandler(req, res);
+
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    const body = lastWhatsappBody();
+    expect(body.text.body).not.toMatch(/parte contr[aá]ria|valor estimado|Resuma os fatos|Quais documentos\/comprovantes|cronologicamente/i);
+  });
+
+  test('mudança de assunto na sequência: divórcio → rescisão → boleto sem misturar contextos', async () => {
+    // Turno 1: divórcio — etiqueta familia + Gemini
+    global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+    mockFetchWithText('Posso te ajudar com o divórcio. Me conta a situação?');
+    let mocks = createMocks({ method: 'POST', body: buildPayload('Quero me divorciar') });
+    await webhookHandler(mocks.req, mocks.res);
+    expect((global.__testUpdates || []).some(u => u && u.legal_area === 'familia')).toBe(true);
+    expect(lastWhatsappBody().text.body).toMatch(/div[oó]rcio/i);
+
+    // Turno 2: cliente muda para trabalhista — troca a etiqueta, responde o novo assunto
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'familia',
+      updated_at: new Date().toISOString(),
+      intake_data: {}
+    };
+    global.__testUpdates = [];
+    fetchSpy.mockClear();
+    mockFetchWithText('Claro, vamos falar da sua rescisão. Quando você foi desligado?');
+    mocks = createMocks({ method: 'POST', body: buildPayload('Agora quero falar da minha rescisão trabalhista') });
+    await webhookHandler(mocks.req, mocks.res);
+    expect((global.__testUpdates || []).some(u => u && u.legal_area === 'trabalhista')).toBe(true);
+    expect(lastWhatsappBody().text.body).toMatch(/rescis[aã]o/i);
+    expect(lastWhatsappBody().text.body).not.toMatch(/div[oó]rcio|guarda|pens[aã]o/i);
+
+    // Turno 3: atribuição de boleto ao escritório — resposta institucional
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'trabalhista',
+      updated_at: new Date().toISOString(),
+      intake_data: {}
+    };
+    fetchSpy.mockClear();
+    mocks = createMocks({ method: 'POST', body: buildPayload('Mas tem um boleto em nome de vocês') });
+    await webhookHandler(mocks.req, mocks.res);
+    expect(lastWhatsappBody().text.body).toMatch(/não emitimos boletos|não possu[ií]mos cnpj|grafia/i);
+  });
+
+  test('campo de formulário não é preenchido só porque existe pergunta pendente', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'civel',
+      updated_at: new Date().toISOString(),
+      intake_data: {
+        triage_completed: true,
+        current_step: 2, // pergunta pendente: parte_contraria
+        answers: { area_especifica: 'Contratos' }
+      }
+    };
+    mockFetchWithText('Anotado. O que mais aconteceu nesse contrato?');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('A empresa é a Fulano LTDA e ainda devo três parcelas do contrato'),
+    });
+    await webhookHandler(req, res);
+
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    // Nenhum update grava a mensagem em campo de formulário (parte_contraria etc.)
+    const fieldWrite = (global.__testUpdates || []).find(u =>
+      u && u.intake_data && u.intake_data.answers &&
+      Object.values(u.intake_data.answers).some(v => typeof v === 'string' && v.includes('Fulano')));
+    expect(fieldWrite).toBeUndefined();
+  });
+
+  test('última resposta do fluxo não gera resumo automático nem case_summary', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'civel',
+      updated_at: new Date().toISOString(),
+      intake_data: {
+        triage_completed: true,
+        current_step: 8, // última pergunta do fluxo cível
+        answers: { area_especifica: 'Contratos', parte_contraria: 'Empresa X' }
+      }
+    };
+    mockFetchWithText('Obrigado pelas informações. Vou analisar seu caso.');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('meuemail@exemplo.com'),
+    });
+    await webhookHandler(req, res);
+
+    const body = lastWhatsappBody();
+    expect(body.text.body).not.toMatch(/Resumo do seu caso/i);
+    const summaryUpdate = (global.__testUpdates || []).find(u => u && u.case_summary);
+    expect(summaryUpdate).toBeUndefined();
+    const completedUpdate = (global.__testUpdates || []).find(u => u && u.intake_data && u.intake_data.completed === true);
+    expect(completedUpdate).toBeUndefined();
+  });
+
+  test('RAG não é chamado para narrativa livre e é chamado para pergunta normativa', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+    mockFetchWithText('Entendi. Me conta mais sobre a cobrança.');
+
+    let mocks = createMocks({
+      method: 'POST',
+      body: buildPayload('O boleto da compra veio com cobrança indevida e quero resolver isso com a loja'),
+    });
+    await webhookHandler(mocks.req, mocks.res);
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    expect(semanticSearch).not.toHaveBeenCalled();
+
+    mocks = createMocks({
+      method: 'POST',
+      body: buildPayload('Qual o prazo para recorrer de uma decisão judicial?'),
+    });
+    await webhookHandler(mocks.req, mocks.res);
+    expect(semanticSearch).toHaveBeenCalled();
+  });
+
+  test('cancelamento explícito continua funcionando durante fluxo pendente', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'civel',
+      updated_at: new Date().toISOString(),
+      intake_data: { triage_completed: true, current_step: 2, answers: {} }
+    };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('cancelar'),
+    });
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true, cancel: true });
+    expect(lastWhatsappBody().text.body).toMatch(/cancelei/i);
+    expect(geminiCalls().length).toBe(0);
+  });
+
+  test('pedido explícito de atendimento humano continua gerando handoff', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('quero falar com um atendente humano'),
+    });
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true, handoff: true });
+    expect(lastWhatsappBody().text.body).toMatch(/encaminhar para nossa equipe/i);
+    expect(geminiCalls().length).toBe(0);
   });
 });

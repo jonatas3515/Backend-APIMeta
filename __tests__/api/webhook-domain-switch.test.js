@@ -180,7 +180,7 @@ describe('Troca de domínio após estimativa trabalhista', () => {
     inputSummary: { hasCtps: 'no' }
   };
 
-  test('estimativa -> "Entendi, e causas de divorcio, é com quem?" inicia triagem familiar', async () => {
+  test('estimativa -> "Entendi, e causas de divorcio, é com quem?" rotula família e responde via Gemini', async () => {
     global.__testConversation = {
       client_name: null,
       intake_data: {
@@ -188,6 +188,7 @@ describe('Troca de domínio após estimativa trabalhista', () => {
         laborCalculation: activeLaborCalculation
       }
     };
+    mockFetchWithText('Podemos avaliar questões de família. Me conta a situação do divórcio?');
 
     const { req, res } = createMocks({
       method: 'POST',
@@ -197,21 +198,25 @@ describe('Troca de domínio após estimativa trabalhista', () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true, intake: true });
+    expect(data.success).toBe(true);
+    expect(data.intake).not.toBe(true);
 
     const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
     const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
-    expect(body.text.body).toMatch(/podemos avaliar questões de família/i);
+    expect(body.text.body).toMatch(/família|divórcio/i);
     expect(body.text.body).not.toMatch(/🧾|Estimativa preliminar|FGTS|férias|salário|rescisão/i);
 
     const resetUpdate = (global.__testUpdates || []).find(u => u && u.intake_data && u.intake_data.laborContextActive === false);
     expect(resetUpdate).toBeDefined();
 
+    const labelUpdate = (global.__testUpdates || []).find(u => u && u.legal_area === 'familia');
+    expect(labelUpdate).toBeDefined();
+
     const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
-    expect(geminiCalls.length).toBe(0);
+    expect(geminiCalls.length).toBeGreaterThan(0);
   });
 
-  test('estimativa -> "E guarda dos filhos?" inicia triagem familiar', async () => {
+  test('estimativa -> "E guarda dos filhos?" rotula família e responde via Gemini', async () => {
     global.__testConversation = {
       client_name: null,
       intake_data: {
@@ -219,6 +224,7 @@ describe('Troca de domínio após estimativa trabalhista', () => {
         laborCalculation: activeLaborCalculation
       }
     };
+    mockFetchWithText('Posso te ajudar com a guarda dos filhos. Como está a situação hoje?');
 
     const { req, res } = createMocks({
       method: 'POST',
@@ -227,15 +233,16 @@ describe('Troca de domínio após estimativa trabalhista', () => {
     await webhookHandler(req, res);
 
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true, intake: true });
+    expect(data.success).toBe(true);
+    expect(data.intake).not.toBe(true);
 
     const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
     const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
-    expect(body.text.body).toMatch(/podemos avaliar questões de família/i);
+    expect(body.text.body).toMatch(/guarda|filhos/i);
     expect(body.text.body).not.toMatch(/FGTS|férias|salário|rescisão/i);
   });
 
-  test('estimativa -> "Tenho um financiamento atrasado" inicia triagem cível', async () => {
+  test('estimativa -> "Tenho um financiamento atrasado" rotula cível e responde via Gemini', async () => {
     global.__testConversation = {
       client_name: null,
       intake_data: {
@@ -243,6 +250,7 @@ describe('Troca de domínio após estimativa trabalhista', () => {
         laborCalculation: activeLaborCalculation
       }
     };
+    mockFetchWithText('Podemos avaliar essa situação do financiamento. Quantas parcelas estão em atraso?');
 
     const { req, res } = createMocks({
       method: 'POST',
@@ -251,15 +259,16 @@ describe('Troca de domínio após estimativa trabalhista', () => {
     await webhookHandler(req, res);
 
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true, intake: true });
+    expect(data.success).toBe(true);
+    expect(data.intake).not.toBe(true);
 
     const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
     const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
-    expect(body.text.body).toMatch(/Podemos avaliar essa situação/i);
+    expect(body.text.body).toMatch(/financiamento|parcelas/i);
     expect(body.text.body).not.toMatch(/FGTS|férias|rescisão|não (se encaixa|posso auxiliar)/i);
   });
 
-  test('estimativa -> "Quero falar de aposentadoria" inicia triagem previdenciária', async () => {
+  test('estimativa -> "Quero falar de aposentadoria" rotula previdenciário e responde via Gemini', async () => {
     global.__testConversation = {
       client_name: null,
       intake_data: {
@@ -267,6 +276,7 @@ describe('Troca de domínio após estimativa trabalhista', () => {
         laborCalculation: activeLaborCalculation
       }
     };
+    mockFetchWithText('Claro, posso te ajudar com a aposentadoria. Há quanto tempo você contribui para o INSS?');
 
     const { req, res } = createMocks({
       method: 'POST',
@@ -275,7 +285,8 @@ describe('Troca de domínio após estimativa trabalhista', () => {
     await webhookHandler(req, res);
 
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true, intake: true });
+    expect(data.success).toBe(true);
+    expect(data.intake).not.toBe(true);
 
     const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
     const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
@@ -349,6 +360,7 @@ describe('Troca de domínio após estimativa trabalhista', () => {
 
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
     expect(data).toMatchObject({ success: true });
-    expect(data.intake || data.labor).toBeTruthy();
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
+    expect(geminiCalls.length).toBeGreaterThan(0);
   });
 });

@@ -150,8 +150,9 @@ describe('Triagem contextual previdenciária no webhook', () => {
     fetchSpy.mockRestore();
   });
 
-  test('aposentadoria → resposta curta com pergunta contextual', async () => {
+  test('aposentadoria → Gemini responde livremente e área é rotulada', async () => {
     global.__testConversation = { client_name: null, intake_data: {} };
+    mockFetchWithText('Claro, posso te ajudar com a aposentadoria. Há quanto tempo você contribui?');
 
     const { req, res } = createMocks({
       method: 'POST',
@@ -161,7 +162,8 @@ describe('Triagem contextual previdenciária no webhook', () => {
 
     expect(res._getStatusCode()).toBe(200);
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true, intake: true });
+    expect(data.success).toBe(true);
+    expect(data.intake).not.toBe(true);
 
     const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
     const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
@@ -169,15 +171,16 @@ describe('Triagem contextual previdenciária no webhook', () => {
     expect(body.text.body).not.toMatch(/Vamos aos detalhes|formulário|1\.|2\./i);
 
     const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
-    expect(geminiCalls.length).toBe(0);
+    expect(geminiCalls.length).toBeGreaterThan(0);
 
     const update = (global.__testUpdates || []).find(u => u && u.legal_area === 'previdenciario');
     expect(update).toBeDefined();
-    expect(update.intake_data.answers.previdenciario_facts.theme).toBe('aposentadoria');
+    expect(update.intake_data).toBeUndefined();
   });
 
-  test('indeferimento → pergunta sobre benefício e data', async () => {
+  test('indeferimento → resposta contextual via Gemini', async () => {
     global.__testConversation = { client_name: null, intake_data: {} };
+    mockFetchWithText('Qual benefício foi negado e quando você recebeu a resposta do INSS?');
 
     const { req, res } = createMocks({
       method: 'POST',
@@ -191,8 +194,9 @@ describe('Triagem contextual previdenciária no webhook', () => {
     expect(body.text.body).not.toMatch(/não posso auxiliar|não atendemos/i);
   });
 
-  test('urgência → handoff imediato sem chamar Gemini', async () => {
+  test('urgência → resposta via Gemini sem pergunta fixa', async () => {
     global.__testConversation = { client_name: null, intake_data: {} };
+    mockFetchWithText('Entendo a urgência do prazo. Vou encaminhar para nossa equipe. Aguarde o retorno.');
 
     const { req, res } = createMocks({
       method: 'POST',
@@ -205,11 +209,12 @@ describe('Triagem contextual previdenciária no webhook', () => {
     expect(body.text.body).toMatch(/encaminhar.*equipe/i);
 
     const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
-    expect(geminiCalls.length).toBe(0);
+    expect(geminiCalls.length).toBeGreaterThan(0);
   });
 
-  test('BPC → pergunta contextual', async () => {
+  test('BPC → resposta contextual via Gemini', async () => {
     global.__testConversation = { client_name: null, intake_data: {} };
+    mockFetchWithText('Sua mãe tem alguma deficiência ou condição de saúde? Já fez o pedido antes?');
 
     const { req, res } = createMocks({
       method: 'POST',
@@ -222,8 +227,9 @@ describe('Triagem contextual previdenciária no webhook', () => {
     expect(body.text.body).toMatch(/m[aã]e.*defici[eê]ncia.*pedido/i);
   });
 
-  test('pensão por morte → sem conflito com família', async () => {
+  test('pensão por morte → Gemini, sem conflito com família', async () => {
     global.__testConversation = { client_name: null, intake_data: {} };
+    mockFetchWithText('Você era cônjuge, companheiro(a) ou dependente do falecido?');
 
     const { req, res } = createMocks({
       method: 'POST',
@@ -237,11 +243,12 @@ describe('Triagem contextual previdenciária no webhook', () => {
 
     const update = (global.__testUpdates || []).find(u => u && u.legal_area === 'previdenciario');
     expect(update).toBeDefined();
-    expect(update.intake_data.answers.previdenciario_facts.theme).toBe('pensao_morte');
+    expect(update.intake_data).toBeUndefined();
   });
 
-  test('mensagem sem área clara → pergunta aberta e sem recusa', async () => {
+  test('mensagem sem área clara → Gemini sem recusa', async () => {
     global.__testConversation = { client_name: null, intake_data: {} };
+    mockFetchWithText('Claro, posso ajudar. Que tipo de documentos você precisa?');
 
     const { req, res } = createMocks({
       method: 'POST',
@@ -271,6 +278,7 @@ describe('Triagem contextual previdenciária no webhook', () => {
         }
       }
     };
+    mockFetchWithText('Entendido, ainda não fez o pedido. Vou analisar as opções para o seu caso.');
 
     const { req, res } = createMocks({
       method: 'POST',
