@@ -419,3 +419,96 @@ describe('laborWebhookIntegration - troca de assunto', () => {
     expect(active).toEqual([newMsg]);
   });
 });
+
+describe('laborWebhookIntegration - estimativa não se repete', () => {
+  const { estimateFingerprint } = require('../lib/laborWebhookIntegration');
+  const DATA_MESSAGE = 'anhava 2500 por mes, entrei em janeiro e hoje o patrao me mandou embora e disse que nao era pra voltar';
+
+  beforeEach(() => {
+    process.env.LABOR_TODAY_DATE = '2025-09-16';
+  });
+  afterEach(() => {
+    delete process.env.LABOR_TODAY_DATE;
+  });
+
+  async function produceEstimate() {
+    const result = await handleLaborSettlementWebhook(makeParams({ textBody: DATA_MESSAGE }));
+    expect(result.handled).toBe(true);
+    expect(result.reply).toContain('🧾 Estimativa preliminar');
+    return result;
+  }
+
+  test('"aff" após estimativa é liberado para o Gemini, sem reenviar a estimativa', async () => {
+    const first = await produceEstimate();
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'aff',
+      messages: [clientMessage(DATA_MESSAGE), botMessage(first.reply)]
+    }));
+    expect(result.handled).toBe(false);
+    expect(result.reply).toBeFalsy();
+  });
+
+  test('mudança de assunto após estimativa não reenvia a estimativa', async () => {
+    const first = await produceEstimate();
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'quero me divorciar',
+      messages: [clientMessage(DATA_MESSAGE), botMessage(first.reply)]
+    }));
+    expect(result.handled).toBe(false);
+    expect(result.reply).toBeFalsy();
+  });
+
+  test('pergunta sobre item específico responde o item, sem a tabela inteira', async () => {
+    const first = await produceEstimate();
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'e o FGTS?',
+      messages: [clientMessage(DATA_MESSAGE), botMessage(first.reply)]
+    }));
+    expect(result.handled).toBe(true);
+    expect(result.flow).toBe('labor_value_answer');
+    expect(result.reply).toContain('FGTS');
+    expect(result.reply).not.toContain('🧾 Estimativa preliminar');
+  });
+
+  test('resposta idêntica à última enviada é suprimida', async () => {
+    const first = await produceEstimate();
+    // O cliente reenvia os mesmos dados; a última resposta do bot é a estimativa.
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: DATA_MESSAGE,
+      messages: [clientMessage(DATA_MESSAGE), botMessage(first.reply)]
+    }));
+    expect(result.handled).toBe(false);
+    expect(result.flow).toBe('estimate_suppressed');
+    expect(result.reply).toBeFalsy();
+  });
+
+  test('fingerprint persistida impede reenvio mesmo com mensagens no meio', async () => {
+    const first = await produceEstimate();
+    const fp = estimateFingerprint(first.reply);
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: DATA_MESSAGE,
+      conversation: makeConversation({
+        intake_data: { laborContextActive: true, laborEstimateFingerprint: fp }
+      }),
+      messages: [
+        clientMessage(DATA_MESSAGE),
+        botMessage(first.reply),
+        clientMessage('ok'),
+        botMessage('Certo!')
+      ]
+    }));
+    expect(result.handled).toBe(false);
+    expect(result.flow).toBe('estimate_suppressed');
+    expect(result.reply).toBeFalsy();
+  });
+
+  test('sinal trabalhista sem dados novos não reenvia a estimativa', async () => {
+    const first = await produceEstimate();
+    const result = await handleLaborSettlementWebhook(makeParams({
+      textBody: 'e a rescisão então',
+      messages: [clientMessage(DATA_MESSAGE), botMessage(first.reply)]
+    }));
+    expect(result.handled).toBe(false);
+    expect(result.reply).toBeFalsy();
+  });
+});

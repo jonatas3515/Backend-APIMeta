@@ -152,6 +152,7 @@ export default async function handler(req, res) {
           .limit(1);
 
         const humanAssumed = Array.isArray(recentHumanMsgs) && recentHumanMsgs.length > 0;
+        log('human_assumed', { assumed: humanAssumed });
 
         if (!humanAssumed) {
           log('bot_reactivated', { reason: 'no_human_assumed' });
@@ -298,7 +299,7 @@ export default async function handler(req, res) {
         if (escape === 'human') {
           const clearedIntake = { ...(conversation.intake_data || {}), current_step: -1, triage_step: -1 };
           await supabase.from('conversations').update({ mode: 'human', intake_data: clearedIntake }).eq('id', conversation.id);
-          const handoffText = 'Vou encaminhar para nossa equipe. Aguarde o retorno.';
+          const handoffText = 'Vou encaminhar sua solicitação para nossa equipe. Aguarde o retorno.';
           const savedHandoff = await saveMessage(conversation.id, handoffText, 'ai');
           const handoffWaId = await sendWhatsAppMessage(from, handoffText);
           if (savedHandoff && handoffWaId) {
@@ -335,6 +336,7 @@ export default async function handler(req, res) {
       const __pipelineStart = Date.now();
       const __stageMs = {};
       const logPipelineTiming = (handlerName) => {
+        log('response_path', { path: handlerName });
         log('pipeline_timing', { ...__stageMs, total_ms: Date.now() - __pipelineStart, handler: handlerName });
       };
 
@@ -473,6 +475,25 @@ export default async function handler(req, res) {
             log('labor_reply_sent', { phoneHash: hashPhone(from), replyLength: laborResult.reply?.length || 0, hasWaMessageId: !!laborWaMessageId });
             if (!laborWaMessageId) {
               log('labor_whatsapp_send_failed', { reason: 'no_wa_message_id' });
+            }
+            // Grava a impressão digital da estimativa enviada para impedir que a
+            // mesma estimativa seja reenviada como resposta nova em outro turno.
+            if (laborResult.flow === 'labor_settlement_estimate' && laborWaMessageId) {
+              try {
+                const fpData = { ...(conversation.intake_data || {}), laborEstimateFingerprint: laborIntegration.estimateFingerprint(laborResult.reply) };
+                const { error: fpError } = await supabase
+                  .from('conversations')
+                  .update({ intake_data: fpData })
+                  .eq('id', conversation.id);
+                if (fpError) {
+                  log('estimate_fingerprint_persist_failed', { error: sanitizeError(fpError) });
+                } else {
+                  conversation.intake_data = fpData;
+                  log('response_fingerprint', { flow: laborResult.flow });
+                }
+              } catch (fpErr) {
+                log('estimate_fingerprint_persist_failed', { error: sanitizeError(fpErr) });
+              }
             }
             __stageMs.labor_ms = Date.now() - __tLabor;
             logPipelineTiming('labor');
@@ -1195,24 +1216,30 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
         contextParts.push(`PRIMEIRO NOME DO CLIENTE (uso restrito): ${firstName}${title ? `; TRATAMENTO: ${title}` : ''}`);
         contextParts.push(`REGRA DE NOME: O nome completo NUNCA deve ser usado. Na PRIMEIRA resposta, se for saudar, use apenas "Olá!" e, se desejar, o primeiro nome ("${firstName}") sem vírgula. Depois trate-o como "${title || 'senhor(a)'}". Nas demais respostas, NUNCA diga "Olá" e NUNCA use o nome no início da frase; use SOMENTE "${title || 'senhor(a)'}" ou "você".`);
       }
+      // Dados legados do formulário antigo NÃO entram no contexto: foram gravados
+      // automaticamente como respostas de perguntas fixas e podem misturar
+      // assuntos. Não são apagados do banco — apenas não orientam a resposta.
       if (conversation.case_summary) {
-        contextParts.push(`RESUMO DO CASO: ${conversation.case_summary}`);
+        log('legacy_summary_excluded');
       }
-      if (conversation.intake_data?.answers) {
-        const answers = Object.entries(conversation.intake_data.answers)
-          .map(([k, v]) => `${k}: ${v}`)
-          .join('; ');
-        contextParts.push(`INFORMAÇÕES COLETADAS: ${answers}`);
+      const legacyAnswers = conversation.intake_data?.answers;
+      if (legacyAnswers && Object.keys(legacyAnswers).length > 0) {
+        log('intake_answers_excluded', { fieldsCount: Object.keys(legacyAnswers).length });
       }
       const laborContextActive = conversation?.intake_data?.laborContextActive !== false;
       const laborCalc = (laborContextActive && (conversation._laborCalculation || conversation.intake_data?.laborCalculation)) || null;
-      if (laborCalc && laborCalc.totalEstimated != null && Array.isArray(laborCalc.items)) {
+      // O bloco de estimativa só entra quando a mensagem ATUAL é trabalhista ou
+      // pergunta de valores — nunca como contexto permanente a cada turno.
+      const laborRelevantNow = laborCalc && laborIntegration.isLaborRelevantText(prompt);
+      if (laborCalc && laborCalc.totalEstimated != null && Array.isArray(laborCalc.items) && laborRelevantNow) {
         const itemsSummary = laborCalc.items
           .filter(i => i.status === 'calculated' && i.amount > 0)
           .map(i => `${i.name}: R$ ${i.amount.toFixed(2)}`)
           .join('; ');
-        contextParts.push(`ESTIMATIVA TRABALHISTA JÁ CALCULADA: ${itemsSummary}. Total: R$ ${laborCalc.totalEstimated.toFixed(2)}. Use esses valores exatos na resposta, sem recalcular. Valores monetários citados no histórico da conversa NÃO são cálculo válido e devem ser ignorados.`);
+        contextParts.push(`ESTIMATIVA TRABALHISTA JÁ CALCULADA: ${itemsSummary}. Total: R$ ${laborCalc.totalEstimated.toFixed(2)}. Use esses valores exatos somente se a mensagem atual pedir valores, sem recalcular e sem repetir a estimativa inteira. Valores monetários citados no histórico da conversa NÃO são cálculo válido e devem ser ignorados.`);
         console.log('[LABOR] labor_estimate_context_injected', JSON.stringify({ itemsCount: laborCalc.items.length }));
+      } else if (laborCalc && !laborRelevantNow) {
+        log('labor_estimate_context_skipped', { reason: 'message_not_labor_related' });
       }
     }
 
@@ -1239,6 +1266,17 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     log(useKnowledge ? 'rag_called' : 'rag_skipped', {
       reason: isLaborContext ? 'labor_context' : (useKnowledge ? 'knowledge_signal' : 'no_knowledge_signal')
     });
+
+    // Observabilidade do contexto: o que realmente orienta esta resposta.
+    const contextSources = [];
+    if (conversation?.client_name) contextSources.push('client_name');
+    if (contextParts.some(p => p.startsWith('ESTIMATIVA TRABALHISTA'))) contextSources.push('labor_estimate');
+    if (clientMemoryText) contextSources.push('client_memory_history');
+    if (conversationHistory) contextSources.push('recent_messages');
+    if (knowledgeBlock) contextSources.push('knowledge');
+    log('context_sources', { sources: contextSources });
+    log('trusted_facts_count', { count: contextParts.length });
+    log('current_message_priority', { priority: 'current_message' });
 
     const clientFullName = conversation?.client_name || '';
     const clientTitle = clientFullName ? getClientTitle(clientFullName) : null;

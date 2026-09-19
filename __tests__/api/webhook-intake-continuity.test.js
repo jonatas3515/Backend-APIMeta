@@ -725,7 +725,7 @@ describe('Conversa livre conduzida pelo Gemini (sem formulário rígido)', () =>
 
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
     expect(data).toMatchObject({ success: true, handoff: true });
-    expect(lastWhatsappBody().text.body).toMatch(/encaminhar para nossa equipe/i);
+    expect(lastWhatsappBody().text.body).toBe('Vou encaminhar sua solicitação para nossa equipe. Aguarde o retorno.');
     expect(geminiCalls().length).toBe(0);
   });
 
@@ -956,5 +956,268 @@ describe('Conversa livre conduzida pelo Gemini (sem formulário rígido)', () =>
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
     expect(data).toMatchObject({ success: true, bot_paused: true });
     expect(geminiCalls().length).toBe(0);
+  });
+});
+describe('Contexto confiável ao Gemini e estimativa sem repetição', () => {
+  let fetchSpy;
+
+  const LABOR_CALC = {
+    totalEstimated: 2240,
+    currency: 'BRL',
+    calculatedAt: new Date().toISOString(),
+    items: [
+      { code: 'fgts_deposits', name: 'FGTS estimado (8% mensal)', amount: 1600, status: 'calculated' },
+      { code: 'fgts_penalty_40', name: 'Multa de 40% sobre FGTS', amount: 640, status: 'calculated' }
+    ]
+  };
+
+  const clientMsg = (text, minutesAgo = 5) => ({
+    conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    text,
+    sender_type: 'client',
+    created_at: new Date(Date.now() - minutesAgo * 60 * 1000).toISOString()
+  });
+  const botMsg = (text, minutesAgo = 3) => ({
+    conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+    text,
+    sender_type: 'ai',
+    created_at: new Date(Date.now() - minutesAgo * 60 * 1000).toISOString()
+  });
+  const geminiPrompt = () => {
+    const calls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage'));
+    return JSON.parse(calls[0][1].body);
+  };
+
+  beforeEach(() => {
+    global.__testMessages = [];
+    global.__testConversation = null;
+    global.__testUpdates = [];
+    global.__testUpdateShouldFail = false;
+    semanticSearch.mockClear();
+    fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ messages: [{ id: 'wa-intake-001' }] }),
+    });
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+  });
+
+  const lastWhatsappBody = () => {
+    const calls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    return JSON.parse(calls[calls.length - 1][1].body);
+  };
+  const geminiCalls = () => fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage'));
+  const mockFetchWithText = (text) => {
+    fetchSpy.mockImplementation(async (url) => {
+      const u = String(url);
+      if (u.includes('generativelanguage.googleapis.com')) {
+        return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }) };
+      }
+      return { ok: true, json: async () => ({ messages: [{ id: 'wa-intake-001' }] }) };
+    });
+  };
+
+  test('contexto de formulário antigo contaminado não vai ao Gemini como fato', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'familia',
+      case_summary: 'Cliente relatou boleto e pediu divórcio',
+      intake_data: {
+        consent_request_sent_at: new Date().toISOString(),
+        answers: {
+          provas: 'boleto em anexo',
+          objetivo: 'quero me divorciar',
+          contato_email: 'salario 1621',
+          parte_contraria: 'empresa XYZ'
+        }
+      }
+    };
+    mockFetchWithText('Claro, posso te orientar sobre direitos trabalhistas.');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero entender meus direitos trabalhistas'),
+    });
+    await webhookHandler(req, res);
+
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    const promptText = geminiPrompt().contents[0].parts[0].text;
+    expect(promptText).not.toContain('RESUMO DO CASO');
+    expect(promptText).not.toContain('INFORMAÇÕES COLETADAS');
+    expect(promptText).not.toContain('MEMÓRIA DO CLIENTE');
+    expect(promptText).not.toContain('boleto em anexo');
+    expect(promptText).not.toContain('salario 1621');
+    expect(promptText).not.toContain('empresa XYZ');
+  });
+
+  test('mensagem sobre direitos trabalhistas não recebe resumo antigo de Família', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'familia',
+      case_summary: 'Resumo antigo: divórcio litigioso em andamento',
+      intake_data: { consent_request_sent_at: new Date().toISOString() }
+    };
+    mockFetchWithText('Posso te ajudar com direitos trabalhistas.');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero entender meus direitos trabalhistas'),
+    });
+    await webhookHandler(req, res);
+
+    const promptText = geminiPrompt().contents[0].parts[0].text;
+    expect(promptText).not.toContain('divórcio litigioso');
+    expect(promptText).not.toContain('Resumo antigo');
+  });
+
+  test('boleto da compra com contexto de divórcio vai ao Gemini sem institucional nem contexto de divórcio', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'familia',
+      intake_data: {
+        consent_request_sent_at: new Date().toISOString(),
+        answers: { objetivo: 'quero me divorciar', provas: 'fotos do casamento' }
+      }
+    };
+    mockFetchWithText('Entendi, cobrança indevida no boleto da compra. Qual o valor cobrado?');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('O boleto da compra veio com cobrança indevida'),
+    });
+    await webhookHandler(req, res);
+
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    const body = lastWhatsappBody();
+    expect(body.text.body).not.toMatch(/não emite boletos|não emitimos boletos|"Advocacia Neves Costa"/i);
+    const promptText = geminiPrompt().contents[0].parts[0].text;
+    expect(promptText).not.toContain('quero me divorciar');
+    expect(promptText).not.toContain('fotos do casamento');
+  });
+
+  test('Quero me divorciar com estimativa trabalhista ativa não recebe contexto trabalhista', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'trabalhista',
+      intake_data: {
+        consent_request_sent_at: new Date().toISOString(),
+        laborContextActive: true,
+        laborCalculation: LABOR_CALC
+      }
+    };
+    global.__testMessages = [
+      clientMsg('ganhava 2500 por mes, entrei em janeiro e hoje me mandaram embora'),
+      botMsg('Estimativa preliminar da rescisão')
+    ];
+    mockFetchWithText('Posso te ajudar com o divórcio. É consensual ou litigioso?');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero me divorciar'),
+    });
+    await webhookHandler(req, res);
+
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    const promptText = geminiPrompt().contents[0].parts[0].text;
+    expect(promptText).not.toContain('ESTIMATIVA TRABALHISTA');
+    const body = lastWhatsappBody();
+    expect(body.text.body).toMatch(/div[oó]rcio/i);
+    expect(body.text.body).not.toContain('Estimativa preliminar');
+  });
+
+  test('aff após estimativa enviada vai ao Gemini sem repetir a estimativa', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'trabalhista',
+      intake_data: {
+        consent_request_sent_at: new Date().toISOString(),
+        laborContextActive: true,
+        laborCalculation: LABOR_CALC
+      }
+    };
+    global.__testMessages = [
+      clientMsg('ganhava 2500 por mes, entrei em janeiro e hoje me mandaram embora'),
+      botMsg('Estimativa preliminar da rescisão\n\nDados considerados')
+    ];
+    mockFetchWithText('Sem problema. Se ficou alguma dúvida sobre a estimativa, pode perguntar.');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('aff'),
+    });
+    await webhookHandler(req, res);
+
+    expect(geminiCalls().length).toBeGreaterThan(0);
+    const body = lastWhatsappBody();
+    expect(body.text.body).not.toContain('Estimativa preliminar');
+  });
+
+  test('pergunta sobre item específico (e o FGTS?) responde o item sem a tabela', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'trabalhista',
+      client_phone_normalized: '7399998888',
+      intake_data: {
+        consent_request_sent_at: new Date().toISOString(),
+        laborContextActive: true,
+        laborCalculation: LABOR_CALC
+      }
+    };
+    global.__testMessages = [
+      clientMsg('ganhava 2500 por mes, entrei em janeiro e hoje me mandaram embora'),
+      botMsg('Estimativa preliminar da rescisão')
+    ];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('e o FGTS?'),
+    });
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true, labor: true });
+    const body = lastWhatsappBody();
+    expect(body.text.body).toMatch(/FGTS/i);
+    expect(body.text.body).toMatch(/R\$\s*[\d.]+,\d{2}/);
+    expect(body.text.body).not.toContain('Estimativa preliminar');
+    expect(geminiCalls().length).toBe(0);
+  });
+
+  test('handoff explícito usa texto único sem telefone, URL ou dados internos', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero falar com um advogado'),
+    });
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true, handoff: true });
+    const body = lastWhatsappBody();
+    expect(body.text.body).toBe('Vou encaminhar sua solicitação para nossa equipe. Aguarde o retorno.');
+    expect(body.text.body).not.toMatch(/https?:\/\//);
+    expect(body.text.body).not.toMatch(/\b\d{8,}\b/);
+  });
+
+  test('systemInstruction usa o prompt novo sem concatenação do antigo', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: { consent_request_sent_at: new Date().toISOString() } };
+    mockFetchWithText('Posso te ajudar.');
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Preciso de ajuda com um contrato'),
+    });
+    await webhookHandler(req, res);
+
+    const sys = geminiPrompt().system_instruction.parts[0].text;
+    expect(sys).toContain('Você é Jhon, assistente virtual');
+    expect(sys).toContain('Nunca substitua a conversa por um questionário');
+    expect(sys).not.toContain('Você é o Jhon');
+    expect(sys).not.toContain('IDENTIDADE E LIMITES');
+    expect(sys).not.toContain('RACIOCÍNIO JURÍDICO-PRÁTICO');
+    expect(sys).not.toContain('REGRAS DE OURO');
   });
 });
