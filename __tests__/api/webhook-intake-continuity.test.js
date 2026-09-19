@@ -222,7 +222,9 @@ describe('Continuidade de fluxos rígidos diante de palavras de boleto/CNPJ', ()
     await webhookHandler(req, res);
 
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true, intake: true });
+    // Narrativa rica vai ao Gemini (não é consumida como resposta da pergunta pendente)
+    expect(data.success).toBe(true);
+    expect(data.intake).not.toBe(true);
 
     const domainSwitchUpdate = (global.__testUpdates || []).find(u => u && u.legal_area && u.legal_area !== 'civel');
     expect(domainSwitchUpdate).toBeUndefined();
@@ -240,5 +242,202 @@ describe('Continuidade de fluxos rígidos diante de palavras de boleto/CNPJ', ()
     const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
     const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
     expect(body.text.body).toMatch(/não emitimos boletos|não possu[ií]mos cnpj/i);
+  });
+});
+
+describe('Estágio A: gatilhos de identidade, sinal forte de troca de área e narrativa rica', () => {
+  let fetchSpy;
+
+  beforeEach(() => {
+    global.__testMessages = [];
+    global.__testConversation = null;
+    global.__testUpdates = [];
+    global.__testUpdateShouldFail = false;
+    fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => ({ messages: [{ id: 'wa-intake-001' }] }),
+    });
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
+  });
+
+  const lastWhatsappBody = () => {
+    const calls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    return JSON.parse(calls[calls.length - 1][1].body);
+  };
+  const geminiCalls = () => fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage'));
+
+  test('"CNPJ informado no contrato" (1ª mensagem) não gera resposta institucional', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero processar a empresa pelo CNPJ informado no contrato'),
+    });
+    await webhookHandler(req, res);
+
+    const body = lastWhatsappBody();
+    expect(body.text.body).not.toMatch(/não emitimos boletos|não possu[ií]mos cnpj|neves & costa/i);
+  });
+
+  test('"boleto da compra" (1ª mensagem) não gera resposta institucional', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('O boleto da compra veio com cobrança indevida'),
+    });
+    await webhookHandler(req, res);
+
+    const body = lastWhatsappBody();
+    expect(body.text.body).not.toMatch(/não emitimos boletos|não possu[ií]mos cnpj|neves & costa/i);
+  });
+
+  test('"boleto em nome de vocês" gera resposta institucional', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Mas tem um boleto em nome de vocês'),
+    });
+    await webhookHandler(req, res);
+
+    const body = lastWhatsappBody();
+    expect(body.text.body).toMatch(/não emitimos boletos|não possu[ií]mos cnpj|grafia/i);
+  });
+
+  test('"vocês emitiram esse boleto?" gera resposta institucional', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Vocês emitiram esse boleto?'),
+    });
+    await webhookHandler(req, res);
+
+    const body = lastWhatsappBody();
+    expect(body.text.body).toMatch(/não emitimos boletos|não possu[ií]mos cnpj|grafia/i);
+  });
+
+  test('nenhum gatilho isolado de "cnpj" ou "boleto" dispara identidade', async () => {
+    for (const text of [
+      'Preciso do CNPJ da empresa para o processo',
+      'O boleto venceu e quero negociar a dívida',
+    ]) {
+      global.__testMessages = [];
+      global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+      global.__testUpdates = [];
+      fetchSpy.mockClear();
+
+      const { req, res } = createMocks({ method: 'POST', body: buildPayload(text) });
+      await webhookHandler(req, res);
+
+      const body = lastWhatsappBody();
+      expect(body.text.body).not.toMatch(/não emitimos boletos|não possu[ií]mos cnpj/i);
+    }
+  });
+
+  test('mudança clara de área durante fluxo ativo troca a área sem apagar respostas', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'civel',
+      updated_at: new Date().toISOString(),
+      intake_data: {
+        triage_completed: true,
+        current_step: 2,
+        answers: { area_especifica: 'Contratos', contract_type: 'Financiamento' }
+      }
+    };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero falar de divórcio, podem me ajudar?'),
+    });
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true, intake: true });
+
+    // Troca para familia preservando respostas já coletadas
+    const switchUpdate = (global.__testUpdates || []).find(u => u && u.legal_area === 'familia');
+    expect(switchUpdate).toBeDefined();
+    expect(switchUpdate.intake_data.answers).toMatchObject({ area_especifica: 'Contratos' });
+  });
+
+  test('menção isolada a outra área dentro de resposta não troca de domínio', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'civel',
+      updated_at: new Date().toISOString(),
+      intake_data: {
+        triage_completed: true,
+        current_step: 2,
+        answers: { area_especifica: 'Contratos' }
+      }
+    };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('A empresa é uma corretora ligada ao INSS e ao banco'),
+    });
+    await webhookHandler(req, res);
+
+    const switchUpdate = (global.__testUpdates || []).find(u => u && u.legal_area && u.legal_area !== 'civel');
+    expect(switchUpdate).toBeUndefined();
+  });
+
+  test('narrativa rica não fica presa ao questionário e vai ao Gemini', async () => {
+    global.__testConversation = {
+      client_name: 'Cliente',
+      legal_area: 'trabalhista',
+      updated_at: new Date().toISOString(),
+      intake_data: {
+        triage_completed: true,
+        current_step: 3,
+        answers: { tempo_trabalho: 'mais de um ano' }
+      }
+    };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Trabalhava de segunda a sábado sem carteira assinada, recebia em dinheiro e ainda fazia hora extra todo dia'),
+    });
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data.success).toBe(true);
+    expect(data.intake).not.toBe(true);
+    expect(geminiCalls().length).toBeGreaterThan(0);
+  });
+
+  test('logs de timing por estágio são emitidos sem PII', async () => {
+    const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+
+      const { req, res } = createMocks({
+        method: 'POST',
+        body: buildPayload('Mas tem um boleto que está no nome de vocês'),
+      });
+      await webhookHandler(req, res);
+
+      const timingEntries = logSpy.mock.calls
+        .map(([arg]) => { try { return JSON.parse(arg); } catch { return null; } })
+        .filter(e => e && e.event === 'pipeline_timing');
+      expect(timingEntries.length).toBeGreaterThan(0);
+      const entry = timingEntries[0];
+      expect(entry.handler).toBeDefined();
+      expect(typeof entry.total_ms).toBe('number');
+      // Sem texto, telefone, nome ou valores — somente estágios e durações
+      const allowed = new Set(['source', 'ts', 'correlationId', 'method', 'url', 'level', 'event', 'duration',
+        'labor_ms', 'boleto_ms', 'intake_ms', 'gemini_ms', 'total_ms', 'handler']);
+      for (const k of Object.keys(entry)) {
+        expect(allowed.has(k)).toBe(true);
+      }
+    } finally {
+      logSpy.mockRestore();
+    }
   });
 });

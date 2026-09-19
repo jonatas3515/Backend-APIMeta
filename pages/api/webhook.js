@@ -320,6 +320,14 @@ export default async function handler(req, res) {
         if (handled) return res.status(200).json({ success: true, consent: true });
       }
 
+      // Timing sanitizado por estágio (apenas durações em ms e nome do handler —
+      // sem texto, telefone, nome, valores ou IDs).
+      const __pipelineStart = Date.now();
+      const __stageMs = {};
+      const logPipelineTiming = (handlerName) => {
+        log('pipeline_timing', { ...__stageMs, total_ms: Date.now() - __pipelineStart, handler: handlerName });
+      };
+
       // ================= TROCA DE DOMÍNIO ANTES DO MOTOR TRABALHISTA =================
       // Se houver contexto trabalhista ativo e a mensagem claramente mudar de área,
       // invalida o contexto trabalhista antes de qualquer resposta determinística.
@@ -354,6 +362,7 @@ export default async function handler(req, res) {
       }
 
       // ================= CÁLCULO DE VERBAS TRABALHISTAS =================
+      const __tLabor = Date.now();
       if (conversation && messageType === 'text' && laborIntegration && typeof laborIntegration.handleLaborSettlementWebhook === 'function') {
         let laborResult;
         try {
@@ -405,6 +414,8 @@ export default async function handler(req, res) {
               await supabase.from('messages').update({ wa_message_id: resetWaId, status: 'sent' }).eq('id', savedReset.id);
             }
             log('new_topic_started', { success: true, phoneHash: hashPhone(from) });
+            __stageMs.labor_ms = Date.now() - __tLabor;
+            logPipelineTiming('topic_reset');
             return res.status(200).json({ success: true, topicReset: true });
           } catch (err) {
             log('topic_reset_failed', { error: sanitizeError(err) });
@@ -453,6 +464,8 @@ export default async function handler(req, res) {
             if (!laborWaMessageId) {
               log('labor_whatsapp_send_failed', { reason: 'no_wa_message_id' });
             }
+            __stageMs.labor_ms = Date.now() - __tLabor;
+            logPipelineTiming('labor');
             return res.status(200).json({ success: true, labor: true });
           } catch (err) {
             log('labor_reply_send_exception', { error: sanitizeError(err) });
@@ -463,6 +476,8 @@ export default async function handler(req, res) {
           log('labor_normal_flow_fallback');
         }
       }
+      __stageMs.labor_ms = Date.now() - __tLabor;
+      const __tBoleto = Date.now();
 
       // ================= BOLETO / CONFUSÃO NEVES COSTA =================
       // Prioridade sobre intake: se a mensagem é sobre boleto/cobrança/CNPJ/Neves Costa,
@@ -507,6 +522,8 @@ export default async function handler(req, res) {
           const imageUrl = `${protocol}://${req.headers.host}/Aviso.jpg`;
           const imageSent = await sendNevesCostaImage(from, conversation.id, imageUrl);
           if (imageSent) {
+            __stageMs.boleto_ms = Date.now() - __tBoleto;
+            logPipelineTiming('neves_costa');
             return res.status(200).json({ success: true, neves_costa: true });
           }
         }
@@ -517,9 +534,13 @@ export default async function handler(req, res) {
             await supabase.from('messages').update({ wa_message_id: waMessageId, status: 'sent' }).eq('id', savedMsg.id);
           }
           log('response_sent', { handler: 'boleto', replyLength: boletoReply?.length || 0 });
+          __stageMs.boleto_ms = Date.now() - __tBoleto;
+          logPipelineTiming('boleto');
           return res.status(200).json({ success: true, special: true });
         }
       }
+      __stageMs.boleto_ms = Date.now() - __tBoleto;
+      const __tIntake = Date.now();
 
       // ================= COLETA GUIADA DE INFORMAÇÕES =================
       if (conversation && messageType === 'text') {
@@ -536,9 +557,12 @@ export default async function handler(req, res) {
             await supabase.from('messages').update({ wa_message_id: waMessageId, status: 'sent' }).eq('id', savedMsg.id);
           }
           log('response_sent', { handler: intakeResult.handler || 'intake', handoff: !!intakeResult.handoff, replyLength: intakeResult.reply?.length || 0 });
+          __stageMs.intake_ms = Date.now() - __tIntake;
+          logPipelineTiming(intakeResult.handler || 'intake');
           return res.status(200).json({ success: true, intake: true });
         }
       }
+      __stageMs.intake_ms = Date.now() - __tIntake;
 
       // Boleto / Neves Costa já processado acima com prioridade sobre intake.
 
@@ -569,6 +593,7 @@ export default async function handler(req, res) {
       }
 
       // Carregar memória do cliente para contexto
+      const __tGemini = Date.now();
       const clientMemory = await loadClientMemory(conversation.id, from);
       const clientMemoryText = formatClientMemory(clientMemory);
 
@@ -577,6 +602,7 @@ export default async function handler(req, res) {
       let aiReply = await askGemini(promptForAI, conversationHistory, conversation, clientMemoryText);
       aiReply = correctCommonMistakes(promptForAI, aiReply);
       log('ai_reply_generated', { length: aiReply?.length || 0 });
+      __stageMs.gemini_ms = Date.now() - __tGemini;
 
       // Detectar se precisa de atendimento humano
       const intakeCompleted = conversation?.intake_data?.completed === true;
@@ -598,6 +624,7 @@ export default async function handler(req, res) {
         await supabase.from('messages').update({ wa_message_id: aiWaMessageId, status: 'sent' }).eq('id', savedAiMsg.id);
       }
       log('response_sent', { handler: 'gemini', replyLength: aiReply?.length || 0 });
+      logPipelineTiming('gemini');
 
       // Só depois do envio confirmado: marcar modo humano e notificar admin
       if (needsHuman && conversation?.id) {
@@ -644,12 +671,10 @@ async function handleIntake(conversation, clientMessage, log = () => {}, lastRep
   log('current_message_domain', { detectedArea: detectedArea || 'none', previousArea: currentArea || 'none' });
 
   // Se a mensagem atual indica mudança de domínio, invalida a pergunta pendente,
-  // mantendo fatos históricos. Não faz isso se o cliente está respondendo a uma pergunta pendente.
-  // Restrito à triagem contextual previdenciária (não rígida): nos fluxos rígidos de
-  // outras áreas (cível, família, administrativo, consumidor), palavras-chave de outra
-  // área podem aparecer legitimamente dentro de uma resposta detalhada e não devem
-  // reiniciar o fluxo em andamento.
-  if (currentArea === 'previdenciario' && detectedArea && detectedArea !== currentArea && !looksLikeAnswer(clientMessage)) {
+  // mantendo fatos históricos (answers/intake_data preservados). Não faz isso se
+  // o cliente está respondendo a uma pergunta pendente, e exige sinal forte de
+  // novo assunto — uma keyword isolada dentro de uma narrativa não troca de área.
+  if (currentArea && detectedArea && detectedArea !== currentArea && !looksLikeAnswer(clientMessage) && hasStrongAreaSignal(detectedArea, clientMessage)) {
     log('domain_switch_detected', { previousArea: currentArea, newArea: detectedArea });
     const resetIntake = {
       ...intakeData,
@@ -723,6 +748,14 @@ async function handleIntake(conversation, clientMessage, log = () => {}, lastRep
   if (currentArea && currentStep >= 0) {
     const flow = getFlow(currentArea);
     if (!flow) return null;
+
+    // Narrativa rica: não grava a mensagem inteira como resposta simples da
+    // pergunta pendente nem dispara a próxima pergunta enlatada. Retorna null
+    // para o Gemini responder com o contexto já coletado (histórico + respostas).
+    if (isRichNarrative(clientMessage)) {
+      log('rich_narrative_to_gemini', { currentArea, currentStep });
+      return null;
+    }
 
     const previousQuestion = flow.questions[currentStep];
     if (previousQuestion) {
@@ -1161,6 +1194,48 @@ function looksLikeAnswer(text) {
   return false;
 }
 
+// Sinal forte de mudança de assunto: evita trocar de área por substring/palavra
+// isolada mencionada incidentalmente dentro de uma resposta. Forte quando há
+// comando explícito de novo tema, >=2 palavras-chave da área detectada, keyword
+// multi-palavra, ou a mensagem é uma pergunta sobre o novo tema.
+const TOPIC_CHANGE_RE = /\b(quero falar|queria falar|quero tratar|vamos falar|falar sobre|falar de|outro assunto|outra duvida|mudando de assunto|trocando de assunto|agora (e|eh) sobre|tambem (tenho|queria|quero)|e sobre|e quanto a|aproveitando)\b/;
+
+function hasStrongAreaSignal(area, message) {
+  if (!area || !message) return false;
+  const n = normalizeForCheck(message);
+  if (!n) return false;
+  if (TOPIC_CHANGE_RE.test(n)) return true;
+  const flow = getFlow(area);
+  const keywords = (flow && flow.triggerKeywords) || [];
+  let hits = 0;
+  let multiWordHit = false;
+  for (const k of keywords) {
+    const nk = normalizeForCheck(k);
+    if (nk && n.includes(nk)) {
+      hits++;
+      if (nk.includes(' ')) multiWordHit = true;
+    }
+  }
+  if (hits >= 2 || multiWordHit) return true;
+  if (hits >= 1 && n.includes('?')) return true;
+  // Verbo de intenção na 1ª pessoa + keyword da área = o novo tema é o assunto
+  // da mensagem ("quero me divorciar", "preciso falar de aposentadoria"), não
+  // uma menção incidental ("a empresa é ligada ao INSS").
+  if (hits >= 1 && /\b(quero|queria|preciso|gostaria|tenho|estou|vim|sofri|recebi|vou|posso)\b/.test(n)) return true;
+  return false;
+}
+
+// Narrativa rica: mensagem longa/composta que não parece resposta direta à
+// pergunta pendente. Não deve ser gravada como resposta de um único campo do
+// questionário — segue para o Gemini com o contexto já coletado.
+function isRichNarrative(text) {
+  if (!text || typeof text !== 'string') return false;
+  const t = text.trim();
+  if (!t || looksLikeAnswer(t)) return false;
+  const sentences = t.split(/[.!?\n]+/).filter(s => s.trim().length > 0).length;
+  return t.length >= 50 || sentences >= 3;
+}
+
 const POSITIVE_EMOJIS = [
   '👍','👌','🤝','👏','🙌','👐','☺','😊','🙂','😉','😄','😁','✅','🙏','💙','💖','❤','🤗','🥰','😍','🥳','😎','✌️','🫶','🤙'
 ];
@@ -1301,12 +1376,23 @@ async function sendNevesCostaImage(to, conversationId, imageUrl = NEVES_COSTA_IM
   }
 }
 
+// Gatilhos de identidade: somente frases que ATRIBUEM o boleto/cobrança/CNPJ ao
+// escritório. "cnpj" e "boleto" isolados NÃO são gatilhos — aparecem
+// legitimamente como objeto de casos cível/consumidor (ex: "processar a empresa
+// pelo CNPJ do contrato", "boleto da compra veio com cobrança indevida").
+// O texto é comparado após normalizeForCheck (sem acentos), por isso todas as
+// chaves abaixo estão sem acentuação.
 const IDENTITY_KEYWORDS = [
-  'cnpj', 'boleto', 'advocacia neves costa', 'neves costa', 'qual o cnpj',
-  'cnpj de vocês', 'cnpj de vcs', 'seu cnpj', 'vocês cobram', 'me cobraram',
-  'cobrança de vocês', 'cobranca de voces', 'cobrança de vcs', 'emitir boleto',
-  'boleto de vocês', 'boleto de vcs', 'outro escritorio', 'outro escritório',
-  'negociação de dívida', 'negociacao de divida'
+  'boleto de voces', 'boleto de vcs', 'boleto do escritorio', 'boleto que voces',
+  'nome de voces', 'nome de vcs', 'emitido por voces', 'enviado por voces',
+  'emitir boleto', 'emitido no meu nome', 'emitido em meu nome',
+  'boleto no meu nome', 'boleto em meu nome',
+  'voces emitiram', 'voces enviaram', 'voces mandaram', 'voces cobram', 'me cobraram',
+  'cobranca de voces', 'cobranca de vcs', 'cobranca do escritorio',
+  'cnpj de voces', 'cnpj de vcs', 'cnpj do escritorio',
+  'seu cnpj', 'qual o cnpj', 'qual e o cnpj',
+  'advocacia neves costa', 'neves costa', 'outro escritorio',
+  'negociacao de divida'
 ];
 
 const IDENTITY_ALREADY_SAID = [
