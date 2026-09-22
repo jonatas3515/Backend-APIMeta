@@ -547,38 +547,28 @@ export default async function handler(req, res) {
             log('previdenciario_handler_skipped', { reason: 'domain_switch' });
           }
         }
-        // Envia o aviso institucional (imagem + texto enxuto) na primeira
-        // detecção de boleto/cobrança/CNPJ/"Neves Costa" atribuídos ao escritório.
-        const protocol = req.headers['x-forwarded-proto'] || 'https';
-        const imageUrl = `${protocol}://${req.headers.host}/Aviso.jpg`;
-
         if (isNevesCosta) {
           log('neves_costa_confusion', { phoneHash: hashPhone(from) });
+          const protocol = req.headers['x-forwarded-proto'] || 'https';
+          const imageUrl = `${protocol}://${req.headers.host}/Aviso.jpg`;
+          const imageSent = await sendNevesCostaImage(from, conversation.id, imageUrl);
+          if (imageSent) {
+            __stageMs.boleto_ms = Date.now() - __tBoleto;
+            logPipelineTiming('neves_costa');
+            return res.status(200).json({ success: true, neves_costa: true });
+          }
         }
-
-        const imageSent = await sendNevesCostaImage(from, conversation.id, imageUrl);
-
-        // Texto de reforço: a imagem contém o aviso; o texto complementa de
-        // forma breve e sem rodeios, como pedido na melhoria.
-        let textReply = null;
-        if (isBoleto && boletoReply && boletoReply !== 'NO_REPLY') {
-          textReply = boletoReply;
-        } else if (isNevesCosta && (!boletoReply || boletoReply === 'NO_REPLY')) {
-          textReply = 'Como está na imagem acima, não somos nós e não temos relação com essa cobrança. A Neves & Costa Advocacia, com "&", não emitimos boletos, não fazemos cobranças e não possuímos CNPJ. Verifique o nome exato e o CNPJ no documento e não efetue o pagamento antes de confirmar a origem.';
-        }
-
-        if (textReply) {
-          const savedMsg = await saveMessage(conversation.id, textReply, 'ai');
-          const waMessageId = await sendWhatsAppMessage(from, textReply);
+        if (isBoleto) {
+          const savedMsg = await saveMessage(conversation.id, boletoReply, 'ai');
+          const waMessageId = await sendWhatsAppMessage(from, boletoReply);
           if (savedMsg && waMessageId) {
             await supabase.from('messages').update({ wa_message_id: waMessageId, status: 'sent' }).eq('id', savedMsg.id);
           }
+          log('response_sent', { handler: 'boleto', replyLength: boletoReply?.length || 0 });
+          __stageMs.boleto_ms = Date.now() - __tBoleto;
+          logPipelineTiming('boleto');
+          return res.status(200).json({ success: true, special: true });
         }
-
-        log('neves_costa_identity_sent', { imageSent: !!imageSent, textSent: !!textReply, textLength: textReply?.length || 0 });
-        __stageMs.boleto_ms = Date.now() - __tBoleto;
-        logPipelineTiming('boleto_identity');
-        return res.status(200).json({ success: !!(imageSent || textReply), special: true, image: !!imageSent, text: !!textReply });
       }
       __stageMs.boleto_ms = Date.now() - __tBoleto;
       const __tIntake = Date.now();
@@ -1164,10 +1154,11 @@ function getSpecialReply(text, clientName, history = '', log = () => {}) {
   log('boleto_handler_selected', { isIdentity: !!isIdentity, alreadySaid: !!alreadySaid });
 
   if (isIdentity) {
+    const name = getClientGreeting(clientName);
     if (alreadySaid) {
-      return 'Como já explicamos na imagem acima, não somos nós e não temos relação com essa cobrança. A Neves & Costa Advocacia, com "&", não emitimos boletos, não fazemos cobranças e não possuímos CNPJ. Confira a grafia exata e o CNPJ no documento e não faça o pagamento antes de confirmar a origem.';
+      return `${name}, entendo a sua preocupação. Mesmo que o documento mencione um nome parecido, confira a grafia exata e o CNPJ: a Neves & Costa Advocacia, com "&", não emite boletos nem faz cobranças. Não faça o pagamento antes de confirmar a origem.`;
     }
-    return 'Como está na imagem acima, não somos nós e não temos relação com essa cobrança. A Neves & Costa Advocacia, com "&", não emitimos boletos, não fazemos cobranças e não possuímos CNPJ. Verifique o nome exato e o CNPJ no documento e não efetue o pagamento antes de confirmar a origem.';
+    return `${name}, somos a Neves & Costa Advocacia (com &). Informamos que não emitimos boletos, e nem fazemos cobranças, além de não possuirmos CNPJ. Não temos relação nenhuma com a "Advocacia Neves Costa".`;
   }
 
   if (alreadySaid && detectAgreement(text)) {
