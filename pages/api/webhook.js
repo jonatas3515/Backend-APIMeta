@@ -5,6 +5,8 @@ import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
 import { normalizePhoneForMatch } from '../../lib/formatters';
 import { loadClientMemory, formatClientMemory } from '../../lib/clientMemory';
 import { getClientTitle, getClientGreeting } from '../../lib/genderFromName';
+import { withConversationQueue } from '../../lib/conversationQueue';
+import { buildMessageMeta, parseMessageMeta, isInboundProcessed, markInboundProcessed, sortMessagesBySequence } from '../../lib/messageMeta';
 import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '../../lib/whatsapp.js';
 import { evaluateFunnelAutomation, registerFunnelEvent } from '../../lib/funnel-whatsapp.js';
 import { detectThanks, getThanksReply, detectAgreement, getAcknowledgementReply, correctCommonMistakes } from '../../lib/bot-responses.js';
@@ -129,13 +131,67 @@ export default async function handler(req, res) {
 
       log('message_validated', { phoneHash: hashPhone(from), textLength: textBody?.length || 0 });
 
-      // Buscar ou criar conversa no Supabase
-      const conversation = await getOrCreateConversation(from, clientName);
-      
-      if (!conversation || !conversation.id) {
-        log.error('invalid_conversation');
-        return res.status(200).json({ success: false, error: 'Conversa inválida' });
+      await withConversationQueue(from, async () => {
+        let conversation = null;
+        let seqCounter = 0;
+        const bump = () => ++seqCounter;
+        try {
+          // Buscar ou criar conversa no Supabase
+          conversation = await getOrCreateConversation(from, clientName);
+
+          if (!conversation || !conversation.id) {
+            log.error('invalid_conversation');
+            res.status(200).json({ success: false, error: 'Conversa inválida' });
+            return;
+          }
+
+          seqCounter = conversation.intake_data?.messageSequence || 0;
+
+      // Idempotência: a fila serializa por telefone, mas reentregas da Meta podem
+      // chegar a instâncias diferentes. Verificar no banco dentro do lock.
+      const { data: existingInbound } = await supabase
+        .from('messages')
+        .select('id, internal_note')
+        .eq('wa_message_id', waMessageId)
+        .eq('direction', 'inbound')
+        .limit(1);
+
+      if (existingInbound && existingInbound.length > 0) {
+        log('duplicate_ignored', { waMessageId });
+        return res.status(200).json({ success: true, duplicate: true });
       }
+
+      // Controle de sequência e metadados por conversa. Não altera o banco:
+      // usa as colunas existentes (internal_note e created_at) e o intake_data JSONB.
+      const receivedAt = new Date().toISOString();
+      const baseTime = Date.now();
+      const stamp = (s) => new Date(baseTime + s).toISOString();
+
+      conversation.intake_data = conversation.intake_data || {};
+      conversation.intake_data.processedMessageIds = conversation.intake_data.processedMessageIds || {};
+
+      const inboundSeq = bump();
+      const inboundMeta = buildMessageMeta({
+        sourceMessageId: waMessageId,
+        sequence: inboundSeq,
+        receivedAt,
+        processedAt: new Date().toISOString()
+      });
+      const inboundExtra = { internal_note: inboundMeta, created_at: stamp(inboundSeq) };
+
+      const outMeta = (extra = {}) => {
+        const s = bump();
+        return {
+          ...extra,
+          internal_note: buildMessageMeta({
+            sourceMessageId: waMessageId,
+            sequence: s,
+            receivedAt,
+            processedAt: new Date().toISOString()
+          }),
+          created_at: stamp(s)
+        };
+      };
       
       // Verificar se o bot está pausado e se deve reativar automaticamente.
       // Um modo 'human' só silencia o bot quando um humano realmente assumiu
@@ -169,12 +225,12 @@ export default async function handler(req, res) {
           
           // Salvar mensagem do cliente mesmo com bot pausado
           if (conversation) {
-            await saveMessage(conversation.id, textBody, 'client', messageType);
+            await saveMessage(conversation.id, textBody, 'client', messageType, '', '', inboundExtra, waMessageId);
           }
 
           // Verifica se o cliente está aceitando termos LGPD
           if (conversation && messageType === 'text') {
-            const { handled } = await handleConsent(conversation, textBody, from, req);
+            const { handled } = await handleConsent(conversation, textBody, from, req, outMeta());
             if (handled) {
               return res.status(200).json({ success: true, consent: true });
             }
@@ -231,7 +287,7 @@ export default async function handler(req, res) {
 
       // Salvar mensagem do cliente (mídia vai para processamento assíncrono)
       if (conversation) {
-        const savedMessage = await saveMessage(conversation.id, textBody, 'client', messageType, publicUrl, '', { media_status: mediaStatus || undefined, media_type: mediaBuffer?.mimeType }, waMessageId);
+        const savedMessage = await saveMessage(conversation.id, textBody, 'client', messageType, publicUrl, '', { ...inboundExtra, media_status: mediaStatus || undefined, media_type: mediaBuffer?.mimeType }, waMessageId);
         
         // Sugerir marcação de documento no checklist
         if (publicUrl && (messageType === 'image' || messageType === 'document' || messageType === 'video' || messageType === 'audio')) {
@@ -300,7 +356,7 @@ export default async function handler(req, res) {
           const clearedIntake = { ...(conversation.intake_data || {}), current_step: -1, triage_step: -1 };
           await supabase.from('conversations').update({ mode: 'human', intake_data: clearedIntake }).eq('id', conversation.id);
           const handoffText = 'Vou encaminhar sua solicitação para nossa equipe. Aguarde o retorno.';
-          const savedHandoff = await saveMessage(conversation.id, handoffText, 'ai');
+          const savedHandoff = await saveMessage(conversation.id, handoffText, 'ai', 'text', '', '', outMeta());
           const handoffWaId = await sendWhatsAppMessage(from, handoffText);
           if (savedHandoff && handoffWaId) {
             await supabase.from('messages').update({ wa_message_id: handoffWaId, status: 'sent' }).eq('id', savedHandoff.id);
@@ -318,7 +374,7 @@ export default async function handler(req, res) {
             const clearedIntake = { ...(conversation.intake_data || {}), current_step: -1, triage_step: -1 };
             await supabase.from('conversations').update({ intake_data: clearedIntake }).eq('id', conversation.id);
             const cancelText = 'Certo, cancelei por aqui. Se precisar de ajuda com outro assunto, é só falar.';
-            const savedCancel = await saveMessage(conversation.id, cancelText, 'ai');
+            const savedCancel = await saveMessage(conversation.id, cancelText, 'ai', 'text', '', '', outMeta());
             const cancelWaId = await sendWhatsAppMessage(from, cancelText);
             if (savedCancel && cancelWaId) {
               await supabase.from('messages').update({ wa_message_id: cancelWaId, status: 'sent' }).eq('id', savedCancel.id);
@@ -327,7 +383,7 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true, cancel: true });
           }
         }
-        const { handled } = await handleConsent(conversation, textBody, from, req);
+        const { handled } = await handleConsent(conversation, textBody, from, req, outMeta());
         if (handled) return res.status(200).json({ success: true, consent: true });
       }
 
@@ -420,7 +476,7 @@ export default async function handler(req, res) {
             log('labor_context_invalidated', { success: true });
             log('labor_estimate_injection_blocked', { reason: 'topic_reset' });
             const resetReply = laborIntegration.RESET_REPLY_TEXT;
-            const savedReset = await saveMessage(conversation.id, resetReply, 'ai');
+            const savedReset = await saveMessage(conversation.id, resetReply, 'ai', 'text', '', '', outMeta());
             const resetWaId = await sendWhatsAppMessage(from, resetReply);
             if (savedReset && resetWaId) {
               await supabase.from('messages').update({ wa_message_id: resetWaId, status: 'sent' }).eq('id', savedReset.id);
@@ -467,7 +523,7 @@ export default async function handler(req, res) {
 
         if (laborResult && laborResult.handled && laborResult.reply) {
           try {
-            const savedLaborMsg = await saveMessage(conversation.id, laborResult.reply, 'ai');
+            const savedLaborMsg = await saveMessage(conversation.id, laborResult.reply, 'ai', 'text', '', '', outMeta());
             const laborWaMessageId = await sendWhatsAppMessage(from, laborResult.reply);
             if (savedLaborMsg && laborWaMessageId) {
               await supabase.from('messages').update({ wa_message_id: laborWaMessageId, status: 'sent' }).eq('id', savedLaborMsg.id);
@@ -548,22 +604,29 @@ export default async function handler(req, res) {
           }
         }
         if (isNevesCosta) {
-          log('neves_costa_confusion', { phoneHash: hashPhone(from) });
-          const protocol = req.headers['x-forwarded-proto'] || 'https';
-          const imageUrl = `${protocol}://${req.headers.host}/Aviso.jpg`;
-          const imageSent = await sendNevesCostaImage(from, conversation.id, imageUrl);
-          if (imageSent) {
-            __stageMs.boleto_ms = Date.now() - __tBoleto;
-            logPipelineTiming('neves_costa');
-            return res.status(200).json({ success: true, neves_costa: true });
+          const identityNoticeAlreadySent = !!conversation?.intake_data?.identity_notice_sent_at;
+          if (!identityNoticeAlreadySent) {
+            log('neves_costa_confusion', { phoneHash: hashPhone(from) });
+            const protocol = req.headers['x-forwarded-proto'] || 'https';
+            const imageUrl = `${protocol}://${req.headers.host}/Aviso.jpg`;
+            const imageSent = await sendNevesCostaImage(from, conversation.id, imageUrl, outMeta());
+            if (imageSent) {
+              conversation.intake_data = conversation.intake_data || {};
+              conversation.intake_data.identity_notice_sent_at = new Date().toISOString();
+              __stageMs.boleto_ms = Date.now() - __tBoleto;
+              logPipelineTiming('neves_costa');
+              return res.status(200).json({ success: true, neves_costa: true });
+            }
           }
         }
         if (isBoleto) {
-          const savedMsg = await saveMessage(conversation.id, boletoReply, 'ai');
+          const savedMsg = await saveMessage(conversation.id, boletoReply, 'ai', 'text', '', '', outMeta());
           const waMessageId = await sendWhatsAppMessage(from, boletoReply);
           if (savedMsg && waMessageId) {
             await supabase.from('messages').update({ wa_message_id: waMessageId, status: 'sent' }).eq('id', savedMsg.id);
           }
+          conversation.intake_data = conversation.intake_data || {};
+          conversation.intake_data.identity_notice_sent_at = new Date().toISOString();
           log('response_sent', { handler: 'boleto', replyLength: boletoReply?.length || 0 });
           __stageMs.boleto_ms = Date.now() - __tBoleto;
           logPipelineTiming('boleto');
@@ -581,7 +644,7 @@ export default async function handler(req, res) {
         const intakeResult = await handleIntake(conversation, textBody, log, lastReply);
         if (intakeResult && intakeResult.reply) {
           // Enviar próxima pergunta do intake
-          const savedMsg = await saveMessage(conversation.id, intakeResult.reply, 'ai');
+          const savedMsg = await saveMessage(conversation.id, intakeResult.reply, 'ai', 'text', '', '', outMeta());
           const waMessageId = await sendWhatsAppMessage(from, intakeResult.reply);
           // Atualizar mensagem com wa_message_id e status
           if (savedMsg && waMessageId) {
@@ -667,7 +730,7 @@ export default async function handler(req, res) {
       // Salvar resposta da IA
       let savedAiMsg = null;
       if (conversation) {
-        savedAiMsg = await saveMessage(conversation.id, aiReply, 'ai');
+        savedAiMsg = await saveMessage(conversation.id, aiReply, 'ai', 'text', '', '', outMeta());
       }
 
       // Enviar resposta via WhatsApp ANTES de travar o canal para humano/notificar admin
@@ -688,7 +751,22 @@ export default async function handler(req, res) {
       
       // Retorna sucesso após processar tudo
       res.status(200).json({ success: true });
-    } catch (error) {
+      return;
+    } finally {
+      if (conversation?.id) {
+        try {
+          conversation.intake_data = conversation.intake_data || {};
+          conversation.intake_data.messageSequence = seqCounter;
+          conversation.intake_data.lastProcessedAt = new Date().toISOString();
+          await supabase.from('conversations').update({ intake_data: conversation.intake_data }).eq('id', conversation.id);
+        } catch (persistErr) {
+          log('conversation_state_persist_failed', { error: sanitizeError(persistErr) });
+        }
+      }
+    }
+  });
+    return;
+  } catch (error) {
       log.error('handler_exception', { error: sanitizeError(error), stack: error.stack });
       res.status(200).json({ success: false, error: error.message });
     }
@@ -851,6 +929,8 @@ async function saveMessage(conversationId, text, sender, messageType = 'text', m
     if (extraData.media_type) insertData.media_type = extraData.media_type;
     if (extraData.media_status) insertData.media_status = extraData.media_status;
     if (extraData.media_transcript) insertData.media_transcript = extraData.media_transcript;
+    if (extraData.internal_note) insertData.internal_note = extraData.internal_note;
+    if (extraData.created_at) insertData.created_at = extraData.created_at;
 
     const { data, error } = await supabase
       .from('messages')
@@ -1005,7 +1085,7 @@ function detectEscapeIntent(text) {
   return null;
 }
 
-async function handleConsent(conversation, textBody, from, req) {
+async function handleConsent(conversation, textBody, from, req, extraData = {}) {
   if (!conversation?.intake_data || conversation.intake_data.consent_request_status !== 'pending') {
     return { handled: false };
   }
@@ -1038,6 +1118,7 @@ async function handleConsent(conversation, textBody, from, req) {
 
   try {
     await supabase.from('conversations').update({ intake_data: nextIntake }).eq('id', conversation.id);
+    conversation.intake_data = nextIntake;
   } catch (err) {
     console.error('[CONSENT] Erro ao atualizar conversa:', sanitizeError(err));
   }
@@ -1045,7 +1126,7 @@ async function handleConsent(conversation, textBody, from, req) {
   const reply = value
     ? 'Obrigado! Seu consentimento foi registrado. Podemos continuar o atendimento.'
     : 'Entendido. Registramos sua decisão. Seus dados serão tratados conforme a política e você pode pedir ajustes quando quiser.';
-  const saved = await saveMessage(conversation.id, reply, 'ai');
+  const saved = await saveMessage(conversation.id, reply, 'ai', 'text', '', '', extraData);
   const waId = await sendWhatsAppMessage(from, reply);
   if (saved && waId) {
     await supabase.from('messages').update({ wa_message_id: waId, status: 'sent' }).eq('id', saved.id);
@@ -1082,7 +1163,7 @@ function isNevesCostaConfusion(text) {
   return hasNevesCosta && !isCorrectFirm;
 }
 
-async function sendNevesCostaImage(to, conversationId, imageUrl = NEVES_COSTA_IMAGE_URL) {
+async function sendNevesCostaImage(to, conversationId, imageUrl = NEVES_COSTA_IMAGE_URL, extraData = {}) {
   try {
     if (!imageUrl) {
       console.warn('[WEBHOOK] URL da imagem Neves Costa não configurada');
@@ -1102,7 +1183,7 @@ async function sendNevesCostaImage(to, conversationId, imageUrl = NEVES_COSTA_IM
     const caption = 'Aviso importante: o escritório Neves & Costa não possui relação com a entidade "Neves Costa".';
     await sendWhatsAppMediaMessage(to, mediaId, 'image', caption);
 
-    await saveMessage(conversationId, caption, 'ai', 'image', imageUrl, '', { media_type: 'image/jpeg' });
+    await saveMessage(conversationId, caption, 'ai', 'image', imageUrl, '', { ...extraData, media_type: 'image/jpeg' });
 
     console.log('[WEBHOOK] ✅ Imagem Neves Costa enviada');
     return true;
@@ -1202,6 +1283,9 @@ function shouldUseKnowledge(text) {
 }
 
 async function askGemini(prompt, conversationHistory = '', conversation = null, clientMemoryText = '', log = () => {}) {
+  const clientFullName = conversation?.client_name || '';
+  const clientTitle = clientFullName ? getClientTitle(clientFullName) : null;
+  const clientFirstName = clientFullName ? clientFullName.trim().split(/\s+/)[0] : 'cliente';
   try {
     console.log('[GEMINI] Tentando Gemini 2.5 Flash-Lite...');
     console.log('[GEMINI] API Key presente?', GEMINI_API_KEY ? 'Sim' : 'NÃO');
@@ -1277,10 +1361,6 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     log('context_sources', { sources: contextSources });
     log('trusted_facts_count', { count: contextParts.length });
     log('current_message_priority', { priority: 'current_message' });
-
-    const clientFullName = conversation?.client_name || '';
-    const clientTitle = clientFullName ? getClientTitle(clientFullName) : null;
-    const clientFirstName = clientFullName ? clientFullName.trim().split(/\s+/)[0] : 'cliente';
 
     const firstTurn = !conversationHistory || conversationHistory.trim() === '';
     const firstGreeting = 'Olá!';

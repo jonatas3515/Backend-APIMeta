@@ -13,6 +13,7 @@ import CaseSuggestionBanner from './CaseSuggestionBanner';
 import CaseCreationModal from './CaseCreationModal';
 import CaseLinkModal from './CaseLinkModal';
 import { navigateToCase } from '../lib/router';
+import { sortMessagesBySequence } from '../lib/messageMeta';
 
 function isSameDay(a, b) {
   return a.getFullYear() === b.getFullYear() &&
@@ -300,7 +301,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMessages(data || []);
+      setMessages(sortMessagesBySequence(data || []));
       setLoading(false);
     } catch (error) {
       console.error('Erro ao buscar mensagens:', error);
