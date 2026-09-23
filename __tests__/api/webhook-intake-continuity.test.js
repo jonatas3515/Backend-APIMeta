@@ -796,9 +796,10 @@ describe('Conversa livre conduzida pelo Gemini (sem formulário rígido)', () =>
     await webhookHandler(req, res);
 
     const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
-    expect(data).toMatchObject({ success: true, consent: true });
+    expect(data).toMatchObject({ success: true, privacy: true });
     const body = lastWhatsappBody();
-    expect(body.text.body).toMatch(/registramos sua decis[aã]o/i);
+    expect(body.text.body).toMatch(/retirada do consentimento foi registrado/i);
+    expect(body.text.body).not.toMatch(/formulário/i);
     expect(geminiCalls().length).toBe(0);
   });
 

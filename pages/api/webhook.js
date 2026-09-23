@@ -228,14 +228,18 @@ export default async function handler(req, res) {
             await saveMessage(conversation.id, textBody, 'client', messageType, '', '', inboundExtra, waMessageId);
           }
 
-          // Verifica se o cliente está aceitando termos LGPD
+          // Verifica pedido de privacidade ou aceite de LGPD
           if (conversation && messageType === 'text') {
+            const { handled: privacyHandled } = await handlePrivacyRequest(conversation, textBody, from, req, outMeta());
+            if (privacyHandled) {
+              return res.status(200).json({ success: true, privacy: true });
+            }
             const { handled } = await handleConsent(conversation, textBody, from, req, outMeta());
             if (handled) {
               return res.status(200).json({ success: true, consent: true });
             }
           }
-          
+
           // Retorna sem responder
           return res.status(200).json({ success: true, bot_paused: true });
         }
@@ -383,6 +387,9 @@ export default async function handler(req, res) {
             return res.status(200).json({ success: true, cancel: true });
           }
         }
+        const { handled: privacyHandled } = await handlePrivacyRequest(conversation, textBody, from, req, outMeta());
+        if (privacyHandled) return res.status(200).json({ success: true, privacy: true });
+
         const { handled } = await handleConsent(conversation, textBody, from, req, outMeta());
         if (handled) return res.status(200).json({ success: true, consent: true });
       }
@@ -1077,11 +1084,19 @@ const PRIVACY_INTENT = [
   'nao aceito', 'não aceito', 'nao concordo', 'não concordo',
   'nao quero continuar', 'não quero continuar',
   'recuso', 'recusar', 'nao autorizo', 'não autorizo',
-  'revogar', 'revogacao', 'revogação', 'revogo', 'quero revogar',
-  'excluir', 'exclusao', 'exclusão', 'quero excluir', 'apagar', 'deletar',
+  'revogar', 'revogacao', 'revogação', 'revogo', 'revogue', 'quero revogar',
+  'excluir', 'exclusao', 'exclusão', 'exclua', 'excluo', 'quero excluir',
+  'apagar', 'apague', 'apago', 'apagamento',
+  'deletar', 'delete', 'deleto',
   'quero apagar', 'quero deletar', 'direito de esquecimento',
   'oposicao', 'oposição', 'meu direito de opor',
-  'retirar consentimento', 'cancelar consentimento', 'tirar consentimento'
+  'retirar meu consentimento', 'retirar o consentimento', 'retirar consentimento',
+  'retire meu consentimento', 'retire o consentimento', 'retire consentimento',
+  'retiro meu consentimento', 'retiro o consentimento', 'retiro consentimento',
+  'retirada do consentimento', 'retirada de consentimento',
+  'tirar meu consentimento', 'tirar o consentimento', 'tirar consentimento',
+  'cancelar meu consentimento', 'cancelar o consentimento', 'cancelar consentimento',
+  'cancelo meu consentimento', 'cancelo o consentimento', 'cancelo consentimento'
 ];
 
 function detectEscapeIntent(text) {
@@ -1097,6 +1112,51 @@ function isPrivacyIntent(text) {
   if (!text) return false;
   const normalized = normalizeForCheck(text).replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
   return PRIVACY_INTENT.some(k => normalized.includes(k));
+}
+
+async function handlePrivacyRequest(conversation, textBody, from, req, extraData = {}) {
+  if (!conversation?.intake_data || !isPrivacyIntent(textBody)) {
+    return { handled: false };
+  }
+
+  const now = new Date().toISOString();
+  const nextIntake = { ...(conversation.intake_data || {}) };
+
+  // Registra o pedido de privacidade, mas evita duplicar log se já estiver declinado.
+  if (conversation.intake_data.consent_request_status !== 'declined') {
+    try {
+      await supabase.from('consent_logs').insert({
+        conversation_id: conversation.id,
+        consent_type: 'data_processing',
+        value: false,
+        ip_address: (req?.headers?.['x-forwarded-for'] || '').split(',')[0].trim() || null,
+        user_agent: req?.headers?.['user-agent'] || null,
+        created_at: now
+      });
+    } catch (err) {
+      console.error('[PRIVACY] Erro ao registrar pedido:', sanitizeError(err));
+    }
+  }
+
+  nextIntake.consent_request_status = 'declined';
+  nextIntake.consent = false;
+  nextIntake.privacy_request_at = now;
+  nextIntake.consent_log = { type: 'data_processing', value: false, at: now };
+
+  try {
+    await supabase.from('conversations').update({ intake_data: nextIntake }).eq('id', conversation.id);
+    conversation.intake_data = nextIntake;
+  } catch (err) {
+    console.error('[PRIVACY] Erro ao atualizar conversa:', sanitizeError(err));
+  }
+
+  const saved = await saveMessage(conversation.id, PRIVACY_REPLY, 'ai', 'text', '', '', extraData);
+  const waId = await sendWhatsAppMessage(from, PRIVACY_REPLY);
+  if (saved && waId) {
+    await supabase.from('messages').update({ wa_message_id: waId, status: 'sent' }).eq('id', saved.id);
+  }
+
+  return { handled: true, declined: true };
 }
 
 async function handleConsent(conversation, textBody, from, req, extraData = {}) {
@@ -1141,9 +1201,8 @@ async function handleConsent(conversation, textBody, from, req, extraData = {}) 
       console.error('[CONSENT] Erro ao atualizar conversa:', sanitizeError(err));
     }
 
-    const reply = 'Entendido. Registramos sua decisão. Seus dados serão tratados conforme a política e você pode pedir ajustes quando quiser.';
-    const saved = await saveMessage(conversation.id, reply, 'ai', 'text', '', '', extraData);
-    const waId = await sendWhatsAppMessage(from, reply);
+    const saved = await saveMessage(conversation.id, PRIVACY_REPLY, 'ai', 'text', '', '', extraData);
+    const waId = await sendWhatsAppMessage(from, PRIVACY_REPLY);
     if (saved && waId) {
       await supabase.from('messages').update({ wa_message_id: waId, status: 'sent' }).eq('id', saved.id);
     }
@@ -1302,6 +1361,8 @@ const LGPD_NOTICE = `Olá! Seja bem-vindo(a) à Neves & Costa Advocacia e Consul
 Em conformidade com a LGPD, os dados fornecidos nesta conversa serão tratados com sigilo e utilizados exclusivamente para o atendimento solicitado. Ao continuar a conversa, você concorda com esse tratamento. Consulte nossa Política de Privacidade: https://chatnevesecosta.vercel.app/politica-de-privacidade
 
 Como posso ajudar?`;
+
+const PRIVACY_REPLY = 'Seu pedido de retirada do consentimento foi registrado. A retirada não invalida os tratamentos realizados anteriormente, e alguns dados poderão ser mantidos quando houver obrigação legal.';
 
 
 

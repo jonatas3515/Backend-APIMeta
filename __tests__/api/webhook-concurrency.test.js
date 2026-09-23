@@ -407,4 +407,92 @@ describe('Concorrência, idempotência, LGPD e identidade', () => {
     expect(bodies[0]).toMatch(/Vou encaminhar/);
   });
 
+  test('"Quero revogar o tratamento dos meus dados" aciona fluxo de privacidade', async () => {
+    const now = new Date().toISOString();
+    global.__testConversation = {
+      client_name: 'Cliente',
+      intake_data: { consent_request_sent_at: now, consent_request_status: 'granted' }
+    };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero revogar o tratamento dos meus dados', 'msg-revogar-011')
+    });
+    await webhookHandler(req, res);
+
+    expect(res._getJSONData().success).toBe(true);
+    expect(res._getJSONData().privacy).toBe(true);
+    const bodies = fetchSpy.mock.calls
+      .filter(([url]) => String(url).includes('/messages'))
+      .map(([_, opts]) => JSON.parse(opts.body).text.body);
+    expect(bodies.length).toBe(1);
+    expect(bodies[0]).toMatch(/retirada do consentimento foi registrado/i);
+    expect(bodies[0]).not.toMatch(/formulário/i);
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage'));
+    expect(geminiCalls.length).toBe(0);
+  });
+
+  test('"Quero retirar meu consentimento" aciona fluxo de privacidade', async () => {
+    const now = new Date().toISOString();
+    global.__testConversation = {
+      client_name: 'Cliente',
+      intake_data: { consent_request_sent_at: now, consent_request_status: 'granted' }
+    };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero retirar meu consentimento', 'msg-retirar-012')
+    });
+    await webhookHandler(req, res);
+
+    expect(res._getJSONData().privacy).toBe(true);
+    const bodies = fetchSpy.mock.calls
+      .filter(([url]) => String(url).includes('/messages'))
+      .map(([_, opts]) => JSON.parse(opts.body).text.body);
+    expect(bodies[0]).toMatch(/retirada do consentimento foi registrado/i);
+    expect(bodies[0]).not.toMatch(/formulário/i);
+  });
+
+  test('"Apague meus dados" aciona fluxo de privacidade', async () => {
+    const now = new Date().toISOString();
+    global.__testConversation = {
+      client_name: 'Cliente',
+      intake_data: { consent_request_sent_at: now, consent_request_status: 'granted' }
+    };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Apague meus dados', 'msg-apagar-013')
+    });
+    await webhookHandler(req, res);
+
+    expect(res._getJSONData().privacy).toBe(true);
+    const bodies = fetchSpy.mock.calls
+      .filter(([url]) => String(url).includes('/messages'))
+      .map(([_, opts]) => JSON.parse(opts.body).text.body);
+    expect(bodies[0]).toMatch(/retirada do consentimento foi registrado/i);
+    expect(bodies[0]).not.toMatch(/formulário/i);
+  });
+
+  test('"Não concordo com o uso dos meus dados" aciona fluxo de privacidade', async () => {
+    const now = new Date().toISOString();
+    global.__testConversation = {
+      client_name: 'Cliente',
+      intake_data: { consent_request_sent_at: now, consent_request_status: 'granted' }
+    };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Não concordo com o uso dos meus dados', 'msg-nao-concordar-014')
+    });
+    await webhookHandler(req, res);
+
+    expect(res._getJSONData().privacy).toBe(true);
+    const bodies = fetchSpy.mock.calls
+      .filter(([url]) => String(url).includes('/messages'))
+      .map(([_, opts]) => JSON.parse(opts.body).text.body);
+    expect(bodies[0]).toMatch(/retirada do consentimento foi registrado/i);
+    expect(bodies[0]).not.toMatch(/formulário/i);
+  });
+
 });
