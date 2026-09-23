@@ -100,10 +100,11 @@ jest.mock('@supabase/supabase-js', () => ({
 
 jest.mock('../../lib/knowledge-embeddings', () => ({
   semanticSearch: jest.fn(async () => ({
-    chunks: [{ title: 'Repetição de Indébito', type: 'consumidor', content: 'TRECHO_CONSUMIDOR_NAO_DEVE_APARECER' }]
+    chunks: [{ title: 'Prazo para recorrer de decisão judicial', type: 'civel', content: 'TRECHO_PRAZO_RECURSO' }]
   }))
 }));
 
+const { semanticSearch } = require('../../lib/knowledge-embeddings');
 const { createMocks } = require('node-mocks-http');
 const webhookHandler = require('../../pages/api/webhook').default;
 
@@ -491,14 +492,14 @@ describe('Webhook labor real path', () => {
 
     const geminiBody = JSON.parse(geminiCalls[0][1].body);
     const prompt = geminiBody.contents?.[0]?.parts?.[0]?.text || '';
-    expect(prompt).not.toContain('TRECHO_CONSUMIDOR_NAO_DEVE_APARECER');
-    expect(prompt).not.toContain('Repetição de Indébito');
+    expect(prompt).not.toContain('TRECHO_PRAZO_RECURSO');
+    expect(prompt).not.toContain('Prazo para recorrer');
   });
 
-  test('mensagem não trabalhista continua injetando a base de conhecimento', async () => {
+  test('mensagem não trabalhista injeta trechos relevantes da base de conhecimento', async () => {
     const { req, res } = createMocks({
       method: 'POST',
-      body: buildLaborPayload('Bom dia, tenho uma dúvida sobre um contrato'),
+      body: buildLaborPayload('Bom dia, gostaria de saber o prazo para recorrer de uma decisão judicial'),
     });
 
     await webhookHandler(req, res);
@@ -511,7 +512,7 @@ describe('Webhook labor real path', () => {
 
     const geminiBody = JSON.parse(geminiCalls[0][1].body);
     const prompt = geminiBody.contents?.[0]?.parts?.[0]?.text || '';
-    expect(prompt).toContain('TRECHO_CONSUMIDOR_NAO_DEVE_APARECER');
+    expect(prompt).toContain('TRECHO_PRAZO_RECURSO');
   });
 
   test('comando "É outro assunto" invalida contexto trabalhista e responde sem Gemini', async () => {
@@ -882,6 +883,137 @@ describe('Webhook labor real path', () => {
     const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
     expect(body.text.body).not.toMatch(/não (se encaixa|atendo|posso auxiliar|atendemos)/i);
     expect(body.text.body).not.toMatch(/^Olá,\s*Jonatas/i);
+  });
+
+  describe('Acordo de processo e motor trabalhista', () => {
+    function mockFetchWithText(text) {
+      fetchSpy.mockImplementation(async (url) => {
+        const u = String(url);
+        if (u.includes('generativelanguage.googleapis.com')) {
+          return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }) };
+        }
+        return { ok: true, json: async () => ({ messages: [{ id: 'wa-area-001' }] }) };
+      });
+    }
+
+    const T1 = 'Olá boa tarde, tudo bem? Me chamo Gabriella sou estagiária do escritório Wilson Augusto sociedade individual de advocacia, representamos a empresa ADN comércio e transporte Ltda, processo sob o número 5885805-07.2026.8.09.0051 e gostaria de saber quais são as possibilidades de fazermos um acordo de forma parcelada.';
+    const T2 = 'ADN comércio e transporte Ltda, processo sob o número 5885805-07.2026.8.09.0051';
+
+    beforeEach(() => {
+      semanticSearch.mockClear();
+    });
+
+    test('primeira mensagem completa do escritório não gera estimativa nem repete dados', async () => {
+      global.__testConversation = { client_name: 'Gabriella', intake_data: {} };
+      global.__testMessages = [];
+      mockFetchWithText('Entendido. Existe alguma proposta de entrada e quantas parcelas pretendem?');
+
+      const { req, res } = createMocks({ method: 'POST', body: buildLaborPayload(T1) });
+      await webhookHandler(req, res);
+      expect(res._getStatusCode()).toBe(200);
+
+      const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+      expect(data).not.toMatchObject({ labor: true });
+
+      const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+      const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+      expect(body.text.body).toMatch(/Entendido/);
+      expect(body.text.body).not.toMatch(/Estimativa preliminar|🧾|rescisão/i);
+
+      const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage'));
+      expect(geminiCalls.length).toBeGreaterThan(0);
+      const prompt = JSON.parse(geminiCalls[0][1].body).contents[0].parts[0].text;
+      expect(prompt).not.toContain('ESTIMATIVA TRABALHISTA');
+      expect(prompt).not.toContain('TRECHO_PRAZO_RECURSO');
+      expect(semanticSearch).not.toHaveBeenCalled();
+    });
+
+    test('repetir empresa e processo não gera estimativa trabalhista', async () => {
+      global.__testConversation = { client_name: 'Gabriella', intake_data: {} };
+      global.__testMessages = [{
+        conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+        text: T1,
+        sender_type: 'client',
+        created_at: new Date(Date.now() - 60000).toISOString()
+      }];
+      mockFetchWithText('Anotado. Sobre o acordo, qual o valor de entrada e o número de parcelas?');
+
+      const { req, res } = createMocks({ method: 'POST', body: buildLaborPayload(T2) });
+      await webhookHandler(req, res);
+      expect(res._getStatusCode()).toBe(200);
+
+      const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+      expect(data).not.toMatchObject({ labor: true });
+
+      const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+      const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+      expect(body.text.body).not.toMatch(/Estimativa preliminar|🧾|rescisão/i);
+      expect(body.text.body).toMatch(/acordo/);
+    });
+
+    test('mensagem "Quanto é minha rescisão?" ainda dispara resposta trabalhista', async () => {
+      global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+      global.__testMessages = [];
+
+      const { req, res } = createMocks({ method: 'POST', body: buildLaborPayload('Quanto é minha rescisão?') });
+      await webhookHandler(req, res);
+      expect(res._getStatusCode()).toBe(200);
+
+      const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+      expect(data).toMatchObject({ success: true, labor: true });
+
+      const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+      const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+      expect(body.text.body).toMatch(/Ainda não tenho uma estimativa/i);
+    });
+
+    test('"acordo" sozinho não gera estimativa trabalhista', async () => {
+      global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+      global.__testMessages = [];
+      mockFetchWithText('Sobre qual acordo você gostaria de falar?');
+
+      const { req, res } = createMocks({ method: 'POST', body: buildLaborPayload('acordo') });
+      await webhookHandler(req, res);
+      expect(res._getStatusCode()).toBe(200);
+
+      const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+      expect(data).not.toMatchObject({ labor: true });
+
+      const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+      const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+      expect(body.text.body).toMatch(/acordo/);
+      expect(body.text.body).not.toMatch(/Estimativa|rescisão/i);
+    });
+
+    test('estado trabalhista antigo com mensagem cível reseta e não gera estimativa', async () => {
+      global.__testConversation = {
+        client_name: 'Cliente',
+        intake_data: {
+          laborContextActive: true,
+          laborCalculation: {
+            totalEstimated: 5000,
+            currency: 'BRL',
+            calculatedAt: new Date().toISOString(),
+            items: [{ code: 'salary_balance', name: 'Saldo de salário', amount: 1000, status: 'calculated' }]
+          }
+        }
+      };
+      global.__testMessages = [];
+      mockFetchWithText('Recebido. Quais os termos desejados para o acordo parcelado?');
+
+      const { req, res } = createMocks({ method: 'POST', body: buildLaborPayload(T1) });
+      await webhookHandler(req, res);
+      expect(res._getStatusCode()).toBe(200);
+
+      const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+      expect(data).not.toMatchObject({ labor: true });
+
+      const geminiCalls = fetchSpy.mock.calls.filter(([url]) =>
+        String(url).includes('generativelanguage.googleapis.com')
+      );
+      const prompt = JSON.parse(geminiCalls[0][1].body).contents[0].parts[0].text;
+      expect(prompt).not.toContain('ESTIMATIVA TRABALHISTA');
+    });
   });
 });
 });

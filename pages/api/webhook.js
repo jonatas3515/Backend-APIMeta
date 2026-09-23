@@ -1366,26 +1366,47 @@ const PRIVACY_REPLY = 'Seu pedido de retirada do consentimento foi registrado. A
 
 
 
-async function getKnowledgeContext(prompt) {
+function queryKeywords(query) {
+  const stopwords = new Set(['o','a','os','as','um','uma','de','da','do','das','dos','e','em','no','na','nos','nas','por','para','com','como','mais','menos','muito','pouco','se','sem','sob','sobre','entre','ate','antes','depois','durante','so','que','quem','qual','quais','cujo','cuja','este','esta','estes','estas','esse','essa','esses','essas','aquele','aquela','aqueles','aquela','isto','isso','aquilo','meu','minha','meus','minhas','teu','tua','teus','tuas','seu','sua','seus','suas','nosso','nossa','nos','vos','lhes','lhe','la','aqui','agora','hoje','ontem','amanha','ja','ainda','so','somente','talvez','deve','dever','deveria','pode','poder','posso','ser','estar','ter','haver','fazer','dar','dizer','ver','ir','vir','sair','chegar','ficar','passar','voltar','entrar','comecar','acabar','terminar','continuar','parecer','achar','sendo','sido','gere','gerar','rascunho','inicial','dê','me','nos','favor','obrigado','obrigada','fico','grato','gostaria','poderia','pode','faca','faz','diga','qualquer','todos','todas','todo','toda','cada','tanto','tanta','sempre','nunca','jamais','nem','tambem','ou','mas','porem','contudo','entretanto','logo','portanto','assim','pois','porque','porquê','quando','onde','quanto','quantos','exemplo','tipo','dessa','desse','daquele','disto','disso','daquilo','nele','nela','dele','dela','pro','pra','pros','pras','eu','voce','você','ele','ela','eles','elas']);
+  return (query || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .match(/[a-z0-9]+/g) || []
+    .filter(t => t.length >= 3 && !stopwords.has(t));
+}
+
+function isRelevantChunk(query, chunk) {
+  const keywords = queryKeywords(query);
+  if (keywords.length === 0) return false;
+  const haystack = ((chunk.title || '') + ' ' + (chunk.content || ''))
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return keywords.some(k => haystack.includes(k));
+}
+
+async function getKnowledgeContext(prompt, log = () => {}) {
   if (!supabase || prompt.length < 15) return '';
   try {
-    const { chunks } = await semanticSearch(supabase, { query: prompt, topK: 2 });
-    if (!chunks || chunks.length === 0) return '';
-    const block = chunks.map(c => `FONTE: ${c.title} (${c.type})\n${c.content}`).join('\n---\n');
+    const { chunks } = await semanticSearch(supabase, { query: prompt, topK: 3, minRank: 0.45 });
+    const relevantChunks = (chunks || []).filter(c => isRelevantChunk(prompt, c));
+    log('rag_filter_result', { retrieved: (chunks || []).length, relevant: relevantChunks.length });
+    if (!relevantChunks.length) return '';
+    const block = relevantChunks.slice(0, 2).map(c => `FONTE: ${c.title} (${c.type})\n${c.content}`).join('\n---\n');
+    log('relevant_document_count', { count: relevantChunks.length });
     return `TRECHOS DA BASE DE CONHECIMENTO (use apenas se forem relevantes para a pergunta):\n${block}\n\n`;
   } catch {
     return '';
   }
 }
 
-// RAG só roda quando a mensagem sinaliza necessidade de base normativa,
-// documento, prazo, procedimento ou informação específica — não em toda narrativa.
-const KNOWLEDGE_TRIGGER_RE = /\b(como|qual|quais|quando|onde|porque|por que|posso|devo|duvida|duvidas|documento|documentos|prazo|prazos|lei|artigo|jurisprudencia|recurso|recorrer|modelo|requerimento|peticao|procedimento|honorarios?|quanto custa|tabela|oab)\b/;
+// RAG só roda quando a mensagem sinaliza necessidade concreta de base
+// normativa, documento, modelo, procedimento ou prazo — não em toda narrativa,
+// pergunta genérica ou menção a processo/acordo.
+const KNOWLEDGE_TRIGGER_RE = /\b(documento|documentos|prazo|prazos|lei|artigo|jurisprudencia|recurso|recorrer|modelo|modelos|requerimento|peticao|petição|procedimento|procedimentos|honorarios?|honorários?|quanto custa|tabela|oab)\b/;
 
 function shouldUseKnowledge(text) {
   if (!text || text.length < 15) return false;
   const n = normalizeForCheck(text);
-  if (n.includes('?')) return true;
   return KNOWLEDGE_TRIGGER_RE.test(n);
 }
 
@@ -1452,10 +1473,14 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
       conversation?.intake_data?.laborContextActive !== false;
     const isLaborContext = hasActiveLaborContext ||
       classifyLaborIntent(prompt).intent !== 'other';
-    const useKnowledge = !isLaborContext && shouldUseKnowledge(prompt);
-    const knowledgeBlock = useKnowledge ? await getKnowledgeContext(prompt) : '';
+    const wantsKnowledge = !isLaborContext && shouldUseKnowledge(prompt);
+    let knowledgeBlock = '';
+    if (wantsKnowledge) {
+      knowledgeBlock = await getKnowledgeContext(prompt, log);
+    }
+    const useKnowledge = wantsKnowledge && !!knowledgeBlock;
     log(useKnowledge ? 'rag_called' : 'rag_skipped', {
-      reason: isLaborContext ? 'labor_context' : (useKnowledge ? 'knowledge_signal' : 'no_knowledge_signal')
+      reason: isLaborContext ? 'labor_context' : (wantsKnowledge ? (knowledgeBlock ? 'relevant_chunks' : 'irrelevant_results') : 'no_knowledge_signal')
     });
 
     // Observabilidade do contexto: o que realmente orienta esta resposta.
@@ -1481,8 +1506,9 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
       ? 'Se a primeira mensagem for uma saudação (oi, olá, bom dia), responda APENAS a saudação e NÃO pergunte nada. Se a mensagem já apresentar um caso ou pergunta, responda diretamente e NÃO diga "Olá".'
       : 'O histórico já existe. NÃO se apresente, NÃO diga "Olá", "Oi" ou "Bom dia" em nenhuma circunstância. Responda DIRETAMENTE ao assunto.';
 
-    const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}${knowledgeBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- ${areaAcolhimentoRule}\n- Responda DIRETAMENTE à NOVA MENSAGEM do cliente, usando o contexto e a memória apenas como referência. Não fique preso a uma informação anterior se o cliente mudou de assunto.\n- Se a mensagem mencionar CNPJ, boleto, "Neves Costa" (sem &), "outro escritório" ou cobrança atribuída a nós e o esclarecimento ainda NÃO tiver sido dito no histórico, o esclarecimento ENXUTO é a prioridade máxima. NUNCA trate "financiamento", "consórcio", "banco" ou "dívida" sozinhos como confusão — são tipos de caso. Depois de esclarecer, NÃO ofereça outros serviços.
-- Se o esclarecimento sobre boleto/cobrança/Neves Costa JÁ tiver sido dito no histórico e o cliente continuar mencionando o boleto/nome no documento, NÃO repita o esclarecimento inicial. Reconheça a preocupação, peça para conferir a grafia exata e o CNPJ no documento, e oriente a não fazer o pagamento antes de confirmar a origem. Não ofereça telefone.\n- Não peça nome, e-mail ou telefone que já estiverem no histórico, contexto ou memória.\n- ${nameRule}
+    const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}${knowledgeBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- ${areaAcolhimentoRule}\n- Responda DIRETAMENTE à NOVA MENSAGEM do cliente, usando o contexto e a memória apenas como referência. Não fique preso a uma informação anterior se o cliente mudou de assunto.\n- Se um representante de escritório informar empresa e número de processo propondo acordo parcelado, reconheça esses dados e NÃO os peça novamente. Pergunte diretamente sobre os termos: existe proposta, valor de entrada, número de parcelas e condições desejadas.
+- Se a mensagem mencionar CNPJ, boleto, "Neves Costa" (sem &), "outro escritório" ou cobrança atribuída a nós e o esclarecimento ainda NÃO tiver sido dito no histórico, o esclarecimento ENXUTO é a prioridade máxima. NUNCA trate "financiamento", "consórcio", "banco" ou "dívida" sozinhos como confusão — são tipos de caso. Depois de esclarecer, NÃO ofereça outros serviços.
+- Se o esclarecimento sobre boleto/cobrança/Neves Costa JÁ tiver sido dito no histórico e o cliente continuar mencionando o boleto/nome no documento, NÃO repita o esclarecimento inicial. Reconheça a preocupação, peça para conferir a grafia exata e o CNPJ no documento, e oriente a não fazer o pagamento antes de confirmar a origem. Não ofereça telefone.\n- Não peça nome, e-mail, telefone, número de processo, empresa, escritório ou credor que já constem na mensagem atual ou no histórico. Avance sobre a dúvida ou proposta.\n- ${nameRule}
 - Se TRECHOS DA BASE DE CONHECIMENTO forem fornecidos, use-os apenas se forem diretamente relevantes e cite a fonte (ex: "Conforme jurisprudência..."). Se não forem relevantes, ignore-os.
 - Responda como Jhon, 1-3 frases, sem listas, sem telefone a menos que o cliente peça explicitamente.`;
     
