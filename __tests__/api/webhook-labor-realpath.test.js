@@ -820,8 +820,10 @@ describe('Webhook labor real path', () => {
     expect(geminiCalls.length).toBeGreaterThan(0);
 
     const prompt = JSON.parse(geminiCalls[0][1].body).contents[0].parts[0].text;
-    expect(prompt).toContain('REGRA DE ACOLHIMENTO E ÁREA');
-    expect(prompt).toContain('classificação de área é APENAS uma etiqueta interna');
+    expect(prompt).toContain('MENSAGEM ATUAL');
+    expect(prompt).not.toContain('REGRA DE ACOLHIMENTO E ÁREA');
+    expect(prompt).not.toContain('REGRA DE NOME');
+    expect(prompt).not.toContain('DIRETRIZES PARA ESTA RESPOSTA');
     expect(prompt).not.toContain('Olá, Jonatas');
     expect(prompt).not.toMatch(/Olá,\s*Jonatas/i);
 
@@ -1014,6 +1016,132 @@ describe('Webhook labor real path', () => {
       const prompt = JSON.parse(geminiCalls[0][1].body).contents[0].parts[0].text;
       expect(prompt).not.toContain('ESTIMATIVA TRABALHISTA');
     });
+
+    describe('Continuidade e fatos confirmados', () => {
+      test('primeira mensagem da Gabriella preenche FATOS CONFIRMADOS e OBJETIVO ATUAL', async () => {
+        global.__testConversation = { client_name: 'Gabriella', intake_data: {} };
+        global.__testMessages = [];
+        mockFetchWithText('Entendi. Você já tem uma proposta ou número de parcelas em mente?');
+
+        const { req, res } = createMocks({ method: 'POST', body: buildLaborPayload(T1) });
+        await webhookHandler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+
+        const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
+        const prompt = JSON.parse(geminiCalls[0][1].body).contents[0].parts[0].text;
+        expect(prompt).toContain('FATOS CONFIRMADOS');
+        expect(prompt).toContain('Representante: Gabriella');
+        expect(prompt).toContain('Empresa/Credor: ADN');
+        expect(prompt).toContain('OBJETIVO ATUAL: acordo parcelado');
+        expect(prompt).toContain('MENSAGEM ATUAL:');
+        expect(prompt).not.toContain('DIRETRIZES PARA ESTA RESPOSTA');
+        expect(prompt).not.toContain('REGRA DE NOME');
+      });
+
+      test('repetir empresa e processo reconhece os dados e não repete pergunta', async () => {
+        global.__testConversation = {
+          client_name: 'Gabriella',
+          intake_data: {
+            confirmedFacts: {
+              representative: 'Gabriella',
+              office: 'Wilson Augusto',
+              company: 'ADN comércio e transporte Ltda',
+              processNumber: '5885805-07.2026.8.09.0051',
+              objective: 'acordo parcelado'
+            },
+            lastQuestion: { text: 'Você já tem uma proposta ou número de parcelas em mente?', fingerprint: 'abc123' }
+          }
+        };
+        global.__testMessages = [{
+          conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+          text: T1,
+          sender_type: 'client',
+          created_at: new Date(Date.now() - 60000).toISOString()
+        }];
+        mockFetchWithText('Esses dados já estão registrados. Você já tem uma entrada ou quantidade de parcelas?');
+
+        const { req, res } = createMocks({ method: 'POST', body: buildLaborPayload(T2) });
+        await webhookHandler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+
+        const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
+        const prompt = JSON.parse(geminiCalls[0][1].body).contents[0].parts[0].text;
+        expect(prompt).toContain('FATOS CONFIRMADOS');
+        expect(prompt).toContain('ÚLTIMA PERGUNTA DO ASSISTENTE');
+        expect(prompt).toContain('MENSAGEM ATUAL: ADN comércio');
+        expect(prompt).not.toContain('HISTÓRICO DAS ÚLTIMAS');
+      });
+
+      test('resposta "R$ 5.000 de entrada" avança sem repetir pergunta anterior', async () => {
+        global.__testConversation = {
+          client_name: 'Gabriella',
+          intake_data: {
+            confirmedFacts: { company: 'ADN comércio e transporte Ltda', objective: 'acordo parcelado' },
+            lastQuestion: { text: 'Você já tem uma proposta ou número de parcelas?', fingerprint: 'def456' }
+          }
+        };
+        global.__testMessages = [];
+        mockFetchWithText('Entendido. Quantas parcelas seriam?');
+
+        const { req, res } = createMocks({ method: 'POST', body: buildLaborPayload('R$ 5.000 de entrada') });
+        await webhookHandler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+
+        const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
+        const prompt = JSON.parse(geminiCalls[0][1].body).contents[0].parts[0].text;
+        expect(prompt).toContain('ÚLTIMA PERGUNTA DO ASSISTENTE');
+      });
+
+      test('"Acordo" sozinho não repete a pergunta e pede esclarecimento', async () => {
+        global.__testConversation = {
+          client_name: 'Gabriella',
+          intake_data: {
+            confirmedFacts: { company: 'ADN comércio e transporte Ltda', objective: 'acordo parcelado' },
+            lastQuestion: { text: 'Você já tem uma proposta ou número de parcelas?', fingerprint: 'ghi789' }
+          }
+        };
+        global.__testMessages = [];
+        mockFetchWithText('Você quer propor um acordo nesse processo ou está respondendo à mensagem anterior?');
+
+        const { req, res } = createMocks({ method: 'POST', body: buildLaborPayload('Acordo') });
+        await webhookHandler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+
+        const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+        const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+        expect(body.text.body).toMatch(/Você quer propor|respondendo/);
+      });
+
+      test('não envia regras de comportamento no prompt', async () => {
+        global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+        global.__testMessages = [];
+        mockFetchWithText('Certo. Me conte um pouco mais.');
+
+        const { req, res } = createMocks({ method: 'POST', body: buildLaborPayload('Questão sobre patente desconhecida') });
+        await webhookHandler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+
+        const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
+        const prompt = JSON.parse(geminiCalls[0][1].body).contents[0].parts[0].text;
+        expect(prompt).toContain('MENSAGEM ATUAL:');
+        expect(prompt).not.toContain('REGRA DE NOME');
+        expect(prompt).not.toContain('DIRETRIZES PARA ESTA RESPOSTA');
+        expect(prompt).not.toContain('REGRA DE ACOLHIMENTO E ÁREA');
+      });
+
+      test('não chama RAG para mensagem de acordo sem consulta normativa', async () => {
+        global.__testConversation = { client_name: 'Gabriella', intake_data: {} };
+        global.__testMessages = [];
+        mockFetchWithText('Ok, vamos falar do acordo.');
+
+        const { req, res } = createMocks({ method: 'POST', body: buildLaborPayload('Quero fazer um acordo parcelado no processo') });
+        await webhookHandler(req, res);
+        expect(res._getStatusCode()).toBe(200);
+
+        expect(semanticSearch).not.toHaveBeenCalled();
+      });
+    });
+
   });
 });
 });

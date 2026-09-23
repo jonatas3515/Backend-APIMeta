@@ -1,10 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 import { createLogger, hashPhone, sanitizeError } from '../../lib/webhookLog';
 import { detectArea, getFlow } from '../../lib/intakeFlows';
 import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
 import { normalizePhoneForMatch } from '../../lib/formatters';
 import { loadClientMemory, formatClientMemory } from '../../lib/clientMemory';
-import { getClientTitle, getClientGreeting } from '../../lib/genderFromName';
+import { getClientGreeting } from '../../lib/genderFromName';
 import { withConversationQueue } from '../../lib/conversationQueue';
 import { buildMessageMeta, parseMessageMeta, isInboundProcessed, markInboundProcessed, sortMessagesBySequence } from '../../lib/messageMeta';
 import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '../../lib/whatsapp.js';
@@ -342,15 +343,18 @@ export default async function handler(req, res) {
         activeMessages = laborIntegration.getActiveMessages(conversationMessages, conversation?.intake_data);
       }
 
-      // Construir histórico legível para contexto (somente mensagens ativas, respeitando resets)
+      // Construir histórico legível para contexto (últimas 4 mensagens ativas,
+      // respeitando resets). O prompt prioriza fatos confirmados; o histórico
+      // entra como complemento, não como instrução.
       let conversationHistory = '';
-      if (activeMessages.length > 0) {
-        conversationHistory = activeMessages.map(m => {
+      const recentMessages = activeMessages.slice(-4);
+      if (recentMessages.length > 0) {
+        conversationHistory = recentMessages.map(m => {
           const role = m.sender_type === 'client' ? 'Cliente' : 'Jhon';
           const time = new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
           return `[${time}] ${role}: ${m.text}`;
         }).join('\n');
-        log('history_loaded', { messageCount: activeMessages.length });
+        log('history_loaded', { messageCount: recentMessages.length });
       }
 
       // ================= ESCAPE / CANCELAMENTO / CONSENTIMENTO =================
@@ -700,8 +704,21 @@ export default async function handler(req, res) {
 
       // Chamar Gemini com await (timeout de 15s)
       log('gemini_called', { hasHistory: !!conversationHistory, hasMemory: !!clientMemoryText });
-      let aiReply = await askGemini(promptForAI, conversationHistory, conversation, clientMemoryText, log);
+      let aiReply = await askGemini(promptForAI, conversationHistory, conversation, log);
       aiReply = correctCommonMistakes(promptForAI, aiReply);
+
+      // Persistir fatos e última pergunta para o próximo turno, mantendo
+      // o controle de repetição de forma sanitizada.
+      if (conversation) {
+        conversation.intake_data = conversation.intake_data || {};
+        const q = getLastQuestionFromReply(aiReply);
+        if (q) {
+          conversation.intake_data.lastQuestion = { text: q.text, fingerprint: q.fingerprint };
+          log('last_question_persisted', { fingerprint: q.fingerprint });
+        } else {
+          conversation.intake_data.lastQuestion = null;
+        }
+      }
 
       // Aviso LGPD controlado pelo código: exibido uma única vez, na primeira
       // interação (quando não consta no histórico nem foi registrado), junto com
@@ -1393,7 +1410,7 @@ async function getKnowledgeContext(prompt, log = () => {}) {
     if (!relevantChunks.length) return '';
     const block = relevantChunks.slice(0, 2).map(c => `FONTE: ${c.title} (${c.type})\n${c.content}`).join('\n---\n');
     log('relevant_document_count', { count: relevantChunks.length });
-    return `TRECHOS DA BASE DE CONHECIMENTO (use apenas se forem relevantes para a pergunta):\n${block}\n\n`;
+    return `DOCUMENTOS RELEVANTES (use apenas se forem diretamente pertinentes; caso contrário, ignore):\n${block}\n\n`;
   } catch {
     return '';
   }
@@ -1410,71 +1427,122 @@ function shouldUseKnowledge(text) {
   return KNOWLEDGE_TRIGGER_RE.test(n);
 }
 
-async function askGemini(prompt, conversationHistory = '', conversation = null, clientMemoryText = '', log = () => {}) {
-  const clientFullName = conversation?.client_name || '';
-  const clientTitle = clientFullName ? getClientTitle(clientFullName) : null;
-  const clientFirstName = clientFullName ? clientFullName.trim().split(/\s+/)[0] : 'cliente';
+// Extrai fatos sólidos da mensagem atual, mesclando com os já confirmados.
+// Não grava no banco — devolve um objeto leve para o prompt.
+function extractConfirmedFacts(text, existing = {}) {
+  const t = String(text || '').trim();
+  if (!t) return existing || {};
+  const facts = { ...existing };
+
+  // Número processual (CNJ)
+  const cnj = t.match(/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/);
+  if (cnj) facts.processNumber = cnj[0];
+
+  // Nome da representante
+  const nameMatch = t.match(/(?:me chamo|meu nome [ée]|sou)\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){0,3})/i);
+  if (nameMatch && !facts.representative) facts.representative = nameMatch[1].trim();
+
+  // Escritório ("do escritório X" / "escritório X")
+  const officeMatch = t.match(/(?:do escrit[óo]rio|do[me]?\s+escrit[óo]rio)\s+([A-Z][^\.,;]{2,50})/i) ||
+    t.match(/escrit[óo]rio\s+([A-Z][^\.,;]{2,50})/i);
+  if (officeMatch && !facts.office) facts.office = officeMatch[1].trim().replace(/\s+$/, '');
+
+  // Empresa / credor
+  const companyMatch = t.match(/(?:empresa|representamos a(?:\s+empresa)?)\s+([A-Z][^\.,;]{2,60})/i);
+  if (companyMatch && !facts.company) facts.company = companyMatch[1].trim().replace(/\s+$/, '');
+
+  // Objetivo atual
+  if (/acordo\s+parcelado?/i.test(t) || (/acordo/i.test(t) && /parcela/i.test(t)) || /pagamento\s+parcelado/i.test(t)) {
+    facts.objective = 'acordo parcelado';
+  } else if (/acordo/i.test(t) && !facts.objective) {
+    facts.objective = 'acordo';
+  }
+
+  return facts;
+}
+
+function questionFingerprint(text) {
+  const n = String(text || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!n) return null;
+  return crypto.createHash('sha256').update(n).digest('hex').slice(0, 16);
+}
+
+function buildUserPrompt({ currentText, conversationHistory, knowledgeBlock, facts, lastQuestion }) {
+  const blocks = [];
+
+  const factLines = [];
+  if (facts) {
+    if (facts.representative) factLines.push(`- Representante: ${facts.representative}`);
+    if (facts.office) factLines.push(`- Escritório: ${facts.office}`);
+    if (facts.company) factLines.push(`- Empresa/Credor: ${facts.company}`);
+    if (facts.processNumber) factLines.push(`- Número do processo: ${facts.processNumber}`);
+    if (facts.objective) factLines.push(`- Objetivo: ${facts.objective}`);
+  }
+
+  if (factLines.length > 0) {
+    blocks.push(`FATOS CONFIRMADOS:\n${factLines.join('\n')}`);
+    if (facts.objective) {
+      blocks.push(`OBJETIVO ATUAL: ${facts.objective}`);
+    }
+  }
+
+  // Histórico só entra quando ainda não há fatos robustos o suficiente.
+  const hasProcessFacts = !!(facts && (facts.company || facts.processNumber));
+  if (conversationHistory && !hasProcessFacts) {
+    blocks.push(`HISTÓRICO DAS ÚLTIMAS MENSAGENS:\n${conversationHistory}`);
+  }
+
+  if (knowledgeBlock) {
+    blocks.push(knowledgeBlock);
+  }
+
+  if (lastQuestion && lastQuestion.text) {
+    blocks.push(`ÚLTIMA PERGUNTA DO ASSISTENTE: ${lastQuestion.text}`);
+  }
+
+  blocks.push(`MENSAGEM ATUAL: ${currentText}`);
+  return blocks.filter(Boolean).join('\n\n');
+}
+
+function getLastQuestionFromReply(text) {
+  const t = String(text || '').trim();
+  if (!t) return null;
+  const hasQuestion = /\?/.test(t) || /\b(qual|quais|quanto|quantos|quanta|como|onde|quem|por que|porque|porquê)\b/i.test(t);
+  if (!hasQuestion) return null;
+  const fingerprint = questionFingerprint(t);
+  const sanitized = t.replace(/\d[\d\.\-\/]+/g, '___').slice(0, 160);
+  return { text: sanitized, fingerprint };
+}
+
+async function askGemini(prompt, conversationHistory = '', conversation = null, log = () => {}) {
+  // Prepara fatos e sinais de conhecimento antes de qualquer await, para que
+  // o fallback também tenha acesso ao knowledgeBlock.
+  const previousFacts = (conversation && conversation.intake_data && conversation.intake_data.confirmedFacts) || {};
+  const facts = extractConfirmedFacts(prompt, previousFacts);
+  if (conversation) {
+    conversation.intake_data = conversation.intake_data || {};
+    conversation.intake_data.confirmedFacts = facts;
+  }
+
+  // Em contexto trabalhista, a base de conhecimento não é injetada:
+  // evita poluir o modelo com peças de outras áreas (consumidor, bancário).
+  const hasActiveLaborContext = (conversation?._laborCalculation || conversation?.intake_data?.laborCalculation) &&
+    conversation?.intake_data?.laborContextActive !== false;
+  const isLaborContext = hasActiveLaborContext ||
+    classifyLaborIntent(prompt).intent !== 'other';
+  const wantsKnowledge = !isLaborContext && shouldUseKnowledge(prompt);
+  let knowledgeBlock = '';
+  const lastQuestion = conversation?.intake_data?.lastQuestion || null;
+
   try {
     console.log('[GEMINI] Tentando Gemini 2.5 Flash-Lite...');
     console.log('[GEMINI] API Key presente?', GEMINI_API_KEY ? 'Sim' : 'NÃO');
-    
-    // Monta o prompt com contexto completo da conversa
-    let contextParts = [];
-    
-    if (conversation) {
-      if (conversation.client_name) {
-        const title = getClientTitle(conversation.client_name);
-        const firstName = String(conversation.client_name).trim().split(/\s+/)[0];
-        contextParts.push(`PRIMEIRO NOME DO CLIENTE (uso restrito): ${firstName}${title ? `; TRATAMENTO: ${title}` : ''}`);
-        contextParts.push(`REGRA DE NOME: O nome completo NUNCA deve ser usado. Na PRIMEIRA resposta, se for saudar, use apenas "Olá!" e, se desejar, o primeiro nome ("${firstName}") sem vírgula. Depois trate-o como "${title || 'senhor(a)'}". Nas demais respostas, NUNCA diga "Olá" e NUNCA use o nome no início da frase; use SOMENTE "${title || 'senhor(a)'}" ou "você".`);
-      }
-      // Dados legados do formulário antigo NÃO entram no contexto: foram gravados
-      // automaticamente como respostas de perguntas fixas e podem misturar
-      // assuntos. Não são apagados do banco — apenas não orientam a resposta.
-      if (conversation.case_summary) {
-        log('legacy_summary_excluded');
-      }
-      const legacyAnswers = conversation.intake_data?.answers;
-      if (legacyAnswers && Object.keys(legacyAnswers).length > 0) {
-        log('intake_answers_excluded', { fieldsCount: Object.keys(legacyAnswers).length });
-      }
-      const laborContextActive = conversation?.intake_data?.laborContextActive !== false;
-      const laborCalc = (laborContextActive && (conversation._laborCalculation || conversation.intake_data?.laborCalculation)) || null;
-      // O bloco de estimativa só entra quando a mensagem ATUAL é trabalhista ou
-      // pergunta de valores — nunca como contexto permanente a cada turno.
-      const laborRelevantNow = laborCalc && laborIntegration.isLaborRelevantText(prompt);
-      if (laborCalc && laborCalc.totalEstimated != null && Array.isArray(laborCalc.items) && laborRelevantNow) {
-        const itemsSummary = laborCalc.items
-          .filter(i => i.status === 'calculated' && i.amount > 0)
-          .map(i => `${i.name}: R$ ${i.amount.toFixed(2)}`)
-          .join('; ');
-        contextParts.push(`ESTIMATIVA TRABALHISTA JÁ CALCULADA: ${itemsSummary}. Total: R$ ${laborCalc.totalEstimated.toFixed(2)}. Use esses valores exatos somente se a mensagem atual pedir valores, sem recalcular e sem repetir a estimativa inteira. Valores monetários citados no histórico da conversa NÃO são cálculo válido e devem ser ignorados.`);
-        console.log('[LABOR] labor_estimate_context_injected', JSON.stringify({ itemsCount: laborCalc.items.length }));
-      } else if (laborCalc && !laborRelevantNow) {
-        log('labor_estimate_context_skipped', { reason: 'message_not_labor_related' });
-      }
-    }
 
-    const contextBlock = contextParts.length > 0
-      ? `CONTEXTO ATUAL DO ATENDIMENTO:\n${contextParts.join('\n')}\n\n`
-      : '';
-
-    const memoryBlock = clientMemoryText
-      ? `${clientMemoryText}\n\n`
-      : '';
-
-    const historyBlock = conversationHistory
-      ? `HISTÓRICO DAS ÚLTIMAS 4H (MAIS RECENTES POR ÚLTIMO):\n${conversationHistory}\n\n`
-      : '';
-
-    // Em contexto trabalhista, a base de conhecimento não é injetada:
-    // evita poluir o modelo com peças de outras áreas (consumidor, bancário).
-    const hasActiveLaborContext = (conversation?._laborCalculation || conversation?.intake_data?.laborCalculation) &&
-      conversation?.intake_data?.laborContextActive !== false;
-    const isLaborContext = hasActiveLaborContext ||
-      classifyLaborIntent(prompt).intent !== 'other';
-    const wantsKnowledge = !isLaborContext && shouldUseKnowledge(prompt);
-    let knowledgeBlock = '';
     if (wantsKnowledge) {
       knowledgeBlock = await getKnowledgeContext(prompt, log);
     }
@@ -1483,34 +1551,22 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
       reason: isLaborContext ? 'labor_context' : (wantsKnowledge ? (knowledgeBlock ? 'relevant_chunks' : 'irrelevant_results') : 'no_knowledge_signal')
     });
 
+    const fullPrompt = buildUserPrompt({
+      currentText: prompt,
+      conversationHistory,
+      knowledgeBlock,
+      facts,
+      lastQuestion
+    });
+
     // Observabilidade do contexto: o que realmente orienta esta resposta.
     const contextSources = [];
-    if (conversation?.client_name) contextSources.push('client_name');
-    if (contextParts.some(p => p.startsWith('ESTIMATIVA TRABALHISTA'))) contextSources.push('labor_estimate');
     if (clientMemoryText) contextSources.push('client_memory_history');
     if (conversationHistory) contextSources.push('recent_messages');
+    if (Object.keys(facts || {}).length) contextSources.push('confirmed_facts');
     if (knowledgeBlock) contextSources.push('knowledge');
     log('context_sources', { sources: contextSources });
-    log('trusted_facts_count', { count: contextParts.length });
-    log('current_message_priority', { priority: 'current_message' });
-
-    const firstTurn = !conversationHistory || conversationHistory.trim() === '';
-    const firstGreeting = 'Olá!';
-    const nameRule = firstTurn
-      ? `NUNCA use o nome completo. Se for usar nome na PRIMEIRA resposta, use APENAS o primeiro nome ("${clientFirstName}") SEM vírgula. Se houver saudação, inicie com "${firstGreeting}". NUNCA diga o nome completo em saudação. NUNCA use "Senhor(a)".`
-      : `NUNCA inicie com "Olá", "Oi", "Bom dia" ou cumprimentos. NUNCA use o nome do cliente em saudação ou início de frase. NUNCA digar "Olá" seguido do nome. Responda DIRETAMENTE ao assunto usando "você" ou pronomes naturais.`;
-
-    const areaAcolhimentoRule = `REGRA DE ACOLHIMENTO E ÁREA: NUNCA diga que o assunto "não se encaixa", "não posso auxiliar", "não atendemos" ou "está fora do perfil". A classificação de área é APENAS uma etiqueta interna, nunca limita o atendimento. Acolha qualquer assunto e responda ao conteúdo atual.`;
-
-    const noRepeatRule = firstTurn
-      ? 'Se a primeira mensagem for uma saudação (oi, olá, bom dia), responda APENAS a saudação e NÃO pergunte nada. Se a mensagem já apresentar um caso ou pergunta, responda diretamente e NÃO diga "Olá".'
-      : 'O histórico já existe. NÃO se apresente, NÃO diga "Olá", "Oi" ou "Bom dia" em nenhuma circunstância. Responda DIRETAMENTE ao assunto.';
-
-    const fullPrompt = `${contextBlock}${memoryBlock}${historyBlock}${knowledgeBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZES PARA ESTA RESPOSTA:\n- ${noRepeatRule}\n- ${areaAcolhimentoRule}\n- Responda DIRETAMENTE à NOVA MENSAGEM do cliente, usando o contexto e a memória apenas como referência. Não fique preso a uma informação anterior se o cliente mudou de assunto.\n- Se um representante de escritório informar empresa e número de processo propondo acordo parcelado, reconheça esses dados e NÃO os peça novamente. Pergunte diretamente sobre os termos: existe proposta, valor de entrada, número de parcelas e condições desejadas.
-- Se a mensagem mencionar CNPJ, boleto, "Neves Costa" (sem &), "outro escritório" ou cobrança atribuída a nós e o esclarecimento ainda NÃO tiver sido dito no histórico, o esclarecimento ENXUTO é a prioridade máxima. NUNCA trate "financiamento", "consórcio", "banco" ou "dívida" sozinhos como confusão — são tipos de caso. Depois de esclarecer, NÃO ofereça outros serviços.
-- Se o esclarecimento sobre boleto/cobrança/Neves Costa JÁ tiver sido dito no histórico e o cliente continuar mencionando o boleto/nome no documento, NÃO repita o esclarecimento inicial. Reconheça a preocupação, peça para conferir a grafia exata e o CNPJ no documento, e oriente a não fazer o pagamento antes de confirmar a origem. Não ofereça telefone.\n- Não peça nome, e-mail, telefone, número de processo, empresa, escritório ou credor que já constem na mensagem atual ou no histórico. Avance sobre a dúvida ou proposta.\n- ${nameRule}
-- Se TRECHOS DA BASE DE CONHECIMENTO forem fornecidos, use-os apenas se forem diretamente relevantes e cite a fonte (ex: "Conforme jurisprudência..."). Se não forem relevantes, ignore-os.
-- Responda como Jhon, 1-3 frases, sem listas, sem telefone a menos que o cliente peça explicitamente.`;
+    log('trusted_facts_count', { count: Object.keys(facts || {}).length });
     
     const controller = new AbortController();
     const timeout = setTimeout(() => {
@@ -1552,12 +1608,14 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
 
   try {
     console.log('[GEMINI] Tentando Gemini 3.1 Flash-Lite (fallback)...');
-    // Fallback recebe o mesmo fullPrompt para manter contexto
-    const fallbackNameRule = `NUNCA use o nome completo do cliente. Na PRIMEIRA resposta, se usar nome, use APENAS o primeiro nome. Nas demais respostas, use SOMENTE "${clientTitle}" SEM o nome.`;
-    const knowledgeInstruction = '\n- Se TRECHOS DA BASE DE CONHECIMENTO forem fornecidos, use-os apenas se forem diretamente relevantes e cite a fonte. Se não forem relevantes, ignore-os.';
-    const fullPrompt = conversationHistory 
-      ? `${clientMemoryText ? clientMemoryText + '\n\n' : ''}HISTÓRICO DA CONVERSA:\n${conversationHistory}\n\n${knowledgeBlock}NOVA MENSAGEM DO CLIENTE: ${prompt}\n\nDIRETRIZ DE NOME: ${fallbackNameRule}${knowledgeInstruction}`
-      : (clientMemoryText ? clientMemoryText + '\n\n' + knowledgeBlock + 'NOVA MENSAGEM DO CLIENTE: ' + prompt + '\n\nDIRETRIZ DE NOME: ' + fallbackNameRule + knowledgeInstruction : prompt + '\n\nDIRETRIZ DE NOME: ' + fallbackNameRule + knowledgeInstruction);
+    // Fallback recebe o mesmo bloco do prompt para manter contexto
+    const fallbackPrompt = buildUserPrompt({
+      currentText: prompt,
+      conversationHistory,
+      knowledgeBlock,
+      facts,
+      lastQuestion
+    });
     
     const response = await fetch(GEMINI_API_URL_FALLBACK, {
       method: 'POST',
@@ -1568,7 +1626,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
         },
         contents: [
           {
-            parts: [{ text: fullPrompt }]
+            parts: [{ text: fallbackPrompt }]
           }
         ]
       })
