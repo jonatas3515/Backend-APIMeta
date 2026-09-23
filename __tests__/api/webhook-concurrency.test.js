@@ -217,42 +217,91 @@ describe('Concorrência, idempotência, LGPD e identidade', () => {
     expect(body.text.body.length).toBeGreaterThan(0);
   });
 
-  test('"Sim" repetido rapidamente é processado uma única vez', async () => {
+  test('"Ok" após aviso LGPD não gera confirmação de consentimento', async () => {
     const now = new Date().toISOString();
     global.__testConversation = {
       client_name: 'Cliente',
-      intake_data: { consent_request_status: 'pending' }
+      intake_data: { consent_request_sent_at: now, consent_request_status: 'pending' }
     };
 
     const { req, res } = createMocks({
       method: 'POST',
-      body: buildPayload('Sim', 'msg-sim-003')
+      body: buildPayload('Ok', 'msg-ok-003')
     });
     await webhookHandler(req, res);
 
     expect(res._getJSONData().success).toBe(true);
-    expect(res._getJSONData().consent).toBe(true);
-
-    const historyAfterFirst = global.__testMessages.slice();
-
-    const secondPayload = buildPayload('Sim', 'msg-sim-004');
-    global.__testMessages = [
-      ...historyAfterFirst,
-      { conversation_id: CONV_ID, sender_type: 'ai', text: 'Obrigado! Seu consentimento foi registrado...', direction: 'outbound', created_at: now }
-    ];
-    global.__testConversation.intake_data = { consent_request_status: 'granted', consent: true };
-
-    const { req: req2, res: res2 } = createMocks({
-      method: 'POST',
-      body: secondPayload
-    });
-    await webhookHandler(req2, res2);
-
     const bodies = fetchSpy.mock.calls
       .filter(([url]) => String(url).includes('/messages'))
       .map(([_, opts]) => JSON.parse(opts.body).text.body);
     const consentAcks = bodies.filter(b => b && b.includes('Obrigado! Seu consentimento'));
-    expect(consentAcks.length).toBe(1);
+    expect(consentAcks.length).toBe(0);
+    const grantedUpdate = global.__testUpdates.find(u => u && u.intake_data && u.intake_data.consent_request_status === 'granted');
+    expect(grantedUpdate).toBeDefined();
+  });
+
+  test('"Sim" após aviso LGPD não gera confirmação de consentimento', async () => {
+    const now = new Date().toISOString();
+    global.__testConversation = {
+      client_name: 'Cliente',
+      intake_data: { consent_request_sent_at: now, consent_request_status: 'pending' }
+    };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Sim', 'msg-sim-004')
+    });
+    await webhookHandler(req, res);
+
+    expect(res._getJSONData().success).toBe(true);
+    const bodies = fetchSpy.mock.calls
+      .filter(([url]) => String(url).includes('/messages'))
+      .map(([_, opts]) => JSON.parse(opts.body).text.body);
+    const consentAcks = bodies.filter(b => b && b.includes('Obrigado! Seu consentimento'));
+    expect(consentAcks.length).toBe(0);
+  });
+
+  test('"Certo" após aviso LGPD não gera confirmação de consentimento', async () => {
+    const now = new Date().toISOString();
+    global.__testConversation = {
+      client_name: 'Cliente',
+      intake_data: { consent_request_sent_at: now, consent_request_status: 'pending' }
+    };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Certo', 'msg-certo-005')
+    });
+    await webhookHandler(req, res);
+
+    expect(res._getJSONData().success).toBe(true);
+    const bodies = fetchSpy.mock.calls
+      .filter(([url]) => String(url).includes('/messages'))
+      .map(([_, opts]) => JSON.parse(opts.body).text.body);
+    const consentAcks = bodies.filter(b => b && b.includes('Obrigado! Seu consentimento'));
+    expect(consentAcks.length).toBe(0);
+  });
+
+  test('mensagem substantiva após aviso LGPD continua o diálogo', async () => {
+    const now = new Date().toISOString();
+    global.__testConversation = {
+      client_name: 'Cliente',
+      intake_data: { consent_request_sent_at: now, consent_request_status: 'pending' }
+    };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero falar sobre três parcelas atrasadas', 'msg-subst-006')
+    });
+    await webhookHandler(req, res);
+
+    expect(res._getJSONData().success).toBe(true);
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage'));
+    expect(geminiCalls.length).toBeGreaterThan(0);
+    const body = JSON.parse(geminiCalls[0][1].body);
+    const systemText = body.system_instruction?.parts?.[0]?.text || '';
+    expect(systemText).toContain('Você é Jhon, assistente virtual');
+    expect(systemText).not.toMatch(/a equipe precisa analisar[^']/);
   });
 
   test('reentrega do mesmo message_id retorna duplicate sem duplicar resposta', async () => {

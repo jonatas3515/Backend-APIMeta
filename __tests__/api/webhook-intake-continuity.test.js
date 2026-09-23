@@ -1214,7 +1214,7 @@ describe('Contexto confiável ao Gemini e estimativa sem repetição', () => {
 
     const sys = geminiPrompt().system_instruction.parts[0].text;
     expect(sys).toContain('Você é Jhon, assistente virtual');
-    expect(sys).toContain('Nunca substitua a conversa por um questionário');
+    expect(sys).toContain('Não siga questionários, etapas de formulário ou respostas prontas');
     expect(sys).not.toContain('Você é o Jhon');
     expect(sys).not.toContain('IDENTIDADE E LIMITES');
     expect(sys).not.toContain('RACIOCÍNIO JURÍDICO-PRÁTICO');

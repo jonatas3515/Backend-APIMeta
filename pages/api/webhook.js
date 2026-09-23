@@ -9,7 +9,7 @@ import { withConversationQueue } from '../../lib/conversationQueue';
 import { buildMessageMeta, parseMessageMeta, isInboundProcessed, markInboundProcessed, sortMessagesBySequence } from '../../lib/messageMeta';
 import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '../../lib/whatsapp.js';
 import { evaluateFunnelAutomation, registerFunnelEvent } from '../../lib/funnel-whatsapp.js';
-import { detectThanks, getThanksReply, detectAgreement, getAcknowledgementReply, correctCommonMistakes } from '../../lib/bot-responses.js';
+import { detectThanks, getThanksReply, correctCommonMistakes } from '../../lib/bot-responses.js';
 import { semanticSearch } from '../../lib/knowledge-embeddings.js';
 import { detectNeedsHuman, notifyAdminHandoff, EXPRESS_HUMAN_KEYWORDS } from '../../lib/needsHuman.js';
 import { SYSTEM_PROMPT } from '../../lib/systemPrompt.js';
@@ -1073,8 +1073,16 @@ const CANCEL_EXACT = new Set([
   'nao quero mais', 'não quero mais', 'chega', 'ja deu', 'já deu', 'desliga', 'desligar'
 ]);
 
-const CONSENT_ACCEPT = new Set(['1', 'aceito', 'concordo', 'sim', 'de acordo', 'ok', 'eu aceito', 'aceito os termos']);
-const CONSENT_DECLINE = new Set(['2', 'nao aceito', 'não aceito', 'nao concordo', 'não concordo', 'recuso', 'nao', 'não']);
+const PRIVACY_INTENT = [
+  'nao aceito', 'não aceito', 'nao concordo', 'não concordo',
+  'nao quero continuar', 'não quero continuar',
+  'recuso', 'recusar', 'nao autorizo', 'não autorizo',
+  'revogar', 'revogacao', 'revogação', 'revogo', 'quero revogar',
+  'excluir', 'exclusao', 'exclusão', 'quero excluir', 'apagar', 'deletar',
+  'quero apagar', 'quero deletar', 'direito de esquecimento',
+  'oposicao', 'oposição', 'meu direito de opor',
+  'retirar consentimento', 'cancelar consentimento', 'tirar consentimento'
+];
 
 function detectEscapeIntent(text) {
   if (!text || typeof text !== 'string') return null;
@@ -1085,53 +1093,96 @@ function detectEscapeIntent(text) {
   return null;
 }
 
+function isPrivacyIntent(text) {
+  if (!text) return false;
+  const normalized = normalizeForCheck(text).replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+  return PRIVACY_INTENT.some(k => normalized.includes(k));
+}
+
 async function handleConsent(conversation, textBody, from, req, extraData = {}) {
-  if (!conversation?.intake_data || conversation.intake_data.consent_request_status !== 'pending') {
+  if (!conversation?.intake_data) {
     return { handled: false };
   }
 
-  const normalized = normalizeForCheck(textBody).replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
-  let value = null;
-  if (CONSENT_ACCEPT.has(normalized)) value = true;
-  else if (CONSENT_DECLINE.has(normalized)) value = false;
-  else return { handled: false };
+  const { consent_request_status: status, consent_request_sent_at: noticeAt } = conversation.intake_data;
 
-  try {
-    await supabase.from('consent_logs').insert({
-      conversation_id: conversation.id,
-      consent_type: 'data_processing',
-      value,
-      ip_address: (req?.headers?.['x-forwarded-for'] || '').split(',')[0].trim() || null,
-      user_agent: req?.headers?.['user-agent'] || null,
-      created_at: new Date().toISOString()
-    });
-  } catch (err) {
-    console.error('[CONSENT] Erro ao registrar consentimento:', sanitizeError(err));
+  // Já aceito, recusado ou encerrado: não reprocessa.
+  if (status && status !== 'pending') {
+    return { handled: false };
   }
 
-  const nextIntake = {
-    ...(conversation.intake_data || {}),
-    consent_request_status: value ? 'granted' : 'declined',
-    consent: value,
-    consent_log: { type: 'data_processing', value, at: new Date().toISOString() }
-  };
+  const now = new Date().toISOString();
+  const nextIntake = { ...(conversation.intake_data || {}) };
 
-  try {
-    await supabase.from('conversations').update({ intake_data: nextIntake }).eq('id', conversation.id);
-    conversation.intake_data = nextIntake;
-  } catch (err) {
-    console.error('[CONSENT] Erro ao atualizar conversa:', sanitizeError(err));
+  // Recusa, revogação, exclusão ou oposição: aciona o fluxo de privacidade, mesmo no primeiro contato.
+  if (isPrivacyIntent(textBody)) {
+    const value = false;
+    try {
+      await supabase.from('consent_logs').insert({
+        conversation_id: conversation.id,
+        consent_type: 'data_processing',
+        value,
+        ip_address: (req?.headers?.['x-forwarded-for'] || '').split(',')[0].trim() || null,
+        user_agent: req?.headers?.['user-agent'] || null,
+        created_at: now
+      });
+    } catch (err) {
+      console.error('[CONSENT] Erro ao registrar recusa:', sanitizeError(err));
+    }
+
+    nextIntake.consent_request_status = 'declined';
+    nextIntake.consent = value;
+    nextIntake.consent_log = { type: 'data_processing', value, at: now };
+
+    try {
+      await supabase.from('conversations').update({ intake_data: nextIntake }).eq('id', conversation.id);
+      conversation.intake_data = nextIntake;
+    } catch (err) {
+      console.error('[CONSENT] Erro ao atualizar conversa:', sanitizeError(err));
+    }
+
+    const reply = 'Entendido. Registramos sua decisão. Seus dados serão tratados conforme a política e você pode pedir ajustes quando quiser.';
+    const saved = await saveMessage(conversation.id, reply, 'ai', 'text', '', '', extraData);
+    const waId = await sendWhatsAppMessage(from, reply);
+    if (saved && waId) {
+      await supabase.from('messages').update({ wa_message_id: waId, status: 'sent' }).eq('id', saved.id);
+    }
+    return { handled: true, declined: true };
   }
 
-  const reply = value
-    ? 'Obrigado! Seu consentimento foi registrado. Podemos continuar o atendimento.'
-    : 'Entendido. Registramos sua decisão. Seus dados serão tratados conforme a política e você pode pedir ajustes quando quiser.';
-  const saved = await saveMessage(conversation.id, reply, 'ai', 'text', '', '', extraData);
-  const waId = await sendWhatsAppMessage(from, reply);
-  if (saved && waId) {
-    await supabase.from('messages').update({ wa_message_id: waId, status: 'sent' }).eq('id', saved.id);
+  // Só registra aceite tácito depois que o aviso LGPD já foi enviado.
+  // Não responde automaticamente; a conversa continua normalmente.
+  if (noticeAt) {
+    const value = true;
+    try {
+      await supabase.from('consent_logs').insert({
+        conversation_id: conversation.id,
+        consent_type: 'data_processing',
+        value,
+        ip_address: (req?.headers?.['x-forwarded-for'] || '').split(',')[0].trim() || null,
+        user_agent: req?.headers?.['user-agent'] || null,
+        created_at: now
+      });
+    } catch (err) {
+      console.error('[CONSENT] Erro ao registrar aceite:', sanitizeError(err));
+    }
+
+    nextIntake.consent_request_status = 'granted';
+    nextIntake.consent = value;
+    nextIntake.consent_log = { type: 'data_processing', value, at: now };
+
+    try {
+      await supabase.from('conversations').update({ intake_data: nextIntake }).eq('id', conversation.id);
+      conversation.intake_data = nextIntake;
+    } catch (err) {
+      console.error('[CONSENT] Erro ao atualizar conversa:', sanitizeError(err));
+    }
+
+    return { handled: false, granted: true };
   }
-  return { handled: true };
+
+  // Primeira mensagem sem recusa: deixa o fluxo principal enviar o aviso LGPD com a resposta.
+  return { handled: false };
 }
 
 const MARKETING_TERMS = [
@@ -1237,14 +1288,9 @@ function getSpecialReply(text, clientName, history = '', log = () => {}) {
   if (isIdentity) {
     const name = getClientGreeting(clientName);
     if (alreadySaid) {
-      return `${name}, entendo a sua preocupação. Mesmo que o documento mencione um nome parecido, confira a grafia exata e o CNPJ: a Neves & Costa Advocacia, com "&", não emite boletos nem faz cobranças. Não faça o pagamento antes de confirmar a origem.`;
+      return `${name}, confira a grafia exata e o CNPJ do documento: a Neves & Costa Advocacia, com "&", não emite boletos nem faz cobranças.`;
     }
-    return `${name}, somos a Neves & Costa Advocacia (com &). Informamos que não emitimos boletos, e nem fazemos cobranças, além de não possuirmos CNPJ. Não temos relação nenhuma com a "Advocacia Neves Costa".`;
-  }
-
-  if (alreadySaid && detectAgreement(text)) {
-    const name = getClientGreeting(clientName);
-    return `${name}, ${getAcknowledgementReply()}`;
+    return `${name}, a Neves & Costa Advocacia (com "&") não emitimos boletos, não fazemos cobranças, não possuímos CNPJ e não temos relação com a "Advocacia Neves Costa" sem o "&".`;
   }
 
   return null;
