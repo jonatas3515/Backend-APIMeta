@@ -21,12 +21,12 @@ async function handler(req, res) {
   }
 
   try {
-    const { conversation_id, text, media_url, media_type } = req.body;
+    const { conversation_id, text, media_url, media_type, filename } = req.body;
     const userRole = req.user?.role;
     const userId = req.user?.id;
 
-    if (!conversation_id || !text) {
-      return res.status(400).json({ error: 'conversation_id e text são obrigatórios' });
+    if (!conversation_id || (!text && !media_url)) {
+      return res.status(400).json({ error: 'conversation_id é obrigatório; informe text ou media_url' });
     }
 
     const { data: conversation, error: convError } = await supabase
@@ -57,6 +57,7 @@ async function handler(req, res) {
     // Se tem mídia, faz upload para o servidor da Meta e envia por media_id
     let contentType = 'text';
     let waMessageId = null;
+    let messageText = text || '';
 
     if (media_url) {
       contentType = media_type?.startsWith('audio/') ? 'audio' 
@@ -117,7 +118,9 @@ async function handler(req, res) {
           contentType,
           route: '/api/send-message'
         });
-        waMessageId = await sendWhatsAppMediaMessage(conversation.client_phone, mediaId, contentType, text);
+        const mediaFilename = contentType === 'document' ? (filename || text || 'arquivo') : undefined;
+        messageText = contentType === 'document' ? (text || mediaFilename) : (text || '');
+        waMessageId = await sendWhatsAppMediaMessage(conversation.client_phone, mediaId, contentType, text, mediaFilename);
       } catch (mediaError) {
         safeError('send_message_media_failed', mediaError, {
           requestId: conversation_id,
@@ -140,7 +143,7 @@ async function handler(req, res) {
         direction: 'outbound',
         sender_type: 'human',
         content_type: contentType,
-        text,
+        text: messageText,
         media_url: media_url || null,
         media_type: media_type || null,
         wa_message_id: waMessageId || null,

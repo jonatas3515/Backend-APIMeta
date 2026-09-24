@@ -50,6 +50,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunks, setAudioChunks] = useState([]);
   const [pendingFile, setPendingFile] = useState(null);
+  const [pendingFilePreview, setPendingFilePreview] = useState(null);
   const [pendingAudio, setPendingAudio] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
@@ -316,7 +317,8 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
     try {
       let mediaUrl = null;
       let mediaType = null;
-      
+      let filename = null;
+
       // Se tem arquivo ou áudio pendente, fazer upload via URL assinada
       const fileToUpload = pendingAudio || pendingFile;
       if (fileToUpload) {
@@ -361,17 +363,19 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
 
         mediaUrl = urlData.publicUrl;
         mediaType = fileToUpload.type;
+        filename = fileToUpload.name;
         setUploadProgress(100);
       }
 
-      // Enviar mensagem
+      // Enviar mensagem (só após confirmação do usuário)
       const response = await apiCall('/api/send-message', {
         method: 'POST',
         body: JSON.stringify({
           conversation_id: conversation.id,
           text: newMessage,
           media_url: mediaUrl,
-          media_type: mediaType
+          media_type: mediaType,
+          filename: filename
         })
       });
 
@@ -382,8 +386,12 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
       const sendData = await response.json();
 
       console.log('[CHAT] Mensagem enviada:', sendData);
+      if (pendingFilePreview) {
+        URL.revokeObjectURL(pendingFilePreview);
+      }
       setNewMessage('');
       setPendingFile(null);
+      setPendingFilePreview(null);
       setPendingAudio(null);
       setUploadProgress(0);
       if (fileInputRef.current) {
@@ -480,15 +488,23 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   };
 
   const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setPendingFile(file);
-      setNewMessage(`📎 ${file.name}`);
+    const file = e.target.files ? e.target.files[0] : null;
+    if (!file) return;
+
+    // Substitui a seleção anterior; nenhum envio ocorre aqui
+    if (pendingFilePreview) {
+      URL.revokeObjectURL(pendingFilePreview);
     }
+    setPendingFile(file);
+    setPendingFilePreview(URL.createObjectURL(file));
   };
 
   const removePendingFile = () => {
+    if (pendingFilePreview) {
+      URL.revokeObjectURL(pendingFilePreview);
+    }
     setPendingFile(null);
+    setPendingFilePreview(null);
     setPendingAudio(null);
     setNewMessage('');
     if (fileInputRef.current) {
@@ -931,6 +947,11 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                     )
                   ) : msg.content_type === 'document' || msg.media_type === 'application/pdf' || msg.media_url?.toLowerCase().match(/\.pdf(\?.*)?$/) ? (
                     <div className="w-full rounded border border-nc-gray-200 overflow-hidden bg-nc-gray-50 p-2">
+                      {msg.text && (
+                        <p className="text-sm font-medium text-nc-text mb-2 truncate" title={msg.text}>
+                          📄 {msg.text}
+                        </p>
+                      )}
                       <object
                         data={msg.media_url}
                         type="application/pdf"
@@ -970,7 +991,9 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                 </div>
               )}
               
-              <p className="text-sm text-nc-text leading-relaxed">{msg.text}</p>
+              {msg.text && msg.content_type !== 'document' && !(msg.content_type === 'image' && (msg.text.startsWith('[') || msg.text === 'Imagem enviada')) && (
+                <p className="text-sm text-nc-text leading-relaxed">{msg.text}</p>
+              )}
 
               {/* Status e resumo de mídia (apenas para mídias recebidas) */}
               {(msg.direction === 'inbound') && (msg.content_type === 'audio' || msg.content_type === 'video' || msg.content_type === 'image' || msg.content_type === 'document') && (
@@ -1173,12 +1196,22 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           {/* Preview de arquivo pendente */}
           {(pendingFile || pendingAudio) && (
             <div className="mb-2 flex items-center justify-between gap-2 bg-nc-yellow-50 border border-nc-yellow-200 rounded-nc p-2">
-              <span className="text-sm text-nc-text truncate">
-                {pendingAudio ? '🎤 Áudio gravado' : `📎 ${pendingFile?.name}`}
-              </span>
+              <div className="flex items-center gap-2 min-w-0">
+                {pendingFile && pendingFilePreview && pendingFile.type?.startsWith('image/') ? (
+                  <img
+                    src={pendingFilePreview}
+                    alt="Prévia"
+                    className="max-h-32 max-w-full rounded border border-nc-gray-200 object-contain"
+                  />
+                ) : (
+                  <span className="text-sm text-nc-text truncate">
+                    {pendingAudio ? '🎤 Áudio gravado' : `📎 ${pendingFile?.name}`}
+                  </span>
+                )}
+              </div>
               <button
                 onClick={removePendingFile}
-                className="text-nc-text-muted hover:text-red-600 transition"
+                className="text-nc-text-muted hover:text-red-600 transition flex-shrink-0"
                 title="Remover"
               >
                 ❌
@@ -1202,6 +1235,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                 type="file"
                 className="hidden"
                 accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.txt,.mp3,.mp4,.mpeg,.3gp,.webm,.ogg"
+                multiple
                 onChange={handleFileSelect}
               />
             </label>
@@ -1245,7 +1279,13 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                 disabled={sending || (!newMessage.trim() && !pendingFile && !pendingAudio)}
                 className="nc-btn-primary h-[40px] disabled:opacity-50"
               >
-                {sending ? 'Enviando...' : 'Enviar'}
+                {sending
+                  ? 'Enviando...'
+                  : pendingFile
+                    ? (pendingFile.type?.startsWith('image/') ? '📷 Enviar imagem' : '📎 Enviar arquivo')
+                    : pendingAudio
+                      ? '🎤 Enviar áudio'
+                      : 'Enviar'}
               </button>
               {newMessage && (
                 <span className="text-xs text-nc-text-muted text-center">

@@ -86,29 +86,44 @@ export default async function handler(req, res) {
       const clientName = value.contacts?.[0]?.profile?.name || 'Cliente';
       
       let textBody = '';
+      let aiPromptText = '';
       let mediaUrl = '';
       let mediaId = '';
-      
+      let visionMedia = null;
+
       // Processa diferentes tipos de mensagem
       if (messageType === 'text') {
         textBody = message.text?.body || '';
+        aiPromptText = textBody;
       } else if (messageType === 'image') {
         mediaId = message.image?.id;
-        textBody = message.image?.caption || '[Imagem enviada]';
+        const caption = message.image?.caption || '';
+        textBody = caption; // não exibe placeholder como conteúdo principal
+        aiPromptText = caption ? `[Imagem recebida do cliente. Legenda: "${caption}"]` : '[Imagem recebida do cliente]';
       } else if (messageType === 'audio') {
         mediaId = message.audio?.id;
         textBody = '[Áudio enviado]';
+        aiPromptText = textBody;
       } else if (messageType === 'video') {
         mediaId = message.video?.id;
-        textBody = message.video?.caption || '[Vídeo enviado]';
+        const caption = message.video?.caption || '';
+        textBody = caption || '[Vídeo enviado]';
+        aiPromptText = textBody;
       } else if (messageType === 'document') {
         mediaId = message.document?.id;
-        textBody = message.document?.caption || `[Documento: ${message.document?.filename || 'arquivo'}]`;
+        const filename = message.document?.filename || 'arquivo';
+        const caption = message.document?.caption || '';
+        textBody = caption || `Documento: ${filename}`;
+        aiPromptText = caption ? `Cliente enviou documento com legenda: ${caption}` : `Cliente enviou documento. Nome: ${filename}`;
       } else {
         textBody = `[Mensagem do tipo: ${messageType}]`;
+        aiPromptText = textBody;
       }
 
       log('message_received', { phoneHash: hashPhone(from), messageType, textLength: textBody?.length || 0, hasMedia: !!mediaId });
+      if (mediaId) {
+        log('media_received', { messageType });
+      }
 
       // Evitar reprocessar mensagem já processada (retentativas do WhatsApp)
       if (supabase && waMessageId) {
@@ -254,8 +269,9 @@ export default async function handler(req, res) {
       if (mediaId && (messageType === 'audio' || messageType === 'image' || messageType === 'document' || messageType === 'video')) {
         try {
           mediaBuffer = await downloadWhatsAppMedia(mediaId);
-          
           if (mediaBuffer && mediaBuffer.buffer) {
+            log('media_downloaded', { messageType, mimeType: mediaBuffer.mimeType, size: mediaBuffer.buffer.length });
+
             // Fazer upload da mídia para o Supabase Storage
             const fileName = `chat-files/${from}/${Date.now()}_${mediaId}.${getFileExtension(mediaBuffer.mimeType, messageType)}`;
             const { data: uploadData, error: uploadError } = await supabase.storage
@@ -268,12 +284,18 @@ export default async function handler(req, res) {
             if (uploadError) {
               log.error('media_upload_failed', { error: sanitizeError(uploadError) });
               mediaStatus = 'failed';
+              log('vision_failure_reason', { reason: 'storage_upload_failed', messageType });
             } else {
               const { data: publicUrlData } = await supabase.storage
                 .from('chat-files')
                 .getPublicUrl(fileName);
               publicUrl = publicUrlData?.publicUrl || '';
-              log('media_uploaded', { mediaId, mimeType: mediaBuffer?.mimeType, size: mediaBuffer?.buffer?.length });
+              log('media_uploaded', { messageType, mimeType: mediaBuffer?.mimeType, size: mediaBuffer?.buffer?.length });
+
+              if (messageType === 'image') {
+                visionMedia = { mimeType: mediaBuffer.mimeType, base64: mediaBuffer.buffer.toString('base64') };
+                log('vision_input_attached', { mimeType: mediaBuffer.mimeType });
+              }
 
               if (messageType === 'audio' || messageType === 'video') {
                 textBody = textBody || `[Áudio/vídeo enviado - processando transcrição...]`;
@@ -281,10 +303,12 @@ export default async function handler(req, res) {
             }
           } else {
             mediaStatus = 'failed';
+            log('vision_failure_reason', { reason: 'media_download_failed', messageType });
           }
         } catch (mediaError) {
           console.error('[WEBHOOK] ❌ Erro ao baixar mídia:', mediaError.message);
           mediaStatus = 'failed';
+          log('vision_failure_reason', { reason: 'media_download_exception', messageType });
         }
       } else {
         mediaStatus = '';
@@ -672,16 +696,19 @@ export default async function handler(req, res) {
       // Boleto / Neves Costa já processado acima com prioridade sobre intake.
 
       // Resposta da IA para mídia
-      let promptForAI = textBody;
+      let promptForAI = aiPromptText;
       let isMediaAudio = messageType === 'audio' || messageType === 'video';
-      const isPlaceholderCaption = textBody === '[Imagem enviada]' ||
+      const isPlaceholderCaption = !textBody ||
         textBody === '[Áudio enviado]' ||
         textBody === '[Vídeo enviado]' ||
-        textBody.startsWith('[Documento:') ||
+        textBody.startsWith('Documento:') ||
         textBody.startsWith('[Mensagem do tipo:');
       
       if (messageType !== 'text') {
-        if (isMediaAudio) {
+        if (messageType === 'image' && !visionMedia) {
+          // Sem mídia processada: o fallback é determinístico, sem pedir para "contar por texto"
+          promptForAI = 'Não foi possível processar a imagem recebida.';
+        } else if (isMediaAudio) {
           // Se for áudio/vídeo, tenta transcrever de forma assíncrona (sem bloquear resposta)
           if (publicUrl) {
             // Inicia transcrição em background (não aguarda)
@@ -690,10 +717,10 @@ export default async function handler(req, res) {
             });
           }
           promptForAI = `Cliente enviou um ${messageType}. Diga: "Recebido! Estou analisando o áudio agora..." NUNCA mencione equipe, advogado ou retorno.`;
-        } else if (textBody && !textBody.includes('processando transcrição') && !isPlaceholderCaption) {
+        } else if (messageType !== 'image' && textBody && !textBody.includes('processando transcrição') && !isPlaceholderCaption) {
           promptForAI = `O cliente enviou ${messageType} com a seguinte legenda/descrição: ${textBody}. Responda apenas sobre essa legenda, sem descrever ou inventar o conteúdo do arquivo.`;
-        } else {
-          promptForAI = `Cliente enviou ${messageType}. Responda: "Recebido! Para agilizar, consegue me contar por texto o que é o arquivo?" NUNCA mencione equipe, advogado ou retorno.`;
+        } else if (messageType !== 'image') {
+          promptForAI = `Cliente enviou ${messageType}. Responda: "Recebido! Consegue descrever o conteúdo do arquivo?" NUNCA mencione equipe, advogado ou retorno.`;
         }
       }
 
@@ -704,8 +731,26 @@ export default async function handler(req, res) {
 
       // Chamar Gemini com await (timeout de 15s)
       log('gemini_called', { hasHistory: !!conversationHistory, hasMemory: !!clientMemoryText });
-      let aiReply = await askGemini(promptForAI, conversationHistory, conversation, log);
-      aiReply = correctCommonMistakes(promptForAI, aiReply);
+      let aiReply;
+      if (messageType === 'image' && !visionMedia) {
+        aiReply = 'Não consegui baixar a imagem. Consegue descrever rapidamente o que aparece nela?';
+        log('vision_failure_reason', { reason: 'vision_media_unavailable' });
+      } else {
+        try {
+          aiReply = await askGemini(promptForAI, conversationHistory, conversation, log, visionMedia);
+          if (visionMedia) {
+            log('vision_response_generated', { responseLength: aiReply?.length || 0 });
+          }
+          aiReply = correctCommonMistakes(promptForAI, aiReply);
+        } catch (visionError) {
+          if (messageType === 'image') {
+            log('vision_failure_reason', { reason: 'gemini_api_error' });
+            aiReply = 'Não consegui analisar a imagem. Consegue descrever rapidamente o que aparece nela?';
+          } else {
+            throw visionError;
+          }
+        }
+      }
 
       // Persistir fatos e última pergunta para o próximo turno, mantendo
       // o controle de repetição de forma sanitizada.
@@ -1519,7 +1564,7 @@ function getLastQuestionFromReply(text) {
   return { text: sanitized, fingerprint };
 }
 
-async function askGemini(prompt, conversationHistory = '', conversation = null, log = () => {}) {
+async function askGemini(prompt, conversationHistory = '', conversation = null, log = () => {}, mediaData = null) {
   // Prepara fatos e sinais de conhecimento antes de qualquer await, para que
   // o fallback também tenha acesso ao knowledgeBlock.
   const previousFacts = (conversation && conversation.intake_data && conversation.intake_data.confirmedFacts) || {};
@@ -1559,6 +1604,16 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
       lastQuestion
     });
 
+    const primaryParts = [{ text: fullPrompt }];
+    if (mediaData) {
+      primaryParts.push({
+        inline_data: {
+          mime_type: mediaData.mimeType,
+          data: mediaData.base64
+        }
+      });
+    }
+
     // Observabilidade do contexto: o que realmente orienta esta resposta.
     const contextSources = [];
     if (clientMemoryText) contextSources.push('client_memory_history');
@@ -1567,7 +1622,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     if (knowledgeBlock) contextSources.push('knowledge');
     log('context_sources', { sources: contextSources });
     log('trusted_facts_count', { count: Object.keys(facts || {}).length });
-    
+
     const controller = new AbortController();
     const timeout = setTimeout(() => {
       console.error('[GEMINI] ⏱️ TIMEOUT de 12 segundos atingido!');
@@ -1584,7 +1639,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
         },
         contents: [
           {
-            parts: [{ text: fullPrompt }]
+            parts: primaryParts
           }
         ]
       }),
@@ -1616,7 +1671,17 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
       facts,
       lastQuestion
     });
-    
+
+    const fallbackParts = [{ text: fallbackPrompt }];
+    if (mediaData) {
+      fallbackParts.push({
+        inline_data: {
+          mime_type: mediaData.mimeType,
+          data: mediaData.base64
+        }
+      });
+    }
+
     const response = await fetch(GEMINI_API_URL_FALLBACK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1626,7 +1691,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
         },
         contents: [
           {
-            parts: [{ text: fallbackPrompt }]
+            parts: fallbackParts
           }
         ]
       })
@@ -1866,7 +1931,7 @@ async function downloadWhatsAppMedia(mediaId) {
     const arrayBuffer = await fileResponse.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    console.log(`[MEDIA] Mídia baixada: ${mediaId}, tipo: ${mimeType}, tamanho: ${buffer.length} bytes`);
+    console.log(`[MEDIA] Mídia baixada: tipo=${mimeType}, tamanho=${buffer.length} bytes`);
     return { buffer, mimeType };
   } catch (error) {
     console.error('[MEDIA] Erro ao baixar mídia do WhatsApp:', error.message);
