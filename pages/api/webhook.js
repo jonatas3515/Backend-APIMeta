@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
-import { createLogger, hashPhone, sanitizeError } from '../../lib/webhookLog';
+import { createLogger, hashPhone, hashIdentifier, sanitizeError } from '../../lib/webhookLog';
 import { detectArea, getFlow } from '../../lib/intakeFlows';
 import { transcribeAudio, summarizeMedia } from '../../lib/mediaProcessing';
 import { normalizePhoneForMatch } from '../../lib/formatters';
@@ -1055,7 +1055,21 @@ async function saveMessage(conversationId, text, sender, messageType = 'text', m
       throw error;
     }
 
-    console.log(`[SUPABASE] Mensagem salva: ${data.id}`);
+    console.log(JSON.stringify({
+      ts: new Date().toISOString(),
+      source: 'webhook',
+      event: 'message_persisted',
+      conversation_id_hash: hashIdentifier(conversationId),
+      message_id_hash: hashIdentifier(data.id),
+      wa_message_id_hash: hashIdentifier(waMessageId),
+      direction,
+      sender_type: senderType,
+      message_type: messageType,
+      media_type: insertData.media_type || null,
+      text_present: !!text,
+      media_url_present: !!mediaUrl,
+      saved_at: new Date().toISOString()
+    }));
 
     if (insertData.direction === 'inbound') {
       await supabase.rpc('log_audit', {

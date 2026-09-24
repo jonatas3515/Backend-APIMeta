@@ -15,6 +15,21 @@ import CaseLinkModal from './CaseLinkModal';
 import { navigateToCase } from '../lib/router';
 import { sortMessagesBySequence } from '../lib/messageMeta';
 
+function hashId(value) {
+  let h = 0xdeadbeef;
+  const s = String(value);
+  for (let i = 0; i < s.length; i++) {
+    h = Math.imul(h ^ s.charCodeAt(i), 2654435761);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+function chatLog(event, meta) {
+  try {
+    console.log(JSON.stringify({ ts: new Date().toISOString(), event, ...meta }));
+  } catch {}
+}
+
 function isSameDay(a, b) {
   return a.getFullYear() === b.getFullYear() &&
     a.getMonth() === b.getMonth() &&
@@ -254,10 +269,25 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           filter: `conversation_id=eq.${conversation.id}`,
         },
         (payload) => {
-          setMessages((prev) => [...prev, payload.new]);
-          
-          // Notificar usuário de nova mensagem
           const msg = payload.new;
+          chatLog('chat_realtime_received', {
+            conversation_id_hash: hashId(conversation.id),
+            message_id_hash: hashId(msg?.id),
+            wa_message_id_hash: hashId(msg?.wa_message_id),
+            direction: msg?.direction,
+            sender_type: msg?.sender_type,
+            message_type: msg?.content_type,
+            media_type: msg?.media_type,
+            text_present: !!msg?.text,
+            media_url_present: !!msg?.media_url,
+            realtime_received: new Date().toISOString()
+          });
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === msg.id)) return prev;
+            return sortMessagesBySequence([...prev, msg]);
+          });
+
+          // Notificar usuário de nova mensagem
           if (msg && msg.sender_type === 'client') {
             maybeNotify({
               title: `Nova mensagem de ${formatPhone(msg.sender_id)}`,
@@ -299,11 +329,23 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
         .from('messages')
         .select('*')
         .eq('conversation_id', conversation.id)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(200);
 
       if (error) throw error;
-      setMessages(sortMessagesBySequence(data || []));
+      const fetched = data || [];
+      setMessages((prev) => {
+        const merged = new Map();
+        fetched.forEach((m) => merged.set(m.id, m));
+        prev.forEach((m) => merged.set(m.id, m));
+        return sortMessagesBySequence([...merged.values()]);
+      });
       setLoading(false);
+      chatLog('chat_messages_fetched', {
+        conversation_id_hash: hashId(conversation.id),
+        messages_returned_count: fetched.length,
+        fetched_at: new Date().toISOString()
+      });
     } catch (error) {
       console.error('Erro ao buscar mensagens:', error);
       setLoading(false);
@@ -487,6 +529,13 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
     }
   };
 
+  const isImageFile = (file) => {
+    if (!file) return false;
+    if (file.type?.startsWith('image/')) return true;
+    const ext = file.name?.split('.').pop()?.toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif'].includes(ext);
+  };
+
   const handleFileSelect = (e) => {
     const file = e.target.files ? e.target.files[0] : null;
     if (!file) return;
@@ -497,6 +546,12 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
     }
     setPendingFile(file);
     setPendingFilePreview(URL.createObjectURL(file));
+    chatLog('chat_pending_file_selected', {
+      conversation_id_hash: hashId(conversation.id),
+      file_type: file.type || 'unknown',
+      is_image: isImageFile(file),
+      file_name_present: !!file.name
+    });
   };
 
   const removePendingFile = () => {
@@ -510,6 +565,10 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleReplaceFile = () => {
+    fileInputRef.current?.click();
   };
 
   const toggleMessageSelection = (msgId) => {
@@ -617,6 +676,13 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
         return { ...msg, showDate, date: current };
       });
   }, [messages, searchTerm]);
+
+  useEffect(() => {
+    chatLog('chat_rendered', {
+      conversation_id_hash: conversation.id ? hashId(conversation.id) : null,
+      rendered_message_count: visibleMessages.length
+    });
+  }, [visibleMessages.length]);
 
   if (loading) {
     return (
@@ -1195,13 +1261,13 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           
           {/* Preview de arquivo pendente */}
           {(pendingFile || pendingAudio) && (
-            <div className="mb-2 flex items-center justify-between gap-2 bg-nc-yellow-50 border border-nc-yellow-200 rounded-nc p-2">
-              <div className="flex items-center gap-2 min-w-0">
-                {pendingFile && pendingFilePreview && pendingFile.type?.startsWith('image/') ? (
+            <div className="mb-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-nc-yellow-50 border border-nc-yellow-200 rounded-nc p-2">
+              <div className="flex items-center gap-2 min-w-0 w-full">
+                {pendingFile && pendingFilePreview && isImageFile(pendingFile) ? (
                   <img
                     src={pendingFilePreview}
                     alt="Prévia"
-                    className="max-h-32 max-w-full rounded border border-nc-gray-200 object-contain"
+                    className="max-h-32 max-w-full w-full rounded border border-nc-gray-200 object-contain"
                   />
                 ) : (
                   <span className="text-sm text-nc-text truncate">
@@ -1209,13 +1275,22 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                   </span>
                 )}
               </div>
-              <button
-                onClick={removePendingFile}
-                className="text-nc-text-muted hover:text-red-600 transition flex-shrink-0"
-                title="Remover"
-              >
-                ❌
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={handleReplaceFile}
+                  className="text-nc-text-secondary hover:text-nc-yellow transition"
+                  title="Substituir"
+                >
+                  🔄
+                </button>
+                <button
+                  onClick={removePendingFile}
+                  className="text-nc-text-muted hover:text-red-600 transition"
+                  title="Remover"
+                >
+                  ❌
+                </button>
+              </div>
             </div>
           )}
 
@@ -1228,14 +1303,19 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
               😊
             </button>
             
-            <label className="p-2 text-nc-text-secondary hover:text-nc-yellow hover:bg-nc-white rounded-nc transition cursor-pointer" title="Enviar arquivo">
+            <label
+              htmlFor="chat-file-input"
+              className="p-2 text-nc-text-secondary hover:text-nc-yellow hover:bg-nc-white rounded-nc transition cursor-pointer"
+              title="Enviar arquivo"
+            >
               📎
               <input
+                id="chat-file-input"
                 ref={fileInputRef}
                 type="file"
                 className="hidden"
                 accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.txt,.mp3,.mp4,.mpeg,.3gp,.webm,.ogg"
-                multiple
+                capture="environment"
                 onChange={handleFileSelect}
               />
             </label>

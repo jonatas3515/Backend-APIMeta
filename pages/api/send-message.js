@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
-import { sanitizeError } from '@/lib/webhookLog';
+import { sanitizeError, hashIdentifier } from '@/lib/webhookLog';
 import { convertAudioToOgg } from '@/lib/audio';
 import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '@/lib/whatsapp';
 import { safeLog, safeError } from '@/lib/safeLogger';
@@ -157,6 +157,18 @@ async function handler(req, res) {
         route: '/api/send-message'
       });
     }
+
+    safeLog('info', 'outbound_message_persisted', {
+      requestId: conversation_id,
+      conversation_id_hash: hashIdentifier(conversation_id),
+      wa_message_id_hash: hashIdentifier(waMessageId),
+      content_type: contentType,
+      media_type: media_type || null,
+      text_present: !!messageText,
+      media_url_present: !!media_url,
+      status: msgError ? 'error' : 'sent',
+      route: '/api/send-message'
+    });
 
     res.json({ 
       success: true, 
