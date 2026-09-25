@@ -4,6 +4,7 @@ import { sanitizeError } from '../../lib/webhookLog';
 import { askGemini } from '../../lib/ai';
 import { sendWhatsAppMessage } from '../../lib/whatsapp';
 import { detectNeedsHuman, notifyAdminHandoff } from '../../lib/needsHuman.js';
+import { buildMessageMeta } from '../../lib/messageMeta';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -15,6 +16,9 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
 
 // Número máximo de mensagens por execução para evitar timeout na Vercel
 const BATCH_SIZE = 5;
+// Registros 'processing' mais antigos que isso são considerados órfãos
+// (o processo que os reivindicou morreu antes de concluir).
+const STALE_PROCESSING_MINUTES = 15;
 
 export default async function handler(req, res) {
   console.log(`[MEDIA_PROCESS] Requisição ${req.method}`);
@@ -36,10 +40,31 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Recuperação de órfãos: 'processing' antigos voltam a 'pending' via
+    // update condicional (idempotente). O claim pending->processing abaixo
+    // garante atomicamente que apenas um processo envia a resposta.
+    const staleCutoff = new Date(Date.now() - STALE_PROCESSING_MINUTES * 60 * 1000).toISOString();
+    const { data: staleProcessing } = await supabase
+      .from('messages')
+      .select('id')
+      .in('content_type', ['audio', 'video', 'image', 'document'])
+      .eq('media_status', 'processing')
+      .lt('created_at', staleCutoff)
+      .limit(BATCH_SIZE);
+
+    for (const stale of staleProcessing || []) {
+      console.log(`[MEDIA_PROCESS] Órfão em processing há mais de ${STALE_PROCESSING_MINUTES}min, devolvendo à fila: ${stale.id}`);
+      await supabase
+        .from('messages')
+        .update({ media_status: 'pending' })
+        .eq('id', stale.id)
+        .eq('media_status', 'processing');
+    }
+
     // Busca mídias pendentes (áudio e vídeo primeiro; imagem/documento como secundário)
     const { data: pendingMessages, error: fetchError } = await supabase
       .from('messages')
-      .select('id, conversation_id, content_type, media_url, text')
+      .select('id, conversation_id, content_type, media_url, text, created_at')
       .in('content_type', ['audio', 'video', 'image', 'document'])
       .eq('media_status', 'pending')
       .order('created_at', { ascending: true })
@@ -70,6 +95,25 @@ export default async function handler(req, res) {
       const { id, content_type, media_url, text } = message;
       if (!media_url) continue;
 
+      // Reivindicação atômica: o update condicional pending->processing só
+      // retorna linha para um único processo. Sem isso, o webhook assíncrono
+      // e este cron podem transcrever/responder o mesmo áudio duas vezes.
+      const { data: claimed, error: claimError } = await supabase
+        .from('messages')
+        .update({ media_status: 'processing' })
+        .eq('id', id)
+        .eq('media_status', 'pending')
+        .select('id');
+
+      if (claimError) {
+        console.error(`[MEDIA_PROCESS] Erro ao reivindicar mensagem ${id}:`, sanitizeError(claimError));
+        continue;
+      }
+      if (!claimed || claimed.length === 0) {
+        console.log(`[MEDIA_PROCESS] Mensagem ${id} já reivindicada por outro processo, pulando`);
+        continue;
+      }
+
       const mimeType = getMimeFromUrl(media_url) || `audio/ogg`;
       let transcript = '';
       let summary = '';
@@ -91,6 +135,18 @@ export default async function handler(req, res) {
       } catch (processError) {
         console.error(`[MEDIA_PROCESS] Erro ao processar mensagem ${id}:`, processError.message);
         status = 'failed';
+      }
+
+      // Dedupe ANTES de gravar o status final: só 'linked' é prova confiável de
+      // resposta enviada. Candidatos ambíguos (janela temporal sem vínculo)
+      // marcam needs_review — nunca presumimos respondido.
+      let replyDisposition = null;
+      if ((content_type === 'audio' || content_type === 'video') && transcript && status === 'processed') {
+        replyDisposition = await findExistingReply(message);
+        if (replyDisposition === 'ambiguous') {
+          console.log(`[MEDIA_PROCESS] Mensagem ${id}: resposta ambígua, marcando needs_review`);
+          status = 'needs_review';
+        }
       }
 
       // Monta texto visível: preserva a legenda/caption original se houver
@@ -117,8 +173,12 @@ export default async function handler(req, res) {
         console.log(`[MEDIA_PROCESS] Mensagem ${id} processada: status=${status}`);
         results.push({ id, content_type, status });
 
-        // Se áudio/vídeo foi transcrito com sucesso, responde o cliente
-        if ((content_type === 'audio' || content_type === 'video') && transcript && status === 'processed') {
+        // Responde o cliente somente quando não há resposta associada.
+        // 'linked' → reconcilia sem reenviar; 'ambiguous' → já virou
+        // needs_review acima; 'none' → nenhuma resposta, pode enviar.
+        if (replyDisposition === 'linked') {
+          console.log(`[MEDIA_PROCESS] Mensagem ${id} já tem resposta associada, reconciliando sem reenviar`);
+        } else if (replyDisposition === 'none' && status === 'processed') {
           try {
             await replyToClient(message, transcript, summary);
           } catch (replyError) {
@@ -154,6 +214,55 @@ function getMimeFromUrl(url) {
     webp: 'image/webp'
   };
   return map[ext] || null;
+}
+
+// Classifica a existência de resposta do bot para a mídia:
+// 'linked'    — vínculo exato via internal_note (source_message_id). Prova confiável.
+// 'ambiguous' — existe texto do bot na janela de 15min, sem vínculo: pode ser a
+//               resposta deste áudio ou de outro próximo. Não é prova → revisão.
+// 'none'      — nenhuma resposta; a mídia provavelmente nunca foi respondida.
+async function findExistingReply(message) {
+  if (!supabase || !message?.id) return 'none';
+  try {
+    const { data: linked, error: linkError } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('conversation_id', message.conversation_id)
+      .eq('direction', 'outbound')
+      .eq('sender_type', 'bot')
+      .like('internal_note', `%${message.id}%`)
+      .limit(1);
+
+    if (linkError) {
+      console.error('[MEDIA_PROCESS] Erro ao verificar resposta vinculada:', sanitizeError(linkError));
+      return 'ambiguous'; // sem prova, não reenviar
+    }
+    if (linked && linked.length > 0) return 'linked';
+
+    // Legado sem vínculo: procura resposta na janela EXCLUINDO as confirmações
+    // automáticas ("Recebido! Estou analisando...") — elas não são resposta final.
+    const windowEnd = new Date(new Date(message.created_at).getTime() + 15 * 60 * 1000).toISOString();
+    const { data: candidates, error: candError } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('conversation_id', message.conversation_id)
+      .eq('direction', 'outbound')
+      .eq('sender_type', 'bot')
+      .gt('created_at', message.created_at)
+      .lt('created_at', windowEnd)
+      .not('text', 'ilike', '%analisando%')
+      .not('text', 'ilike', '%Recebido!%')
+      .limit(1);
+
+    if (candError) {
+      console.error('[MEDIA_PROCESS] Erro ao verificar resposta legada:', sanitizeError(candError));
+      return 'ambiguous';
+    }
+    return (candidates && candidates.length > 0) ? 'ambiguous' : 'none';
+  } catch (err) {
+    console.error('[MEDIA_PROCESS] Exceção na verificação de resposta:', sanitizeError(err));
+    return 'ambiguous'; // em dúvida, não reenviar
+  }
 }
 
 // Responde o cliente automaticamente com base na transcrição do áudio/vídeo
@@ -203,26 +312,47 @@ async function replyToClient(message, transcript, summary) {
     console.log(`[MEDIA_PROCESS] Gerando resposta automática para conversa ${conversation.id}`);
     const aiReply = await askGemini(prompt, conversationHistory, conversation);
 
-    // Salva resposta no banco
+    // Salva resposta no banco vinculada à mídia de origem (internal_note meta)
     const insertData = {
       conversation_id: conversation.id,
       text: aiReply,
       sender_type: 'bot',
       direction: 'outbound',
-      content_type: 'text'
+      content_type: 'text',
+      internal_note: buildMessageMeta({ sourceMessageId: message.id })
     };
 
-    const { error: saveError } = await supabase
+    const { data: savedReply, error: saveError } = await supabase
       .from('messages')
-      .insert(insertData);
+      .insert(insertData)
+      .select('id')
+      .single();
 
     if (saveError) {
       console.error('[MEDIA_PROCESS] Erro ao salvar resposta automática:', saveError);
+      return;
     }
 
     // Envia resposta via WhatsApp ANTES de qualquer retorno por modo humano
     console.log('[MEDIA_PROCESS] Enviando resposta automática');
-    await sendWhatsAppMessage(clientPhone, aiReply);
+    try {
+      const waId = await sendWhatsAppMessage(clientPhone, aiReply);
+      if (savedReply?.id) {
+        await supabase
+          .from('messages')
+          .update({ ...(waId ? { wa_message_id: waId } : {}), status: 'sent' })
+          .eq('id', savedReply.id);
+      }
+    } catch (sendError) {
+      // Resultado incerto: a Meta pode ter recebido. Não reenviar cegamente.
+      console.error('[MEDIA_PROCESS] Envio sem confirmação da Meta:', sanitizeError(sendError));
+      if (savedReply?.id) {
+        await supabase
+          .from('messages')
+          .update({ status: 'unconfirmed' })
+          .eq('id', savedReply.id);
+      }
+    }
 
     // Só depois do envio confirmado: pedido explícito de humano notifica o admin.
     // NÃO marca mode='human' — handoff automático não deve silenciar a conversa

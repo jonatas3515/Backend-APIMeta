@@ -1271,7 +1271,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
               {/* Status e resumo de mídia (apenas para mídias recebidas) */}
               {(msg.direction === 'inbound') && (msg.content_type === 'audio' || msg.content_type === 'video' || msg.content_type === 'image' || msg.content_type === 'document') && (
                 <div className="mt-2 pt-2 border-t border-nc-gray-200/50">
-                  {msg.media_status === 'pending' && (
+                  {(msg.media_status === 'pending' || msg.media_status === 'processing') && (
                     <span className="text-xs text-nc-text-muted flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-nc-yellow animate-pulse"></span>
                       Processando {msg.content_type === 'audio' ? 'áudio' : msg.content_type === 'video' ? 'vídeo' : 'mídia'}...
@@ -1280,6 +1280,11 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                   {msg.media_status === 'failed' && (
                     <span className="text-xs text-red-500 flex items-center gap-1">
                       ❌ Falha no processamento
+                    </span>
+                  )}
+                  {msg.media_status === 'needs_review' && (
+                    <span className="text-xs text-nc-yellow flex items-center gap-1">
+                      ⚠️ Revisão necessária — resposta não pôde ser associada com segurança
                     </span>
                   )}
                   {msg.media_status === 'processed' && msg.media_summary && (
@@ -1336,6 +1341,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                       {msg.status === 'delivered' && '✓✓ Entregue'}
                       {msg.status === 'sent' && '✓ Enviado'}
                       {msg.status === 'pending' && '⏳ Enviando...'}
+                      {msg.status === 'unconfirmed' && '⚠️ Confirmação pendente'}
                       {!msg.status && msg.wa_message_id && '✓ Enviado'}
                       {!msg.status && !msg.wa_message_id && '⏳ Enviando...'}
                     </span>

@@ -712,7 +712,7 @@ export default async function handler(req, res) {
           // Se for áudio/vídeo, tenta transcrever de forma assíncrona (sem bloquear resposta)
           if (publicUrl) {
             // Inicia transcrição em background (não aguarda)
-            transcribeAudioAsync(conversation.id, publicUrl, messageType).catch(err => {
+            transcribeAudioAsync(conversation.id, publicUrl, messageType, savedMessage?.id).catch(err => {
               console.error('[WEBHOOK] Erro ao transcrever áudio em background:', err.message);
             });
           }
@@ -1769,15 +1769,41 @@ async function sendWhatsAppMessage(to, text) {
 }
 
 // Transcrição assíncrona de áudio (não bloqueia resposta do webhook)
-async function transcribeAudioAsync(conversationId, mediaUrl, mediaType) {
+async function transcribeAudioAsync(conversationId, mediaUrl, mediaType, messageId = null) {
+  // Reivindicação atômica: só quem mudar pending->processing continua.
+  // Evita corrida com o sweeper /api/process-media sobre o mesmo áudio.
+  const setAudioStatus = (status, extra = {}) =>
+    messageId
+      ? supabase.from('messages').update({ media_status: status, ...extra }).eq('id', messageId)
+      : Promise.resolve({ data: null, error: null });
+
+  let replyInserted = false;
   try {
     console.log(`[WEBHOOK] Iniciando transcrição assíncrona para conversa ${conversationId}`);
-    
+
+    if (messageId) {
+      const { data: claimed, error: claimError } = await supabase
+        .from('messages')
+        .update({ media_status: 'processing' })
+        .eq('id', messageId)
+        .eq('media_status', 'pending')
+        .select('id');
+      if (claimError) {
+        console.error('[WEBHOOK] Erro ao reivindicar áudio:', sanitizeError(claimError));
+        return;
+      }
+      if (!claimed || claimed.length === 0) {
+        console.log('[WEBHOOK] Áudio já reivindicado por outro processo, ignorando');
+        return;
+      }
+    }
+
     const mimeType = mediaType === 'audio' ? 'audio/ogg' : 'video/mp4';
     const transcript = await transcribeAudio(mediaUrl, mimeType);
-    
+
     if (!transcript) {
       console.log('[WEBHOOK] Transcrição retornou vazia');
+      await setAudioStatus('failed');
       return;
     }
 
@@ -1872,26 +1898,55 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType) {
       aiReply = await askGemini(prompt, conversationHistory, conversation);
     }
 
-    // Salva resposta no banco
-    const { error: saveError } = await supabase
+    // Salva resposta no banco com vínculo ao áudio de origem (sem nova coluna:
+    // reutiliza internal_note/meta, mesmo padrão já usado pelo projeto)
+    const { data: savedReply, error: saveError } = await supabase
       .from('messages')
       .insert({
         conversation_id: conversationId,
         text: aiReply,
         sender_type: 'bot',
         direction: 'outbound',
-        content_type: 'text'
-      });
+        content_type: 'text',
+        internal_note: messageId ? buildMessageMeta({ sourceMessageId: messageId }) : undefined
+      })
+      .select('id')
+      .single();
 
     if (saveError) {
       console.error('[WEBHOOK] Erro ao salvar resposta de áudio:', sanitizeError(saveError));
+      // Falha transitória antes do envio: devolve para pending para o sweeper
+      await setAudioStatus('pending');
       return;
     }
+    replyInserted = true;
 
     // Envia resposta via WhatsApp ANTES de qualquer retorno por modo humano
     const { sendWhatsAppMessage } = await import('../../lib/whatsapp.js');
-    await sendWhatsAppMessage(conversation.client_phone, aiReply);
-    console.log(`[WEBHOOK] ✅ Resposta automática enviada para áudio`);
+    try {
+      const replyWaId = await sendWhatsAppMessage(conversation.client_phone, aiReply);
+      if (savedReply?.id) {
+        // Meta confirmou o envio (response.ok); wa_message_id vincula callbacks
+        await supabase
+          .from('messages')
+          .update({ ...(replyWaId ? { wa_message_id: replyWaId } : {}), status: 'sent' })
+          .eq('id', savedReply.id);
+      }
+      console.log(`[WEBHOOK] ✅ Resposta automática enviada para áudio`);
+    } catch (sendError) {
+      // Intervalo incerto: a Meta pode ter recebido. Não reenviar — marca o
+      // registro como unconfirmed para o operador decidir.
+      console.error('[WEBHOOK] Envio da resposta de áudio sem confirmação:', sanitizeError(sendError));
+      if (savedReply?.id) {
+        await supabase
+          .from('messages')
+          .update({ status: 'unconfirmed' })
+          .eq('id', savedReply.id);
+      }
+    }
+
+    // Só marca processed quando a resposta foi concluída (incl. incerto)
+    await setAudioStatus('processed', { media_transcript: transcript });
 
     // Só depois do envio: pedido explícito de humano no áudio notifica o admin.
     // NÃO marca mode='human' — handoff automático não deve silenciar a conversa
@@ -1909,6 +1964,14 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType) {
     }
   } catch (error) {
     console.error('[WEBHOOK] Erro na transcrição assíncrona:', error.message);
+    if (messageId) {
+      // Se a resposta já foi inserida/enviada (ou incerta), não marcar pending:
+      // reprocessar geraria resposta duplicada. Caso contrário, devolve ao
+      // sweeper como falha transitória.
+      try {
+        await setAudioStatus(replyInserted ? 'processed' : 'pending');
+      } catch (_) {}
+    }
   }
 }
 
@@ -2121,4 +2184,7 @@ async function processDeliveryStatuses(statuses) {
     }
   }
 }
+
+// Hooks de teste (não afetam a rota; Next usa apenas o default export)
+export const __test__ = { transcribeAudioAsync, processDeliveryStatuses };
 

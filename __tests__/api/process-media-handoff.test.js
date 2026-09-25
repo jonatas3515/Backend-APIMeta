@@ -15,7 +15,8 @@ const PENDING_AUDIO = {
   content_type: 'audio',
   media_url: 'https://synthetic.example.com/audio.ogg',
   text: 'processando transcrição',
-  media_status: 'pending'
+  media_status: 'pending',
+  created_at: '2026-09-25T21:00:00.000Z'
 };
 
 const CONVERSATION = {
@@ -31,14 +32,24 @@ global.__humanUpdateAfterReplyFlag = false;
 
 jest.mock('@supabase/supabase-js', () => ({
   createClient: jest.fn(() => {
-    const context = { table: null, operation: null, updateData: null };
+    const context = { table: null, operation: null, updateData: null, filters: [] };
     const resolveThen = (onFulfilled) => {
       if (context.table === 'conversations' && context.operation === 'update' && context.updateData?.mode === 'human') {
         global.__humanUpdateAfterReplyFlag = !!global.__replySentFlag;
       }
 
+      const isOutboundBotLookup = context.operation === 'select' &&
+        context.filters.some(f => f[0] === 'eq' && f[1] === 'direction' && f[2] === 'outbound') &&
+        context.filters.some(f => f[0] === 'eq' && f[1] === 'sender_type' && f[2] === 'bot');
+
       let data;
-      if (context.table === 'messages' && context.operation === 'select') {
+      if (context.table === 'messages' && context.operation === 'update' && context.updateData?.media_status === 'processing') {
+        // Reivindicação atômica bem-sucedida: retorna a linha reivindicada
+        data = [{ id: PENDING_AUDIO.id }];
+      } else if (context.table === 'messages' && context.operation === 'select' && isOutboundBotLookup) {
+        // Nenhuma resposta do bot já associada à mídia
+        data = [];
+      } else if (context.table === 'messages' && context.operation === 'select') {
         // Simula a consulta de mídias pendentes com um áudio.
         data = [PENDING_AUDIO];
       } else if (context.table === 'conversations' && context.operation === 'select') {
@@ -60,9 +71,12 @@ jest.mock('@supabase/supabase-js', () => ({
             context.table = args[0];
             context.operation = null;
             context.updateData = null;
+            context.filters = [];
           } else if (['select', 'insert', 'update', 'delete'].includes(prop)) {
             context.operation = prop;
             if (prop === 'update') context.updateData = args[0] || null;
+          } else if (['eq', 'like', 'gt', 'lt', 'gte', 'lte', 'in'].includes(prop)) {
+            context.filters.push([prop, ...args]);
           }
           return chain;
         };
