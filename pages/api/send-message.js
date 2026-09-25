@@ -4,6 +4,7 @@ import { withAuth } from '@/lib/auth';
 import { sanitizeError, hashIdentifier } from '@/lib/webhookLog';
 import { convertAudioToOgg } from '@/lib/audio';
 import { uploadMediaToWhatsApp, sendWhatsAppMediaMessage } from '@/lib/whatsapp';
+import { resolveMediaKind, normalizeWhatsAppMime, MEDIA_MAX_BYTES } from '@/lib/mediaKind';
 import { safeLog, safeError } from '@/lib/safeLogger';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -57,29 +58,67 @@ async function handler(req, res) {
     // Se tem mídia, faz upload para o servidor da Meta e envia por media_id
     let contentType = 'text';
     let waMessageId = null;
+    let mediaId = null;
     let messageText = text || '';
 
     if (media_url) {
-      contentType = media_type?.startsWith('audio/') ? 'audio' 
-        : media_type?.startsWith('image/') ? 'image'
-        : media_type?.startsWith('video/') ? 'video'
-        : 'document';
+      contentType = resolveMediaKind(media_type, filename);
 
       try {
-        safeLog('info', 'send_message_media_download', {
+        safeLog('info', 'media_file_received', {
           requestId: conversation_id,
-          contentType,
+          media_kind: contentType,
+          media_mime: media_type || null,
+          media_extension: filename ? filename.split('.').pop().toLowerCase() : null,
           route: '/api/send-message'
         });
         const mediaResponse = await axios.get(media_url, { responseType: 'arraybuffer' });
         let fileBuffer = Buffer.from(mediaResponse.data);
-        let uploadMime = media_type;
         safeLog('info', 'send_message_media_downloaded', {
           requestId: conversation_id,
-          payloadSize: fileBuffer.length,
-          contentType,
+          media_kind: contentType,
+          media_size_bytes: fileBuffer.length,
           route: '/api/send-message'
         });
+
+        // Limite da Meta Cloud API por tipo — falha rápida com motivo compreensível
+        const maxBytes = MEDIA_MAX_BYTES[contentType];
+        if (maxBytes && fileBuffer.length > maxBytes) {
+          safeLog('info', 'media_failure', {
+            requestId: conversation_id,
+            media_kind: contentType,
+            media_size_bytes: fileBuffer.length,
+            media_failure_reason: 'media_too_large',
+            route: '/api/send-message'
+          });
+          return res.status(400).json({
+            error: 'Arquivo excede o limite permitido para este tipo de mídia',
+            reason: 'media_too_large'
+          });
+        }
+
+        // Vídeo fora de mp4/3gpp não é aceito pela Meta — falha rápida e clara.
+        // Áudio segue o fluxo já existente (conversão AMR tentada antes do upload).
+        let uploadMime = media_type;
+        if (contentType === 'video') {
+          uploadMime = normalizeWhatsAppMime('video', media_type, filename);
+          if (uploadMime == null) {
+            safeLog('info', 'media_failure', {
+              requestId: conversation_id,
+              media_kind: contentType,
+              media_mime: media_type || null,
+              media_failure_reason: 'unsupported_video_format',
+              route: '/api/send-message'
+            });
+            return res.status(400).json({
+              error: 'Formato de vídeo não suportado pelo WhatsApp',
+              reason: 'unsupported_video_format'
+            });
+          }
+        }
+        if (!uploadMime) {
+          uploadMime = contentType === 'image' ? 'image/jpeg' : 'application/octet-stream';
+        }
 
         if (contentType === 'audio') {
           try {
@@ -93,7 +132,7 @@ async function handler(req, res) {
               uploadMime = converted.mime;
               safeLog('info', 'send_message_audio_converted', {
                 requestId: conversation_id,
-                payloadSize: fileBuffer.length,
+                media_size_bytes: fileBuffer.length,
                 route: '/api/send-message'
               });
             }
@@ -105,29 +144,62 @@ async function handler(req, res) {
           }
         }
 
-        safeLog('info', 'send_message_media_upload', {
+        safeLog('info', 'whatsapp_media_upload_start', {
           requestId: conversation_id,
-          contentType,
-          mediaType: uploadMime,
+          media_kind: contentType,
+          media_mime: uploadMime,
           route: '/api/send-message'
         });
-        const mediaId = await uploadMediaToWhatsApp(fileBuffer, uploadMime);
+        mediaId = await uploadMediaToWhatsApp(fileBuffer, uploadMime);
+        safeLog('info', 'whatsapp_media_upload_status', {
+          requestId: conversation_id,
+          media_kind: contentType,
+          upload_status: 'ok',
+          route: '/api/send-message'
+        });
 
-        safeLog('info', 'send_message_media_send', {
-          requestId: conversation_id,
-          contentType,
-          route: '/api/send-message'
-        });
         const mediaFilename = contentType === 'document' ? (filename || text || 'arquivo') : undefined;
         messageText = contentType === 'document' ? (text || mediaFilename) : (text || '');
         waMessageId = await sendWhatsAppMediaMessage(conversation.client_phone, mediaId, contentType, text, mediaFilename);
-      } catch (mediaError) {
-        safeError('send_message_media_failed', mediaError, {
+        safeLog('info', 'whatsapp_send_status', {
           requestId: conversation_id,
+          media_kind: contentType,
+          whatsapp_send_status: 'ok',
           route: '/api/send-message'
         });
-        return res.status(500).json({ 
-          error: 'Erro ao enviar mídia'
+      } catch (mediaError) {
+        // Classifica a etapa da falha. lib/whatsapp lança Error com prefixo
+        // próprio quando a Meta respondeu; falha de rede/timeout propaga o
+        // erro original do fetch (sem prefixo) — aí o resultado é incerto.
+        const msg = mediaError.message || '';
+        let stageReason;
+        let httpStatus = 500;
+        let userMessage;
+        if (mediaId) {
+          if (/Erro ao enviar m[ií]dia WhatsApp: \d{3}/.test(msg)) {
+            stageReason = 'send_rejected';
+            userMessage = 'A Meta rejeitou o envio da mídia';
+          } else {
+            // Timeout/rede sem resposta: a mensagem pode ter sido entregue
+            stageReason = 'send_unconfirmed';
+            httpStatus = 504;
+            userMessage = 'Não foi possível confirmar o envio. Verifique no WhatsApp/conversa antes de tentar novamente.';
+          }
+        } else {
+          stageReason = /Erro ao fazer upload de m[ií]dia: \d{3}/.test(msg)
+            ? 'upload_rejected'
+            : 'upload_failed';
+          userMessage = 'Erro ao enviar mídia';
+        }
+        safeError('send_message_media_failed', mediaError, {
+          requestId: conversation_id,
+          media_kind: contentType,
+          media_failure_reason: stageReason,
+          route: '/api/send-message'
+        });
+        return res.status(httpStatus).json({
+          error: userMessage,
+          reason: stageReason
         });
       }
     } else {
@@ -173,7 +245,9 @@ async function handler(req, res) {
     res.json({ 
       success: true, 
       message: 'Mensagem enviada com sucesso',
-      wa_message_id: waMessageId || null
+      wa_message_id: waMessageId || null,
+      persisted: !msgError,
+      warning: msgError ? 'persist_failed' : undefined
     });
   } catch (error) {
     safeError('send_message_failed', error, {

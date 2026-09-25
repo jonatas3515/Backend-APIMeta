@@ -14,6 +14,7 @@ import CaseCreationModal from './CaseCreationModal';
 import CaseLinkModal from './CaseLinkModal';
 import { navigateToCase } from '../lib/router';
 import { sortMessagesBySequence } from '../lib/messageMeta';
+import { resolveMediaKind, getFileExtension, normalizeWhatsAppMime, MEDIA_MAX_BYTES } from '../lib/mediaKind';
 
 function hashId(value) {
   let h = 0xdeadbeef;
@@ -442,6 +443,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   };
 
   const handleSendMessage = async () => {
+    if (sending) return; // evita envios simultâneos por clique duplo
     if (!newMessage.trim() && !pendingFile && !pendingAudio) return;
 
     setSending(true);
@@ -453,7 +455,30 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
       // Se tem arquivo ou áudio pendente, fazer upload via URL assinada
       const fileToUpload = pendingAudio || pendingFile;
       if (fileToUpload) {
+        // Validação pré-upload: formato/tamanho incompatível avisa antes de enviar
+        const precheck = getSendBlockReason(fileToUpload);
+        if (precheck) {
+          chatLog('media_failure', {
+            conversation_id_hash: hashId(conversation.id),
+            media_kind: resolveMediaKind(fileToUpload.type, fileToUpload.name),
+            media_mime: fileToUpload.type || null,
+            media_size_bytes: fileToUpload.size,
+            media_failure_reason: precheck.reason
+          });
+          alert(precheck.message);
+          setSending(false);
+          return;
+        }
+
         setUploadProgress(10);
+
+        const uploadKind = resolveMediaKind(fileToUpload.type, fileToUpload.name);
+        chatLog('media_upload_started', {
+          conversation_id_hash: hashId(conversation.id),
+          media_kind: uploadKind,
+          media_mime: fileToUpload.type || null,
+          media_size_bytes: fileToUpload.size
+        });
 
         // 1. Buscar URL assinada do backend (service_role)
         const uploadResponse = await apiCall('/api/upload-file', {
@@ -479,6 +504,12 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           headers: {
             'Content-Type': fileToUpload.type || 'application/octet-stream'
           }
+        });
+
+        chatLog('media_upload_status', {
+          conversation_id_hash: hashId(conversation.id),
+          media_kind: uploadKind,
+          upload_status: fileUploadResponse.status
         });
 
         if (!fileUploadResponse.ok) {
@@ -511,12 +542,34 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
       });
 
       if (!response.ok) {
-        throw new Error(`Erro ao enviar mensagem: ${response.status}`);
+        let reason = null;
+        try {
+          const errData = await response.json();
+          reason = errData?.reason || null;
+        } catch {}
+        chatLog('media_failure', {
+          conversation_id_hash: hashId(conversation.id),
+          media_kind: pendingFile ? resolveMediaKind(pendingFile.type, pendingFile.name) : (pendingAudio ? 'audio' : null),
+          media_failure_reason: reason || 'provider_error'
+        });
+        const friendly = {
+          media_too_large: 'Arquivo excede o limite permitido pelo WhatsApp',
+          unsupported_video_format: 'Formato de vídeo não suportado (envie MP4)',
+          unsupported_audio_format: 'Formato de áudio não suportado',
+          send_unconfirmed: 'Não foi possível confirmar o envio. Verifique no WhatsApp/conversa antes de tentar novamente.',
+          send_rejected: 'A Meta rejeitou o envio da mídia',
+          upload_rejected: 'A Meta rejeitou o arquivo no upload',
+          upload_failed: 'Falha de rede ao enviar o arquivo à Meta'
+        };
+        throw new Error(friendly[reason] || `Erro ao enviar mensagem: ${response.status}`);
       }
 
       const sendData = await response.json();
 
       console.log('[CHAT] Mensagem enviada:', sendData);
+      if (sendData.warning === 'persist_failed') {
+        alert('Mensagem enviada, mas não foi gravada no histórico do painel.');
+      }
       if (pendingFilePreview) {
         URL.revokeObjectURL(pendingFilePreview);
       }
@@ -533,7 +586,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
       fetchMessages(); // Atualiza mensagens imediatamente
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);
-      alert('Erro ao enviar mensagem');
+      alert(error.message || 'Erro ao enviar mensagem');
     } finally {
       setSending(false);
     }
@@ -626,9 +679,42 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
     return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif'].includes(ext);
   };
 
+  // Bloqueia o envio antes de qualquer upload quando o arquivo é incompatível
+  // com a Meta (formato de vídeo fora de mp4/3gpp ou tamanho acima do limite).
+  const getSendBlockReason = (file) => {
+    const kind = resolveMediaKind(file?.type, file?.name);
+    const mime = (file?.type || '').toLowerCase();
+    const ext = getFileExtension(file?.name);
+    if (kind === 'video' && normalizeWhatsAppMime('video', mime, file?.name) == null) {
+      return {
+        reason: 'unsupported_video_format',
+        message: 'Este vídeo não está em um formato compatível para envio. Se possível, exporte-o como MP4.'
+      };
+    }
+    const maxBytes = MEDIA_MAX_BYTES[kind];
+    if (maxBytes && file?.size > maxBytes) {
+      const mb = Math.round(maxBytes / 1024 / 1024);
+      return {
+        reason: 'media_too_large',
+        message: `Este arquivo excede o limite de ${mb} MB permitido pelo WhatsApp para este tipo de mídia.`
+      };
+    }
+    return null;
+  };
+
   const handleFileSelect = (e) => {
     const file = e.target.files ? e.target.files[0] : null;
     if (!file) return;
+
+    const kind = resolveMediaKind(file.type, file.name);
+    chatLog('media_file_selected', {
+      conversation_id_hash: hashId(conversation.id),
+      media_kind: kind,
+      media_extension: getFileExtension(file.name) || null,
+      media_mime: file.type || null,
+      media_size_bytes: file.size,
+      is_image: kind === 'image'
+    });
 
     // Substitui a seleção anterior; nenhum envio ocorre aqui
     if (pendingFilePreview) {
@@ -637,11 +723,10 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
     setPendingFile(file);
     setPendingFilePreview(URL.createObjectURL(file));
     setPendingFilePreviewError(false);
-    chatLog('chat_pending_file_selected', {
+    chatLog('media_preview_created', {
       conversation_id_hash: hashId(conversation.id),
-      file_type: file.type || 'unknown',
-      is_image: isImageFile(file),
-      file_name_present: !!file.name
+      media_kind: kind,
+      preview_created: true
     });
   };
 
@@ -1104,6 +1189,35 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                         Seu navegador não suporta áudio.
                       </audio>
                     )
+                  ) : msg.content_type === 'video' || msg.media_type?.startsWith('video/') ? (
+                    msg.status === 'failed' || msg.media_status === 'failed' ? (
+                      <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                        ❌ Vídeo não disponível (falha no processamento)
+                      </div>
+                    ) : (
+                      <div className="w-full">
+                        <video
+                          controls
+                          preload="metadata"
+                          className="max-w-60 max-h-40 rounded border border-nc-gray-200 bg-black"
+                          src={msg.media_url}
+                          onError={(e) => {
+                            console.warn('[CHAT] Erro ao carregar vídeo');
+                            e.target.style.display = 'none';
+                            e.target.parentElement.innerHTML = '<div class="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">⚠️ Prévia de vídeo indisponível</div>';
+                          }}
+                        />
+                        <a
+                          href={msg.media_url}
+                          download
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-nc-text hover:text-nc-yellow hover:underline transition mt-1"
+                        >
+                          ⬇ Baixar vídeo
+                        </a>
+                      </div>
+                    )
                   ) : msg.content_type === 'document' || msg.media_type === 'application/pdf' || msg.media_url?.toLowerCase().match(/\.pdf(\?.*)?$/) ? (
                     <div className="w-full rounded border border-nc-gray-200 overflow-hidden bg-nc-gray-50 p-2">
                       {msg.text && (
@@ -1356,18 +1470,41 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           {(pendingFile || pendingAudio) && (
             <div className="mb-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-nc-yellow-50 border border-nc-yellow-200 rounded-nc p-2">
               <div className="flex items-center gap-2 min-w-0 w-full">
-                {pendingFile && pendingFilePreview && isImageFile(pendingFile) && !pendingFilePreviewError ? (
-                  <img
-                    src={pendingFilePreview}
-                    alt="Prévia"
-                    onError={() => setPendingFilePreviewError(true)}
-                    className="max-h-32 max-w-full w-full rounded border border-nc-gray-200 object-contain"
-                  />
-                ) : (
-                  <span className="text-sm text-nc-text truncate">
-                    {pendingAudio ? '🎤 Áudio gravado' : `📎 ${pendingFile?.name || 'Imagem selecionada'}`}
-                  </span>
-                )}
+                {(() => {
+                  const previewFile = pendingFile || pendingAudio;
+                  const previewKind = resolveMediaKind(previewFile?.type, previewFile?.name);
+                  if (previewFile && pendingFilePreview && previewKind === 'image' && !pendingFilePreviewError) {
+                    return (
+                      <img
+                        src={pendingFilePreview}
+                        alt="Prévia"
+                        onError={() => setPendingFilePreviewError(true)}
+                        className="max-h-32 max-w-full w-full rounded border border-nc-gray-200 object-contain"
+                      />
+                    );
+                  }
+                  if (previewFile && pendingFilePreview && previewKind === 'video' && !pendingFilePreviewError) {
+                    return (
+                      <video
+                        src={pendingFilePreview}
+                        controls
+                        preload="metadata"
+                        onError={() => setPendingFilePreviewError(true)}
+                        className="max-h-40 max-w-full w-full rounded border border-nc-gray-200 bg-black"
+                      />
+                    );
+                  }
+                  const kindLabel = {
+                    image: 'Imagem selecionada',
+                    video: 'Vídeo selecionado'
+                  }[previewKind];
+                  const sizeLabel = previewFile?.size ? ` (${(previewFile.size / 1024 / 1024).toFixed(1)} MB)` : '';
+                  return (
+                    <span className="text-sm text-nc-text truncate">
+                      {pendingAudio ? '🎤 Áudio gravado' : `📎 ${previewFile?.name || kindLabel || 'Arquivo selecionado'}${sizeLabel}`}
+                    </span>
+                  );
+                })()}
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
@@ -1399,6 +1536,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
             
             <label
               htmlFor="chat-file-input"
+              onClick={() => chatLog('media_select_started', { conversation_id_hash: hashId(conversation.id) })}
               className="p-2 text-nc-text-secondary hover:text-nc-yellow hover:bg-nc-white rounded-nc transition cursor-pointer"
               title="Enviar arquivo"
             >
@@ -1455,7 +1593,12 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                 {sending
                   ? 'Enviando...'
                   : pendingFile
-                    ? (pendingFile.type?.startsWith('image/') ? '📷 Enviar imagem' : '📎 Enviar arquivo')
+                    ? ({
+                        image: '📷 Enviar imagem',
+                        video: '🎬 Enviar vídeo',
+                        audio: '🎤 Enviar áudio',
+                        document: '� Enviar arquivo'
+                      }[resolveMediaKind(pendingFile.type, pendingFile.name)] || '📎 Enviar arquivo')
                     : pendingAudio
                       ? '🎤 Enviar áudio'
                       : 'Enviar'}
