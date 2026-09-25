@@ -66,6 +66,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   const [audioChunks, setAudioChunks] = useState([]);
   const [pendingFile, setPendingFile] = useState(null);
   const [pendingFilePreview, setPendingFilePreview] = useState(null);
+  const [pendingFilePreviewError, setPendingFilePreviewError] = useState(false);
   const [pendingAudio, setPendingAudio] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
@@ -522,6 +523,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
       setNewMessage('');
       setPendingFile(null);
       setPendingFilePreview(null);
+      setPendingFilePreviewError(false);
       setPendingAudio(null);
       setUploadProgress(0);
       if (fileInputRef.current) {
@@ -634,6 +636,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
     }
     setPendingFile(file);
     setPendingFilePreview(URL.createObjectURL(file));
+    setPendingFilePreviewError(false);
     chatLog('chat_pending_file_selected', {
       conversation_id_hash: hashId(conversation.id),
       file_type: file.type || 'unknown',
@@ -648,6 +651,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
     }
     setPendingFile(null);
     setPendingFilePreview(null);
+    setPendingFilePreviewError(false);
     setPendingAudio(null);
     setNewMessage('');
     if (fileInputRef.current) {
@@ -1352,15 +1356,16 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           {(pendingFile || pendingAudio) && (
             <div className="mb-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-nc-yellow-50 border border-nc-yellow-200 rounded-nc p-2">
               <div className="flex items-center gap-2 min-w-0 w-full">
-                {pendingFile && pendingFilePreview && isImageFile(pendingFile) ? (
+                {pendingFile && pendingFilePreview && isImageFile(pendingFile) && !pendingFilePreviewError ? (
                   <img
                     src={pendingFilePreview}
                     alt="Prévia"
+                    onError={() => setPendingFilePreviewError(true)}
                     className="max-h-32 max-w-full w-full rounded border border-nc-gray-200 object-contain"
                   />
                 ) : (
                   <span className="text-sm text-nc-text truncate">
-                    {pendingAudio ? '🎤 Áudio gravado' : `📎 ${pendingFile?.name}`}
+                    {pendingAudio ? '🎤 Áudio gravado' : `📎 ${pendingFile?.name || 'Imagem selecionada'}`}
                   </span>
                 )}
               </div>
@@ -1404,7 +1409,6 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                 type="file"
                 className="hidden"
                 accept="image/*,video/*,audio/*,application/pdf,.doc,.docx,.txt,.mp3,.mp4,.mpeg,.3gp,.webm,.ogg"
-                capture="environment"
                 onChange={handleFileSelect}
               />
             </label>

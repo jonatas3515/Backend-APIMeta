@@ -108,6 +108,53 @@ describe('ChatWindow media preview and send', () => {
     expect(mockApiCall).not.toHaveBeenCalledWith('/api/send-message', expect.anything());
   });
 
+  test('input de arquivo não força câmera (sem atributo capture)', async () => {
+    await setup();
+    const input = document.querySelector('input[type="file"]');
+    expect(input).toBeTruthy();
+    expect(input.hasAttribute('capture')).toBe(false);
+  });
+
+  test('imagem HEIC sem decodificação mostra fallback com nome e mantém remover/substituir', async () => {
+    await setup();
+    const file = new File(['heiccontent'], 'foto.heic', { type: 'image/heic' });
+    const input = document.querySelector('input[type="file"]');
+
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file] } });
+    });
+
+    // browser tenta renderizar como imagem primeiro
+    const img = screen.getByAltText('Prévia');
+    expect(img).toBeInTheDocument();
+
+    // se a decodificação falha (ex.: HEIC no Chrome), exibe fallback visível
+    await act(async () => {
+      fireEvent.error(img);
+    });
+
+    expect(screen.queryByAltText('Prévia')).not.toBeInTheDocument();
+    expect(screen.getByText(/foto\.heic/)).toBeInTheDocument();
+    expect(screen.getByTitle('Remover')).toBeInTheDocument();
+    expect(screen.getByTitle('Substituir')).toBeInTheDocument();
+    expect(mockApiCall).not.toHaveBeenCalledWith('/api/send-message', expect.anything());
+  });
+
+  test('documento não é renderizado como imagem e não envia', async () => {
+    await setup();
+    const file = new File(['pdfcontent'], 'doc.pdf', { type: 'application/pdf' });
+    const input = document.querySelector('input[type="file"]');
+
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file] } });
+    });
+
+    expect(screen.queryByAltText('Prévia')).not.toBeInTheDocument();
+    expect(screen.getByText(/doc\.pdf/)).toBeInTheDocument();
+    expect(mockApiCall).not.toHaveBeenCalledWith('/api/upload-file', expect.anything());
+    expect(mockApiCall).not.toHaveBeenCalledWith('/api/send-message', expect.anything());
+  });
+
   test('clicar em Enviar faz upload e manda a mensagem uma única vez', async () => {
     await setup();
     mockApiCall
