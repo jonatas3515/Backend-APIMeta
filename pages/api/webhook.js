@@ -1772,10 +1772,27 @@ async function sendWhatsAppMessage(to, text) {
 async function transcribeAudioAsync(conversationId, mediaUrl, mediaType, messageId = null) {
   // Reivindicação atômica: só quem mudar pending->processing continua.
   // Evita corrida com o sweeper /api/process-media sobre o mesmo áudio.
-  const setAudioStatus = (status, extra = {}) =>
-    messageId
-      ? supabase.from('messages').update({ media_status: status, ...extra }).eq('id', messageId)
-      : Promise.resolve({ data: null, error: null });
+  // Transição final condicional à posse: só grava se o áudio ainda está em
+  // 'processing' (claimer atual). Se o estado mudou externamente (ex.:
+  // needs_review), a escrita retorna 0 linhas e o valor atual é preservado.
+  const setAudioStatus = async (status, extra = {}) => {
+    if (!messageId) return true;
+    const { data, error } = await supabase
+      .from('messages')
+      .update({ media_status: status, ...extra })
+      .eq('id', messageId)
+      .eq('media_status', 'processing')
+      .select('id');
+    if (error) {
+      console.error(`[WEBHOOK] Falha ao gravar media_status=${status} do áudio:`, sanitizeError(error));
+      return false;
+    }
+    if (!data || data.length === 0) {
+      console.log(`[WEBHOOK] media_status do áudio não gravado (${status}): estado alterado externamente, mantendo valor atual`);
+      return false;
+    }
+    return true;
+  };
 
   let replyInserted = false;
   try {

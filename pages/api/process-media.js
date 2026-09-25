@@ -16,9 +16,6 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
 
 // Número máximo de mensagens por execução para evitar timeout na Vercel
 const BATCH_SIZE = 5;
-// Registros 'processing' mais antigos que isso são considerados órfãos
-// (o processo que os reivindicou morreu antes de concluir).
-const STALE_PROCESSING_MINUTES = 15;
 
 export default async function handler(req, res) {
   console.log(`[MEDIA_PROCESS] Requisição ${req.method}`);
@@ -40,28 +37,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Órfãos em 'processing' antigos: NÃO devolvemos a 'pending' — sem token de
-    // claim/lease, um worker pausado poderia retomar e haveria dois envios.
-    // Em vez disso sinalizamos needs_review (update condicional, idempotente)
-    // para que fiquem visíveis ao operador sem gerar nova resposta automática.
-    // Recuperação automática segura exige lease verificável → proposta separada.
-    const staleCutoff = new Date(Date.now() - STALE_PROCESSING_MINUTES * 60 * 1000).toISOString();
-    const { data: staleProcessing } = await supabase
-      .from('messages')
-      .select('id')
-      .in('content_type', ['audio', 'video', 'image', 'document'])
-      .eq('media_status', 'processing')
-      .lt('created_at', staleCutoff)
-      .limit(BATCH_SIZE);
-
-    for (const stale of staleProcessing || []) {
-      console.log(`[MEDIA_PROCESS] Órfão em processing há mais de ${STALE_PROCESSING_MINUTES}min, sinalizando para revisão: ${stale.id}`);
-      await supabase
-        .from('messages')
-        .update({ media_status: 'needs_review' })
-        .eq('id', stale.id)
-        .eq('media_status', 'processing');
-    }
+    // Registros 'processing' órfãos NÃO são tocados aqui: created_at não é o
+    // horário do claim, e sem token de claim/lease nenhuma reclassificação é
+    // segura (o worker pausado pode retomar). Recuperação automática exige
+    // lease verificável — proposta separada (migration).
 
     // Busca mídias pendentes (áudio e vídeo primeiro; imagem/documento como secundário)
     const { data: pendingMessages, error: fetchError } = await supabase
@@ -164,13 +143,20 @@ export default async function handler(req, res) {
         text: newText
       };
 
-      const { error: updateError } = await supabase
+      // Escrita final condicional à posse: só grava se o registro ainda está
+      // 'processing' (claimer atual). Se outro estado foi definido
+      // externamente (ex.: needs_review), não sobrescreve nem responde.
+      const { data: finalized, error: updateError } = await supabase
         .from('messages')
         .update(updatePayload)
-        .eq('id', id);
+        .eq('id', id)
+        .eq('media_status', 'processing')
+        .select('id');
 
       if (updateError) {
         console.error(`[MEDIA_PROCESS] Erro ao salvar mensagem ${id}:`, sanitizeError(updateError));
+      } else if (!finalized || finalized.length === 0) {
+        console.log(`[MEDIA_PROCESS] Mensagem ${id}: estado alterado externamente, mantendo valor atual (não sobrescreve)`);
       } else {
         console.log(`[MEDIA_PROCESS] Mensagem ${id} processada: status=${status}`);
         results.push({ id, content_type, status });

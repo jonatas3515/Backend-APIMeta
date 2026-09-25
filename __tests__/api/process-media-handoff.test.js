@@ -43,8 +43,8 @@ jest.mock('@supabase/supabase-js', () => ({
         context.filters.some(f => f[0] === 'eq' && f[1] === 'sender_type' && f[2] === 'bot');
 
       let data;
-      if (context.table === 'messages' && context.operation === 'update' && context.updateData?.media_status === 'processing') {
-        // Reivindicação atômica bem-sucedida: retorna a linha reivindicada
+      if (context.table === 'messages' && context.operation === 'update' && context.updateData?.media_status) {
+        // Claim (processing) e escrita final condicional retornam a linha
         data = [{ id: PENDING_AUDIO.id }];
       } else if (context.table === 'messages' && context.operation === 'select' && isOutboundBotLookup) {
         // Nenhuma resposta do bot já associada à mídia

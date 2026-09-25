@@ -41,11 +41,16 @@ function makeQuery(table) {
     const has = (op, k, v) => q._filters.some(f => f[0] === op && f[1] === k && (v === undefined || f[2] === v));
     const linkFilter = q._filters.find(f => f[0] === 'like' && f[1] === 'internal_note');
     const outboundBotLookup = q._select && q._table === 'messages' && has('eq', 'direction', 'outbound') && has('eq', 'sender_type', 'bot');
-    const staleLookup = q._select && q._table === 'messages' && has('eq', 'media_status', 'processing') && has('lt', 'created_at');
+    // Detector: qualquer LEITURA de registros 'processing' pelo sweeper
+    // (updates condicionais com .select não contam — são claim/finalize)
+    if (q._select && !q._update && !q._insert && q._table === 'messages' && has('eq', 'media_status', 'processing')) {
+      scenario.touchedProcessing = true;
+    }
     let out;
     if (q._insert && q._single) out = scenario.insertReply;
     else if (q._single && table === 'conversations') out = { data: scenario.conversation, error: null };
-    else if (q._update && q._update.media_status === 'processing' && q._select) out = scenario.claim;
+    else if (q._update && q._select && q._update.media_status === 'processing') out = scenario.claim;
+    else if (q._update && q._select && q._update.media_status !== undefined) out = scenario.finalize;
     else if (q._update) out = { data: null, error: null };
     else if (outboundBotLookup && linkFilter) {
       // vínculo exato: só existe resposta ligada se o id estiver em linkedIds
@@ -54,7 +59,6 @@ function makeQuery(table) {
       out = { data: (scenario.linkedIds || []).includes(linkedId) ? [{ id: `reply-of-${linkedId}` }] : [], error: null };
     }
     else if (outboundBotLookup) out = { data: scenario.legacyCandidates || [], error: null };
-    else if (staleLookup) out = { data: scenario.staleProcessing || [], error: null };
     else if (q._select && table === 'messages') out = { data: scenario.pending || [], error: null };
     else out = { data: null, error: null };
     return Promise.resolve(out).then(res, rej);
@@ -102,11 +106,11 @@ describe('/api/process-media — proteção contra duplicata', () => {
     scenario = {
       pending: [AUDIO],
       claim: { data: [{ id: AUDIO.id }], error: null },
+      finalize: { data: [{ id: AUDIO.id }], error: null },
       conversation: CONVERSATION,
       insertReply: { data: { id: 'reply-1' }, error: null },
       linkedIds: [],
-      legacyCandidates: [],
-      staleProcessing: []
+      legacyCandidates: []
     };
     transcribeAudio.mockClear().mockResolvedValue('TRANSCRICAO_SENSIVEL_TESTE');
     sendWhatsAppMessage.mockClear().mockResolvedValue('wamid-cron-1');
@@ -174,24 +178,50 @@ describe('/api/process-media — proteção contra duplicata', () => {
     expect(sendWhatsAppMessage).not.toHaveBeenCalled();
   });
 
-  test('corrida: worker pausado >15min + sweeper → sweeper sinaliza, nunca assume nem envia', async () => {
-    // Worker A reivindicou 'stale-1' e pausou >15min (ex.: timeout da Vercel).
-    // O sweeper NÃO pode devolver a pending nem enviar resposta — se A voltar,
-    // haveria dois envios à Meta. Esperado: flag needs_review e nenhum envio.
-    scenario.staleProcessing = [{ id: 'stale-1' }];
-    scenario.pending = [];
+  test('sweeper nunca toca registros em processing (sem reclaim, sem reclassificar)', async () => {
+    // Worker A reivindicou um áudio e pausou. O sweeper não pode assumir,
+    // reenviar ou reclassificar: só lê 'pending'. created_at antigo não é
+    // horário de claim, portanto nenhuma consulta usa lt(created_at) sobre
+    // processing — aqui nenhum select/update fora do fluxo pending->claim.
     const r = await run();
     expect(r.status).toBe(200);
-    // flag condicional processing→needs_review apenas no órfão
-    const flagIdx = dbLog.findIndex(([op, payload]) => op === 'update' && payload?.media_status === 'needs_review');
-    expect(flagIdx).toBeGreaterThan(-1);
-    const nextOps = dbLog.slice(flagIdx + 1, flagIdx + 3).map(([op, k, v]) => `${op}:${k}=${v}`);
-    expect(nextOps).toContain('eq:id=stale-1');
-    expect(nextOps).toContain('eq:media_status=processing');
-    // nunca devolve à fila e nunca reivindica a linha do worker pausado
-    expect(dbLog.some(([op, payload]) => op === 'update' && payload?.media_status === 'pending')).toBe(false);
+    // o sweeper jamais lê nem reclassifica registros 'processing'
+    expect(scenario.touchedProcessing).toBeFalsy();
+    // nenhuma escrita needs_review neste fluxo (só dedupe legado a gera)
+    expect(dbLog.some(([op, p]) => op === 'update' && p?.media_status === 'needs_review')).toBe(false);
+  });
+
+  test('áudio criado há >15min e reivindicado agora → processado normalmente, sem reclassificação', async () => {
+    // created_at de AUDIO já é antigo (21:00Z); o claim decide posse, não a idade.
+    const r = await run();
+    expect(r.status).toBe(200);
+    expect(r.data.processed).toBe(1);
+    expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1);
+  });
+
+  test('escrita final perde a posse (0 linhas, estado mudou) → não responde nem sobrescreve', async () => {
+    // Simula worker A pausado: sweeper/operador mudou o estado enquanto A
+    // processava. O update condicional retorna 0 linhas → A não envia.
+    scenario.finalize = { data: [], error: null };
+    const r = await run();
+    expect(r.status).toBe(200);
+    expect(r.data.processed).toBe(0);
     expect(sendWhatsAppMessage).not.toHaveBeenCalled();
-    expect(transcribeAudio).not.toHaveBeenCalled();
+    // a escrita era condicional à posse (eq media_status='processing' após o update)
+    const idx = dbLog.findIndex(([op, p]) => op === 'update' && p?.media_status === 'processed');
+    expect(idx).toBeGreaterThan(-1);
+    const nextOps = dbLog.slice(idx + 1, idx + 4).map(([op, k, v]) => `${op}:${k}=${v}`);
+    expect(nextOps).toContain('eq:media_status=processing');
+    expect(consoleOutput.join('\n')).toContain('estado alterado externamente');
+  });
+
+  test('falha na atualização condicional → erro não conta como sucesso nem responde', async () => {
+    scenario.finalize = { data: null, error: { message: 'db down' } };
+    const r = await run();
+    expect(r.status).toBe(200);
+    expect(r.data.processed).toBe(0);
+    expect(sendWhatsAppMessage).not.toHaveBeenCalled();
+    expect(consoleOutput.join('\n')).toContain('Erro ao salvar mensagem');
   });
 
   test('áudio sem resposta existente → envia uma vez e grava wa_message_id', async () => {

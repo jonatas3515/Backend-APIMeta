@@ -39,7 +39,8 @@ function makeQuery(table) {
     if (q._insert && q._single) out = scenario.insertReply;
     else if (q._insert) out = { data: null, error: null };
     else if (q._single && table === 'conversations') out = { data: scenario.conversation, error: null };
-    else if (q._update && q._update.media_status === 'processing' && q._select) out = scenario.claim;
+    else if (q._update && q._select && q._update.media_status === 'processing') out = scenario.claim;
+    else if (q._update && q._select && q._update.media_status !== undefined) out = scenario.finalize;
     else if (q._update) out = { data: null, error: null };
     else if (waLookup) out = { data: scenario.waLookup || [], error: null };
     else if (q._select && table === 'messages') out = { data: scenario.history || [], error: null };
@@ -107,6 +108,7 @@ describe('transcribeAudioAsync — fechamento de estado e vínculo', () => {
     consoleOutput = [];
     scenario = {
       claim: { data: [{ id: 'audio-1' }], error: null },
+      finalize: { data: [{ id: 'audio-1' }], error: null },
       conversation: CONVERSATION,
       history: [],
       insertReply: { data: { id: 'reply-1' }, error: null }
@@ -171,6 +173,38 @@ describe('transcribeAudioAsync — fechamento de estado e vínculo', () => {
     await runAsync('audio-1');
     expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1);
     expect(updatesWith(p => p.media_status === 'processed').length).toBe(1);
+  });
+
+  test('toda transição de media_status é condicional a media_status=processing', async () => {
+    await runAsync('audio-1');
+    const writes = dbLog
+      .map((entry, idx) => [entry, idx])
+      .filter(([[op, p]]) => op === 'update' && p?.media_status !== undefined);
+    expect(writes.length).toBeGreaterThan(0);
+    for (const [, idx] of writes) {
+      const nextOps = dbLog.slice(idx + 1, idx + 4).map(([op, k, v]) => `${op}:${k}=${v}`);
+      // claim (processing) e finais (processed/failed/pending) filtram por id;
+      // finais também exigem estado atual processing
+      const payload = dbLog[idx][1];
+      if (payload.media_status !== 'processing') {
+        expect(nextOps).toContain('eq:media_status=processing');
+      }
+    }
+  });
+
+  test('escrita final sem posse (0 linhas, estado mudou) → registra e não sobrescreve', async () => {
+    // Worker pausado: outro agente marcou needs_review enquanto transcenia.
+    // O envio já ocorreu neste fluxo (send precede o fechamento), mas o estado
+    // externo é preservado e a ocorrência fica registrada.
+    scenario.finalize = { data: [], error: null };
+    await runAsync('audio-1');
+    expect(consoleOutput.join('\n')).toContain('estado alterado externamente');
+  });
+
+  test('erro na escrita final condicional → registrado como falha, não sucesso', async () => {
+    scenario.finalize = { data: null, error: { message: 'db down' } };
+    await runAsync('audio-1');
+    expect(consoleOutput.join('\n')).toContain('Falha ao gravar media_status');
   });
 
   test('dois áudios consecutivos na mesma conversa → dois envios independentes', async () => {
