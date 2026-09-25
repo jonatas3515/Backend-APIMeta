@@ -79,6 +79,8 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   const [showCaseCreationModal, setShowCaseCreationModal] = useState(false);
   const [showCaseLinkModal, setShowCaseLinkModal] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  const activeConversationIdRef = useRef(null);
+  const activeRequestIdRef = useRef(0);
 
   useEffect(() => {
     if (!copyFeedback) return;
@@ -255,11 +257,24 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   ];
 
   useEffect(() => {
+    if (!conversation?.id) {
+      setMessages([]);
+      setLoading(false);
+      return;
+    }
+
+    activeConversationIdRef.current = conversation.id;
+    activeRequestIdRef.current = 0;
+    setMessages([]);
+    setLoading(true);
+    chatLog('chat_conversation_selected', {
+      selected_conversation_id_hash: hashId(conversation.id)
+    });
     fetchMessages();
 
     // Real-time via Supabase
     const subscription = supabase
-      .channel(`messages-${conversation.id}`)
+      .channel(`chat-messages-${conversation.id}`)
       .on(
         'postgres_changes',
         {
@@ -270,8 +285,21 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
         },
         (payload) => {
           const msg = payload.new;
+          const msgConversationId = msg?.conversation_id;
+
+          if (!msgConversationId || activeConversationIdRef.current !== msgConversationId) {
+            chatLog('chat_realtime_discarded', {
+              realtime_conversation_id_hash: hashId(msgConversationId),
+              active_conversation_id_hash: hashId(activeConversationIdRef.current),
+              message_id_hash: hashId(msg?.id),
+              realtime_event_discarded: true
+            });
+            return;
+          }
+
           chatLog('chat_realtime_received', {
-            conversation_id_hash: hashId(conversation.id),
+            selected_conversation_id_hash: hashId(conversation.id),
+            realtime_conversation_id_hash: hashId(msgConversationId),
             message_id_hash: hashId(msg?.id),
             wa_message_id_hash: hashId(msg?.wa_message_id),
             direction: msg?.direction,
@@ -282,8 +310,21 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
             media_url_present: !!msg?.media_url,
             realtime_received: new Date().toISOString()
           });
+
           setMessages((prev) => {
-            if (prev.some((m) => m.id === msg.id)) return prev;
+            const isDuplicate = prev.some((m) =>
+              m.id === msg.id ||
+              (msg.wa_message_id && m.wa_message_id === msg.wa_message_id) ||
+              (msg.source_message_id && m.source_message_id === msg.source_message_id)
+            );
+            if (isDuplicate) {
+              chatLog('chat_duplicate_discarded', {
+                duplicate_message_discarded: true,
+                message_id_hash: hashId(msg?.id)
+              });
+              return prev;
+            }
+            if (activeConversationIdRef.current !== msgConversationId) return prev;
             return sortMessagesBySequence([...prev, msg]);
           });
 
@@ -309,7 +350,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
       subscription.unsubscribe();
       clearInterval(pollInterval);
     };
-  }, [conversation.id]);
+  }, [conversation?.id]);
 
   useEffect(() => {
     if (!scrollContainerRef.current || !messagesEndRef.current) return;
@@ -324,31 +365,78 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   }, [messages]);
 
   const fetchMessages = async () => {
+    const conversationId = conversation?.id;
+    if (!conversationId) return;
+
+    const requestId = ++activeRequestIdRef.current;
+    const requestedConversationIdHash = hashId(conversationId);
+
     try {
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .eq('conversation_id', conversation.id)
+        .eq('conversation_id', conversationId)
         .order('created_at', { ascending: false })
         .limit(200);
 
       if (error) throw error;
       const fetched = data || [];
+      const filtered = fetched.filter((m) => m.conversation_id === conversationId);
+
+      if (filtered.length !== fetched.length) {
+        chatLog('chat_messages_unexpected_conversation', {
+          selected_conversation_id_hash: requestedConversationIdHash,
+          requested_conversation_id_hash: requestedConversationIdHash,
+          returned_conversation_id_hash: hashId(filtered[0]?.conversation_id),
+          messages_returned_count: fetched.length,
+          messages_after_filter_count: filtered.length
+        });
+      }
+
+      if (activeConversationIdRef.current !== conversationId) {
+        chatLog('chat_messages_stale_discarded', {
+          active_request_id: requestId,
+          requested_conversation_id_hash: requestedConversationIdHash,
+          active_conversation_id_hash: hashId(activeConversationIdRef.current),
+          stale_response_discarded: true
+        });
+        return;
+      }
+
       setMessages((prev) => {
+        if (activeConversationIdRef.current !== conversationId) {
+          chatLog('chat_messages_set_skipped', {
+            active_request_id: requestId,
+            requested_conversation_id_hash: requestedConversationIdHash,
+            active_conversation_id_hash: hashId(activeConversationIdRef.current),
+            stale_response_discarded: true
+          });
+          return prev;
+        }
         const merged = new Map();
-        fetched.forEach((m) => merged.set(m.id, m));
+        filtered.forEach((m) => merged.set(m.id, m));
         prev.forEach((m) => merged.set(m.id, m));
         return sortMessagesBySequence([...merged.values()]);
       });
-      setLoading(false);
+
+      if (activeConversationIdRef.current === conversationId) {
+        setLoading(false);
+      }
+
       chatLog('chat_messages_fetched', {
-        conversation_id_hash: hashId(conversation.id),
+        active_request_id: requestId,
+        selected_conversation_id_hash: requestedConversationIdHash,
+        requested_conversation_id_hash: requestedConversationIdHash,
+        returned_conversation_id_hash: hashId(filtered[0]?.conversation_id),
         messages_returned_count: fetched.length,
+        messages_after_filter_count: filtered.length,
         fetched_at: new Date().toISOString()
       });
     } catch (error) {
       console.error('Erro ao buscar mensagens:', error);
-      setLoading(false);
+      if (activeConversationIdRef.current === conversationId) {
+        setLoading(false);
+      }
     }
   };
 
@@ -679,10 +767,11 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
 
   useEffect(() => {
     chatLog('chat_rendered', {
-      conversation_id_hash: conversation.id ? hashId(conversation.id) : null,
+      selected_conversation_id_hash: conversation.id ? hashId(conversation.id) : null,
+      active_conversation_id_hash: activeConversationIdRef.current ? hashId(activeConversationIdRef.current) : null,
       rendered_message_count: visibleMessages.length
     });
-  }, [visibleMessages.length]);
+  }, [visibleMessages.length, conversation.id]);
 
   if (loading) {
     return (

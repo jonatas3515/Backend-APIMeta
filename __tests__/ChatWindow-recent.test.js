@@ -125,7 +125,7 @@ describe('ChatWindow recent messages and realtime', () => {
     await setup(mockMessages);
     await waitFor(() => expect(screen.getByText('histórico')).toBeInTheDocument());
 
-    const handler = globalThis.__ncChannelHandlers['messages-c1'];
+    const handler = globalThis.__ncChannelHandlers['chat-messages-c1'];
     expect(handler).toBeTruthy();
 
     const newMsg = { id: 'm2', conversation_id: 'c1', text: 'nova resposta', direction: 'outbound', sender_type: 'bot', content_type: 'text', created_at: '2026-09-24T00:00:00.002Z' };
