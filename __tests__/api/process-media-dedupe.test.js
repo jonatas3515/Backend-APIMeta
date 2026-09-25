@@ -174,16 +174,24 @@ describe('/api/process-media — proteção contra duplicata', () => {
     expect(sendWhatsAppMessage).not.toHaveBeenCalled();
   });
 
-  test('órfão em processing é devolvido à fila condicionalmente', async () => {
+  test('corrida: worker pausado >15min + sweeper → sweeper sinaliza, nunca assume nem envia', async () => {
+    // Worker A reivindicou 'stale-1' e pausou >15min (ex.: timeout da Vercel).
+    // O sweeper NÃO pode devolver a pending nem enviar resposta — se A voltar,
+    // haveria dois envios à Meta. Esperado: flag needs_review e nenhum envio.
     scenario.staleProcessing = [{ id: 'stale-1' }];
+    scenario.pending = [];
     const r = await run();
-    // reversão condicional processing→pending: update seguido de
-    // eq('id','stale-1') e eq('media_status','processing')
-    const revertIdx = dbLog.findIndex(([op, payload]) => op === 'update' && payload?.media_status === 'pending');
-    expect(revertIdx).toBeGreaterThan(-1);
-    const nextOps = dbLog.slice(revertIdx + 1, revertIdx + 3).map(([op, k, v]) => `${op}:${k}=${v}`);
+    expect(r.status).toBe(200);
+    // flag condicional processing→needs_review apenas no órfão
+    const flagIdx = dbLog.findIndex(([op, payload]) => op === 'update' && payload?.media_status === 'needs_review');
+    expect(flagIdx).toBeGreaterThan(-1);
+    const nextOps = dbLog.slice(flagIdx + 1, flagIdx + 3).map(([op, k, v]) => `${op}:${k}=${v}`);
     expect(nextOps).toContain('eq:id=stale-1');
     expect(nextOps).toContain('eq:media_status=processing');
+    // nunca devolve à fila e nunca reivindica a linha do worker pausado
+    expect(dbLog.some(([op, payload]) => op === 'update' && payload?.media_status === 'pending')).toBe(false);
+    expect(sendWhatsAppMessage).not.toHaveBeenCalled();
+    expect(transcribeAudio).not.toHaveBeenCalled();
   });
 
   test('áudio sem resposta existente → envia uma vez e grava wa_message_id', async () => {

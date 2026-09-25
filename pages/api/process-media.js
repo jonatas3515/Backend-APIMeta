@@ -40,9 +40,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Recuperação de órfãos: 'processing' antigos voltam a 'pending' via
-    // update condicional (idempotente). O claim pending->processing abaixo
-    // garante atomicamente que apenas um processo envia a resposta.
+    // Órfãos em 'processing' antigos: NÃO devolvemos a 'pending' — sem token de
+    // claim/lease, um worker pausado poderia retomar e haveria dois envios.
+    // Em vez disso sinalizamos needs_review (update condicional, idempotente)
+    // para que fiquem visíveis ao operador sem gerar nova resposta automática.
+    // Recuperação automática segura exige lease verificável → proposta separada.
     const staleCutoff = new Date(Date.now() - STALE_PROCESSING_MINUTES * 60 * 1000).toISOString();
     const { data: staleProcessing } = await supabase
       .from('messages')
@@ -53,10 +55,10 @@ export default async function handler(req, res) {
       .limit(BATCH_SIZE);
 
     for (const stale of staleProcessing || []) {
-      console.log(`[MEDIA_PROCESS] Órfão em processing há mais de ${STALE_PROCESSING_MINUTES}min, devolvendo à fila: ${stale.id}`);
+      console.log(`[MEDIA_PROCESS] Órfão em processing há mais de ${STALE_PROCESSING_MINUTES}min, sinalizando para revisão: ${stale.id}`);
       await supabase
         .from('messages')
-        .update({ media_status: 'pending' })
+        .update({ media_status: 'needs_review' })
         .eq('id', stale.id)
         .eq('media_status', 'processing');
     }
