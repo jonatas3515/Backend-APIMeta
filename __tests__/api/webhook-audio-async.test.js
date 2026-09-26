@@ -19,6 +19,16 @@ let scenario;
 let dbLog;
 let consoleOutput;
 const origLog = console.log, origErr = console.error, origWarn = console.warn;
+const origFetch = global.fetch;
+
+function mockMetaFetches() {
+  global.fetch = jest.fn(async (url) => {
+    if (String(url).includes('graph.facebook.com') && String(url).includes('media-e2e-1')) {
+      return { ok: true, json: async () => ({ url: 'https://synthetic.example.com/dl', mime_type: 'audio/ogg' }) };
+    }
+    return { ok: true, arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer, json: async () => ({}) };
+  });
+}
 
 function makeQuery(table) {
   const q = { _table: table, _update: null, _insert: null, _select: false, _single: false, _filters: [] };
@@ -27,7 +37,7 @@ function makeQuery(table) {
     if (name === 'update') q._update = args[0];
     if (name === 'insert') q._insert = args[0];
     if (name === 'select') q._select = true;
-    if (name === 'single') q._single = true;
+    if (name === 'single' || name === 'maybeSingle') q._single = true;
     if (['eq', 'like', 'gt', 'lt', 'gte', 'lte', 'in'].includes(name)) q._filters.push([name, ...args]);
     return q;
   };
@@ -51,7 +61,17 @@ function makeQuery(table) {
 }
 
 jest.mock('@supabase/supabase-js', () => ({
-  createClient: jest.fn(() => ({ from: (t) => makeQuery(t), rpc: jest.fn().mockResolvedValue({ data: null }) }))
+  createClient: jest.fn(() => ({
+    from: (t) => makeQuery(t),
+    rpc: jest.fn().mockResolvedValue({ data: null }),
+    storage: {
+      from: () => ({
+        upload: jest.fn().mockResolvedValue({ data: { path: 'p' }, error: null }),
+        getPublicUrl: () => ({ data: { publicUrl: 'https://synthetic.example.com/a.ogg' } }),
+        download: jest.fn().mockResolvedValue({ data: new Blob(['x']), error: null })
+      })
+    }
+  }))
 }));
 
 jest.mock('../../lib/mediaProcessing', () => ({
@@ -76,7 +96,8 @@ jest.mock('../../lib/needsHuman.js', () => ({
 }));
 
 jest.mock('../../lib/laborWebhookIntegration.js', () => ({
-  handleLaborSettlementWebhook: jest.fn().mockResolvedValue({ handled: false })
+  handleLaborSettlementWebhook: jest.fn().mockResolvedValue({ handled: false }),
+  getActiveMessages: jest.fn(() => [])
 }));
 
 jest.mock('../../lib/laborSettlementIntent.js', () => ({
@@ -87,15 +108,38 @@ jest.mock('../../lib/intakeFlows', () => ({ detectArea: jest.fn(), getFlow: jest
 jest.mock('../../lib/formatters', () => ({ normalizePhoneForMatch: jest.fn(p => p) }));
 jest.mock('../../lib/clientMemory', () => ({ loadClientMemory: jest.fn(), formatClientMemory: jest.fn(() => '') }));
 jest.mock('../../lib/genderFromName', () => ({ getClientGreeting: jest.fn(() => '') }));
-jest.mock('../../lib/conversationQueue', () => ({ withConversationQueue: jest.fn((fn) => fn()) }));
+jest.mock('../../lib/conversationQueue', () => ({ withConversationQueue: jest.fn((_key, fn) => fn()) }));
 jest.mock('../../lib/funnel-whatsapp.js', () => ({ evaluateFunnelAutomation: jest.fn(), registerFunnelEvent: jest.fn() }));
 jest.mock('../../lib/bot-responses.js', () => ({ detectThanks: jest.fn(() => false), getThanksReply: jest.fn(), correctCommonMistakes: jest.fn((p, r) => r) }));
 jest.mock('../../lib/knowledge-embeddings.js', () => ({ semanticSearch: jest.fn() }));
 jest.mock('../../lib/systemPrompt.js', () => ({ SYSTEM_PROMPT: '' }));
 
 const { __test__ } = require('../../pages/api/webhook');
+const webhookHandler = require('../../pages/api/webhook').default;
+const { createMocks } = require('node-mocks-http');
 const { transcribeAudio } = require('../../lib/mediaProcessing');
 const { sendWhatsAppMessage } = require('../../lib/whatsapp.js');
+
+const AUDIO_POST = {
+  object: 'whatsapp_business_account',
+  entry: [{
+    id: 'waba-1',
+    changes: [{
+      field: 'messages',
+      value: {
+        messaging_product: 'whatsapp',
+        contacts: [{ profile: { name: 'Cliente T' }, wa_id: '5511999000000' }],
+        messages: [{
+          from: '5511999000000',
+          id: 'wamid.synthetic.audio.e2e',
+          timestamp: '1790380000',
+          type: 'audio',
+          audio: { id: 'media-e2e-1', mime_type: 'audio/ogg', voice: true }
+        }]
+      }
+    }]
+  }]
+};
 
 const runAsync = (messageId = 'audio-1', mediaType = 'audio') =>
   __test__.transcribeAudioAsync('conv-1', 'https://synthetic.example.com/a.ogg', mediaType, messageId);
@@ -115,12 +159,14 @@ describe('transcribeAudioAsync — fechamento de estado e vínculo', () => {
     };
     transcribeAudio.mockClear().mockResolvedValue('TRANSCRICAO_SENSIVEL_TESTE');
     sendWhatsAppMessage.mockClear().mockResolvedValue('wamid-async-1');
+    mockMetaFetches();
     console.log = (...a) => consoleOutput.push(a.map(String).join(' '));
     console.error = (...a) => consoleOutput.push(a.map(String).join(' '));
     console.warn = (...a) => consoleOutput.push(a.map(String).join(' '));
   });
   afterEach(() => {
     console.log = origLog; console.error = origErr; console.warn = origWarn;
+    global.fetch = origFetch;
   });
 
   test('fluxo completo: claim → resposta vinculada → wa_id → áudio processed', async () => {
@@ -233,6 +279,24 @@ describe('transcribeAudioAsync — fechamento de estado e vínculo', () => {
     scenario.waLookup = [];
     await __test__.processDeliveryStatuses([{ id: 'wamid-unknown', status: 'read' }]);
     expect(updatesWith(p => p.status === 'read').length).toBe(0);
+  });
+
+  test('POST real com áudio → handler invoca transcribeAudioAsync com o id salvo', async () => {
+    // Regressão do incidente de produção: o call site passava uma variável
+    // fora de escopo (ReferenceError) e o áudio ficava pending para sempre.
+    const { req, res } = createMocks({ method: 'POST', body: AUDIO_POST });
+    await webhookHandler(req, res);
+    // a transcrição é fire-and-forget: aguarda as microtasks dos mocks
+    await new Promise(r => setTimeout(r, 100));
+    expect(res._getStatusCode()).toBe(200);
+    // o claim atômico pending->processing executou sobre o registro salvo
+    if (updatesWith(p => p.media_status === 'processing').length !== 1) {
+      origErr(consoleOutput.slice(-40).join('\n'));
+    }
+    expect(updatesWith(p => p.media_status === 'processing').length).toBe(1);
+    // e o fluxo completou: resposta enviada e áudio fechado como processed
+    expect(sendWhatsAppMessage).toHaveBeenCalled();
+    expect(updatesWith(p => p.media_status === 'processed').length).toBe(1);
   });
 
   test('logs não contêm transcrição, telefone ou conteúdo', async () => {

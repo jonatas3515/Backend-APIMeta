@@ -265,6 +265,7 @@ export default async function handler(req, res) {
       let publicUrl = '';
       let mediaStatus = 'pending';
       let mediaBuffer = null;
+      let inboundMessageId = null;
       
       if (mediaId && (messageType === 'audio' || messageType === 'image' || messageType === 'document' || messageType === 'video')) {
         try {
@@ -317,6 +318,7 @@ export default async function handler(req, res) {
       // Salvar mensagem do cliente (mídia vai para processamento assíncrono)
       if (conversation) {
         const savedMessage = await saveMessage(conversation.id, textBody, 'client', messageType, publicUrl, '', { ...inboundExtra, media_status: mediaStatus || undefined, media_type: mediaBuffer?.mimeType }, waMessageId);
+        inboundMessageId = savedMessage?.id || null;
         
         // Sugerir marcação de documento no checklist
         if (publicUrl && (messageType === 'image' || messageType === 'document' || messageType === 'video' || messageType === 'audio')) {
@@ -712,7 +714,7 @@ export default async function handler(req, res) {
           // Se for áudio/vídeo, tenta transcrever de forma assíncrona (sem bloquear resposta)
           if (publicUrl) {
             // Inicia transcrição em background (não aguarda)
-            transcribeAudioAsync(conversation.id, publicUrl, messageType, savedMessage?.id).catch(err => {
+            transcribeAudioAsync(conversation.id, publicUrl, messageType, inboundMessageId).catch(err => {
               console.error('[WEBHOOK] Erro ao transcrever áudio em background:', err.message);
             });
           }
