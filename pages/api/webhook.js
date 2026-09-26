@@ -35,6 +35,7 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
   : null;
 
 export default async function handler(req, res) {
+  const __invocationStart = Date.now();
   const { log } = createLogger(req);
 
   // GET - Verificação do webhook pela Meta
@@ -713,8 +714,11 @@ export default async function handler(req, res) {
         } else if (isMediaAudio) {
           // Se for áudio/vídeo, tenta transcrever de forma assíncrona (sem bloquear resposta)
           if (publicUrl) {
-            // Inicia transcrição em background (não aguarda)
-            transcribeAudioAsync(conversation.id, publicUrl, messageType, inboundMessageId).catch(err => {
+            // Inicia transcrição em background (não aguarda). O deadline faz o
+            // timeout do envio à Meta respeitar o tempo RESTANTE da invocação,
+            // reservando margem para gravar 'unconfirmed' e fechar o áudio.
+            const sendDeadline = __invocationStart + invocationBudgetMs() - sendReserveMs();
+            transcribeAudioAsync(conversation.id, publicUrl, messageType, inboundMessageId, sendDeadline).catch(err => {
               console.error('[WEBHOOK] Erro ao transcrever áudio em background:', err.message);
             });
           }
@@ -1771,7 +1775,20 @@ async function sendWhatsAppMessage(to, text) {
 }
 
 // Transcrição assíncrona de áudio (não bloqueia resposta do webhook)
-async function transcribeAudioAsync(conversationId, mediaUrl, mediaType, messageId = null) {
+// Orçamento da invocação para envio de mídia assíncrona: espelha o
+// maxDuration de 60s do vercel.json; env ausente/inválida cai no default.
+const invocationBudgetMs = () => {
+  const n = Number(process.env.WEBHOOK_INVOCATION_BUDGET_MS);
+  return Number.isFinite(n) && n > 0 ? n : 60000;
+};
+// Margem reservada antes do fim do orçamento para gravar 'unconfirmed' e
+// fechar o media_status do áudio.
+const sendReserveMs = () => {
+  const n = Number(process.env.WHATSAPP_SEND_RESERVE_MS);
+  return Number.isFinite(n) && n > 0 ? n : 5000;
+};
+
+async function transcribeAudioAsync(conversationId, mediaUrl, mediaType, messageId = null, sendDeadline = null) {
   // Reivindicação atômica: só quem mudar pending->processing continua.
   // Evita corrida com o sweeper /api/process-media sobre o mesmo áudio.
   // Transição final condicional à posse: só grava se o áudio ainda está em
@@ -1947,7 +1964,7 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType, message
     // Envia resposta via WhatsApp ANTES de qualquer retorno por modo humano
     const { sendWhatsAppMessage } = await import('../../lib/whatsapp.js');
     try {
-      const replyWaId = await sendWhatsAppMessage(conversation.client_phone, aiReply);
+      const replyWaId = await sendWhatsAppMessage(conversation.client_phone, aiReply, { deadline: sendDeadline });
       if (savedReply?.id) {
         // Meta confirmou o envio (response.ok); wa_message_id vincula callbacks
         await supabase

@@ -240,6 +240,49 @@ describe('transcribeAudioAsync — fechamento de estado e vínculo', () => {
     expect(all).not.toContain('RESPOSTA_BOT_TESTE');
   });
 
+  test('orçamento da invocação quase esgotado → timeout de envio respeita tempo restante', async () => {
+    // Demonstra o gap do timeout fixo: transcrição+Gemini lentos consomem o
+    // orçamento antes do send. Com deadline, o send aborta no tempo RESTANTE
+    // (aqui já esgotado → rejeita sem iniciar), não em mais 30s.
+    process.env.WEBHOOK_INVOCATION_BUDGET_MS = '150';
+    process.env.WHATSAPP_SEND_RESERVE_MS = '50';
+    try {
+      const { askGemini } = require('../../lib/ai.js');
+      transcribeAudio.mockImplementationOnce(() =>
+        new Promise(r => setTimeout(() => r('TRANSCRICAO_SENSIVEL_TESTE'), 60)));
+      askGemini.mockImplementationOnce(() =>
+        new Promise(r => setTimeout(() => r('RESPOSTA_BOT_TESTE'), 60)));
+      let capturedOpts;
+      // Emula o comportamento real de lib/whatsapp: rejeita com TimeoutError
+      // quando Date.now() ultrapassa o deadline recebido.
+      sendWhatsAppMessage.mockImplementationOnce((_to, _text, opts) => {
+        capturedOpts = opts;
+        return new Promise((_, rej) =>
+          setTimeout(() => rej(Object.assign(new Error('The operation timed out'), { name: 'TimeoutError' })), Math.max(0, (opts?.deadline ?? 0) - Date.now())));
+      });
+      const t0 = Date.now();
+      const { req, res } = createMocks({ method: 'POST', body: AUDIO_POST });
+      await webhookHandler(req, res);
+      await new Promise(r => setTimeout(r, 400));
+      expect(res._getStatusCode()).toBe(200);
+      expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1);
+      // O deadline repassado reflete o orçamento da invocação (~100ms aqui),
+      // não o timeout fixo de 30s — a prova de que o send é limitado pelo
+      // tempo restante.
+      expect(capturedOpts?.deadline).toEqual(expect.any(Number));
+      expect(capturedOpts.deadline - t0).toBeLessThan(1000);
+      // Mesmo esgotado o orçamento: unconfirmed gravado, áudio encerrado,
+      // sem retry, resposta preservada.
+      expect(dbLog.find(([op, payload]) => op === 'insert' && payload?.sender_type === 'bot')).toBeTruthy();
+      expect(updatesWith(p => p.status === 'unconfirmed').length).toBe(1);
+      expect(updatesWith(p => p.media_status === 'processed').length).toBe(1);
+      expect(updatesWith(p => p.media_status === 'pending').length).toBe(0);
+    } finally {
+      delete process.env.WEBHOOK_INVOCATION_BUDGET_MS;
+      delete process.env.WHATSAPP_SEND_RESERVE_MS;
+    }
+  });
+
   test('falha ao gravar wa_message_id após Meta aceitar → áudio processed, sem duplicar', async () => {
     // insert ok, send ok; simular falha no update do wa_id é indistinguível do
     // mock genérico — o que importa: processed fecha e não há retry.
