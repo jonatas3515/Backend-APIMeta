@@ -1826,6 +1826,10 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType, message
       return;
     }
 
+    // Persiste a transcrição imediatamente (condicional à posse): se a lambda
+    // morrer mais adiante no envio à Meta, a transcrição não se perde.
+    await setAudioStatus('processing', { media_transcript: transcript });
+
     console.log('[WEBHOOK] ✅ Áudio transcrito, comprimento:', transcript?.length || 0);
 
     // Busca a conversa e histórico para gerar resposta

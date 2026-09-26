@@ -172,8 +172,8 @@ describe('transcribeAudioAsync — fechamento de estado e vínculo', () => {
   test('fluxo completo: claim → resposta vinculada → wa_id → áudio processed', async () => {
     await runAsync('audio-1');
 
-    // claim atômico pending->processing
-    expect(updatesWith(p => p.media_status === 'processing').length).toBe(1);
+    // claim atômico pending->processing (sem media_transcript no payload)
+    expect(updatesWith(p => p.media_status === 'processing' && p.media_transcript === undefined).length).toBe(1);
     // resposta inserida vinculada ao áudio de origem
     const insert = dbLog.find(([op, payload]) => op === 'insert' && payload?.sender_type === 'bot');
     expect(insert).toBeTruthy();
@@ -211,6 +211,33 @@ describe('transcribeAudioAsync — fechamento de estado e vínculo', () => {
     expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1);
     expect(updatesWith(p => p.status === 'unconfirmed').length).toBe(1);
     expect(updatesWith(p => p.media_status === 'processed').length).toBe(1);
+  });
+
+  test('envio à Meta pendurado → abort (TimeoutError) vira unconfirmed, áudio encerrado, sem retry', async () => {
+    // Em produção, AbortSignal.timeout(30s) de lib/whatsapp interrompe o fetch
+    // pendurado rejeitando com TimeoutError antes do maxDuration da Vercel.
+    // Aqui emulamos exatamente esse comportamento (rejeição tardia com o
+    // mesmo nome de erro) através do handler POST completo.
+    sendWhatsAppMessage.mockImplementationOnce(() => new Promise((_, rej) =>
+      setTimeout(() => rej(Object.assign(new Error('The operation timed out'), { name: 'TimeoutError' })), 30)));
+    const { req, res } = createMocks({ method: 'POST', body: AUDIO_POST });
+    await webhookHandler(req, res);
+    await new Promise(r => setTimeout(r, 200));
+    expect(res._getStatusCode()).toBe(200);
+    // única tentativa — sem retry após timeout
+    expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1);
+    // resposta outbound preservada e marcada unconfirmed (envio incerto)
+    expect(dbLog.find(([op, payload]) => op === 'insert' && payload?.sender_type === 'bot')).toBeTruthy();
+    expect(updatesWith(p => p.status === 'unconfirmed').length).toBe(1);
+    // áudio encerrado — não fica processing nem volta a pending
+    expect(updatesWith(p => p.media_status === 'processed').length).toBe(1);
+    expect(updatesWith(p => p.media_status === 'pending').length).toBe(0);
+    // transcrição persistida logo após transcrever (update condicional a processing)
+    expect(updatesWith(p => p.media_status === 'processing' && p.media_transcript === 'TRANSCRICAO_SENSIVEL_TESTE').length).toBe(1);
+    // logs sem PII nem conteúdo
+    const all = consoleOutput.join('\n');
+    expect(all).not.toContain('TRANSCRICAO_SENSIVEL_TESTE');
+    expect(all).not.toContain('RESPOSTA_BOT_TESTE');
   });
 
   test('falha ao gravar wa_message_id após Meta aceitar → áudio processed, sem duplicar', async () => {
@@ -290,10 +317,11 @@ describe('transcribeAudioAsync — fechamento de estado e vínculo', () => {
     await new Promise(r => setTimeout(r, 100));
     expect(res._getStatusCode()).toBe(200);
     // o claim atômico pending->processing executou sobre o registro salvo
-    if (updatesWith(p => p.media_status === 'processing').length !== 1) {
+    // (exclui o update de persistência da transcrição, que carrega media_transcript)
+    if (updatesWith(p => p.media_status === 'processing' && p.media_transcript === undefined).length !== 1) {
       origErr(consoleOutput.slice(-40).join('\n'));
     }
-    expect(updatesWith(p => p.media_status === 'processing').length).toBe(1);
+    expect(updatesWith(p => p.media_status === 'processing' && p.media_transcript === undefined).length).toBe(1);
     // e o fluxo completou: resposta enviada e áudio fechado como processed
     expect(sendWhatsAppMessage).toHaveBeenCalled();
     expect(updatesWith(p => p.media_status === 'processed').length).toBe(1);

@@ -118,6 +118,20 @@ export default async function handler(req, res) {
         status = 'failed';
       }
 
+      // Persiste a transcrição já, condicional à posse: se o worker morrer
+      // no envio à Meta, a transcrição não se perde. Falha aqui não altera
+      // o status — o fechamento final abaixo continua valendo.
+      if (transcript) {
+        const { error: transcriptError } = await supabase
+          .from('messages')
+          .update({ media_transcript: transcript })
+          .eq('id', id)
+          .eq('media_status', 'processing');
+        if (transcriptError) {
+          console.error(`[MEDIA_PROCESS] Falha ao persistir transcrição da mensagem ${id}:`, sanitizeError(transcriptError));
+        }
+      }
+
       // Dedupe ANTES de gravar o status final: só 'linked' é prova confiável de
       // resposta enviada. Candidatos ambíguos (janela temporal sem vínculo)
       // marcam needs_review — nunca presumimos respondido.
