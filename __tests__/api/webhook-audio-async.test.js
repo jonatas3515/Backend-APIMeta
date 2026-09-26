@@ -113,12 +113,14 @@ jest.mock('../../lib/funnel-whatsapp.js', () => ({ evaluateFunnelAutomation: jes
 jest.mock('../../lib/bot-responses.js', () => ({ detectThanks: jest.fn(() => false), getThanksReply: jest.fn(), correctCommonMistakes: jest.fn((p, r) => r) }));
 jest.mock('../../lib/knowledge-embeddings.js', () => ({ semanticSearch: jest.fn() }));
 jest.mock('../../lib/systemPrompt.js', () => ({ SYSTEM_PROMPT: '' }));
+jest.mock('@vercel/functions', () => ({ waitUntil: jest.fn(p => p) }));
 
 const { __test__ } = require('../../pages/api/webhook');
 const webhookHandler = require('../../pages/api/webhook').default;
 const { createMocks } = require('node-mocks-http');
 const { transcribeAudio } = require('../../lib/mediaProcessing');
 const { sendWhatsAppMessage } = require('../../lib/whatsapp.js');
+const { waitUntil } = require('@vercel/functions');
 
 const AUDIO_POST = {
   object: 'whatsapp_business_account',
@@ -159,6 +161,7 @@ describe('transcribeAudioAsync — fechamento de estado e vínculo', () => {
     };
     transcribeAudio.mockClear().mockResolvedValue('TRANSCRICAO_SENSIVEL_TESTE');
     sendWhatsAppMessage.mockClear().mockResolvedValue('wamid-async-1');
+    waitUntil.mockClear();
     mockMetaFetches();
     console.log = (...a) => consoleOutput.push(a.map(String).join(' '));
     console.error = (...a) => consoleOutput.push(a.map(String).join(' '));
@@ -240,10 +243,11 @@ describe('transcribeAudioAsync — fechamento de estado e vínculo', () => {
     expect(all).not.toContain('RESPOSTA_BOT_TESTE');
   });
 
-  test('orçamento da invocação quase esgotado → timeout de envio respeita tempo restante', async () => {
-    // Demonstra o gap do timeout fixo: transcrição+Gemini lentos consomem o
-    // orçamento antes do send. Com deadline, o send aborta no tempo RESTANTE
-    // (aqui já esgotado → rejeita sem iniciar), não em mais 30s.
+  test('orçamento esgotado antes do send → SEND_SKIPPED_NO_BUDGET: outbound not_sent, áudio needs_review, fetch não chamado', async () => {
+    // Transcrição+Gemini lentos consomem o orçamento antes do send. Em
+    // produção, lib/whatsapp com deadline já vencido rejeita com
+    // SEND_SKIPPED_NO_BUDGET SEM chamar fetch — o mock emula exatamente isso
+    // (a prova "fetch não chamado" vive no teste unitário de lib/whatsapp).
     process.env.WEBHOOK_INVOCATION_BUDGET_MS = '150';
     process.env.WHATSAPP_SEND_RESERVE_MS = '50';
     try {
@@ -253,34 +257,67 @@ describe('transcribeAudioAsync — fechamento de estado e vínculo', () => {
       askGemini.mockImplementationOnce(() =>
         new Promise(r => setTimeout(() => r('RESPOSTA_BOT_TESTE'), 60)));
       let capturedOpts;
-      // Emula o comportamento real de lib/whatsapp: rejeita com TimeoutError
-      // quando Date.now() ultrapassa o deadline recebido.
+      let deadlineAlreadyPast = false;
       sendWhatsAppMessage.mockImplementationOnce((_to, _text, opts) => {
         capturedOpts = opts;
-        return new Promise((_, rej) =>
-          setTimeout(() => rej(Object.assign(new Error('The operation timed out'), { name: 'TimeoutError' })), Math.max(0, (opts?.deadline ?? 0) - Date.now())));
+        deadlineAlreadyPast = Date.now() >= opts.deadline;
+        return Promise.reject(Object.assign(
+          new Error('The operation timed out'),
+          { name: 'TimeoutError', code: 'SEND_SKIPPED_NO_BUDGET' }));
       });
       const t0 = Date.now();
       const { req, res } = createMocks({ method: 'POST', body: AUDIO_POST });
       await webhookHandler(req, res);
       await new Promise(r => setTimeout(r, 400));
       expect(res._getStatusCode()).toBe(200);
+      // uma única tentativa — sem retry
       expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1);
-      // O deadline repassado reflete o orçamento da invocação (~100ms aqui),
-      // não o timeout fixo de 30s — a prova de que o send é limitado pelo
-      // tempo restante.
+      // o deadline repassado reflete o orçamento RESTANTE (~100ms), não 30s
       expect(capturedOpts?.deadline).toEqual(expect.any(Number));
       expect(capturedOpts.deadline - t0).toBeLessThan(1000);
-      // Mesmo esgotado o orçamento: unconfirmed gravado, áudio encerrado,
-      // sem retry, resposta preservada.
+      // ...e já estava vencido quando o send foi chamado → lib/whatsapp
+      // retornaria SEND_SKIPPED_NO_BUDGET sem iniciar o fetch.
+      expect(deadlineAlreadyPast).toBe(true);
+      // resposta outbound preservada como NÃO ENVIADA — não 'unconfirmed'
+      // (que implicaria entrega incerta de um envio que nunca ocorreu)
       expect(dbLog.find(([op, payload]) => op === 'insert' && payload?.sender_type === 'bot')).toBeTruthy();
-      expect(updatesWith(p => p.status === 'unconfirmed').length).toBe(1);
-      expect(updatesWith(p => p.media_status === 'processed').length).toBe(1);
+      expect(updatesWith(p => p.status === 'not_sent').length).toBe(1);
+      expect(updatesWith(p => p.status === 'unconfirmed').length).toBe(0);
+      // áudio sinalizado para revisão — não 'processed' (a resposta não saiu)
+      // nem 'pending' (que geraria reprocessamento e resposta duplicada)
+      expect(updatesWith(p => p.media_status === 'needs_review').length).toBe(1);
+      expect(updatesWith(p => p.media_status === 'processed').length).toBe(0);
       expect(updatesWith(p => p.media_status === 'pending').length).toBe(0);
     } finally {
       delete process.env.WEBHOOK_INVOCATION_BUDGET_MS;
       delete process.env.WHATSAPP_SEND_RESERVE_MS;
     }
+  });
+
+  test('envio iniciado e abortado (TimeoutError sem código) → unconfirmed + processed, sem retry', async () => {
+    // Caso (b): fetch chegou a iniciar e não houve confirmação — entrega
+    // genuinamente incerta. Difere de SEND_SKIPPED_NO_BUDGET.
+    sendWhatsAppMessage.mockImplementationOnce(() => Promise.reject(
+      Object.assign(new Error('The operation timed out'), { name: 'TimeoutError' })));
+    await runAsync('audio-1');
+    expect(sendWhatsAppMessage).toHaveBeenCalledTimes(1);
+    expect(updatesWith(p => p.status === 'unconfirmed').length).toBe(1);
+    expect(updatesWith(p => p.status === 'not_sent').length).toBe(0);
+    expect(updatesWith(p => p.media_status === 'processed').length).toBe(1);
+  });
+
+  test('POST áudio: resposta 200 retorna enquanto o processamento fica registrado no waitUntil', async () => {
+    const { req, res } = createMocks({ method: 'POST', body: AUDIO_POST });
+    await webhookHandler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    // a promise do pipeline async foi entregue ao runtime da Vercel —
+    // não é fire-and-forget puro
+    expect(waitUntil).toHaveBeenCalledTimes(1);
+    const registered = waitUntil.mock.calls[0][0];
+    expect(typeof registered?.then).toBe('function');
+    // e o pipeline realmente completou em background
+    await registered;
+    expect(updatesWith(p => p.media_status === 'processed').length).toBe(1);
   });
 
   test('falha ao gravar wa_message_id após Meta aceitar → áudio processed, sem duplicar', async () => {

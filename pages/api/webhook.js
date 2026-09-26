@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { waitUntil } from '@vercel/functions';
 import crypto from 'crypto';
 import { createLogger, hashPhone, hashIdentifier, sanitizeError } from '../../lib/webhookLog';
 import { detectArea, getFlow } from '../../lib/intakeFlows';
@@ -718,9 +719,11 @@ export default async function handler(req, res) {
             // timeout do envio à Meta respeitar o tempo RESTANTE da invocação,
             // reservando margem para gravar 'unconfirmed' e fechar o áudio.
             const sendDeadline = __invocationStart + invocationBudgetMs() - sendReserveMs();
-            transcribeAudioAsync(conversation.id, publicUrl, messageType, inboundMessageId, sendDeadline).catch(err => {
+            // waitUntil registra a promise no runtime da Vercel: a invocação
+            // permanece viva até resolver, em vez de depender de fire-and-forget.
+            waitUntil(transcribeAudioAsync(conversation.id, publicUrl, messageType, inboundMessageId, sendDeadline).catch(err => {
               console.error('[WEBHOOK] Erro ao transcrever áudio em background:', err.message);
-            });
+            }));
           }
           promptForAI = `Cliente enviou um ${messageType}. Diga: "Recebido! Estou analisando o áudio agora..." NUNCA mencione equipe, advogado ou retorno.`;
         } else if (messageType !== 'image' && textBody && !textBody.includes('processando transcrição') && !isPlaceholderCaption) {
@@ -1776,10 +1779,15 @@ async function sendWhatsAppMessage(to, text) {
 
 // Transcrição assíncrona de áudio (não bloqueia resposta do webhook)
 // Orçamento da invocação para envio de mídia assíncrona: espelha o
-// maxDuration de 60s do vercel.json; env ausente/inválida cai no default.
+// maxDuration de 60s do vercel.json; env ausente/inválida cai no default e
+// valores excessivos são limitados ao teto — se o maxDuration do vercel.json
+// for reduzido no futuro, ajustar MAX_INVOCATION_BUDGET_MS aqui também.
+// Não é proteção absoluta contra encerramento de infraestrutura.
+const MAX_INVOCATION_BUDGET_MS = 60000;
 const invocationBudgetMs = () => {
   const n = Number(process.env.WEBHOOK_INVOCATION_BUDGET_MS);
-  return Number.isFinite(n) && n > 0 ? n : 60000;
+  const configured = Number.isFinite(n) && n > 0 ? n : MAX_INVOCATION_BUDGET_MS;
+  return Math.min(configured, MAX_INVOCATION_BUDGET_MS);
 };
 // Margem reservada antes do fim do orçamento para gravar 'unconfirmed' e
 // fechar o media_status do áudio.
@@ -1814,6 +1822,9 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType, message
   };
 
   let replyInserted = false;
+  // 'skipped' = envio nunca tentado (orçamento esgotado antes do fetch);
+  // 'unconfirmed' = fetch iniciado sem confirmação da Meta (entrega incerta).
+  let replySendState = null;
   try {
     console.log(`[WEBHOOK] Iniciando transcrição assíncrona para conversa ${conversationId}`);
 
@@ -1974,19 +1985,35 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType, message
       }
       console.log(`[WEBHOOK] ✅ Resposta automática enviada para áudio`);
     } catch (sendError) {
-      // Intervalo incerto: a Meta pode ter recebido. Não reenviar — marca o
-      // registro como unconfirmed para o operador decidir.
-      console.error('[WEBHOOK] Envio da resposta de áudio sem confirmação:', sanitizeError(sendError));
-      if (savedReply?.id) {
-        await supabase
-          .from('messages')
-          .update({ status: 'unconfirmed' })
-          .eq('id', savedReply.id);
+      if (sendError?.code === 'SEND_SKIPPED_NO_BUDGET') {
+        // Envio NUNCA tentado (orçamento esgotado antes do fetch): não é
+        // "entrega incerta" — é certo que não saiu. not_sent impede retry
+        // automático e exige revisão; o áudio vira needs_review.
+        replySendState = 'skipped';
+        console.error('[WEBHOOK] Resposta de áudio não enviada (orçamento da invocação esgotado):', sanitizeError(sendError));
+        if (savedReply?.id) {
+          await supabase
+            .from('messages')
+            .update({ status: 'not_sent' })
+            .eq('id', savedReply.id);
+        }
+      } else {
+        // Intervalo incerto: a Meta pode ter recebido. Não reenviar — marca o
+        // registro como unconfirmed para o operador decidir.
+        replySendState = 'unconfirmed';
+        console.error('[WEBHOOK] Envio da resposta de áudio sem confirmação:', sanitizeError(sendError));
+        if (savedReply?.id) {
+          await supabase
+            .from('messages')
+            .update({ status: 'unconfirmed' })
+            .eq('id', savedReply.id);
+        }
       }
     }
 
-    // Só marca processed quando a resposta foi concluída (incl. incerto)
-    await setAudioStatus('processed', { media_transcript: transcript });
+    // Envio nunca tentado → needs_review (operador decide); enviado ou
+    // incerto → processed (pipeline de mídia concluído).
+    await setAudioStatus(replySendState === 'skipped' ? 'needs_review' : 'processed', { media_transcript: transcript });
 
     // Só depois do envio: pedido explícito de humano no áudio notifica o admin.
     // NÃO marca mode='human' — handoff automático não deve silenciar a conversa
@@ -2007,9 +2034,9 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType, message
     if (messageId) {
       // Se a resposta já foi inserida/enviada (ou incerta), não marcar pending:
       // reprocessar geraria resposta duplicada. Caso contrário, devolve ao
-      // sweeper como falha transitória.
+      // sweeper como falha transitória. Envio nunca tentado → needs_review.
       try {
-        await setAudioStatus(replyInserted ? 'processed' : 'pending');
+        await setAudioStatus(replySendState === 'skipped' ? 'needs_review' : (replyInserted ? 'processed' : 'pending'));
       } catch (_) {}
     }
   }

@@ -1327,6 +1327,8 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                       title={
                         msg.status === 'failed'
                           ? `Falha na entrega: ${msg.error_info?.title || 'Erro desconhecido'} - ${msg.error_info?.message || ''}`
+                          : msg.status === 'not_sent'
+                          ? 'O envio não chegou a ser tentado. Revisão manual necessária.'
                           : msg.status === 'read'
                           ? 'Mensagem lida'
                           : msg.status === 'delivered'
@@ -1337,6 +1339,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                       }
                     >
                       {msg.status === 'failed' && '❌ Não entregue'}
+                      {msg.status === 'not_sent' && '⛔ Não enviado — revisão necessária'}
                       {msg.status === 'read' && '✓✓ Lida'}
                       {msg.status === 'delivered' && '✓✓ Entregue'}
                       {msg.status === 'sent' && '✓ Enviado'}

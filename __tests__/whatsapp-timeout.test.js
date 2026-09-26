@@ -80,9 +80,23 @@ test('deadline do chamador limita o timeout ao tempo restante da invocação', a
 test('sem orçamento restante → nem inicia o fetch à Meta', async () => {
   process.env.WHATSAPP_SEND_TIMEOUT_MS = '30000';
   global.fetch = hangingFetch();
+  // Código dedicado permite ao chamador distinguir "não tentado" de
+  // "iniciado sem confirmação" — nunca deve ser classificado como unconfirmed.
   await expect(sendWhatsAppMessage('5573***0000', 'oi', { deadline: Date.now() - 1 }))
-    .rejects.toMatchObject({ name: 'TimeoutError' });
+    .rejects.toMatchObject({ name: 'TimeoutError', code: 'SEND_SKIPPED_NO_BUDGET' });
   expect(global.fetch).not.toHaveBeenCalled();
+});
+
+test('fetch iniciado e abortado NÃO recebe o código de skip', async () => {
+  process.env.WHATSAPP_SEND_TIMEOUT_MS = '60';
+  global.fetch = hangingFetch();
+  // O TimeoutError do abort real tem code numérico (DOMException), nunca a
+  // string SEND_SKIPPED_NO_BUDGET — o chamador distingue os dois casos.
+  const err = await sendWhatsAppMessage('5573***0000', 'oi', { deadline: Date.now() + 40 })
+    .then(() => null, e => e);
+  expect(err).toMatchObject({ name: 'TimeoutError' });
+  expect(err.code).not.toBe('SEND_SKIPPED_NO_BUDGET');
+  expect(global.fetch).toHaveBeenCalledTimes(1);
 });
 
 test('deadline também aplica a sendWhatsAppMediaMessage', async () => {

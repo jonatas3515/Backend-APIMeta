@@ -244,6 +244,16 @@ describe('ChatWindow conversation isolation', () => {
     expect(screen.getAllByText('Original').length).toBe(1);
   });
 
+  test('outbound com status not_sent exibe "Não enviado — revisão necessária", distinto de unconfirmed', async () => {
+    const messages = [
+      { id: 'mN1', conversation_id: 'cA', text: 'Resposta não enviada', direction: 'outbound', sender_type: 'bot', content_type: 'text', status: 'not_sent', created_at: '2026-09-24T10:00:00.000Z' },
+      { id: 'mU1', conversation_id: 'cA', text: 'Resposta incerta', direction: 'outbound', sender_type: 'bot', content_type: 'text', status: 'unconfirmed', created_at: '2026-09-24T10:01:00.000Z' }
+    ];
+    await setup({ messages, conversation: conversationA });
+    await waitFor(() => expect(screen.getByText('⛔ Não enviado — revisão necessária')).toBeInTheDocument());
+    expect(screen.getByText('⚠️ Confirmação pendente')).toBeInTheDocument();
+  });
+
   test('realtime sem conversation_id é descartado com segurança', async () => {
     const messages = [
       { id: 'mA1', conversation_id: 'cA', text: 'A', direction: 'inbound', sender_type: 'client', content_type: 'text', created_at: '2026-09-24T10:00:00.000Z' }
