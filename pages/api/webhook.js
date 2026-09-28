@@ -1432,7 +1432,7 @@ function getSpecialReply(text, clientName, history = '', log = () => {}) {
   if (isIdentity) {
     const name = getClientGreeting(clientName);
     if (alreadySaid) {
-      return `${name}, confira a grafia exata e o CNPJ do documento: a Neves & Costa Advocacia, com "&", não emite boletos nem faz cobranças.`;
+      return `${name}, confira a grafia exata e o CNPJ da empresa que emitiu o documento: a Neves & Costa Advocacia, com "&", não emite boletos, não faz cobranças e não possui CNPJ.`;
     }
     return `${name}, a Neves & Costa Advocacia (com "&") não emitimos boletos, não fazemos cobranças, não possuímos CNPJ e não temos relação com a "Advocacia Neves Costa" sem o "&".`;
   }
