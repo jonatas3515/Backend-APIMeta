@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiJson } from '../lib/apiClient';
 
 export default function WhatsAppMessageInput({ conversationId, onSent }) {
   const [text, setText] = useState('');
@@ -10,8 +11,7 @@ export default function WhatsAppMessageInput({ conversationId, onSent }) {
   const [showTemplates, setShowTemplates] = useState(false);
 
   useEffect(() => {
-    fetch('/api/whatsapp/templates')
-      .then(r => r.json())
+    apiJson('/api/whatsapp/templates')
       .then(data => setTemplates(data || []))
       .catch(() => setTemplates([]));
   }, []);
@@ -56,16 +56,11 @@ export default function WhatsAppMessageInput({ conversationId, onSent }) {
         };
 
     try {
-      const response = await fetch('/api/whatsapp/send-message', {
+      await apiJson('/api/whatsapp/send-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'Erro ao enviar mensagem');
-      }
 
       setText('');
       setSelectedTemplate(null);

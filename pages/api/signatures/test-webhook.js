@@ -10,11 +10,19 @@
 // Apenas para ambiente de desenvolvimento/teste.
 // ============================================================================
 
-import { supabase } from '../../../lib/supabaseClient';
+import { supabaseAdmin as supabase } from '../../../lib/auth';
 
 export default async function handler(req, res) {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
+  }
+
+  if (!supabase) {
+    return res.status(500).json({ error: 'Supabase não configurado' });
   }
 
   // Verifica autenticação
@@ -35,7 +43,7 @@ export default async function handler(req, res) {
     const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('role')
-      .eq('id', user.id)
+      .eq('auth_user_id', user.id)
       .single();
 
     if (profileError || profile?.role !== 'admin') {

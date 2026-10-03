@@ -106,7 +106,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           const { data, error } = await supabase
             .from('users')
             .select('role')
-            .eq('id', user.id)
+            .eq('auth_user_id', user.id)
             .maybeSingle();
           
           if (!error && data) {

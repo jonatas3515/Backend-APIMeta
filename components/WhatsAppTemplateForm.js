@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiJson } from '../lib/apiClient';
 
 const CATEGORIES = ['MARKETING', 'UTILITY', 'AUTHENTICATION'];
 const STATUSES = ['draft', 'approved'];
@@ -25,7 +26,7 @@ export default function WhatsAppTemplateForm({ onSuccess, onCancel }) {
       .filter(v => /^\d+$/.test(v));
 
     try {
-      const response = await fetch('/api/whatsapp/templates', {
+      await apiJson('/api/whatsapp/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -36,11 +37,6 @@ export default function WhatsAppTemplateForm({ onSuccess, onCancel }) {
           status: form.status
         })
       });
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || 'Erro ao cadastrar template');
-      }
 
       setLoading(false);
       onSuccess();
