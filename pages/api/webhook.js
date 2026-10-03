@@ -35,6 +35,58 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
   : null;
 
+// bodyParser desativado: a validação X-Hub-Signature-256 exige o corpo bruto
+// da requisição; o JSON é parseado manualmente no início do POST.
+export const config = {
+  api: { bodyParser: false }
+};
+
+let missingAppSecretWarned = false;
+
+async function readRawBody(req) {
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
+// Valida a assinatura X-Hub-Signature-256 enviada pela Meta (HMAC-SHA256 com
+// o App Secret). Modo de transição graciosa: se o secret não estiver
+// configurado, registra aviso uma única vez e permite o processamento para
+// não interromper o webhook em produção antes da variável ser adicionada.
+function validateWhatsAppSignature(req, rawBody, log = () => {}) {
+  const appSecret = process.env.WHATSAPP_APP_SECRET || process.env.META_APP_SECRET;
+  if (!appSecret) {
+    if (!missingAppSecretWarned) {
+      missingAppSecretWarned = true;
+      console.warn('[WEBHOOK] ⚠️ WHATSAPP_APP_SECRET/META_APP_SECRET não configurado — validação de assinatura do webhook desativada (modo de transição).');
+    }
+    return true;
+  }
+
+  const signatureHeader = req.headers?.['x-hub-signature-256'];
+  if (typeof signatureHeader !== 'string' || !signatureHeader.startsWith('sha256=')) {
+    log('signature_missing_or_malformed');
+    return false;
+  }
+
+  const provided = Buffer.from(signatureHeader.slice('sha256='.length), 'hex');
+  if (provided.length !== 32) {
+    log('signature_invalid_length');
+    return false;
+  }
+
+  const payload = rawBody || Buffer.from(
+    typeof req.body === 'string' ? req.body : JSON.stringify(req.body ?? {}),
+    'utf8'
+  );
+  const expected = crypto.createHmac('sha256', appSecret).update(payload).digest();
+  const valid = crypto.timingSafeEqual(provided, expected);
+  if (!valid) log('signature_mismatch');
+  return valid;
+}
+
 export default async function handler(req, res) {
   const __invocationStart = Date.now();
   const { log } = createLogger(req);
@@ -59,6 +111,24 @@ export default async function handler(req, res) {
 
   // POST - Recebe mensagens do WhatsApp
   if (req.method === 'POST') {
+    // Corpo bruto necessário para validar a assinatura HMAC da Meta.
+    // Em mocks/testes req.body já pode vir parseado; nesse caso não há stream.
+    let rawBody = null;
+    if (req.body === undefined) {
+      try {
+        rawBody = await readRawBody(req);
+        req.body = rawBody.length ? JSON.parse(rawBody.toString('utf8')) : {};
+      } catch (parseError) {
+        log('invalid_body', { error: sanitizeError(parseError) });
+        return res.status(400).json({ error: 'Payload inválido' });
+      }
+    }
+
+    if (!validateWhatsAppSignature(req, rawBody, log)) {
+      log('signature_rejected');
+      return res.status(401).json({ error: 'Assinatura inválida' });
+    }
+
     // Responde o mais rápido possível em rotinas de status/keep-alive
     const ack = () => res.status(200).json({ success: true, processed: false });
     
