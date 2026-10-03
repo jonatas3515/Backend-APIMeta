@@ -107,7 +107,7 @@ async function handleRevoke(req, res) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
-    if (consent.value === false) {
+    if (consent.value === false || consent.revoked_at) {
       logger('warn', 'CONSENT_REVOKE_ALREADY_REVOKED', { httpStatus: 409, userId: user.id });
       return res.status(409).json({ error: 'Consentimento já revogado' });
     }

@@ -76,7 +76,7 @@ describe('POST /api/whatsapp/send-message', () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(400);
-    expect(res._getJSONData().error).toContain('to, type e content');
+    expect(res._getJSONData().error).toContain('to e type são obrigatórios');
   });
 
   test('estagiario sem vínculo recebe 403', async () => {

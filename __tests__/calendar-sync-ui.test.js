@@ -23,23 +23,25 @@ jest.mock('../lib/safeLogger', () => ({
 const mockGet = jest.fn();
 const mockPost = jest.fn();
 
-jest.mock('axios', () => ({
-  __esModule: true,
-  default: {
-    get: (...args) => mockGet(...args),
-    post: (...args) => mockPost(...args)
-  }
+jest.mock('../lib/apiClient', () => ({
+  apiJson: (url, options = {}) => {
+    if ((options.method || 'GET').toUpperCase() === 'GET') {
+      return mockGet(url);
+    }
+    return mockPost(url, options.body);
+  },
+  apiCall: jest.fn()
 }));
+
+const mockGetData = (data) => mockGet.mockResolvedValueOnce(data);
 
 describe('CaseCalendarSync - estados de sincronização', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGet.mockResolvedValue({
-      data: {
-        integrations: [
-          { provider: 'google', is_active: true }
-        ]
-      }
+      integrations: [
+        { provider: 'google', is_active: true }
+      ]
     });
   });
 
@@ -55,12 +57,8 @@ describe('CaseCalendarSync - estados de sincronização', () => {
     );
 
   test('nunca sincronizado exibe mensagem adequada', async () => {
-    mockGet.mockResolvedValueOnce({
-      data: { integrations: [{ provider: 'google', is_active: true }] }
-    });
-    mockGet.mockResolvedValueOnce({
-      data: { synced: false, provider: null, synced_at: null, last_sync_status: null }
-    });
+    mockGetData({ integrations: [{ provider: 'google', is_active: true }] });
+    mockGetData({ synced: false, provider: null, synced_at: null, last_sync_status: null });
 
     renderComponent();
 
@@ -72,16 +70,12 @@ describe('CaseCalendarSync - estados de sincronização', () => {
   });
 
   test('synced e não alterado não mostra aviso de desatualizado', async () => {
-    mockGet.mockResolvedValueOnce({
-      data: { integrations: [{ provider: 'google', is_active: true }] }
-    });
-    mockGet.mockResolvedValueOnce({
-      data: {
-        synced: true,
-        provider: 'google',
-        synced_at: '2026-09-10T10:00:00.000Z',
-        last_sync_status: 'success'
-      }
+    mockGetData({ integrations: [{ provider: 'google', is_active: true }] });
+    mockGetData({
+      synced: true,
+      provider: 'google',
+      synced_at: '2026-09-10T10:00:00.000Z',
+      last_sync_status: 'success'
     });
 
     renderComponent({ internalUpdatedAt: '2026-09-09T12:00:00.000Z' });
@@ -99,16 +93,12 @@ describe('CaseCalendarSync - estados de sincronização', () => {
   });
 
   test('alterado depois do sync mostra badge de desatualizado', async () => {
-    mockGet.mockResolvedValueOnce({
-      data: { integrations: [{ provider: 'google', is_active: true }] }
-    });
-    mockGet.mockResolvedValueOnce({
-      data: {
-        synced: true,
-        provider: 'google',
-        synced_at: '2026-09-10T10:00:00.000Z',
-        last_sync_status: 'success'
-      }
+    mockGetData({ integrations: [{ provider: 'google', is_active: true }] });
+    mockGetData({
+      synced: true,
+      provider: 'google',
+      synced_at: '2026-09-10T10:00:00.000Z',
+      last_sync_status: 'success'
     });
 
     renderComponent({ internalUpdatedAt: '2026-09-11T12:00:00.000Z' });
@@ -125,16 +115,12 @@ describe('CaseCalendarSync - estados de sincronização', () => {
   });
 
   test('dados insuficientes não afirma desatualização', async () => {
-    mockGet.mockResolvedValueOnce({
-      data: { integrations: [{ provider: 'google', is_active: true }] }
-    });
-    mockGet.mockResolvedValueOnce({
-      data: {
-        synced: true,
-        provider: 'google',
-        synced_at: '2026-09-10T10:00:00.000Z',
-        last_sync_status: 'success'
-      }
+    mockGetData({ integrations: [{ provider: 'google', is_active: true }] });
+    mockGetData({
+      synced: true,
+      provider: 'google',
+      synced_at: '2026-09-10T10:00:00.000Z',
+      last_sync_status: 'success'
     });
 
     renderComponent({ internalUpdatedAt: null });
@@ -149,15 +135,9 @@ describe('CaseCalendarSync - estados de sincronização', () => {
   });
 
   test('clique em sincronizar dispara apenas uma chamada', async () => {
-    mockGet.mockResolvedValueOnce({
-      data: { integrations: [{ provider: 'google', is_active: true }] }
-    });
-    mockGet.mockResolvedValueOnce({
-      data: { synced: false, provider: null, synced_at: null, last_sync_status: null }
-    });
-    mockPost.mockResolvedValue({
-      data: { success: true, action: 'sync' }
-    });
+    mockGetData({ integrations: [{ provider: 'google', is_active: true }] });
+    mockGetData({ synced: false, provider: null, synced_at: null, last_sync_status: null });
+    mockPost.mockResolvedValue({ success: true, action: 'sync' });
 
     renderComponent({ internalUpdatedAt: '2026-09-11T12:00:00.000Z' });
 
@@ -178,16 +158,12 @@ describe('CaseCalendarSync - estados de sincronização', () => {
   });
 
   test('erro mantém estado anterior e exibe mensagem genérica', async () => {
-    mockGet.mockResolvedValueOnce({
-      data: { integrations: [{ provider: 'google', is_active: true }] }
-    });
-    mockGet.mockResolvedValueOnce({
-      data: {
-        synced: true,
-        provider: 'google',
-        synced_at: '2026-09-10T10:00:00.000Z',
-        last_sync_status: 'success'
-      }
+    mockGetData({ integrations: [{ provider: 'google', is_active: true }] });
+    mockGetData({
+      synced: true,
+      provider: 'google',
+      synced_at: '2026-09-10T10:00:00.000Z',
+      last_sync_status: 'success'
     });
     mockPost.mockRejectedValueOnce(new Error('Google Calendar indisponível'));
 
@@ -209,16 +185,12 @@ describe('CaseCalendarSync - estados de sincronização', () => {
   });
 
   test('DOM não contém IDs ou URLs sensíveis do calendário', async () => {
-    mockGet.mockResolvedValueOnce({
-      data: { integrations: [{ provider: 'google', is_active: true }] }
-    });
-    mockGet.mockResolvedValueOnce({
-      data: {
-        synced: true,
-        provider: 'google',
-        synced_at: '2026-09-10T10:00:00.000Z',
-        last_sync_status: 'success'
-      }
+    mockGetData({ integrations: [{ provider: 'google', is_active: true }] });
+    mockGetData({
+      synced: true,
+      provider: 'google',
+      synced_at: '2026-09-10T10:00:00.000Z',
+      last_sync_status: 'success'
     });
 
     renderComponent({ internalUpdatedAt: '2026-09-11T12:00:00.000Z' });

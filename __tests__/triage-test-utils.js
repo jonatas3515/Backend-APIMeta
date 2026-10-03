@@ -190,7 +190,7 @@ export function setupTriage(options = {}) {
       });
     }
 
-    if (url.startsWith('/api/triage?id=') && !opts.method) {
+    if (url.startsWith('/api/triage?id=') && (!opts.method || opts.method === 'GET')) {
       return buildResponse({ movement: detailMovement, history });
     }
 

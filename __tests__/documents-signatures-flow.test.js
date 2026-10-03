@@ -204,7 +204,7 @@ describe('DocumentRequestModal', () => {
       return Promise.resolve([]);
     });
 
-    render(<DocumentRequestModal caseItem={caseItem} onClose={jest.fn()} />);
+    render(<DocumentRequestModal caseItem={caseItem} conversation={{ id: 'conv-1', client_phone: '5511999999999' }} onClose={jest.fn()} />);
     await waitFor(() => screen.getByText('RG'));
 
     fireEvent.click(screen.getByRole('checkbox'));
