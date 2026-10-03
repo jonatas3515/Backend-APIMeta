@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabaseClient';
+import { supabaseAdmin as supabase } from '../../../lib/auth';
 import crypto from 'crypto';
 import { sanitizeError } from '../../../lib/webhookLog';
 

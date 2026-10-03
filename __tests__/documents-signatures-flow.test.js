@@ -31,7 +31,9 @@ jest.mock('../lib/auth', () => ({
   },
   supabaseAdmin: {
     from: (...args) => mockAdminFrom(...args),
-    auth: { getUser: jest.fn() },
+    auth: {
+      getUser: jest.fn(() => Promise.resolve({ data: { user: { id: 'auth-1' } }, error: null })),
+    },
   },
 }));
 
@@ -302,7 +304,7 @@ describe('GET /api/signatures/status', () => {
   const handler = require('../pages/api/signatures/status').default;
 
   test('retorna 200 com signatures: [] quando nao ha assinaturas', async () => {
-    mockAnonFrom.mockImplementation(() => chain({ data: [], error: null }));
+    mockAdminFrom.mockImplementation(() => chain({ data: [], error: null }));
 
     const req = { method: 'GET', headers: { authorization: 'Bearer t' }, query: { case_id: '11111111-1111-1111-1111-111111111111' } };
     const res = mockRes();
@@ -395,7 +397,7 @@ describe('POST /api/signatures/webhook', () => {
   const handler = require('../pages/api/signatures/webhook').default;
 
   test('evento sem signatarios responde 200', async () => {
-    mockAnonFrom.mockImplementation((table) => {
+    mockAdminFrom.mockImplementation((table) => {
       if (table === 'signature_webhook_logs') return chain({ data: [], error: null });
       if (table === 'document_signatures') return chain({ data: { id: 'sig-1', case_id: 'case-1', signers: null }, error: null });
       if (table === 'cases') return chain({ data: { conversation_id: 'conv-1' }, error: null });

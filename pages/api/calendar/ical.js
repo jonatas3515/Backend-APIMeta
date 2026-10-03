@@ -1,9 +1,13 @@
-import { supabase } from '../../../lib/supabaseClient';
+import { supabaseAdmin as supabase } from '../../../lib/auth';
 import crypto from 'crypto';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Método não permitido' });
+  }
+
+  if (!supabase) {
+    return res.status(500).json({ error: 'Supabase não configurado' });
   }
 
   try {

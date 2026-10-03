@@ -1,4 +1,4 @@
-import { supabase } from '../../../lib/supabaseClient';
+import { supabaseAdmin as supabase } from '../../../lib/auth';
 import crypto from 'crypto';
 
 function generateUUID() {
@@ -6,6 +6,10 @@ function generateUUID() {
 }
 
 export default async function handler(req, res) {
+  if (!supabase) {
+    return res.status(500).json({ error: 'Supabase não configurado' });
+  }
+
   try {
     const headers = req.headers;
     const token = headers.authorization?.split(' ')[1];
@@ -40,7 +44,7 @@ async function handleGet(userId, res) {
     const { data: user, error } = await supabase
       .from('users')
       .select('ical_token, ical_token_disabled, ical_token_generated_at')
-      .eq('id', userId)
+      .eq('auth_user_id', userId)
       .single();
 
     if (error) throw error;
@@ -79,7 +83,7 @@ async function handlePost(userId, req, res) {
           ical_token_generated_at: new Date().toISOString(),
           ical_token_disabled: false
         })
-        .eq('id', userId);
+        .eq('auth_user_id', userId);
 
       if (error) throw error;
 
@@ -108,7 +112,7 @@ async function handleDelete(userId, res) {
       .update({
         ical_token_disabled: true
       })
-      .eq('id', userId);
+      .eq('auth_user_id', userId);
 
     if (error) throw error;
 
