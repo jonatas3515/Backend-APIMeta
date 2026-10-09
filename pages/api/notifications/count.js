@@ -8,10 +8,12 @@ import notificationCache from '../../../lib/notificationCache';
 import { aggregateNotifications } from '../../../lib/notificationAggregator';
 import { withAuth } from '../../../lib/auth';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+
+const supabase = (SUPABASE_URL && SUPABASE_SERVICE_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+  : null;
 
 function sanitizeError(error) {
   if (!error) return 'Unknown error';
@@ -25,6 +27,7 @@ function sanitizeError(error) {
  * Conta notificações de forma otimizada
  */
 async function countNotifications(userId, userRole) {
+  if (!supabase) return 0;
   try {
     const now = new Date();
     const next7Days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);

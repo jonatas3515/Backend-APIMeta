@@ -142,31 +142,40 @@ export default function Home() {
 
   // Realtime: novas mensagens (conversations.unread)
   useEffect(() => {
-    if (!authUser || !notifPrefs) return;
+    if (!authUser || !profile || !notifPrefs) return;
 
     const channel = supabase
       .channel('conversations-notifications')
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'conversations' },
+        { event: '*', schema: 'public', table: 'conversations' },
         (payload) => {
           const conv = payload.new;
-          if (conv.unread && conv.assigned_user_id === profile.id && notifPrefs.enabled && notifPrefs.notify_messages) {
-            const clientName = conv.client_name || 'Cliente';
-            maybeNotify({
-              title: 'Nova mensagem no WhatsApp',
-              body: `${clientName} enviou uma mensagem`,
-              tag: `msg-${conv.id}`,
-              preferences: notifPrefs,
-              onClick: () => {
-                setSelectedConversation(conv);
-                setActiveTab('chat');
-                if (typeof window !== 'undefined') {
-                  window.history.pushState(null, '', `/?tab=chat&conversation=${conv.id}`);
-                }
+          if (!conv || !conv.unread || !notifPrefs.enabled || !notifPrefs.notify_messages) return;
+
+          // Admin/advogado recebem também conversas ainda não atribuídas
+          // (novos leads chegam com assigned_user_id = null). Estagiário
+          // só é notificado do que está atribuído a ele.
+          const isAssignedToMe = conv.assigned_user_id === profile.id;
+          const canSee = (profile.role === 'admin' || profile.role === 'advogado')
+            ? (!conv.assigned_user_id || isAssignedToMe)
+            : isAssignedToMe;
+          if (!canSee) return;
+
+          const clientName = conv.client_name || 'Cliente';
+          maybeNotify({
+            title: 'Nova mensagem no WhatsApp',
+            body: `${clientName} enviou uma mensagem`,
+            tag: `msg-${conv.id}`,
+            preferences: notifPrefs,
+            onClick: () => {
+              setSelectedConversation(conv);
+              setActiveTab('chat');
+              if (typeof window !== 'undefined') {
+                window.history.pushState(null, '', `/?tab=chat&conversation=${conv.id}`);
               }
-            });
-          }
+            }
+          });
         }
       )
       .subscribe();
