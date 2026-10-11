@@ -190,7 +190,7 @@ describe('Concorrência, idempotência, LGPD e identidade', () => {
     expect(whatsappCalls.length).toBeGreaterThanOrEqual(1);
     const body = JSON.parse(whatsappCalls[0][1].body);
     expect(body.text.body).toMatch(/politica-de-privacidade/);
-    expect(body.text.body).toMatch(/Como posso ajudar/);
+    expect(body.text.body).toMatch(/Pode me contar mais/);
   });
 
   test('"Bom dia" em seguida não repete o aviso LGPD', async () => {

@@ -1510,12 +1510,12 @@ function getSpecialReply(text, clientName, history = '', log = () => {}) {
   return null;
 }
 
-// Aviso LGPD exibido pelo código na primeira interação (mesmo texto do SYSTEM_PROMPT).
+// Aviso LGPD exibido pelo código na primeira interação. Termina no link da
+// política: a resposta do Gemini é concatenada logo abaixo, então uma
+// pergunta de encerramento aqui duplicaria a saudação do assistente.
 const LGPD_NOTICE = `Olá! Seja bem-vindo(a) à Neves & Costa Advocacia e Consultoria. Meu nome é Jhon, assistente virtual do escritório.
 
-Em conformidade com a LGPD, os dados fornecidos nesta conversa serão tratados com sigilo e utilizados exclusivamente para o atendimento solicitado. Ao continuar a conversa, você concorda com esse tratamento. Consulte nossa Política de Privacidade: https://chatnevesecosta.vercel.app/politica-de-privacidade
-
-Como posso ajudar?`;
+Em conformidade com a LGPD, os dados fornecidos nesta conversa serão tratados com sigilo e utilizados exclusivamente para o atendimento solicitado. Ao continuar a conversa, você concorda com esse tratamento. Consulte nossa Política de Privacidade: https://chatnevesecosta.vercel.app/politica-de-privacidade`;
 
 const PRIVACY_REPLY = 'Seu pedido de retirada do consentimento foi registrado. A retirada não invalida os tratamentos realizados anteriormente, e alguns dados poderão ser mantidos quando houver obrigação legal.';
 
