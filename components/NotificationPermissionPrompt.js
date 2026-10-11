@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { requestPermission } from '../lib/notifications';
-import axios from 'axios';
-import { apiCall } from '../lib/apiClient';
+import { apiJson } from '../lib/apiClient';
 
 export default function NotificationPermissionPrompt({ profile, onClose, onUpdate }) {
   const [loading, setLoading] = useState(false);
@@ -10,9 +9,11 @@ export default function NotificationPermissionPrompt({ profile, onClose, onUpdat
     setLoading(true);
     try {
       
-      await apiCall('/api/notification-preferences', {
-        enabled,
-        ask_again_after: askAfter
+      const body = { ask_again_after: askAfter };
+      if (enabled !== null) body.enabled = enabled;
+      await apiJson('/api/notification-preferences', {
+        method: 'PATCH',
+        body: JSON.stringify(body)
       });
       onUpdate?.();
     } catch (e) {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiJson } from '../lib/apiClient';
+import { isSupported, getPermission, requestPermission, maybeNotify } from '../lib/notifications';
 
 const TYPES = [
   { key: 'notify_messages', label: 'Mensagens do WhatsApp' },
@@ -14,9 +15,12 @@ export default function NotificationSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [browserPermission, setBrowserPermission] = useState('default');
+  const [testSent, setTestSent] = useState(false);
 
   useEffect(() => {
     fetchPrefs();
+    setBrowserPermission(getPermission());
   }, []);
 
   const fetchPrefs = async () => {
@@ -60,6 +64,29 @@ export default function NotificationSettings() {
     update({ [field]: value || null });
   };
 
+  const handleRequestPermission = async () => {
+    const permission = await requestPermission();
+    setBrowserPermission(permission);
+  };
+
+  const handleTestNotification = async () => {
+    await maybeNotify({
+      title: 'Teste de Notificação',
+      body: 'As notificações estão funcionando perfeitamente!',
+      tag: `test-${Date.now()}`,
+      enabled: true,
+      preferences: {}
+    });
+    setTestSent(true);
+    setTimeout(() => setTestSent(false), 3000);
+  };
+
+  const PERMISSION_LABELS = {
+    granted: 'Permitido',
+    denied: 'Bloqueado pelo navegador',
+    default: 'Pendente'
+  };
+
   if (loading) return <p className="text-sm text-nc-text-secondary">Carregando...</p>;
 
   return (
@@ -69,6 +96,41 @@ export default function NotificationSettings() {
           {error}
         </div>
       )}
+
+      <div className="border rounded p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="font-semibold text-nc-text-title">Notificações do navegador</h3>
+            <p className="text-sm text-nc-text-secondary">
+              Status: {isSupported() ? (PERMISSION_LABELS[browserPermission] || 'Pendente') : 'Não suportado neste navegador'}
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2">
+            {browserPermission === 'default' && isSupported() && (
+              <button
+                onClick={handleRequestPermission}
+                className="nc-btn px-3 py-2 text-sm"
+              >
+                Permitir notificações no navegador
+              </button>
+            )}
+            {browserPermission === 'granted' && (
+              <button
+                onClick={handleTestNotification}
+                className="nc-btn px-3 py-2 text-sm"
+              >
+                {testSent ? 'Notificação enviada!' : '🔔 Testar Notificação'}
+              </button>
+            )}
+          </div>
+        </div>
+        {browserPermission === 'denied' && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+            As notificações foram bloqueadas. Para reativar, clique no ícone do cadeado na barra de
+            endereço do navegador, localize "Notificações" e altere para "Permitir". Depois recarregue a página.
+          </p>
+        )}
+      </div>
 
       <div className="flex items-center justify-between">
         <div>
