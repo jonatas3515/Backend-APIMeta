@@ -51,7 +51,7 @@ async function handler(req, res) {
   try {
     const { data: conversation, error: convError } = await supabase
       .from('conversations')
-      .select('id, client_phone, assigned_user_id')
+      .select('id, client_phone, assigned_user_id, archived')
       .eq('id', conversationIdUsed)
       .single();
 
@@ -113,6 +113,14 @@ async function handler(req, res) {
       .single();
 
     if (msgError) throw msgError;
+
+    // Resposta ativa do atendente desarquiva a conversa.
+    if (conversation.archived === true) {
+      await supabase
+        .from('conversations')
+        .update({ archived: false, archived_at: null })
+        .eq('id', conversationIdUsed);
+    }
 
     const auditDetails = {
       to: hashPhone(phone),

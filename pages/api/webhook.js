@@ -397,11 +397,21 @@ export default async function handler(req, res) {
           await suggestDocumentChecklist(conversation.id, publicUrl, messageType, textBody, message);
         }
 
-        // Marca conversa como não lida para o atendente
+        // Marca conversa como não lida para o atendente. Se estiver
+        // arquivada, mensagem inbound do cliente a desarquiva.
+        const convUpdate = { unread: true };
+        if (conversation.archived === true) {
+          convUpdate.archived = false;
+          convUpdate.archived_at = null;
+        }
         await supabase
           .from('conversations')
-          .update({ unread: true })
+          .update(convUpdate)
           .eq('id', conversation.id);
+        if (conversation.archived === true) {
+          conversation.archived = false;
+          conversation.archived_at = null;
+        }
 
         const eventType = evaluateFunnelAutomation({
           direction: 'inbound',

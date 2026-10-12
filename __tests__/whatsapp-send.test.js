@@ -1,9 +1,12 @@
 const { createMocks } = require('node-mocks-http');
 
+const mockUpdates = [];
+
 const mockFromChain = (data, error = null) => ({
   select: () => mockFromChain(data, error),
   eq: () => mockFromChain(data, error),
   insert: () => mockFromChain(data, error),
+  update: (payload) => { mockUpdates.push(payload); return mockFromChain(data, error); },
   single: jest.fn().mockResolvedValue({ data, error })
 });
 
@@ -35,6 +38,7 @@ const handler = require('../pages/api/whatsapp/send-message').default;
 describe('POST /api/whatsapp/send-message', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUpdates.length = 0;
     mockRpc.mockResolvedValue({ data: 'log-id', error: null });
   });
 
@@ -77,6 +81,51 @@ describe('POST /api/whatsapp/send-message', () => {
 
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error).toContain('to e type são obrigatórios');
+  });
+
+  test('desarquiva conversa arquivada ao enviar mensagem', async () => {
+    mockFrom
+      .mockImplementationOnce(() => mockFromChain({ id: 'c1', client_phone: '5511999999999', assigned_user_id: 'u1', archived: true }))
+      .mockImplementationOnce(() => mockFromChain({ id: 'm1' }))
+      .mockImplementationOnce(() => mockFromChain({ id: 'c1' }));
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: {
+        to: 'conversation',
+        type: 'text',
+        content: 'Olá',
+        clientId: 'c1'
+      },
+      __testUser: { id: 'u1', role: 'admin' }
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(mockUpdates).toContainEqual({ archived: false, archived_at: null });
+  });
+
+  test('não desarquiva conversa ativa', async () => {
+    mockFrom
+      .mockImplementationOnce(() => mockFromChain({ id: 'c1', client_phone: '5511999999999', assigned_user_id: 'u1', archived: false }))
+      .mockImplementationOnce(() => mockFromChain({ id: 'm1' }));
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: {
+        to: 'conversation',
+        type: 'text',
+        content: 'Olá',
+        clientId: 'c1'
+      },
+      __testUser: { id: 'u1', role: 'admin' }
+    });
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(mockUpdates).not.toContainEqual({ archived: false, archived_at: null });
   });
 
   test('estagiario sem vínculo recebe 403', async () => {

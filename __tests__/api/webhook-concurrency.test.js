@@ -193,6 +193,23 @@ describe('Concorrência, idempotência, LGPD e identidade', () => {
     expect(body.text.body).toMatch(/Pode me contar mais/);
   });
 
+  test('mensagem inbound desarquiva conversa arquivada', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: {}, archived: true };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Oi, ainda preciso de ajuda', 'msg-unarch-001')
+    });
+
+    await webhookHandler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const unarchive = global.__testUpdates.find(u => u && u.archived === false);
+    expect(unarchive).toBeTruthy();
+    expect(unarchive.archived_at).toBeNull();
+    expect(unarchive.unread).toBe(true);
+  });
+
   test('"Bom dia" em seguida não repete o aviso LGPD', async () => {
     const now = new Date().toISOString();
     global.__testConversation = {
