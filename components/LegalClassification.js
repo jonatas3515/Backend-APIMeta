@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import axios from 'axios';
+import { FUNNEL_STAGES, normalizeFunnelStage, getFunnelStageLabel } from '../lib/funnelStages';
 
 export default function LegalClassification({ conversation, onUpdate }) {
   const [editing, setEditing] = useState(false);
@@ -12,7 +13,7 @@ export default function LegalClassification({ conversation, onUpdate }) {
     priority: conversation.priority || 'normal',
     assigned_to: conversation.assigned_to || '',
     notes: conversation.notes || '',
-    funnel_stage: conversation.funnel_stage || 'intake',
+    funnel_stage: normalizeFunnelStage(conversation.funnel_stage) || 'lead_novo',
     case_type: conversation.case_type || '',
     municipality: conversation.municipality || '',
     state: conversation.state || '',
@@ -52,14 +53,8 @@ export default function LegalClassification({ conversation, onUpdate }) {
     { value: 'urgente', label: '🔴 Urgente' }
   ];
 
-  const funnelStages = [
-    { value: 'intake', label: '📥 Intake' },
-    { value: 'qualificacao', label: '✅ Qualificação' },
-    { value: 'proposta', label: '💰 Proposta' },
-    { value: 'contrato', label: '📝 Contrato' },
-    { value: 'andamento', label: '⚙️ Andamento' },
-    { value: 'pos_caso', label: '🏁 Pós-caso' }
-  ];
+  // Etapas oficiais do funil (fonte única em lib/funnelStages.js, mesmas do Kanban)
+  const funnelStages = FUNNEL_STAGES.map(stage => ({ value: stage.id, label: stage.label }));
 
   const agencies = [
     { value: 'prefeitura', label: '🏛️ Prefeitura' },
@@ -89,7 +84,7 @@ export default function LegalClassification({ conversation, onUpdate }) {
     { value: 'campanha', label: '📢 Campanha' }
   ];
 
-  const getFunnelLabel = (stage) => funnelStages.find(s => s.value === stage)?.label || stage;
+  const getFunnelLabel = (stage) => getFunnelStageLabel(stage);
   const getAgencyLabel = (agency) => agencies.find(a => a.value === agency)?.label || agency;
   const getClientRoleLabel = (clientRole) => clientRoles.find(r => r.value === clientRole)?.label || clientRole;
   const getSourceLabel = (source) => sources.find(s => s.value === source)?.label || source;

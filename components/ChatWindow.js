@@ -12,7 +12,8 @@ import SignaturePanel from './SignaturePanel';
 import CaseSuggestionBanner from './CaseSuggestionBanner';
 import CaseCreationModal from './CaseCreationModal';
 import CaseLinkModal from './CaseLinkModal';
-import { navigateToCase } from '../lib/router';
+import { navigateToCase, buildInternalUrl } from '../lib/router';
+import { FUNNEL_STAGES, normalizeFunnelStage } from '../lib/funnelStages';
 import { sortMessagesBySequence } from '../lib/messageMeta';
 import { resolveMediaKind, getFileExtension, normalizeWhatsAppMime, MEDIA_MAX_BYTES } from '../lib/mediaKind';
 
@@ -59,6 +60,8 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [mode, setMode] = useState(conversation.mode);
+  const [funnelStage, setFunnelStage] = useState(normalizeFunnelStage(conversation.funnel_stage) || 'lead_novo');
+  const [savingStage, setSavingStage] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showPauseMenu, setShowPauseMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -188,6 +191,41 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   useEffect(() => {
     setMode(conversation.mode);
   }, [conversation.id, conversation.mode]);
+
+  // Sincroniza a etapa do funil local com a conversa atual
+  useEffect(() => {
+    setFunnelStage(normalizeFunnelStage(conversation.funnel_stage) || 'lead_novo');
+  }, [conversation.id, conversation.funnel_stage]);
+
+  const handleFunnelStageChange = async (e) => {
+    const newStage = e.target.value;
+    if (!newStage || newStage === funnelStage || savingStage) return;
+
+    setSavingStage(true);
+    try {
+      const res = await apiCall('/api/funnel', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          conversation_id: conversation.id,
+          new_stage: newStage,
+          reason: 'Movido via Chat'
+        })
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setFunnelStage(newStage);
+      if (onConversationUpdate) onConversationUpdate();
+    } catch (err) {
+      console.error('[CHAT] Erro ao mudar etapa do funil:', err);
+    } finally {
+      setSavingStage(false);
+    }
+  };
+
+  const handleOpenFunnel = () => {
+    if (typeof window !== 'undefined') {
+      window.location.href = buildInternalUrl({ tab: 'funnel', conversationId: conversation.id });
+    }
+  };
   const fileInputRef = useRef(null);
 
   // Fechar painel ao clicar fora da barra superior
@@ -906,6 +944,28 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
             <p className="text-xs md:text-sm text-nc-text-secondary truncate">{formatPhone(conversation.client_phone)}</p>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+            <select
+              value={funnelStage}
+              onChange={handleFunnelStageChange}
+              disabled={savingStage}
+              title="Etapa do funil de atendimento"
+              data-testid="funnel-stage-select"
+              className="text-xs font-medium border border-nc-gray-200 rounded-full px-2 py-1 md:px-2.5 md:py-1.5 bg-nc-gray-100 text-nc-text max-w-[130px] md:max-w-[180px] cursor-pointer disabled:opacity-50"
+            >
+              {FUNNEL_STAGES.map(stage => (
+                <option key={stage.id} value={stage.id}>{stage.label}</option>
+              ))}
+              {!FUNNEL_STAGES.some(s => s.id === funnelStage) && (
+                <option value={funnelStage}>{funnelStage}</option>
+              )}
+            </select>
+            <button
+              onClick={handleOpenFunnel}
+              className="nc-btn text-xs px-2 py-1"
+              title="Ver no Funil"
+            >
+              📊 <span className="hidden sm:inline">Funil</span>
+            </button>
             <div className={`flex items-center gap-1.5 px-2 py-1 md:px-2.5 md:py-1.5 rounded-full text-xs font-medium border ${
               mode === 'bot'
                 ? 'bg-nc-gray-100 text-nc-text border-nc-gray-200'

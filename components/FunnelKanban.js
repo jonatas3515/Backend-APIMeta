@@ -11,18 +11,24 @@ import CaseCreationModal from './CaseCreationModal';
 import CaseLinkModal from './CaseLinkModal';
 import ConfirmModal from './ConfirmModal';
 import { navigateToCase } from '../lib/router';
+import { FUNNEL_STAGES as BASE_FUNNEL_STAGES, normalizeFunnelStage } from '../lib/funnelStages';
 
-// Etapas padronizadas do funil
-const FUNNEL_STAGES = [
-  { id: 'lead_novo', label: '🆕 Lead Novo', color: 'bg-gray-100' },
-  { id: 'intake_em_andamento', label: '� Intake em Andamento', color: 'bg-blue-100' },
-  { id: 'intake_concluido', label: '✅ Intake Concluído', color: 'bg-green-100' },
-  { id: 'proposta_enviada', label: '💰 Proposta Enviada', color: 'bg-yellow-100' },
-  { id: 'contrato_assinado', label: '� Contrato Assinado', color: 'bg-purple-100' },
-  { id: 'acao_protocolada', label: '⚖️ Ação Protocolada', color: 'bg-orange-100' },
-  { id: 'aguardando_decisao', label: '⏳ Aguardando Decisão', color: 'bg-red-100' },
-  { id: 'encerrado', label: '🏁 Encerrado', color: 'bg-gray-200' }
-];
+// Etapas padronizadas do funil (fonte única em lib/funnelStages.js)
+const STAGE_COLORS = {
+  lead_novo: 'bg-gray-100',
+  intake_em_andamento: 'bg-blue-100',
+  intake_concluido: 'bg-green-100',
+  proposta_enviada: 'bg-yellow-100',
+  contrato_assinado: 'bg-purple-100',
+  acao_protocolada: 'bg-orange-100',
+  aguardando_decisao: 'bg-red-100',
+  encerrado: 'bg-gray-200'
+};
+
+const FUNNEL_STAGES = BASE_FUNNEL_STAGES.map(stage => ({
+  ...stage,
+  color: STAGE_COLORS[stage.id] || 'bg-gray-100'
+}));
 
 export default function FunnelKanban({ conversations = [], onSelectConversation }) {
   const { selectedArea, setSelectedArea } = useAreaFilter();
@@ -150,18 +156,7 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
     }
   };
 
-  // Mapeia antigos valores de funnel_stage para os atuais
-  const normalizeFunnelStage = (stage) => {
-    const map = {
-      'intake': 'intake_em_andamento',
-      'qualificacao': 'intake_concluido',
-      'proposta': 'proposta_enviada',
-      'contrato': 'contrato_assinado',
-      'andamento': 'acao_protocolada',
-      'pos_caso': 'encerrado'
-    };
-    return map[stage] || stage;
-  };
+  // Antigos valores de funnel_stage são normalizados via lib/funnelStages.js
 
   const normalizedConversations = items.map(conv => ({
     ...conv,
