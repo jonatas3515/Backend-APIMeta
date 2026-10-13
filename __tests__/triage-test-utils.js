@@ -198,6 +198,19 @@ export function setupTriage(options = {}) {
       return buildResponse({ ok: true });
     }
 
+    if (url.startsWith('/api/triage/ai-analyze')) {
+      return buildResponse({
+        success: true,
+        analysis: {
+          summary: 'Intimação para manifestação sobre a contestação.',
+          deadline_days: 15,
+          suggested_action: 'Petição de Réplica',
+          urgency: 'alta'
+        },
+        disclaimer: 'Análise gerada por IA.'
+      });
+    }
+
     if (opts.method === 'POST') {
       if (action === 'create_note') return buildResponse({ id: 'note1', text: 'Nota' }, 201);
       if (action === 'create_reminder') return buildResponse({ id: 'rem1' }, 201);

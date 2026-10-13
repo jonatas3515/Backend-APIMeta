@@ -198,6 +198,8 @@ export default function ProcessTriagePanel({ movementId, profile }) {
   const [actionForm, setActionForm] = useState({});
   const [message, setMessage] = useState(null);
   const [suggestion, setSuggestion] = useState(null);
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
   const highlightedRef = useRef(null);
 
   const fetchUsers = async () => {
@@ -338,6 +340,7 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     setSelectedMovement(mov);
     setShowDetail(true);
     setSuggestion(null);
+    setAiAnalysis(null);
     setActionForm({});
     try {
       const data = await apiJson(`/api/triage?id=${mov.id}`, { method: 'GET' });
@@ -354,6 +357,7 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     setSelectedMovement(null);
     setHistory([]);
     setSuggestion(null);
+    setAiAnalysis(null);
     setMessage(null);
     setActionForm({});
   };
@@ -464,6 +468,50 @@ export default function ProcessTriagePanel({ movementId, profile }) {
     } catch (err) {
       console.error('[TRIAGE] Sugestão:', err);
     }
+  };
+
+  const analyzeWithAI = async () => {
+    if (!selectedMovement || aiLoading) return;
+    setAiLoading(true);
+    setAiAnalysis(null);
+    try {
+      const data = await apiJson('/api/triage/ai-analyze', {
+        method: 'POST',
+        body: JSON.stringify({
+          movement_id: selectedMovement.id,
+          movement_text: selectedMovement.movement_text || selectedMovement.movement_summary || '',
+          case_title: selectedMovement.case_process?.case?.title || '',
+          court_code: selectedMovement.case_process?.court_code || ''
+        })
+      });
+      if (data?.analysis) {
+        setAiAnalysis(data.analysis);
+      } else {
+        setMessage({ type: 'error', text: 'A IA não retornou uma análise utilizável. Tente novamente.' });
+      }
+    } catch (err) {
+      console.error('[TRIAGE] Análise IA:', err);
+      setMessage({ type: 'error', text: err.message || 'Erro ao analisar movimentação com IA' });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const useAnalysisForEvent = () => {
+    if (!aiAnalysis) return;
+    const d = new Date();
+    if (aiAnalysis.deadline_days) {
+      d.setDate(d.getDate() + aiAnalysis.deadline_days);
+    }
+    setActionForm({
+      event_date: d.toISOString().slice(0, 10),
+      event_time: '',
+      event_type: 'prazo_judicial',
+      priority: PRIORITY_LABELS[aiAnalysis.urgency] ? aiAnalysis.urgency : 'media',
+      location: '',
+      description: aiAnalysis.summary || aiAnalysis.suggested_action || ''
+    });
+    setActionModal('event');
   };
 
   const handleSummaryClick = (key) => {
@@ -820,9 +868,35 @@ export default function ProcessTriagePanel({ movementId, profile }) {
                       </>
                     )}
                     <button onClick={getSuggestion} className="nc-btn text-sm" data-testid="btn-suggestion">✨ Obter sugestão</button>
+                    <button onClick={analyzeWithAI} disabled={aiLoading} className="nc-btn text-sm" data-testid="btn-ai-analyze">
+                      {aiLoading ? 'Analisando...' : '🧠 Analisar com IA'}
+                    </button>
                   </>
                 )}
               </div>
+
+              {aiAnalysis && (
+                <div className="bg-indigo-50 border border-indigo-200 p-3 rounded text-sm" data-testid="ai-analysis-box">
+                  <div className="font-semibold text-indigo-800 mb-1">🧠 Análise da IA — apoio operacional, confirme no sistema oficial do tribunal</div>
+                  {aiAnalysis.summary && (
+                    <p className="text-indigo-900 mb-2" data-testid="ai-analysis-summary">{aiAnalysis.summary}</p>
+                  )}
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-indigo-800">
+                    {aiAnalysis.suggested_action && (
+                      <span>Ação sugerida: <strong data-testid="ai-analysis-action">{aiAnalysis.suggested_action}</strong></span>
+                    )}
+                    <span>Urgência: <strong data-testid="ai-analysis-urgency">{PRIORITY_LABELS[aiAnalysis.urgency] || 'Média'}</strong></span>
+                    {aiAnalysis.deadline_days && (
+                      <span>Prazo estimado: <strong data-testid="ai-analysis-deadline">{aiAnalysis.deadline_days} dia(s)</strong></span>
+                    )}
+                  </div>
+                  {aiAnalysis.deadline_days && (
+                    <button onClick={useAnalysisForEvent} className="nc-btn text-xs mt-2" data-testid="ai-use-deadline">
+                      📅 Usar em Criar Agenda
+                    </button>
+                  )}
+                </div>
+              )}
 
               {suggestion && (
                 <div className="bg-yellow-50 border border-yellow-200 p-3 rounded text-sm" data-testid="suggestion-box">
