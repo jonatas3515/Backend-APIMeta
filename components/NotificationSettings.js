@@ -75,17 +75,21 @@ export default function NotificationSettings() {
       body: 'As notificações estão funcionando perfeitamente!',
       tag: `test-${Date.now()}`,
       enabled: true,
-      preferences: {}
+      preferences: prefs
     });
     setTestSent(true);
     setTimeout(() => setTestSent(false), 3000);
   };
 
-  const PERMISSION_LABELS = {
-    granted: 'Permitido',
-    denied: 'Bloqueado pelo navegador',
-    default: 'Pendente'
+  const PERMISSION_BADGES = {
+    granted: { label: '✅ Notificações permitidas no navegador', class: 'bg-green-50 text-green-800 border-green-200' },
+    denied: { label: '❌ Notificações bloqueadas no navegador', class: 'bg-red-50 text-red-700 border-red-200' },
+    default: { label: '⚠️ Permissão pendente', class: 'bg-amber-50 text-amber-800 border-amber-200' },
+    unsupported: { label: '➖ Não suportado neste navegador', class: 'bg-nc-gray-100 text-nc-text-secondary border-nc-gray-200' }
   };
+
+  const permissionKey = isSupported() ? (browserPermission || 'default') : 'unsupported';
+  const badge = PERMISSION_BADGES[permissionKey] || PERMISSION_BADGES.default;
 
   if (loading) return <p className="text-sm text-nc-text-secondary">Carregando...</p>;
 
@@ -101,9 +105,12 @@ export default function NotificationSettings() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h3 className="font-semibold text-nc-text-title">Notificações do navegador</h3>
-            <p className="text-sm text-nc-text-secondary">
-              Status: {isSupported() ? (PERMISSION_LABELS[browserPermission] || 'Pendente') : 'Não suportado neste navegador'}
-            </p>
+            <span
+              className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border mt-1 ${badge.class}`}
+              data-testid="browser-permission-badge"
+            >
+              {badge.label}
+            </span>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
             {browserPermission === 'default' && isSupported() && (
@@ -111,15 +118,16 @@ export default function NotificationSettings() {
                 onClick={handleRequestPermission}
                 className="nc-btn px-3 py-2 text-sm"
               >
-                Permitir notificações no navegador
+                Autorizar no Navegador
               </button>
             )}
             {browserPermission === 'granted' && (
               <button
                 onClick={handleTestNotification}
                 className="nc-btn px-3 py-2 text-sm"
+                data-testid="btn-test-notification"
               >
-                {testSent ? 'Notificação enviada!' : '🔔 Testar Notificação'}
+                {testSent ? 'Notificação enviada!' : '🔔 Enviar Notificação de Teste'}
               </button>
             )}
           </div>

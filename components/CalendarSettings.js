@@ -92,6 +92,34 @@ export default function CalendarSettings() {
     }
   };
 
+  const handleSyncBatch = async () => {
+    setSyncing(true);
+    setSyncMessage(null);
+    try {
+      const data = await apiJson('/api/calendar-integrations/sync-batch', {
+        method: 'POST',
+        body: JSON.stringify({ provider: 'google', days: 60 })
+      });
+      const synced = data?.syncedCount ?? 0;
+      const failed = data?.failedCount ?? 0;
+      setSyncMessage({
+        type: 'success',
+        message: `Sincronização concluída: ${synced} item(ns) no Google Calendar${failed ? `, ${failed} com erro` : ''}.`
+      });
+    } catch (error) {
+      console.error('Erro na sincronização em lote:', error);
+      setSyncMessage({
+        type: 'error',
+        message: error?.payload?.reconnect
+          ? 'Conexão com o Google expirou. Desconecte e conecte novamente.'
+          : 'Erro na sincronização em lote'
+      });
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncMessage(null), 6000);
+    }
+  };
+
   const handleDisconnect = async (provider) => {
     if (!confirm(`Deseja desconectar o ${provider === 'google' ? 'Google Calendar' : 'Outlook Calendar'}?`)) return;
 
@@ -210,11 +238,16 @@ export default function CalendarSettings() {
         <div className="p-4 border rounded-lg bg-white space-y-2">
           <h4 className="font-medium text-gray-900">🔄 Sincronização manual</h4>
           <p className="text-xs text-gray-500">
-            Sincronize um evento/pelo caso ou lembrete com o Google Calendar.
+            Envia todos os prazos, eventos e lembretes dos próximos 60 dias para o Google Calendar.
           </p>
-          <div className="flex gap-2 flex-wrap text-xs text-gray-500">
-            <span>Exemplo: event_id e tabela (case_events, cases, chat_reminders)</span>
-          </div>
+          <button
+            onClick={handleSyncBatch}
+            disabled={syncing}
+            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            data-testid="btn-sync-batch"
+          >
+            {syncing ? 'Sincronizando...' : '📅 Sincronizar Todos os Prazos'}
+          </button>
         </div>
       )}
 
