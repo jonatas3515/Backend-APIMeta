@@ -19,7 +19,8 @@ export default function SettingsPanel({ initialView = 'users' }) {
   const isEstagiario = profile?.role === 'estagiario';
 
   const canAccessUsers = isAdmin || isAdvogado;
-  const canAccessSignatures = isAdmin || isAdvogado;
+  // Alinhado com pages/api/signatures/config.js, que exige role === 'admin'
+  const canAccessSignatures = isAdmin;
 
   useEffect(() => {
     if (isEstagiario && activeView !== 'profile') {
@@ -55,7 +56,7 @@ export default function SettingsPanel({ initialView = 'users' }) {
 
       <div className="flex-1 overflow-y-auto">
         {activeView === 'users' && canAccessUsers && (
-          <UserManagement viewMode="users" />
+          <UserManagement />
         )}
         {activeView === 'signatures' && canAccessSignatures && (
           <SignatureSettings />

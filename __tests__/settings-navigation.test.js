@@ -39,8 +39,16 @@ describe('SettingsPanel - navegacao de perfil', () => {
     expect(container.textContent).not.toContain('✍️ Assinatura Eletrônica');
   });
 
-  test('advogado/admin ve Usuarios, Assinatura Eletronica e Perfil', () => {
+  test('advogado ve Usuarios e Perfil, mas nao Assinatura Eletronica (backend exige admin)', () => {
     useAuth.mockReturnValue({ profile: { role: 'advogado' } });
+    const { container } = render(React.createElement(SettingsPanel, { initialView: 'users' }));
+    expect(container.textContent).toContain('👥 Usuários');
+    expect(container.textContent).not.toContain('✍️ Assinatura Eletrônica');
+    expect(container.textContent).toContain('👤 Perfil');
+  });
+
+  test('admin ve Usuarios, Assinatura Eletronica e Perfil', () => {
+    useAuth.mockReturnValue({ profile: { role: 'admin' } });
     const { container } = render(React.createElement(SettingsPanel, { initialView: 'users' }));
     expect(container.textContent).toContain('👥 Usuários');
     expect(container.textContent).toContain('✍️ Assinatura Eletrônica');

@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/useAuth';
-import SignatureSettings from './SignatureSettings';
+import { apiJson } from '../lib/apiClient';
 
-export default function UserManagement({ viewMode = null }) {
+export default function UserManagement() {
   const { profile, changePassword } = useAuth();
-  const [activeSection, setActiveSection] = useState(viewMode || 'users');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -32,21 +31,11 @@ export default function UserManagement({ viewMode = null }) {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const token = (await getSessionToken())?.access_token;
-      const res = await fetch('/api/auth/users', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data);
-      } else {
-        const err = await res.json();
-        setError(err.error || 'Erro ao buscar usuários');
-      }
+      const data = await apiJson('/api/auth/users', { method: 'GET' });
+      setUsers(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
-      setError('Erro ao conectar com servidor');
+      setError(err.message || 'Erro ao conectar com servidor');
     } finally {
       setLoading(false);
     }
@@ -84,11 +73,6 @@ export default function UserManagement({ viewMode = null }) {
     }
   };
 
-  const getSessionToken = async () => {
-    const { data } = await import('../lib/supabaseClient').then(m => m.supabase.auth.getSession());
-    return data?.session;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -100,52 +84,31 @@ export default function UserManagement({ viewMode = null }) {
     }
 
     try {
-      const token = (await getSessionToken())?.access_token;
-      const res = await fetch('/api/auth/users', {
+      await apiJson('/api/auth/users', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
         body: JSON.stringify(formData)
       });
 
-      if (res.ok) {
-        setMessage('Usuário criado com sucesso');
-        setFormData({ name: '', email: '', role: 'estagiario', password: '' });
-        setShowForm(false);
-        fetchUsers();
-      } else {
-        const err = await res.json();
-        setError(err.error || 'Erro ao criar usuário');
-      }
+      setMessage('Usuário criado com sucesso');
+      setFormData({ name: '', email: '', role: 'estagiario', password: '' });
+      setShowForm(false);
+      fetchUsers();
     } catch (err) {
       console.error(err);
-      setError('Erro ao conectar com servidor');
+      setError(err.message || 'Erro ao criar usuário');
     }
   };
 
   const toggleActive = async (userId, isActive) => {
     try {
-      const token = (await getSessionToken())?.access_token;
-      const res = await fetch('/api/auth/users', {
+      await apiJson('/api/auth/users', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
         body: JSON.stringify({ id: userId, is_active: !isActive })
       });
-
-      if (res.ok) {
-        fetchUsers();
-      } else {
-        const err = await res.json();
-        setError(err.error || 'Erro ao atualizar usuário');
-      }
+      fetchUsers();
     } catch (err) {
       console.error(err);
-      setError('Erro ao conectar com servidor');
+      setError(err.message || 'Erro ao atualizar usuário');
     }
   };
 
@@ -172,37 +135,7 @@ export default function UserManagement({ viewMode = null }) {
 
   return (
     <div className="flex-1 flex flex-col bg-white overflow-y-auto">
-      {/* Abas de seção - oculta quando viewMode está definido */}
-      {!viewMode && (
-        <div className="flex border-b border-gray-200 bg-gray-50">
-          <button
-            onClick={() => setActiveSection('users')}
-            className={`px-6 py-3 font-medium text-sm border-b-2 transition ${
-              activeSection === 'users'
-                ? 'text-blue-600 border-blue-600'
-                : 'text-gray-600 border-transparent hover:text-gray-900'
-            }`}
-          >
-            👥 Usuários
-          </button>
-          {isAdmin && (
-            <button
-              onClick={() => setActiveSection('signatures')}
-              className={`px-6 py-3 font-medium text-sm border-b-2 transition ${
-                activeSection === 'signatures'
-                  ? 'text-blue-600 border-blue-600'
-                  : 'text-gray-600 border-transparent hover:text-gray-900'
-              }`}
-            >
-              ✍️ Assinatura Eletrônica
-            </button>
-          )}
-        </div>
-      )}
-
       <div className="flex-1 p-6 overflow-y-auto">
-        {activeSection === 'users' ? (
-          <>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">
           {isAdmin ? '⚙️ Gestão de Usuários' : '🎓 Configurações'}
@@ -401,10 +334,6 @@ export default function UserManagement({ viewMode = null }) {
           </tbody>
         </table>
       )}
-          </>
-        ) : activeSection === 'signatures' ? (
-          <SignatureSettings />
-        ) : null}
       </div>
     </div>
   );

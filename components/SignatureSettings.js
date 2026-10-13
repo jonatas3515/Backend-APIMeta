@@ -5,6 +5,30 @@ export default function SignatureSettings() {
   const [integrations, setIntegrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  const webhookUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/api/signatures/webhook`
+    : '';
+
+  const copyWebhookUrl = async () => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(webhookUrl);
+      } else {
+        const el = document.createElement('textarea');
+        el.value = webhookUrl;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch (err) {
+      setError('Não foi possível copiar a URL. Copie manualmente.');
+    }
+  };
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     platform: 'zapsign',
@@ -220,6 +244,26 @@ export default function SignatureSettings() {
             </div>
           ))
         )}
+      </div>
+
+      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg" data-testid="webhook-url-card">
+        <p className="font-semibold text-amber-900 mb-1">🔔 Webhook da ZapSign</p>
+        <p className="text-sm text-amber-800 mb-2">
+          Cadastre esta URL no painel da ZapSign para que o sistema receba os eventos de
+          assinatura e avance automaticamente a etapa do funil quando um contrato for concluído.
+        </p>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 text-xs bg-white border border-amber-200 rounded px-3 py-2 break-all" data-testid="webhook-url">
+            {webhookUrl}
+          </code>
+          <button
+            onClick={copyWebhookUrl}
+            className="px-3 py-2 text-xs font-medium bg-amber-600 text-white rounded hover:bg-amber-700 transition whitespace-nowrap"
+            data-testid="btn-copy-webhook"
+          >
+            {copied ? '✅ Copiado!' : '📋 Copiar URL do Webhook'}
+          </button>
+        </div>
       </div>
 
       <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
