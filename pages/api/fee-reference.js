@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { withAuth, requireRole } from '@/lib/auth';
 import { calculateRegionalSuggestion, normalizeText, normalizeLegalArea, rankServiceMatches } from '@/lib/feeSuggestion';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)

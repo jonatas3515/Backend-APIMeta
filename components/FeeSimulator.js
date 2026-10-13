@@ -14,6 +14,8 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   const [result, setResult] = useState(null);
   const [message, setMessage] = useState(null);
   const [selectedService, setSelectedService] = useState('');
+  const [caseOptions, setCaseOptions] = useState([]);
+  const [selectedCaseId, setSelectedCaseId] = useState('');
   const [oabReference, setOabReference] = useState(null);
   const [oabAmbiguous, setOabAmbiguous] = useState(false);
   const [oabCandidates, setOabCandidates] = useState([]);
@@ -36,7 +38,19 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   useEffect(() => {
     fetchServices();
     fetchSimulations();
+    if (!caseId) fetchActiveCases();
   }, [caseId]);
+
+  const fetchActiveCases = async () => {
+    try {
+      const data = await apiJson('/api/cases');
+      const list = Array.isArray(data) ? data : [];
+      setCaseOptions(list.filter((c) => c.status !== 'encerrado' && c.status !== 'cancelado'));
+    } catch (err) {
+      console.error('[FEE-SIMULATOR] Erro ao buscar casos ativos:', err);
+      setCaseOptions([]);
+    }
+  };
 
   const fetchServices = async () => {
     try {
@@ -143,10 +157,9 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   }, [selectedService, caseData?.legal_area, caseData?.case_type]);
 
   const fetchSimulations = async () => {
-    if (!caseId) return;
     try {
-      
-      const data = await apiJson(`/api/fee-simulations?case_id=${caseId}`);
+      const url = caseId ? `/api/fee-simulations?case_id=${caseId}` : '/api/fee-simulations';
+      const data = await apiJson(url);
       setSimulations(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('[FEE-SIMULATOR] Erro ao buscar simulações:', err);
@@ -239,9 +252,11 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
     }
   };
 
+  const effectiveCaseId = caseId || selectedCaseId;
+
   const handleSave = async (status = 'rascunho') => {
     if (!result) return;
-    if (!caseId) {
+    if (!effectiveCaseId) {
       setMessage({ type: 'error', text: 'Selecione um caso para salvar a simulação.' });
       return;
     }
@@ -250,7 +265,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       
       const final = form.final_amount ? parseFloat(form.final_amount) : (oabReference?.regional_suggestion || result.suggested_amount);
       const payload = {
-        case_id: caseId,
+        case_id: effectiveCaseId,
         service_id: selectedService,
         complexity: form.complexity,
         urgency: form.urgency,
@@ -295,6 +310,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         proposal_valid_until: ''
       });
       setSelectedService('');
+      setSelectedCaseId('');
       fetchSimulations();
     } catch (err) {
       const text = getErrorMessage(err, 'Erro ao salvar simulação. Tente novamente.');
@@ -351,7 +367,28 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         </div>
       )}
 
+      {!hideForm && (
       <div className="space-y-3">
+        {!caseId && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Caso vinculado</label>
+            <select
+              value={selectedCaseId}
+              onChange={(e) => setSelectedCaseId(e.target.value)}
+              className="w-full mt-1 border rounded p-2 text-sm"
+              data-testid="select-case"
+            >
+              <option value="">Selecione um caso ativo...</option>
+              {caseOptions.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.title || `Caso ${c.id}`}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Obrigatório para salvar o rascunho ou gerar a proposta.</p>
+          </div>
+        )}
+
         <div>
           <label className="block text-sm font-medium text-gray-700">Serviço</label>
           <select
@@ -520,8 +557,9 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           </button>
         </div>
       </div>
+      )}
 
-      {result && (
+      {!hideForm && result && (
         <div className={`p-4 border rounded space-y-3 ${useOabBase ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'}`}>
           <div className="flex items-center justify-between">
             <p className={`text-xs font-semibold uppercase flex items-center gap-1 ${useOabBase ? 'text-green-700' : 'text-blue-700'}`}>
@@ -682,6 +720,9 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-medium">{sim.fee_service_catalog?.name || 'Serviço'}</p>
+                    {sim.cases?.title && (
+                      <p className="text-gray-600">Caso: {sim.cases.title}</p>
+                    )}
                     <p className="text-gray-600">Status: <span className="capitalize font-semibold">{sim.status}</span></p>
                     <p className="text-gray-600">Sugerido: R$ {Number(sim.suggested_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                     {sim.final_amount && sim.final_amount !== sim.suggested_amount && (

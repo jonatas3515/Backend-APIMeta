@@ -10,7 +10,7 @@ describe('tabResolver - mapeamento de abas', () => {
     const result = resolveTab('fee-services');
     expect(result).not.toBeNull();
     expect(result.label).toBe('Honorários');
-    expect(result.minRole).toBe('admin');
+    expect(result.minRole).toBe('advogado');
   });
 
   test('users resolve para Config.', () => {

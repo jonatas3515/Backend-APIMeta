@@ -3,8 +3,8 @@ import { withAuth, requireRole, hasMinimumRole } from '@/lib/auth';
 import logger from '@/lib/logger';
 import { incrementMetric } from '@/lib/metrics';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
 const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
@@ -29,7 +29,7 @@ async function handler(req, res) {
     if (method === 'GET') {
       let query = supabaseAdmin
         .from('fee_simulations')
-        .select('*, fee_service_catalog(name, legal_area, case_type)');
+        .select('*, fee_service_catalog(name, legal_area, case_type), cases(id, title)');
       if (id) query = query.eq('id', id).single();
       if (case_id && case_id !== 'undefined' && case_id !== 'null') query = query.eq('case_id', case_id);
       if (status) query = query.eq('status', status);
