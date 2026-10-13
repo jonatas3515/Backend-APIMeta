@@ -194,19 +194,22 @@ async function handler(req, res) {
   }
 }
 
-function buildEventTitle(internalEvent, table) {
+export function buildEventTitle(internalEvent, table) {
   if (table === 'cases') return `Prazo: ${internalEvent.title || 'Caso #' + internalEvent.id}`;
-  if (table === 'chat_reminders') return `Lembrete: ${internalEvent.description || 'Lembrete #' + internalEvent.id}`;
+  if (table === 'chat_reminders') {
+    const label = internalEvent.title || internalEvent.message || internalEvent.description || 'Lembrete #' + internalEvent.id;
+    return `Lembrete: ${label}`;
+  }
   if (table === 'case_events') return `${internalEvent.event_type || 'Evento'}: ${internalEvent.description || 'Evento #' + internalEvent.id}`;
   return 'Evento N&C';
 }
 
-function buildEventDescription(internalEvent, table) {
+export function buildEventDescription(internalEvent, table) {
   if (table === 'cases') {
     return `Caso #${internalEvent.id} - ${internalEvent.case_type || ''}\nÁrea: ${internalEvent.legal_area || ''}\nMunicípio: ${internalEvent.municipality || ''}\nPrioridade: ${internalEvent.priority || ''}`;
   }
   if (table === 'chat_reminders') {
-    return internalEvent.description || '';
+    return internalEvent.message || internalEvent.description || '';
   }
   if (table === 'case_events') {
     return internalEvent.description || '';

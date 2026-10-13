@@ -22,6 +22,8 @@ export default function AgendaPanel() {
   const [icalUrl, setIcalUrl] = useState(null);
   const [showIcal, setShowIcal] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [batchSyncing, setBatchSyncing] = useState(false);
+  const [googleConnected, setGoogleConnected] = useState(false);
   const [apiError, setApiError] = useState(null);
   const [selectedItems, setSelectedItems] = useState(new Set());
   const { selectedArea, setSelectedArea } = useAreaFilter();
@@ -49,6 +51,9 @@ export default function AgendaPanel() {
   useEffect(() => {
     if (showIcal && !icalUrl) {
       fetchIcalUrl();
+    }
+    if (showIcal) {
+      fetchIntegrations();
     }
   }, [showIcal]);
 
@@ -99,6 +104,34 @@ export default function AgendaPanel() {
     if (summary) {
       navigator.clipboard.writeText(summary);
       alert('Resumo copiado!');
+    }
+  };
+
+  const fetchIntegrations = async () => {
+    try {
+      const data = await apiJson('/api/calendar-integrations');
+      const google = (data?.integrations || []).find(i => i.provider === 'google' && i.is_active);
+      setGoogleConnected(!!google);
+    } catch (error) {
+      setGoogleConnected(false);
+    }
+  };
+
+  const handleSyncAll = async () => {
+    setBatchSyncing(true);
+    setApiError(null);
+    try {
+      const data = await apiJson('/api/calendar-integrations/sync-batch', {
+        method: 'POST',
+        body: JSON.stringify({ provider: 'google', days: 60 })
+      });
+      const failedNote = data.failedCount > 0 ? ` (${data.failedCount} falha(s))` : '';
+      alert(`${data.syncedCount || 0} prazo(s)/evento(s) sincronizados com o Google Calendar${failedNote}.`);
+    } catch (error) {
+      console.error('[AGENDA] Erro na sincronização em lote:', error);
+      setApiError('Erro na sincronização em lote. Verifique a conexão com o Google Calendar.');
+    } finally {
+      setBatchSyncing(false);
     }
   };
 
@@ -403,6 +436,15 @@ export default function AgendaPanel() {
                 >
                   {syncing ? 'Sincronizando...' : `Sincronizar selecionados (${selectedItems.size})`}
                 </button>
+                {googleConnected && (
+                  <button
+                    onClick={handleSyncAll}
+                    disabled={batchSyncing}
+                    className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {batchSyncing ? 'Sincronizando...' : 'Sincronizar Todos os Prazos'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

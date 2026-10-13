@@ -19,7 +19,7 @@ async function handler(req, res) {
     const [{ data: integrations }, { data: user }] = await Promise.all([
       supabaseAdmin
         .from('user_calendar_integrations')
-        .select('id, provider, email, connected_at, updated_at, is_active, expires_at, last_sync_at, last_sync_error')
+        .select('id, provider, email, connected_at, updated_at, is_active, expires_at, last_sync_at, last_sync_error, refresh_token_encrypted')
         .eq('user_id', userId),
       supabaseAdmin
         .from('users')
@@ -34,11 +34,16 @@ async function handler(req, res) {
       ? `${protocol}://${host}/api/calendar-sync/ical?token=${user.ical_token}`
       : null;
 
-    // Marca integrações expiradas como inativas
+    // Marca integrações realmente indisponíveis como inativas.
+    // O access_token do Google expira em ~1h, mas getValidAccessToken()
+    // renova automaticamente enquanto houver refresh_token. A integração
+    // só é inativa se is_active=false OU não houver nem refresh token
+    // nem access_token válido. O campo refresh_token_encrypted é
+    // removido da resposta (nunca expor tokens, mesmo cifrados).
     const now = new Date();
-    const activeIntegrations = (integrations || []).map(i => ({
+    const activeIntegrations = (integrations || []).map(({ refresh_token_encrypted, ...i }) => ({
       ...i,
-      is_active: i.is_active && new Date(i.expires_at) > now
+      is_active: i.is_active && (!!refresh_token_encrypted || new Date(i.expires_at) > now)
     }));
 
     return res.status(200).json({
