@@ -4,6 +4,12 @@ import { apiJson } from '../lib/apiClient';
 const AREAS = ['', 'civel', 'trabalhista', 'previdenciario', 'administrativo', 'consumidor', 'familia', 'tributario'];
 const TIPOS = ['', 'modelo_peca', 'clausula', 'tese', 'checklist', 'jurisprudencia'];
 const TRIBUNAIS = ['', 'TJBA', 'TRF1', 'TRT5', 'TRF5', 'STJ', 'STF'];
+const KNOWLEDGE_TYPES = ['modelo_peca', 'tese', 'clausula', 'jurisprudencia', 'checklist'];
+
+function makeTitle(query) {
+  const trimmed = String(query || '').trim();
+  return trimmed.length > 50 ? `${trimmed.slice(0, 50)}…` : trimmed;
+}
 
 const fetchTemplates = async (area, caseType) => {
   try {
@@ -38,6 +44,96 @@ export default function OfficeAIAssistant() {
   const [answer, setAnswer] = useState('');
   const [sources, setSources] = useState([]);
   const [error, setError] = useState('');
+  const [saveModal, setSaveModal] = useState(null); // 'knowledge' | 'template'
+  const [saveForm, setSaveForm] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState('');
+
+  const showFeedback = (text) => {
+    setFeedback(text);
+    setTimeout(() => setFeedback(''), 5000);
+  };
+
+  const handleCopy = async () => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(answer);
+      } else {
+        const el = document.createElement('textarea');
+        el.value = answer;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+      showFeedback('📋 Resposta copiada!');
+    } catch (err) {
+      showFeedback('Não foi possível copiar. Selecione o texto manualmente.');
+    }
+  };
+
+  const openKnowledgeModal = () => {
+    setSaveForm({
+      title: makeTitle(query),
+      type: KNOWLEDGE_TYPES.includes(type) ? type : 'modelo_peca',
+      area,
+      tribunal,
+      content: answer
+    });
+    setSaveModal('knowledge');
+  };
+
+  const openTemplateModal = () => {
+    setSaveForm({
+      name: makeTitle(query),
+      description: 'Minuta gerada via Assistente IA',
+      legal_area: area,
+      template_text: answer
+    });
+    setSaveModal('template');
+  };
+
+  const closeSaveModal = () => {
+    setSaveModal(null);
+    setSaveForm({});
+    setSaving(false);
+  };
+
+  const confirmSave = async () => {
+    setSaving(true);
+    try {
+      if (saveModal === 'knowledge') {
+        await apiJson('/api/knowledge/documents', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: saveForm.title,
+            type: saveForm.type,
+            area: saveForm.area || null,
+            tribunal: saveForm.tribunal || null,
+            tags: ['gerado_por_ia'],
+            content: saveForm.content
+          })
+        });
+        showFeedback('✅ Salvo como rascunho na Base de Conhecimento!');
+      } else if (saveModal === 'template') {
+        await apiJson('/api/templates', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: saveForm.name,
+            description: saveForm.description || 'Minuta gerada via Assistente IA',
+            legal_area: saveForm.legal_area || null,
+            template_text: saveForm.template_text
+          })
+        });
+        showFeedback('✅ Salvo na biblioteca de Modelos de Documento!');
+      }
+      closeSaveModal();
+    } catch (err) {
+      console.error('[AI] Erro ao salvar:', err);
+      setError(err.message || 'Erro ao salvar a resposta.');
+      setSaving(false);
+    }
+  };
 
   const handleAsk = async (e) => {
     e.preventDefault();
@@ -154,11 +250,123 @@ export default function OfficeAIAssistant() {
           </div>
         )}
 
+        {feedback && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700" data-testid="ai-save-feedback">
+            {feedback}
+          </div>
+        )}
+
         {answer && (
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-gray-700 mb-2">Resposta</h2>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-sm font-semibold text-gray-700">Resposta</h2>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCopy}
+                  className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-100"
+                  title="Copiar resposta"
+                >
+                  📋 Copiar
+                </button>
+                <button
+                  onClick={openKnowledgeModal}
+                  className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-100"
+                  title="Salvar como rascunho na Base de Conhecimento"
+                  data-testid="btn-save-knowledge"
+                >
+                  💾 Salvar na Base
+                </button>
+                <button
+                  onClick={openTemplateModal}
+                  className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-100"
+                  title="Salvar na biblioteca de modelos"
+                  data-testid="btn-save-template"
+                >
+                  📄 Salvar como Modelo
+                </button>
+              </div>
+            </div>
             <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
               {answer}
+            </div>
+          </div>
+        )}
+
+        {saveModal === 'knowledge' && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeSaveModal} role="dialog" aria-modal="true" aria-label="Salvar na Base de Conhecimento">
+            <div className="bg-white rounded-lg max-w-lg w-full p-5 shadow-xl space-y-3" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-lg font-semibold text-gray-900">Salvar na Base de Conhecimento</h3>
+              <input
+                value={saveForm.title || ''}
+                onChange={(e) => setSaveForm((s) => ({ ...s, title: e.target.value }))}
+                placeholder="Título"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                data-testid="knowledge-title"
+              />
+              <div className="grid grid-cols-3 gap-2">
+                <select value={saveForm.type || 'modelo_peca'} onChange={(e) => setSaveForm((s) => ({ ...s, type: e.target.value }))} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm bg-white" data-testid="knowledge-type">
+                  {KNOWLEDGE_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
+                </select>
+                <select value={saveForm.area || ''} onChange={(e) => setSaveForm((s) => ({ ...s, area: e.target.value }))} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm bg-white" data-testid="knowledge-area">
+                  {AREAS.map(a => <option key={a} value={a}>{a ? a.charAt(0).toUpperCase() + a.slice(1) : 'Área'}</option>)}
+                </select>
+                <select value={saveForm.tribunal || ''} onChange={(e) => setSaveForm((s) => ({ ...s, tribunal: e.target.value }))} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm bg-white" data-testid="knowledge-tribunal">
+                  {TRIBUNAIS.map(t => <option key={t} value={t}>{t || 'Tribunal'}</option>)}
+                </select>
+              </div>
+              <textarea
+                value={saveForm.content || ''}
+                onChange={(e) => setSaveForm((s) => ({ ...s, content: e.target.value }))}
+                rows={8}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
+                data-testid="knowledge-content"
+              />
+              <div className="flex justify-end gap-2">
+                <button onClick={closeSaveModal} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg" disabled={saving}>Cancelar</button>
+                <button onClick={confirmSave} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg disabled:opacity-60" disabled={saving || !saveForm.title?.trim() || !saveForm.content?.trim()} data-testid="knowledge-confirm">
+                  {saving ? 'Salvando...' : 'Salvar rascunho'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {saveModal === 'template' && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeSaveModal} role="dialog" aria-modal="true" aria-label="Salvar como Modelo">
+            <div className="bg-white rounded-lg max-w-lg w-full p-5 shadow-xl space-y-3" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-lg font-semibold text-gray-900">Salvar como Modelo de Documento</h3>
+              <input
+                value={saveForm.name || ''}
+                onChange={(e) => setSaveForm((s) => ({ ...s, name: e.target.value }))}
+                placeholder="Nome do modelo"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                data-testid="template-name"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  value={saveForm.description || ''}
+                  onChange={(e) => setSaveForm((s) => ({ ...s, description: e.target.value }))}
+                  placeholder="Descrição"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                  data-testid="template-description"
+                />
+                <select value={saveForm.legal_area || ''} onChange={(e) => setSaveForm((s) => ({ ...s, legal_area: e.target.value }))} className="w-full px-2 py-2 border border-gray-300 rounded-lg text-sm bg-white" data-testid="template-area">
+                  {AREAS.map(a => <option key={a} value={a}>{a ? a.charAt(0).toUpperCase() + a.slice(1) : 'Área Jurídica'}</option>)}
+                </select>
+              </div>
+              <textarea
+                value={saveForm.template_text || ''}
+                onChange={(e) => setSaveForm((s) => ({ ...s, template_text: e.target.value }))}
+                rows={8}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
+                data-testid="template-text"
+              />
+              <div className="flex justify-end gap-2">
+                <button onClick={closeSaveModal} className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg" disabled={saving}>Cancelar</button>
+                <button onClick={confirmSave} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg disabled:opacity-60" disabled={saving || !saveForm.name?.trim() || !saveForm.template_text?.trim()} data-testid="template-confirm">
+                  {saving ? 'Salvando...' : 'Salvar modelo'}
+                </button>
+              </div>
             </div>
           </div>
         )}
