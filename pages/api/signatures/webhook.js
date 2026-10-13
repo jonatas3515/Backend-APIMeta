@@ -1,6 +1,7 @@
 import { supabaseAdmin as supabase } from '../../../lib/auth';
 import crypto from 'crypto';
 import { sanitizeError } from '../../../lib/webhookLog';
+import { getFunnelStageIndex } from '../../../lib/funnelStages';
 
 const ZAPSIGN_WEBHOOK_SECRET = process.env.ZAPSIGN_WEBHOOK_SECRET;
 
@@ -221,6 +222,9 @@ async function handleDocumentCompleted(data, res) {
     // Atualiza etapa do caso se configurado
     await updateCaseStage(signature.case_id, signature.document_type);
 
+    // Avança a etapa do funil da conversa quando um contrato é concluído
+    await advanceConversationFunnel(signature);
+
     // Notifica usuário
     await notifySignatureUpdate(signature.case_id, 'completed', signature.signers);
 
@@ -294,6 +298,62 @@ async function updateCaseStage(caseId, documentType) {
     console.log(`[SIGNATURE-WEBHOOK] Caso atualizado para ${nextStage}`);
   } catch (error) {
     console.error('[UPDATE-CASE-STAGE] Erro:', sanitizeError(error));
+  }
+}
+
+// Quando um documento do tipo 'contrato' é concluído, avança a conversa
+// associada para 'contrato_assinado' (sem regredir etapas posteriores).
+async function advanceConversationFunnel(signature) {
+  try {
+    if (!signature || signature.document_type !== 'contrato' || !signature.case_id) return;
+
+    // signature.case_id → cases.conversation_id
+    const { data: caseData, error: caseError } = await supabase
+      .from('cases')
+      .select('conversation_id')
+      .eq('id', signature.case_id)
+      .single();
+
+    if (caseError || !caseData?.conversation_id) return;
+
+    const conversationId = caseData.conversation_id;
+
+    const { data: conv, error: convError } = await supabase
+      .from('conversations')
+      .select('id, funnel_stage')
+      .eq('id', conversationId)
+      .single();
+
+    if (convError || !conv) return;
+
+    // Não regredir: só avança se a etapa atual for anterior a 'contrato_assinado'
+    const targetIndex = getFunnelStageIndex('contrato_assinado');
+    if (getFunnelStageIndex(conv.funnel_stage) >= targetIndex) return;
+
+    const { error: updateError } = await supabase
+      .from('conversations')
+      .update({
+        funnel_stage: 'contrato_assinado',
+        converted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', conversationId);
+
+    if (updateError) throw updateError;
+
+    await supabase
+      .from('funnel_history')
+      .insert({
+        conversation_id: conversationId,
+        from_stage: conv.funnel_stage || null,
+        to_stage: 'contrato_assinado',
+        changed_by: 'system',
+        reason: 'Assinatura eletrônica concluída via ZapSign'
+      });
+
+    console.log(`[SIGNATURE-WEBHOOK] Conversa ${conversationId} avançada para contrato_assinado`);
+  } catch (error) {
+    console.error('[FUNNEL-ADVANCE] Erro:', sanitizeError(error));
   }
 }
 

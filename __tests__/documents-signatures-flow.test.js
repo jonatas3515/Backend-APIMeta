@@ -416,3 +416,93 @@ describe('POST /api/signatures/webhook', () => {
     expect(res.status).toHaveBeenCalledWith(200);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 10. Webhook document.completed -> auto-avanco do funil da conversa
+// ---------------------------------------------------------------------------
+describe('POST /api/signatures/webhook - auto-avanco do funil', () => {
+  const handler = require('../pages/api/signatures/webhook').default;
+
+  function recordingChain(table, result, ops) {
+    const c = chain(result);
+    c.update = jest.fn((payload) => { ops.updates.push({ table, payload }); return c; });
+    c.insert = jest.fn((payload) => { ops.inserts.push({ table, payload }); return c; });
+    return c;
+  }
+
+  function setupCompletedMocks({ signature, conversation }) {
+    const ops = { updates: [], inserts: [] };
+    mockAdminFrom.mockImplementation((table) => {
+      if (table === 'signature_webhook_logs') return chain({ data: [], error: null });
+      if (table === 'document_signatures') return recordingChain(table, { data: signature, error: null }, ops);
+      if (table === 'cases') return recordingChain(table, { data: { conversation_id: 'conv-1' }, error: null }, ops);
+      if (table === 'conversations') return recordingChain(table, { data: conversation, error: null }, ops);
+      return recordingChain(table, { data: null, error: null }, ops);
+    });
+    return ops;
+  }
+
+  function completedReq(documentType = 'contrato') {
+    return {
+      method: 'POST',
+      headers: {},
+      query: {},
+      body: { event: 'document.completed', data: { uuid: 'zap-1', signed_at: '2026-01-01T00:00:00Z' } },
+    };
+  }
+
+  test('contrato concluido avanca conversa para contrato_assinado e registra historico', async () => {
+    const ops = setupCompletedMocks({
+      signature: { id: 'sig-1', case_id: 'case-1', document_type: 'contrato', signers: [], document_url: null },
+      conversation: { id: 'conv-1', funnel_stage: 'proposta_enviada' },
+    });
+
+    const res = mockRes();
+    await handler(completedReq(), res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+
+    const convUpdate = ops.updates.find(u => u.table === 'conversations');
+    expect(convUpdate).toBeTruthy();
+    expect(convUpdate.payload.funnel_stage).toBe('contrato_assinado');
+    expect(convUpdate.payload.converted_at).toBeTruthy();
+
+    const history = ops.inserts.find(i => i.table === 'funnel_history');
+    expect(history).toBeTruthy();
+    expect(history.payload).toMatchObject({
+      conversation_id: 'conv-1',
+      from_stage: 'proposta_enviada',
+      to_stage: 'contrato_assinado',
+      changed_by: 'system',
+      reason: 'Assinatura eletrônica concluída via ZapSign',
+    });
+  });
+
+  test('nao regride conversa ja em etapa posterior (acao_protocolada)', async () => {
+    const ops = setupCompletedMocks({
+      signature: { id: 'sig-1', case_id: 'case-1', document_type: 'contrato', signers: [], document_url: null },
+      conversation: { id: 'conv-1', funnel_stage: 'acao_protocolada' },
+    });
+
+    const res = mockRes();
+    await handler(completedReq(), res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(ops.updates.some(u => u.table === 'conversations')).toBe(false);
+    expect(ops.inserts.some(i => i.table === 'funnel_history')).toBe(false);
+  });
+
+  test('documento que nao eh contrato nao avanca o funil', async () => {
+    const ops = setupCompletedMocks({
+      signature: { id: 'sig-1', case_id: 'case-1', document_type: 'termo_consentimento', signers: [], document_url: null },
+      conversation: { id: 'conv-1', funnel_stage: 'lead_novo' },
+    });
+
+    const res = mockRes();
+    await handler(completedReq('termo_consentimento'), res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(ops.updates.some(u => u.table === 'conversations')).toBe(false);
+    expect(ops.inserts.some(i => i.table === 'funnel_history')).toBe(false);
+  });
+});

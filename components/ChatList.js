@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatPhone, getFirstName } from '../lib/formatters';
+import { FUNNEL_STAGES, getFunnelStageShortLabel, getFunnelStageLabel, normalizeFunnelStage } from '../lib/funnelStages';
 
 function getFilterCounts(conversations) {
   const counts = { all: 0, unread: 0, archived: 0 };
@@ -34,7 +35,7 @@ const LEGAL_AREA_OPTIONS = [
 export default function ChatList({ conversations, selectedConversation, onSelectConversation, loading, onNewConversation, onDeleteConversation, deletingId }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
-  const [triageFilters, setTriageFilters] = useState({ legal_area: '', municipality: '', agency: '', client_role: '' });
+  const [triageFilters, setTriageFilters] = useState({ legal_area: '', municipality: '', agency: '', client_role: '', funnel_stage: '' });
 
   const uniqueValues = (field) => {
     const values = [];
@@ -66,6 +67,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
       if (triageFilters.municipality && conv.municipality !== triageFilters.municipality) return false;
       if (triageFilters.agency && conv.agency !== triageFilters.agency) return false;
       if (triageFilters.client_role && conv.client_role !== triageFilters.client_role) return false;
+      if (triageFilters.funnel_stage && normalizeFunnelStage(conv.funnel_stage) !== triageFilters.funnel_stage) return false;
       return true;
     })
     .filter(conv => {
@@ -162,6 +164,19 @@ export default function ChatList({ conversations, selectedConversation, onSelect
               <option key={v} value={v}>{v}</option>
             ))}
           </select>
+
+          <select
+            value={triageFilters.funnel_stage}
+            onChange={(e) => setTriageFilters({ ...triageFilters, funnel_stage: e.target.value })}
+            className="nc-select text-xs py-1.5"
+            title="Filtrar por etapa do funil"
+            data-testid="funnel-stage-filter"
+          >
+            <option value="">Etapa do funil</option>
+            {FUNNEL_STAGES.map(stage => (
+              <option key={stage.id} value={stage.id}>{stage.label}</option>
+            ))}
+          </select>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto">
@@ -201,20 +216,25 @@ export default function ChatList({ conversations, selectedConversation, onSelect
                       })()}
                     </span>
                   </div>
-                  {(conv.legal_area || conv.case_type) && (
-                    <div className="flex flex-wrap gap-0.5 mb-1">
-                      {conv.legal_area && (
-                        <span className="text-[9px] px-1 py-0.5 rounded bg-nc-gray-100 text-nc-text-secondary border border-nc-gray-200">
-                          {conv.legal_area}
-                        </span>
-                      )}
-                      {conv.case_type && (
-                        <span className="text-[9px] px-1 py-0.5 rounded bg-nc-white text-nc-text-secondary border border-nc-gray-200">
-                          {conv.case_type}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  <div className="flex flex-wrap gap-0.5 mb-1">
+                    <span
+                      className="text-[9px] px-1 py-0.5 rounded bg-nc-gray-100 text-nc-text-secondary border border-nc-gray-200"
+                      title={getFunnelStageLabel(conv.funnel_stage)}
+                      data-testid="funnel-stage-badge"
+                    >
+                      {getFunnelStageShortLabel(conv.funnel_stage)}
+                    </span>
+                    {conv.legal_area && (
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-nc-gray-100 text-nc-text-secondary border border-nc-gray-200">
+                        {conv.legal_area}
+                      </span>
+                    )}
+                    {conv.case_type && (
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-nc-white text-nc-text-secondary border border-nc-gray-200">
+                        {conv.case_type}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-nc-text-secondary truncate">
                     {conv.messages?.[conv.messages?.length - 1]?.text || 'Sem mensagens'}
                   </p>
