@@ -119,11 +119,53 @@ async function handler(req, res) {
   const parsedDays = parseInt(days, 10);
   const daysAhead = Number.isFinite(parsedDays) ? Math.min(Math.max(parsedDays, 1), MAX_DAYS) : 30;
 
+  try {
+    const result = await syncUserCalendarBatch({ userId, daysAhead });
+
+    if (result.skipped) {
+      return res.status(400).json({ error: result.reason, reconnect: true });
+    }
+
+    if (result.aborted) {
+      return res.status(401).json({
+        success: false,
+        error: result.reason,
+        reconnect: true,
+        syncedCount: result.syncedCount,
+        errors: result.errors
+      });
+    }
+
+    return res.status(200).json({
+      success: result.errors.length === 0,
+      syncedCount: result.syncedCount,
+      failedCount: result.failedCount,
+      total: result.total,
+      errors: result.errors
+    });
+  } catch (error) {
+    if (error.code === 'GOOGLE_AUTH_REQUIRED' || error.reconnect) {
+      return res.status(401).json({ error: error.message, reconnect: true });
+    }
+    console.error('[CALENDAR-SYNC-BATCH] Erro:', error.message);
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+// ============================================================================
+// Sincronização em lote por usuário — reutilizada pelo cron noturno
+// (pages/api/cron/calendar-sync.js) e pelo endpoint POST acima.
+// Retorna um resumo em vez de escrever na resposta HTTP:
+//   { skipped }        — usuário sem integração/token válido
+//   { aborted }        — Google exigiu reconexão no meio do lote
+//   { syncedCount, failedCount, total, errors }
+// ============================================================================
+export async function syncUserCalendarBatch({ userId, daysAhead = 30 } = {}) {
   // Falha rápida: sem integração ativa/token válido não há o que sincronizar.
   try {
     await getValidAccessToken(supabaseAdmin, userId, 'google');
   } catch (error) {
-    return res.status(400).json({ error: error.message, reconnect: true });
+    return { skipped: true, reason: error.message, syncedCount: 0, failedCount: 0, total: 0, errors: [] };
   }
 
   const today = new Date().toISOString().split('T')[0];
@@ -131,7 +173,6 @@ async function handler(req, res) {
   const endDateStr = endDate.toISOString().split('T')[0];
   const nowIso = new Date().toISOString();
 
-  try {
     const [
       { data: cases, error: casesError },
       { data: caseEvents, error: eventsError },
@@ -188,19 +229,20 @@ async function handler(req, res) {
         syncedCount++;
       } catch (error) {
         if (error.code === 'GOOGLE_AUTH_REQUIRED' || error.reconnect) {
-          return res.status(401).json({
-            success: false,
-            error: error.message,
-            reconnect: true,
+          return {
+            aborted: true,
+            reason: error.message,
             syncedCount,
+            failedCount: errors.length + (items.length - syncedCount - errors.length),
+            total: items.length,
             errors
-          });
+          };
         }
         errors.push({ internal_table: table, internal_event_id: item.id, error: error.message });
       }
     }
 
-    // Marca execução do lote na integração (não falha o request se falhar)
+    // Marca execução do lote na integração (não falha o processo se falhar)
     await supabaseAdmin
       .from('user_calendar_integrations')
       .update({
@@ -213,20 +255,12 @@ async function handler(req, res) {
         if (error) console.error('[CALENDAR-SYNC-BATCH] Erro ao atualizar last_sync_at:', error.message);
       });
 
-    return res.status(200).json({
-      success: errors.length === 0,
+    return {
       syncedCount,
       failedCount: errors.length,
       total: items.length,
       errors
-    });
-  } catch (error) {
-    if (error.code === 'GOOGLE_AUTH_REQUIRED' || error.reconnect) {
-      return res.status(401).json({ error: error.message, reconnect: true });
-    }
-    console.error('[CALENDAR-SYNC-BATCH] Erro:', error.message);
-    return res.status(500).json({ error: error.message });
-  }
+    };
 }
 
 export default withAuth(handler, { minRole: 'estagiario' });
