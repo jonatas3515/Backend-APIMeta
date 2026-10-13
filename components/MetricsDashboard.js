@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import useAreaFilter from '../hooks/useAreaFilter';
 import ExportButtons from './ExportButtons';
 import { exportMetricsPdf, exportMetricsExcel } from '../lib/export';
+import { normalizeFunnelStage, getFunnelStageLabel } from '../lib/funnelStages';
 
 export default function MetricsDashboard({ conversations }) {
   const { selectedArea } = useAreaFilter();
@@ -53,7 +54,7 @@ export default function MetricsDashboard({ conversations }) {
       const area = conv.legal_area || 'Não classificado';
       byArea[area] = (byArea[area] || 0) + 1;
 
-      const funnel = conv.funnel_stage || 'intake';
+      const funnel = normalizeFunnelStage(conv.funnel_stage) || 'lead_novo';
       byFunnel[funnel] = (byFunnel[funnel] || 0) + 1;
 
       const municipality = conv.municipality || 'Não informado';
@@ -70,15 +71,6 @@ export default function MetricsDashboard({ conversations }) {
       byMunicipality,
       conversionRate: total > 0 ? Math.round((converted / total) * 100) : 0
     });
-  };
-
-  const funnelLabels = {
-    intake: '📥 Intake',
-    qualificacao: '✅ Qualificação',
-    proposta: '💰 Proposta',
-    contrato: '📝 Contrato',
-    andamento: '⚙️ Andamento',
-    pos_caso: '🏁 Pós-caso'
   };
 
   const areaLabels = {
@@ -184,7 +176,7 @@ export default function MetricsDashboard({ conversations }) {
           <div className="space-y-2">
             {Object.entries(metrics.byFunnel).map(([funnel, count]) => (
               <div key={funnel} className="flex justify-between items-center">
-                <span className="text-sm text-nc-text">{funnelLabels[funnel] || funnel}</span>
+                <span className="text-sm text-nc-text">{getFunnelStageLabel(funnel)}</span>
                 <span className="bg-nc-gray-100 text-nc-text border border-nc-gray-200 text-xs px-2 py-1 rounded-full font-medium">
                   {count}
                 </span>

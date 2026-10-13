@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/useAuth';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
-import Head from 'next/head';
-import { apiCall } from '@/lib/apiClient';
+import { apiJson } from '@/lib/apiClient';
 import Sidebar from '@/components/Sidebar';
 import MetricsDashboard from '@/components/MetricsDashboard';
 import AreaFilterSelector from '@/components/AreaFilterSelector';
@@ -72,10 +71,10 @@ export default function DashboardPage() {
 
     const load = async () => {
       try {
-        const data = await apiCall('/api/notification-preferences', { method: 'GET' });
+        const data = await apiJson('/api/notification-preferences');
         setNotifPrefs(data);
 
-        if (isSupported() && getPermission() === 'default' && (!data.ask_again_after || new Date(data.ask_again_after) < new Date())) {
+        if (isSupported() && getPermission() === 'default' && (!data?.ask_again_after || new Date(data.ask_again_after) < new Date())) {
           setShowNotifPrompt(true);
         }
       } catch (e) {
@@ -91,26 +90,11 @@ export default function DashboardPage() {
       setLoading(true);
       setError(null);
 
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
-
       const url = selectedArea
         ? `/api/dashboard?legal_area=${encodeURIComponent(selectedArea)}`
         : '/api/dashboard';
 
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        throw new Error(errData.error || 'Erro ao carregar dashboard');
-      }
-
-      const result = await response.json();
+      const result = await apiJson(url);
       setData(result);
     } catch (err) {
       console.error('[DASHBOARD] Erro:', err);
@@ -204,9 +188,6 @@ export default function DashboardPage() {
 
   return (
     <>
-      <Head>
-        <title>Dashboard - N&C Advocacia</title>
-      </Head>
       <div className="flex flex-col md:flex-row h-screen bg-nc-surface overflow-hidden">
         <Sidebar activeTab="dashboard" />
         <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
@@ -404,7 +385,7 @@ export default function DashboardPage() {
           onClose={() => setShowNotifPrompt(false)}
           onUpdate={async () => {
             try {
-              const data = await apiCall('/api/notification-preferences', { method: 'GET' });
+              const data = await apiJson('/api/notification-preferences');
               setNotifPrefs(data);
             } catch (e) {
               console.error('[DASHBOARD NOTIFICATIONS] Erro ao recarregar preferências:', e);
