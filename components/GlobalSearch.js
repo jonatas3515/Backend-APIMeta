@@ -170,7 +170,7 @@ export default function GlobalSearch() {
   if (!open) return (
     <button
       onClick={() => setOpen(true)}
-      className="fixed bottom-20 right-4 md:bottom-4 z-50 w-10 h-10 bg-nc-white/90 backdrop-blur-sm text-nc-text-secondary border border-nc-gray-300 rounded-full shadow-sm hover:bg-nc-white hover:text-nc-text transition flex items-center justify-center"
+      className="hidden md:flex fixed md:bottom-4 md:right-4 z-40 w-10 h-10 bg-nc-white/90 backdrop-blur-sm text-nc-text-secondary border border-nc-gray-300 rounded-full shadow-sm hover:bg-nc-white hover:text-nc-text transition items-center justify-center"
       title={`Busca global (${shortcut})`}
     >
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">

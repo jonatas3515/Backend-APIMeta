@@ -64,6 +64,8 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
   const [savingStage, setSavingStage] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showPauseMenu, setShowPauseMenu] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
@@ -996,6 +998,8 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
         </div>
 
         <div className="relative flex flex-wrap items-center gap-1.5 md:gap-2">
+          {/* Desktop: botoes individuais */}
+          <div className="hidden md:flex flex-wrap items-center gap-1.5 md:gap-2">
           {!selectionMode ? (
             <button
               onClick={() => setSelectionMode(true)}
@@ -1084,7 +1088,102 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           >
             ✍️ Assinatura
           </button>
-          
+          </div>
+
+          {/* Mobile: menu de acoes agrupado */}
+          <div className="md:hidden relative flex items-center gap-1.5">
+            {selectionMode ? (
+              <>
+                <button
+                  onClick={() => {
+                    setSelectionMode(false);
+                    setSelectedMessages(new Set());
+                  }}
+                  className="nc-btn text-xs px-3 py-1.5"
+                  title="Cancelar seleção"
+                >
+                  ✗ Cancelar
+                </button>
+                {selectedMessages.size > 0 && (
+                  <button
+                    onClick={deleteSelectedMessages}
+                    className="nc-btn text-xs px-3 py-1.5 bg-red-100 text-red-700 border-red-200 hover:bg-red-200"
+                    title="Excluir mensagens selecionadas"
+                  >
+                    🗑️ Excluir ({selectedMessages.size})
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setShowActionsMenu(!showActionsMenu)}
+                  className="nc-btn text-xs px-3 py-1.5 flex items-center gap-1.5"
+                  title="Ações da conversa"
+                  data-testid="mobile-actions-btn"
+                >
+                  ⚡ Ações ▼
+                </button>
+                {showActionsMenu && (
+                  <div
+                    data-testid="mobile-actions-menu"
+                    className="absolute left-0 top-10 bg-nc-white border border-nc-gray-300 rounded-nc shadow-card p-1.5 z-20 w-56"
+                  >
+                    <button
+                      onClick={() => { setSelectionMode(true); setShowActionsMenu(false); }}
+                      className="w-full text-left px-3 py-2 text-sm text-nc-text hover:bg-nc-gray-100 rounded transition"
+                    >
+                      ✓ Selecionar mensagens
+                    </button>
+                    <button
+                      onClick={() => { setActivePanel(activePanel === 'classification' ? '' : 'classification'); setShowActionsMenu(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm rounded transition ${activePanel === 'classification' ? 'bg-nc-gray-100 font-semibold text-nc-text-title' : 'text-nc-text hover:bg-nc-gray-100'}`}
+                    >
+                      ⚖️ Classificar
+                    </button>
+                    <button
+                      onClick={() => { setActivePanel(activePanel === 'reminders' ? '' : 'reminders'); setShowActionsMenu(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm rounded transition ${activePanel === 'reminders' ? 'bg-nc-gray-100 font-semibold text-nc-text-title' : 'text-nc-text hover:bg-nc-gray-100'}`}
+                    >
+                      ⏰ Lembretes
+                    </button>
+                    <button
+                      onClick={() => { setActivePanel(activePanel === 'documents' ? '' : 'documents'); setShowActionsMenu(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm rounded transition ${activePanel === 'documents' ? 'bg-nc-gray-100 font-semibold text-nc-text-title' : 'text-nc-text hover:bg-nc-gray-100'}`}
+                    >
+                      📄 Documentos
+                    </button>
+                    <button
+                      onClick={() => { setActivePanel(activePanel === 'notes' ? '' : 'notes'); setShowActionsMenu(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm rounded transition ${activePanel === 'notes' ? 'bg-nc-gray-100 font-semibold text-nc-text-title' : 'text-nc-text hover:bg-nc-gray-100'}`}
+                    >
+                      📝 Notas
+                    </button>
+                    <button
+                      onClick={() => { toggleConfidential(); setShowActionsMenu(false); }}
+                      disabled={savingConfidential}
+                      className={`w-full text-left px-3 py-2 text-sm rounded transition ${confidential ? 'bg-nc-gray-100 font-semibold text-nc-text-title' : 'text-nc-text hover:bg-nc-gray-100'}`}
+                    >
+                      {confidential ? '🔒 Sigiloso' : '🔓 Sigiloso'}
+                    </button>
+                    <button
+                      onClick={() => { setShowProfile(!showProfile); setShowActionsMenu(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm rounded transition ${showProfile ? 'bg-nc-gray-100 font-semibold text-nc-text-title' : 'text-nc-text hover:bg-nc-gray-100'}`}
+                    >
+                      👤 Perfil
+                    </button>
+                    <button
+                      onClick={() => { setActivePanel(activePanel === 'signatures' ? '' : 'signatures'); setShowActionsMenu(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm rounded transition ${activePanel === 'signatures' ? 'bg-nc-gray-100 font-semibold text-nc-text-title' : 'text-nc-text hover:bg-nc-gray-100'}`}
+                    >
+                      ✍️ Assinatura
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
           {showPauseMenu && (
             <div className="absolute left-0 top-12 bg-nc-white border border-nc-gray-300 rounded-nc shadow-card p-2 z-10 w-48">
               <button onClick={() => handlePauseBot('15')} className="w-full text-left px-3 py-2 text-sm text-nc-text hover:bg-nc-gray-100 rounded transition">⏱️ 15 minutos</button>
@@ -1595,6 +1694,8 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           )}
 
           <div className="flex gap-2 items-end bg-nc-gray-100 rounded-nc p-2 border border-nc-gray-200 focus-within:border-nc-yellow focus-within:ring-1 focus-within:ring-nc-yellow transition-all">
+            {/* Desktop: botoes individuais */}
+            <div className="hidden sm:flex gap-1 items-end">
             <button
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               className="p-2 text-nc-text-secondary hover:text-nc-yellow hover:bg-nc-white rounded-nc transition"
@@ -1602,11 +1703,13 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
             >
               😊
             </button>
-            
+            </div>
+
+            {/* Input de arquivo (montado sempre, acionado por ref no mobile) */}
             <label
               htmlFor="chat-file-input"
               onClick={() => chatLog('media_select_started', { conversation_id_hash: hashId(conversation.id) })}
-              className="p-2 text-nc-text-secondary hover:text-nc-yellow hover:bg-nc-white rounded-nc transition cursor-pointer"
+              className="hidden sm:flex p-2 text-nc-text-secondary hover:text-nc-yellow hover:bg-nc-white rounded-nc transition cursor-pointer"
               title="Enviar arquivo"
             >
               📎
@@ -1619,11 +1722,13 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                 onChange={handleFileSelect}
               />
             </label>
-            
+
+            {/* Desktop: botao de audio */}
+            <div className="hidden sm:flex">
             <button
               className={`p-2 rounded-nc transition ${
-                isRecording 
-                  ? 'bg-red-500 text-white' 
+                isRecording
+                  ? 'bg-red-500 text-white'
                   : 'text-nc-text-secondary hover:text-nc-yellow hover:bg-nc-white'
               }`}
               title={isRecording ? 'Parar gravação' : 'Gravar áudio'}
@@ -1632,7 +1737,63 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
             >
               {isRecording ? '⏹️' : '🎤'}
             </button>
-            
+            </div>
+
+            {/* Mobile: botao + estilo WhatsApp */}
+            <div className="sm:hidden relative flex items-end">
+              {isRecording ? (
+                <button
+                  className="p-2 rounded-nc bg-red-500 text-white animate-pulse"
+                  title="Parar gravação"
+                  onClick={stopRecording}
+                  disabled={sending}
+                >
+                  ⏹️
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowAttachMenu(!showAttachMenu)}
+                    className="p-2 text-nc-text-secondary hover:text-nc-yellow hover:bg-nc-white rounded-nc transition"
+                    title="Anexar ou gravar"
+                    data-testid="mobile-attach-btn"
+                  >
+                    ➕
+                  </button>
+                  {showAttachMenu && (
+                    <div
+                      data-testid="mobile-attach-menu"
+                      className="absolute bottom-12 left-0 bg-nc-white border border-nc-gray-300 rounded-nc shadow-card p-1.5 z-20 w-44"
+                    >
+                      <button
+                        onClick={() => { setShowAttachMenu(false); setShowEmojiPicker(true); }}
+                        className="w-full text-left px-3 py-2 text-sm text-nc-text hover:bg-nc-gray-100 rounded transition"
+                      >
+                        😊 Emojis
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowAttachMenu(false);
+                          chatLog('media_select_started', { conversation_id_hash: hashId(conversation.id) });
+                          fileInputRef.current?.click();
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-nc-text hover:bg-nc-gray-100 rounded transition"
+                      >
+                        📎 Arquivo
+                      </button>
+                      <button
+                        onClick={() => { setShowAttachMenu(false); startRecording(); }}
+                        disabled={sending}
+                        className="w-full text-left px-3 py-2 text-sm text-nc-text hover:bg-nc-gray-100 rounded transition disabled:opacity-50"
+                      >
+                        🎤 Áudio
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
             <textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}

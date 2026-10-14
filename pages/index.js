@@ -508,6 +508,17 @@ export default function Home() {
             )}
             <div className="flex-1" />
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('nc:open-global-search'));
+                  }
+                }}
+                className="md:hidden p-2 text-nc-text-secondary hover:text-nc-text rounded-full hover:bg-nc-gray-100 transition"
+                title="Buscar"
+              >
+                🔍
+              </button>
               <AreaFilterSelector compact />
               <NotificationProvider>
                 <NotificationBell
