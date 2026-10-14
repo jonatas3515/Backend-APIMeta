@@ -50,6 +50,15 @@ body {
   background: rgba(255, 255, 255, 0.25);
 }
 
+/* Esconde a barra mantendo a rolagem (abas/categorias no mobile) */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
 @layer components {
   .nc-btn {
     @apply inline-flex items-center justify-center px-3 py-2 bg-nc-white text-nc-text border border-nc-gray-300 rounded-nc text-sm font-medium transition-all duration-200;

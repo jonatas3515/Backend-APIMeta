@@ -312,12 +312,12 @@ export default function FeeTablesManager({ viewMode = null }) {
                 );
                 return (
                   <>
-                    <div className="flex flex-wrap gap-2 mb-3">
+                    <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-1 mb-3">
                       {uniqueAreas.map((area) => (
                         <button
                           key={area}
                           onClick={() => setSelectedArea(area)}
-                          className={`px-3 py-1 text-xs rounded border ${
+                          className={`flex-shrink-0 text-xs px-2.5 py-1 rounded border ${
                             selectedArea === area
                               ? 'bg-blue-600 text-white border-blue-600'
                               : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
@@ -329,14 +329,14 @@ export default function FeeTablesManager({ viewMode = null }) {
                       {selectedArea && (
                         <button
                           onClick={() => setSelectedArea('')}
-                          className="px-3 py-1 text-xs rounded border bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200"
+                          className="flex-shrink-0 text-xs px-2.5 py-1 rounded border bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200"
                         >
                           Todas
                         </button>
                       )}
                     </div>
                     <table className="min-w-full text-sm">
-                      <thead className="bg-gray-100">
+                      <thead className="bg-gray-100 whitespace-nowrap">
                         <tr>
                           <th className="p-2 text-left">Área</th>
                           <th className="p-2 text-left">Tipo</th>
@@ -350,13 +350,13 @@ export default function FeeTablesManager({ viewMode = null }) {
                       <tbody>
                         {itemsForSelectedArea.map((item, idx) => (
                           <tr key={idx} className="border-t">
-                            <td className="p-2">{item.legal_area}</td>
-                            <td className="p-2">{item.case_type}</td>
-                            <td className="p-2">{item.service}</td>
-                            <td className="p-2">R$ {Number(item.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                            <td className="p-2">R$ {Number(item.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                            <td className="p-2 font-semibold text-blue-700">R$ {Number(item.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                            <td className="p-2">R$ {Number(item.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                            <td className="p-2 whitespace-nowrap">{item.legal_area}</td>
+                            <td className="p-2 whitespace-nowrap">{item.case_type}</td>
+                            <td className="p-2 whitespace-nowrap">{item.service}</td>
+                            <td className="p-2 whitespace-nowrap">R$ {Number(item.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                            <td className="p-2 whitespace-nowrap">R$ {Number(item.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                            <td className="p-2 whitespace-nowrap font-semibold text-blue-700">R$ {Number(item.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                            <td className="p-2 whitespace-nowrap">R$ {Number(item.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                           </tr>
                         ))}
                       </tbody>

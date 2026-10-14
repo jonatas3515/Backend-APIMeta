@@ -190,7 +190,7 @@ export default function DashboardPage() {
     <>
       <div className="flex flex-col md:flex-row h-screen bg-nc-surface overflow-hidden">
         <Sidebar activeTab="dashboard" />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 pb-24 md:pb-8">
           <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
             <div>
@@ -213,21 +213,21 @@ export default function DashboardPage() {
             {/* Métricas */}
             <div className="lg:col-span-3">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="nc-card p-4">
+                <div className="nc-card p-3 sm:p-4">
                   <p className="text-xs text-nc-text-secondary uppercase tracking-wide">Novos leads hoje</p>
                   <p className="text-2xl font-bold text-nc-text-title mt-1">{data.metrics.new_leads_today}</p>
                   <p className="text-xs text-nc-text-muted mt-1">{data.metrics.leads_comparison}</p>
                 </div>
-                <div className="nc-card p-4">
+                <div className="nc-card p-3 sm:p-4">
                   <p className="text-xs text-nc-text-secondary uppercase tracking-wide">Contratos fechados</p>
                   <p className="text-2xl font-bold text-nc-text-title mt-1">{data.metrics.contracts_today}</p>
                   <p className="text-xs text-nc-text-muted mt-1">{data.metrics.contracts_comparison}</p>
                 </div>
-                <div className="nc-card p-4">
+                <div className="nc-card p-3 sm:p-4">
                   <p className="text-xs text-nc-text-secondary uppercase tracking-wide">Casos ativos</p>
                   <p className="text-2xl font-bold text-nc-text-title mt-1">{data.metrics.active_cases}</p>
                 </div>
-                <div className="nc-card p-4">
+                <div className="nc-card p-3 sm:p-4">
                   <p className="text-xs text-nc-text-secondary uppercase tracking-wide">Prazos hoje</p>
                   <p className="text-2xl font-bold text-red-600 mt-1">{data.metrics.due_today}</p>
                 </div>

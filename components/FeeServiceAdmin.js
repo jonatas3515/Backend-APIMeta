@@ -189,7 +189,7 @@ export default function FeeServiceAdmin({ viewMode = null }) {
 
         <div className="lg:col-span-2 border rounded p-4 bg-white space-y-4">
           <h3 className="font-semibold text-sm">{selected ? 'Editar serviço' : 'Novo serviço'}</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border rounded p-2 text-sm" />
             <input placeholder="Área jurídica" value={form.legal_area} onChange={(e) => setForm({ ...form, legal_area: e.target.value })} className="border rounded p-2 text-sm" />
             <input placeholder="Tipo de caso (opcional)" value={form.case_type} onChange={(e) => setForm({ ...form, case_type: e.target.value })} className="border rounded p-2 text-sm" />
@@ -229,7 +229,7 @@ export default function FeeServiceAdmin({ viewMode = null }) {
           {selected && (
             <div className="pt-4 border-t">
               <h4 className="font-semibold text-sm mb-2">Regras de ajuste</h4>
-              <div className="flex gap-2 mb-2">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-2">
                 <select value={ruleForm.rule_type} onChange={(e) => setRuleForm({ ...ruleForm, rule_type: e.target.value })} className="border rounded p-2 text-sm">
                   {RULE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
@@ -237,8 +237,10 @@ export default function FeeServiceAdmin({ viewMode = null }) {
                 <select value={ruleForm.adjustment_kind} onChange={(e) => setRuleForm({ ...ruleForm, adjustment_kind: e.target.value })} className="border rounded p-2 text-sm">
                   {ADJUSTMENT_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
                 </select>
-                <input type="number" placeholder="Valor" value={ruleForm.adjustment_value} onChange={(e) => setRuleForm({ ...ruleForm, adjustment_value: e.target.value })} className="border rounded p-2 text-sm" />
-                <button onClick={handleSaveRule} className="px-3 py-2 bg-green-600 text-white rounded text-sm">+</button>
+                <div className="flex gap-2">
+                  <input type="number" placeholder="Valor" value={ruleForm.adjustment_value} onChange={(e) => setRuleForm({ ...ruleForm, adjustment_value: e.target.value })} className="flex-1 min-w-0 border rounded p-2 text-sm" />
+                  <button onClick={handleSaveRule} className="px-3 py-2 bg-green-600 text-white rounded text-sm flex-shrink-0">+</button>
+                </div>
               </div>
               <div className="space-y-1">
                 {rules.map((r) => (

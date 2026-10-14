@@ -160,7 +160,7 @@ export default function KnowledgeBaseManager() {
   };
 
   return (
-    <div className="p-6 bg-nc-surface min-h-full max-h-screen overflow-y-auto">
+    <div className="p-3 sm:p-6 bg-nc-surface min-h-full max-h-screen overflow-y-auto pb-24 md:pb-6">
       <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold">📚 Base de Conhecimento (RAG)</h2>
@@ -168,30 +168,32 @@ export default function KnowledgeBaseManager() {
             ⚠️ Revise anonimização, artigos e jurisprudência antes de aprovar.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full md:w-auto">
           <input
             type="text"
             placeholder="Buscar documento..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="px-3 py-2 border rounded text-sm bg-white text-gray-900"
+            className="w-full sm:w-64 px-3 py-2 border rounded text-sm bg-white text-gray-900"
           />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border rounded text-sm bg-white text-gray-900"
-          >
-            <option value="all">Todos</option>
-            <option value="rascunho">Rascunho</option>
-            <option value="revisado">Revisado</option>
-            <option value="aprovado">Aprovado</option>
-          </select>
-          <button
-            onClick={openCreate}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-          >
-            + Novo Documento
-          </button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="flex-1 sm:flex-none px-3 py-2 border rounded text-sm bg-white text-gray-900"
+            >
+              <option value="all">Todos</option>
+              <option value="rascunho">Rascunho</option>
+              <option value="revisado">Revisado</option>
+              <option value="aprovado">Aprovado</option>
+            </select>
+            <button
+              onClick={openCreate}
+              className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm whitespace-nowrap"
+            >
+              + Novo
+            </button>
+          </div>
         </div>
       </div>
 
@@ -292,11 +294,11 @@ export default function KnowledgeBaseManager() {
                     {doc.chunk_count !== undefined && <span>· {doc.chunk_count} chunks</span>}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5 mt-2 md:mt-0">
                   {doc.status !== 'aprovado' && (
                     <button
                       onClick={() => handleStatusChange(doc.id, 'aprovado')}
-                      className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                      className="text-xs px-2.5 py-1.5 bg-green-600 text-white rounded hover:bg-green-700"
                     >
                       Aprovar
                     </button>
@@ -304,14 +306,14 @@ export default function KnowledgeBaseManager() {
                   {doc.status !== 'rascunho' && (
                     <button
                       onClick={() => handleStatusChange(doc.id, 'rascunho')}
-                      className="px-3 py-1 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700"
+                      className="text-xs px-2.5 py-1.5 bg-yellow-600 text-white rounded hover:bg-yellow-700"
                     >
                       Voltar a rascunho
                     </button>
                   )}
                   <button
                     onClick={() => openEdit(doc)}
-                    className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                    className="text-xs px-2.5 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
                   >
                     Editar
                   </button>

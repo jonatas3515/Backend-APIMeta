@@ -485,7 +485,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
             <label className="block text-sm font-medium text-gray-700">Complexidade</label>
             <select value={form.complexity} onChange={(e) => setForm({ ...form, complexity: e.target.value })} className="w-full mt-1 border rounded p-2 text-sm">
@@ -647,7 +647,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
             />
           </div>
 
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-col sm:flex-row gap-2">
             <button
               onClick={() => handleSave('rascunho')}
               disabled={saving}
@@ -717,7 +717,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           <div className="space-y-2">
             {simulations.map((sim) => (
               <div key={sim.id} className="p-3 border rounded text-sm">
-                <div className="flex justify-between items-start">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                   <div>
                     <p className="font-medium">{sim.fee_service_catalog?.name || 'Serviço'}</p>
                     {sim.cases?.title && (

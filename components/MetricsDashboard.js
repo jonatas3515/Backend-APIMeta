@@ -126,13 +126,15 @@ export default function MetricsDashboard({ conversations }) {
 
   return (
     <div className="w-full p-4 md:p-6 bg-nc-surface">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
         <h2 className="text-2xl font-bold text-nc-text-title">📊 Métricas do Escritório</h2>
-        <ExportButtons
-          onPdf={handleExportPdf}
-          onExcel={handleExportExcel}
-          disabled={metrics.totalConversations === 0}
-        />
+        <div className="w-full sm:w-auto flex justify-start sm:justify-end">
+          <ExportButtons
+            onPdf={handleExportPdf}
+            onExcel={handleExportExcel}
+            disabled={metrics.totalConversations === 0}
+          />
+        </div>
       </div>
 
       {/* Cards principais */}
