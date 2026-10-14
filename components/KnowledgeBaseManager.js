@@ -160,7 +160,7 @@ export default function KnowledgeBaseManager() {
   };
 
   return (
-    <div className="p-3 sm:p-6 bg-nc-surface min-h-full max-h-screen overflow-y-auto pb-24 md:pb-6">
+    <div className="w-full min-w-0 max-w-full overflow-x-hidden p-3 sm:p-6 bg-nc-surface min-h-full max-h-screen overflow-y-auto pb-24 md:pb-6">
       <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold">📚 Base de Conhecimento (RAG)</h2>
@@ -208,12 +208,12 @@ export default function KnowledgeBaseManager() {
               placeholder="Título"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="px-3 py-2 border rounded text-black"
+              className="w-full max-w-full min-w-0 px-3 py-2 border rounded text-black"
             />
             <select
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value })}
-              className="px-3 py-2 border rounded text-black"
+              className="w-full max-w-full min-w-0 px-3 py-2 border rounded text-black"
             >
               {DOC_TYPES.map(t => (
                 <option key={t} value={t}>{t}</option>
@@ -224,35 +224,35 @@ export default function KnowledgeBaseManager() {
               placeholder="Área (opcional)"
               value={form.area}
               onChange={(e) => setForm({ ...form, area: e.target.value })}
-              className="px-3 py-2 border rounded text-black"
+              className="w-full max-w-full min-w-0 px-3 py-2 border rounded text-black"
             />
             <input
               type="text"
               placeholder="Tribunal (opcional)"
               value={form.tribunal}
               onChange={(e) => setForm({ ...form, tribunal: e.target.value })}
-              className="px-3 py-2 border rounded text-black"
+              className="w-full max-w-full min-w-0 px-3 py-2 border rounded text-black"
             />
             <input
               type="text"
               placeholder="Tags (separadas por vírgula)"
               value={form.tags}
               onChange={(e) => setForm({ ...form, tags: e.target.value })}
-              className="px-3 py-2 border rounded text-black"
+              className="w-full max-w-full min-w-0 px-3 py-2 border rounded text-black"
             />
             <input
               type="text"
               placeholder="Versão"
               value={form.version}
               onChange={(e) => setForm({ ...form, version: e.target.value })}
-              className="px-3 py-2 border rounded text-black"
+              className="w-full max-w-full min-w-0 px-3 py-2 border rounded text-black"
             />
           </div>
           <div className="mb-4">
             <textarea
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
-              className="w-full px-3 py-2 border rounded text-black font-mono text-sm"
+              className="w-full max-w-full min-w-0 px-3 py-2 border rounded text-black font-mono text-sm"
               rows="12"
               placeholder="Conteúdo do documento (será anonimizado e dividido em chunks automaticamente)"
             />
@@ -285,7 +285,7 @@ export default function KnowledgeBaseManager() {
             <div key={doc.id} className="p-4 border rounded-lg bg-white text-gray-900 shadow-sm">
               <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2 mb-2">
                 <div>
-                  <h4 className="font-bold text-lg">{doc.title}</h4>
+                  <h4 className="font-bold text-base sm:text-lg text-nc-text break-words">{doc.title}</h4>
                   <div className="flex flex-wrap gap-2 mt-1 text-sm text-gray-600">
                     <span>{doc.type}</span>
                     {doc.area && <span>· {doc.area}</span>}
@@ -320,7 +320,7 @@ export default function KnowledgeBaseManager() {
                 </div>
               </div>
 
-              <div className="flex gap-2 mb-2">
+              <div className="flex flex-wrap gap-1 max-w-full overflow-hidden mb-2">
                 {statusBadge(doc.status)}
                 {Array.isArray(doc.tags) && doc.tags.map(tag => (
                   <span key={tag} className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded">
@@ -333,7 +333,7 @@ export default function KnowledgeBaseManager() {
                 Última atualização: {new Date(doc.updated_at).toLocaleString('pt-BR')}
               </p>
 
-              <div className="bg-gray-50 p-3 rounded border border-gray-200 text-sm text-gray-700 max-h-32 overflow-y-auto whitespace-pre-line">
+              <div className="bg-gray-50 p-2.5 sm:p-3 rounded border border-gray-200 text-xs sm:text-sm text-gray-700 max-h-32 overflow-y-auto whitespace-pre-line break-words break-all">
                 {doc.preview || 'Sem prévia'}
               </div>
             </div>

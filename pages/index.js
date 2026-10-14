@@ -538,7 +538,7 @@ export default function Home() {
             </div>
           </header>
           <ActiveFilterBanner />
-          <main className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0 pb-16 md:pb-0">
+          <main className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0 pb-16 md:pb-0 w-full min-w-0 max-w-full overflow-x-hidden">
           {activeTab === 'chat' ? (
             <>
               {chatView === 'conversas' ? (

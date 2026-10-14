@@ -164,7 +164,7 @@ export default function CaseSidebar({ conversationId, userRole }) {
       )}
 
       <div className="p-4 border-b border-gray-200">
-        <h3 className="font-bold text-lg mb-3">Casos Jurídicos</h3>
+        <h3 className="font-bold text-base sm:text-lg mb-3">Casos</h3>
         <button
           onClick={() => setShowForm(!showForm)}
           disabled={!canEdit}

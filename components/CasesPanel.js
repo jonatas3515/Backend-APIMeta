@@ -545,7 +545,7 @@ export default function CasesPanel({ notice }) {
         </button>
       </div>
       <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
-        <h2 className="text-2xl font-bold">Casos Jurídicos</h2>
+        <h2 className="text-xl sm:text-2xl font-bold">Casos</h2>
         <div className="flex flex-wrap gap-2 items-center">
           <ExportButtons
             onExcel={() => exportCasesExcel(cases)}

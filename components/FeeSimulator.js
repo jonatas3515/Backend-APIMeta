@@ -339,7 +339,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
 
   return (
     <div className="p-4 bg-white rounded-lg border shadow-sm space-y-4 max-h-[80vh] overflow-y-auto">
-      <h3 className="font-bold text-lg flex items-center gap-2">💰 Simular Honorários</h3>
+      <h3 className="font-bold text-base sm:text-lg flex items-center gap-2">💰 Simular Honorários</h3>
 
       {services.length === 0 && (
         <div className="p-3 bg-yellow-50 text-yellow-800 rounded text-sm">

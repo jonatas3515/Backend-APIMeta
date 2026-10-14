@@ -157,7 +157,7 @@ export default function FeeServiceAdmin({ viewMode = null }) {
 
   return (
     <div className="p-4 space-y-4 h-full w-full overflow-y-auto min-w-0">
-      <h2 className="font-bold text-xl">💰 Tabela de Honorários</h2>
+      <h2 className="font-bold text-base sm:text-lg">💰 Tabela de Honorários</h2>
 
       {message && (
         <div className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>

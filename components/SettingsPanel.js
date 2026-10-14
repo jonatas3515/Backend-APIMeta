@@ -30,19 +30,19 @@ export default function SettingsPanel({ initialView = 'users' }) {
 
   const tabs = [
     { key: 'users', label: '👥 Usuários', visible: canAccessUsers },
-    { key: 'signatures', label: '✍️ Assinatura Eletrônica', visible: canAccessSignatures },
+    { key: 'signatures', label: '✍️ Assinaturas', visible: canAccessSignatures },
     { key: 'profile', label: '👤 Perfil', visible: true },
   ].filter(tab => tab.visible);
 
   return (
     <div className="flex-1 h-full flex flex-col bg-white rounded-lg shadow overflow-hidden">
       <div className="border-b border-gray-200 bg-gray-50">
-        <div className="flex gap-1 px-4">
+        <div className="flex gap-1 px-2 sm:px-4 overflow-x-auto scrollbar-none whitespace-nowrap">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveView(tab.key)}
-              className={`px-6 py-3 font-medium text-sm border-b-2 transition ${
+              className={`px-3 sm:px-6 py-2 sm:py-3 font-medium text-xs sm:text-sm border-b-2 transition whitespace-nowrap flex-shrink-0 ${
                 activeView === tab.key
                   ? 'text-blue-600 border-blue-600'
                   : 'text-gray-600 border-transparent hover:text-gray-900'

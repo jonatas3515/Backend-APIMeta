@@ -299,7 +299,7 @@ export default function AgendaPanel() {
     <div className="w-full bg-white rounded-lg shadow">
       {/* Header */}
       <div className="border-b border-gray-200 p-4">
-        <h2 className="text-2xl font-bold mb-4">📅 Agenda Jurídica</h2>
+        <h2 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-4">📅 Agenda</h2>
         <div className="flex gap-2 flex-wrap mb-4">
           <button
             onClick={() => setActiveTab('today')}

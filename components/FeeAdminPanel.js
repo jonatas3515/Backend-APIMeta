@@ -27,8 +27,8 @@ export default function FeeAdminPanel({ initialView = 'services' }) {
 
   const tabs = [
     { key: 'services', label: '📋 Serviços', visible: isAdminOrLawyer },
-    { key: 'reference-tables', label: '📊 Tabela da OAB', visible: isAdminOrLawyer },
-    { key: 'simulations', label: '💰 Simulações / Propostas', visible: isAdminOrLawyer },
+    { key: 'reference-tables', label: '📊 Tabela OAB', visible: isAdminOrLawyer },
+    { key: 'simulations', label: '💰 Simulações', visible: isAdminOrLawyer },
     { key: 'tracking', label: '📈 Acompanhamento', visible: isAdminOrLawyer }
   ].filter((t) => t.visible);
 

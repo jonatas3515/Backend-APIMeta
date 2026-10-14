@@ -253,8 +253,8 @@ export default function FeeTablesManager({ viewMode = null }) {
 
   return (
     <div className="p-4 border rounded bg-white space-y-4">
-      <h3 className="font-bold text-lg">📤 Tabelas de referência</h3>
-      <p className="text-sm text-gray-600">
+      <h3 className="font-bold text-base sm:text-lg">📤 Tabelas de referência</h3>
+      <p className="text-xs text-gray-500">
         Envie a tabela da OAB ou os valores cobrados pelo escritório. Os dados ficam salvos para consulta futura.
       </p>
 

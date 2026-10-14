@@ -31,21 +31,21 @@ describe('FeeAdminPanel - navegação de abas', () => {
   test('renderiza todas as abas para admin', () => {
     render(React.createElement(FeeAdminPanel, { initialView: 'services' }));
     expect(screen.getByText('📋 Serviços')).toBeInTheDocument();
-    expect(screen.getByText('📊 Tabela da OAB')).toBeInTheDocument();
-    expect(screen.getByText('💰 Simulações / Propostas')).toBeInTheDocument();
+    expect(screen.getByText('📊 Tabela OAB')).toBeInTheDocument();
+    expect(screen.getByText('💰 Simulações')).toBeInTheDocument();
     expect(screen.getByText('📈 Acompanhamento')).toBeInTheDocument();
   });
 
   test('abre na view inicial passada por prop', () => {
     render(React.createElement(FeeAdminPanel, { initialView: 'reference-tables' }));
-    const button = screen.getByText('📊 Tabela da OAB');
+    const button = screen.getByText('📊 Tabela OAB');
     expect(button).toHaveClass('border-blue-600');
     expect(button).toHaveClass('text-blue-600');
   });
 
   test('clicar em uma aba alterna a view', () => {
     render(React.createElement(FeeAdminPanel, { initialView: 'services' }));
-    const simTab = screen.getByText('💰 Simulações / Propostas');
+    const simTab = screen.getByText('💰 Simulações');
     fireEvent.click(simTab);
     expect(simTab).toHaveClass('border-blue-600');
   });

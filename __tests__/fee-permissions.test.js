@@ -35,8 +35,8 @@ describe('FeeAdminPanel - permissoes', () => {
     useAuth.mockReturnValue({ profile: { role: 'admin' } });
     const { container } = render(React.createElement(FeeAdminPanel, { initialView: 'services' }));
     expect(container.textContent).toContain('📋 Serviços');
-    expect(container.textContent).toContain('📊 Tabela da OAB');
-    expect(container.textContent).toContain('💰 Simulações / Propostas');
+    expect(container.textContent).toContain('📊 Tabela OAB');
+    expect(container.textContent).toContain('💰 Simulações');
     expect(container.textContent).toContain('📈 Acompanhamento');
   });
 
@@ -44,7 +44,7 @@ describe('FeeAdminPanel - permissoes', () => {
     useAuth.mockReturnValue({ profile: { role: 'advogado' } });
     const { container } = render(React.createElement(FeeAdminPanel, { initialView: 'services' }));
     expect(container.textContent).toContain('📋 Serviços');
-    expect(container.textContent).toContain('💰 Simulações / Propostas');
+    expect(container.textContent).toContain('💰 Simulações');
   });
 
   test('estagiario nao acessa Honorarios', () => {
