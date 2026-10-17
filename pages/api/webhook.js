@@ -697,9 +697,11 @@ export default async function handler(req, res) {
       const boletoReply = hasActiveOtherAreaFlow ? null : getSpecialReply(textBody, clientName, conversationHistory, log);
       const isBoleto = boletoReply && boletoReply !== 'NO_REPLY';
       const isNevesCosta = !hasActiveOtherAreaFlow && messageType === 'text' && isNevesCostaConfusion(textBody);
-      log('boleto_identity_state', { isBoleto: !!isBoleto, isNevesCosta: !!isNevesCosta, currentArea: conversation.legal_area || 'none', skippedForActiveFlow: hasActiveOtherAreaFlow });
-      if (isBoleto || isNevesCosta) {
-        log('boleto_handler_selected', { isIdentity: !!isBoleto, isNevesCosta: !!isNevesCosta });
+      const isCnpjIdentity = !hasActiveOtherAreaFlow && messageType === 'text' && isCnpjIdentityMention(textBody);
+      const identityTriggered = isBoleto || isNevesCosta || isCnpjIdentity;
+      log('boleto_identity_state', { isBoleto: !!isBoleto, isNevesCosta: !!isNevesCosta, isCnpj: !!isCnpjIdentity, currentArea: conversation.legal_area || 'none', skippedForActiveFlow: hasActiveOtherAreaFlow });
+      if (identityTriggered) {
+        log('boleto_handler_selected', { isIdentity: !!isBoleto, isNevesCosta: !!isNevesCosta, isCnpj: !!isCnpjIdentity });
         // Invalida pergunta pendente do domínio anterior, mas mantém fatos históricos
         const resetIntake = {
           ...(conversation.intake_data || {}),
@@ -722,21 +724,57 @@ export default async function handler(req, res) {
             log('previdenciario_handler_skipped', { reason: 'domain_switch' });
           }
         }
-        if (isNevesCosta) {
-          const identityNoticeAlreadySent = !!conversation?.intake_data?.identity_notice_sent_at;
-          if (!identityNoticeAlreadySent) {
-            log('neves_costa_confusion', { phoneHash: hashPhone(from) });
-            const protocol = req.headers['x-forwarded-proto'] || 'https';
-            const imageUrl = `${protocol}://${req.headers.host}/Aviso.jpg`;
-            const imageSent = await sendNevesCostaImage(from, conversation.id, imageUrl, outMeta());
-            if (imageSent) {
-              conversation.intake_data = conversation.intake_data || {};
-              conversation.intake_data.identity_notice_sent_at = new Date().toISOString();
-              __stageMs.boleto_ms = Date.now() - __tBoleto;
-              logPipelineTiming('neves_costa');
-              return res.status(200).json({ success: true, neves_costa: true });
+        // Aviso institucional: imagem enviada UMA vez por conversa quando o
+        // cliente manda CNPJ, pergunta o CNPJ do escritório ou confunde com
+        // "Neves Costa". Flags persistidas em intake_data:
+        //   identity_image_sent_at  → imagem Aviso.jpg entregue
+        //   identity_notice_sent_at → qualquer aviso institucional entregue
+        const identityImageAlreadySent = !!conversation?.intake_data?.identity_image_sent_at;
+        const identityNoticeAlreadySent = !!conversation?.intake_data?.identity_notice_sent_at;
+        if (!identityNoticeAlreadySent && !identityImageAlreadySent) {
+          log('neves_costa_confusion', { phoneHash: hashPhone(from), trigger: isCnpjIdentity ? 'cnpj' : (isNevesCosta ? 'name' : 'boleto') });
+          const protocol = req.headers['x-forwarded-proto'] || 'https';
+          const imageUrl = `${protocol}://${req.headers.host}/Aviso.jpg`;
+          const imageSent = await sendNevesCostaImage(from, conversation.id, imageUrl, outMeta());
+          if (imageSent) {
+            const stampedIntake = {
+              ...(conversation.intake_data || {}),
+              identity_image_sent_at: new Date().toISOString(),
+              identity_notice_sent_at: new Date().toISOString()
+            };
+            try {
+              const { error: flagError } = await supabase
+                .from('conversations')
+                .update({ intake_data: stampedIntake })
+                .eq('id', conversation.id);
+              if (flagError) {
+                log('identity_flag_persist_failed', { error: sanitizeError(flagError) });
+              }
+            } catch (flagErr) {
+              log('identity_flag_persist_failed', { error: sanitizeError(flagErr) });
             }
+            conversation.intake_data = stampedIntake;
+            __stageMs.boleto_ms = Date.now() - __tBoleto;
+            logPipelineTiming('neves_costa');
+            return res.status(200).json({ success: true, neves_costa: true });
           }
+          // Envio da imagem falhou: cai no texto institucional abaixo, sem
+          // alegar envio anterior e sem marcar a flag (a próxima mensagem
+          // que reincidir tenta a imagem de novo).
+        }
+        // Insistência após a imagem já enviada → resposta textual que
+        // referencia o aviso anterior, sem reenviar a mídia.
+        if (identityImageAlreadySent) {
+          const repeatReply = `${getClientGreeting(clientName)}, como está na imagem que enviei anteriormente: a Neves & Costa Advocacia (com "&") não emite boletos, não faz cobranças, não possui CNPJ e não tem relação com a "Advocacia Neves Costa" sem o "&". Se a cobrança persistir, trate diretamente com a empresa que a emitiu.`;
+          const savedMsg = await saveMessage(conversation.id, repeatReply, 'ai', 'text', '', '', outMeta());
+          const waMessageId = await sendWhatsAppMessage(from, repeatReply);
+          if (savedMsg && waMessageId) {
+            await supabase.from('messages').update({ wa_message_id: waMessageId, status: 'sent' }).eq('id', savedMsg.id);
+          }
+          log('response_sent', { handler: 'identity_repeat', replyLength: repeatReply.length });
+          __stageMs.boleto_ms = Date.now() - __tBoleto;
+          logPipelineTiming('identity_repeat');
+          return res.status(200).json({ success: true, special: true });
         }
         if (isBoleto) {
           const savedMsg = await saveMessage(conversation.id, boletoReply, 'ai', 'text', '', '', outMeta());
@@ -744,13 +782,44 @@ export default async function handler(req, res) {
           if (savedMsg && waMessageId) {
             await supabase.from('messages').update({ wa_message_id: waMessageId, status: 'sent' }).eq('id', savedMsg.id);
           }
-          conversation.intake_data = conversation.intake_data || {};
-          conversation.intake_data.identity_notice_sent_at = new Date().toISOString();
+          const noticedIntake = {
+            ...(conversation.intake_data || {}),
+            identity_notice_sent_at: conversation.intake_data?.identity_notice_sent_at || new Date().toISOString()
+          };
+          try {
+            const { error: flagError } = await supabase
+              .from('conversations')
+              .update({ intake_data: noticedIntake })
+              .eq('id', conversation.id);
+            if (flagError) {
+              log('identity_flag_persist_failed', { error: sanitizeError(flagError) });
+            }
+          } catch (flagErr) {
+            log('identity_flag_persist_failed', { error: sanitizeError(flagErr) });
+          }
+          conversation.intake_data = noticedIntake;
           log('response_sent', { handler: 'boleto', replyLength: boletoReply?.length || 0 });
           __stageMs.boleto_ms = Date.now() - __tBoleto;
           logPipelineTiming('boleto');
           return res.status(200).json({ success: true, special: true });
         }
+        // Imagem falhou na primeira detecção de CNPJ/nome (sem resposta de
+        // boleto contextual): esclarecimento institucional direto, em
+        // linguagem de informação nova — nunca "como informei".
+        if (!identityNoticeAlreadySent) {
+          const fallbackReply = `${getClientGreeting(clientName)}, a Neves & Costa Advocacia (com "&") não emitimos boletos, não fazemos cobranças, não possuímos CNPJ e não temos relação com a "Advocacia Neves Costa" sem o "&".`;
+          const savedMsg = await saveMessage(conversation.id, fallbackReply, 'ai', 'text', '', '', outMeta());
+          const waMessageId = await sendWhatsAppMessage(from, fallbackReply);
+          if (savedMsg && waMessageId) {
+            await supabase.from('messages').update({ wa_message_id: waMessageId, status: 'sent' }).eq('id', savedMsg.id);
+          }
+          log('response_sent', { handler: 'identity_fallback', replyLength: fallbackReply.length });
+          __stageMs.boleto_ms = Date.now() - __tBoleto;
+          logPipelineTiming('identity_fallback');
+          return res.status(200).json({ success: true, special: true });
+        }
+        // Aviso textual já entregue e imagem nunca enviada (conversa legada):
+        // não reenvia nem repete — segue o fluxo normal.
       }
       __stageMs.boleto_ms = Date.now() - __tBoleto;
       const __tIntake = Date.now();
@@ -1436,6 +1505,21 @@ function isNevesCostaConfusion(text) {
   const hasNevesCosta = /neves\s*costa|nevescosta/.test(t);
   const isCorrectFirm = /neves\s*([&e])\s*costa/.test(t);
   return hasNevesCosta && !isCorrectFirm;
+}
+
+// Dispara o aviso institucional quando o cliente manda um CNPJ (número no
+// formato XX.XXX.XXX/XXXX-XX) ou pergunta pelo CNPJ DO escritório ("qual o
+// cnpj", "cnpj de vocês", "e o cnpj?"). Menções a CNPJ de terceiros como
+// objeto do caso ("preciso do CNPJ da empresa", "CNPJ informado no contrato")
+// NÃO disparam — e o bloqueio por hasActiveOtherAreaFlow protege CNPJs
+// legítimos citados no meio de um caso ativo (ex: CNPJ da empresa ré).
+function isCnpjIdentityMention(text) {
+  if (!text || !text.trim()) return false;
+  if (/\d{2}\s*\.?\s*\d{3}\s*\.?\s*\d{3}\s*\/?\s*\d{4}\s*-?\s*\d{2}/.test(text)) return true;
+  const t = normalizeForCheck(text);
+  if (!/\bcnpj\b/.test(t)) return false;
+  const asksOurs = /\b(qual|quais|vcs|vc|voces|voce|seu|sua|escritorio|neves|passa|manda|envia|enviar|tem|esse)\b/.test(t);
+  return asksOurs || /\be\s+o\s+cnpj\b/.test(t) || /\bcnpj\s*\?+\s*$/.test(t);
 }
 
 async function sendNevesCostaImage(to, conversationId, imageUrl = NEVES_COSTA_IMAGE_URL, extraData = {}) {
