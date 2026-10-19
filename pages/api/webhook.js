@@ -441,7 +441,7 @@ export default async function handler(req, res) {
         const fourHoursAgo = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
         const { data: dbMessages, error: historyError } = await supabase
           .from('messages')
-          .select('text, sender_type, created_at')
+          .select('text, sender_type, created_at, content_type, media_url')
           .eq('conversation_id', conversation.id)
           .gte('created_at', fourHoursAgo)
           .order('created_at', { ascending: true });
@@ -698,10 +698,11 @@ export default async function handler(req, res) {
       const isBoleto = boletoReply && boletoReply !== 'NO_REPLY';
       const isNevesCosta = !hasActiveOtherAreaFlow && messageType === 'text' && isNevesCostaConfusion(textBody);
       const isCnpjIdentity = !hasActiveOtherAreaFlow && messageType === 'text' && isCnpjIdentityMention(textBody);
-      const identityTriggered = isBoleto || isNevesCosta || isCnpjIdentity;
-      log('boleto_identity_state', { isBoleto: !!isBoleto, isNevesCosta: !!isNevesCosta, isCnpj: !!isCnpjIdentity, currentArea: conversation.legal_area || 'none', skippedForActiveFlow: hasActiveOtherAreaFlow });
+      const isBankIdentity = !hasActiveOtherAreaFlow && messageType === 'text' && isBankContractConfusion(textBody);
+      const identityTriggered = isBoleto || isNevesCosta || isCnpjIdentity || isBankIdentity;
+      log('boleto_identity_state', { isBoleto: !!isBoleto, isNevesCosta: !!isNevesCosta, isCnpj: !!isCnpjIdentity, isBank: !!isBankIdentity, currentArea: conversation.legal_area || 'none', skippedForActiveFlow: hasActiveOtherAreaFlow });
       if (identityTriggered) {
-        log('boleto_handler_selected', { isIdentity: !!isBoleto, isNevesCosta: !!isNevesCosta, isCnpj: !!isCnpjIdentity });
+        log('boleto_handler_selected', { isIdentity: !!isBoleto, isNevesCosta: !!isNevesCosta, isCnpj: !!isCnpjIdentity, isBank: !!isBankIdentity });
         // Invalida pergunta pendente do domínio anterior, mas mantém fatos históricos
         const resetIntake = {
           ...(conversation.intake_data || {}),
@@ -729,10 +730,16 @@ export default async function handler(req, res) {
         // "Neves Costa". Flags persistidas em intake_data:
         //   identity_image_sent_at  → imagem Aviso.jpg entregue
         //   identity_notice_sent_at → qualquer aviso institucional entregue
-        const identityImageAlreadySent = !!conversation?.intake_data?.identity_image_sent_at;
+        // A imagem conta como enviada se a flag consta na conversa OU se já há
+        // a imagem de aviso no histórico — inclusive quando um atendente humano
+        // enviou o Aviso.jpg manualmente pelo painel.
+        const sentNoticeImage = (activeMessages || []).some(m =>
+          m.content_type === 'image' && /aviso/i.test(`${m.media_url || ''} ${m.text || ''}`)
+        );
+        const identityImageAlreadySent = !!conversation?.intake_data?.identity_image_sent_at || sentNoticeImage;
         const identityNoticeAlreadySent = !!conversation?.intake_data?.identity_notice_sent_at;
-        if (!identityNoticeAlreadySent && !identityImageAlreadySent) {
-          log('neves_costa_confusion', { phoneHash: hashPhone(from), trigger: isCnpjIdentity ? 'cnpj' : (isNevesCosta ? 'name' : 'boleto') });
+        if (!identityImageAlreadySent) {
+          log('neves_costa_confusion', { phoneHash: hashPhone(from), trigger: isCnpjIdentity ? 'cnpj' : (isBankIdentity ? 'bank_contract' : (isNevesCosta ? 'name' : 'boleto')) });
           const protocol = req.headers['x-forwarded-proto'] || 'https';
           const imageUrl = `${protocol}://${req.headers.host}/Aviso.jpg`;
           const imageSent = await sendNevesCostaImage(from, conversation.id, imageUrl, outMeta());
@@ -1520,6 +1527,22 @@ function isCnpjIdentityMention(text) {
   if (!/\bcnpj\b/.test(t)) return false;
   const asksOurs = /\b(qual|quais|vcs|vc|voces|voce|seu|sua|escritorio|neves|passa|manda|envia|enviar|tem|esse)\b/.test(t);
   return asksOurs || /\be\s+o\s+cnpj\b/.test(t) || /\bcnpj\s*\?+\s*$/.test(t);
+}
+
+// Interlocutor que se identifica como representante de banco/financeira ou que
+// trata o escritório como contraparte de contrato/financiamento ("gerente do
+// banco", "cliente nosso com vcs"). Na prática, quem cobra contrato de banco
+// por este número quase sempre procura a outra empresa "Neves Costa" — cliente
+// real falando de um processo contra banco ("quero processar o banco") não se
+// encaixa: não se identifica como representante nem nos trata como credora.
+function isBankContractConfusion(text) {
+  if (!text || !text.trim()) return false;
+  const t = normalizeForCheck(text);
+  const mentionsBank = /\b(banco|santander|itau|bradesco|caixa|financeira|financiamento|consorcio)\b/.test(t);
+  if (!mentionsBank) return false;
+  const selfIdentifiedRep = /\b(gerente|atendente|representante|funcionario|funcionaria|sou d[oa]|falo d[oa]|trabalho n[oa])\b/.test(t);
+  const treatsAsCounterparty = /\b(cliente nosso|nosso cliente|com vcs|com voces|contrato d[oe] voces|contrato de vcs|contrato com voces)\b/.test(t);
+  return selfIdentifiedRep || treatsAsCounterparty;
 }
 
 async function sendNevesCostaImage(to, conversationId, imageUrl = NEVES_COSTA_IMAGE_URL, extraData = {}) {

@@ -387,7 +387,7 @@ describe('Concorrência, idempotência, LGPD e identidade', () => {
     const now = new Date().toISOString();
     global.__testConversation = {
       client_name: 'Cliente',
-      intake_data: { identity_notice_sent_at: now }
+      intake_data: { identity_notice_sent_at: now, identity_image_sent_at: now }
     };
     global.__testMessages = [
       { conversation_id: CONV_ID, sender_type: 'ai', text: 'Aviso importante: o escritório Neves & Costa não possui relação...', direction: 'outbound', created_at: new Date(Date.now() - 60 * 1000).toISOString() }

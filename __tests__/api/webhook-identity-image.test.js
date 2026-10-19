@@ -261,7 +261,7 @@ describe('Aviso institucional em imagem (CNPJ / Neves Costa)', () => {
     expect(textMsg.text.body).not.toMatch(/como informei|como já informei|anteriormente/i);
   });
 
-  test('aviso textual já entregue (conversa legada) não reenvia imagem nem inventa referência', async () => {
+  test('aviso textual legado sem imagem ainda permite o envio da imagem uma vez', async () => {
     global.__testConversation = {
       client_name: 'Andreza',
       intake_data: { identity_notice_sent_at: new Date().toISOString() }
@@ -273,7 +273,67 @@ describe('Aviso institucional em imagem (CNPJ / Neves Costa)', () => {
     });
     await webhookHandler(req, res);
 
-    // Aviso já foi dado antes → não tenta a mídia de novo
+    // Texto de aviso já foi dado, mas a imagem nunca saiu → envia agora, uma vez
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true, neves_costa: true });
+    const imageMsg = lastPayloadOfType(fetchSpy.mock.calls, '/messages');
+    expect(imageMsg.type).toBe('image');
+  });
+
+  test('imagem de aviso enviada manualmente por humano conta como enviada', async () => {
+    global.__testConversation = {
+      client_name: 'Andreza',
+      intake_data: {}
+    };
+    global.__testMessages = [
+      { conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', sender_type: 'human', text: '', content_type: 'image', media_url: 'https://example.supabase.co/storage/v1/object/public/chat-files/x/1792446463079-Aviso.jpg', created_at: new Date().toISOString() }
+    ];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('mas qual é o cnpj de vocês?'),
+    });
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true, special: true });
+
+    const mediaCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/media'));
+    expect(mediaCalls.length).toBe(0);
+
+    const textMsg = lastPayloadOfType(fetchSpy.mock.calls, '/messages');
+    expect(textMsg.type).toBe('text');
+    expect(textMsg.text.body).toMatch(/imagem que enviei anteriormente/i);
+  });
+
+  test('representante de banco com "cliente nosso com vcs" dispara a imagem', async () => {
+    global.__testConversation = { client_name: 'Jennyffer', intake_data: {} };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Eu me chamo Jennyffer, gerente do banco Santander, tô com um cliente nosso com vcs'),
+    });
+    await webhookHandler(req, res);
+
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true, neves_costa: true });
+
+    const imageMsg = lastPayloadOfType(fetchSpy.mock.calls, '/messages');
+    expect(imageMsg.type).toBe('image');
+
+    const geminiCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('generativelanguage.googleapis.com'));
+    expect(geminiCalls.length).toBe(0);
+  });
+
+  test('cliente reclamando de banco (sem se identificar como representante) não dispara aviso', async () => {
+    global.__testConversation = { client_name: 'Cliente', intake_data: {} };
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Quero processar o banco por uma cobrança indevida no meu contrato'),
+    });
+    await webhookHandler(req, res);
+
     const mediaCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/media'));
     expect(mediaCalls.length).toBe(0);
 
@@ -282,14 +342,6 @@ describe('Aviso institucional em imagem (CNPJ / Neves Costa)', () => {
       .map(([, init]) => JSON.parse(init.body))
       .filter(b => b.type === 'image');
     expect(imageMsgs.length).toBe(0);
-
-    const textMsgs = fetchSpy.mock.calls
-      .filter(([url]) => String(url).includes('/messages'))
-      .map(([, init]) => JSON.parse(init.body))
-      .filter(b => b.type === 'text');
-    for (const b of textMsgs) {
-      expect(b.text.body).not.toMatch(/imagem que enviei anteriormente/i);
-    }
   });
 
   test('mensagem sem CNPJ nem confusão de nome não dispara o aviso', async () => {
