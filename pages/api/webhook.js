@@ -162,6 +162,8 @@ export default async function handler(req, res) {
       let mediaUrl = '';
       let mediaId = '';
       let visionMedia = null;
+      let documentFilename = '';
+      let documentCaption = '';
 
       // Processa diferentes tipos de mensagem
       if (messageType === 'text') {
@@ -183,10 +185,10 @@ export default async function handler(req, res) {
         aiPromptText = textBody;
       } else if (messageType === 'document') {
         mediaId = message.document?.id;
-        const filename = message.document?.filename || 'arquivo';
-        const caption = message.document?.caption || '';
-        textBody = caption || `Documento: ${filename}`;
-        aiPromptText = caption ? `Cliente enviou documento com legenda: ${caption}` : `Cliente enviou documento. Nome: ${filename}`;
+        documentFilename = message.document?.filename || 'arquivo';
+        documentCaption = message.document?.caption || '';
+        textBody = documentCaption || `Documento: ${documentFilename}`;
+        aiPromptText = documentCaption ? `Cliente enviou documento com legenda: ${documentCaption}` : `Cliente enviou documento. Nome: ${documentFilename}`;
       } else {
         textBody = `[Mensagem do tipo: ${messageType}]`;
         aiPromptText = textBody;
@@ -375,7 +377,14 @@ export default async function handler(req, res) {
               publicUrl = publicUrlData?.publicUrl || '';
               log('media_uploaded', { messageType, mimeType: mediaBuffer?.mimeType, size: mediaBuffer?.buffer?.length });
 
-              if (messageType === 'image') {
+              // Imagens e documentos legíveis pelo Gemini (PDF / imagens enviadas
+              // como ficheiro) são anexados ao prompt como inline_data para que o
+              // modelo leia o conteúdo real em vez de pedir uma descrição.
+              const docReadable = messageType === 'document' &&
+                (mediaBuffer.mimeType === 'application/pdf' ||
+                 (mediaBuffer.mimeType || '').startsWith('image/')) &&
+                mediaBuffer.buffer.length <= 15 * 1024 * 1024;
+              if (messageType === 'image' || docReadable) {
                 visionMedia = { mimeType: mediaBuffer.mimeType, base64: mediaBuffer.buffer.toString('base64') };
                 log('vision_input_attached', { mimeType: mediaBuffer.mimeType });
               }
@@ -704,13 +713,19 @@ export default async function handler(req, res) {
       const previousAreaBeforeBoleto = conversation.legal_area || null;
       const currentStepBeforeBoleto = parseInt(conversation.intake_data?.current_step ?? -1, 10);
       const hasActiveOtherAreaFlow = !!previousAreaBeforeBoleto && previousAreaBeforeBoleto !== 'previdenciario' && currentStepBeforeBoleto >= 0;
-      const boletoReply = hasActiveOtherAreaFlow ? null : getSpecialReply(textBody, clientName, conversationHistory, log);
+      const boletoReply = (hasActiveOtherAreaFlow || messageType !== 'text') ? null : getSpecialReply(textBody, clientName, conversationHistory, log);
       const isBoleto = boletoReply && boletoReply !== 'NO_REPLY';
       const isNevesCosta = !hasActiveOtherAreaFlow && messageType === 'text' && isNevesCostaConfusion(textBody);
       const isCnpjIdentity = !hasActiveOtherAreaFlow && messageType === 'text' && isCnpjIdentityMention(textBody);
       const isBankIdentity = !hasActiveOtherAreaFlow && messageType === 'text' && isBankContractConfusion(textBody);
       const identityTriggered = isBoleto || isNevesCosta || isCnpjIdentity || isBankIdentity;
-      log('boleto_identity_state', { isBoleto: !!isBoleto, isNevesCosta: !!isNevesCosta, isCnpj: !!isCnpjIdentity, isBank: !!isBankIdentity, currentArea: conversation.legal_area || 'none', skippedForActiveFlow: hasActiveOtherAreaFlow });
+      // Agradecimento puro (sem gatilho institucional na mensagem): resposta
+      // breve e calorosa — nunca entra no fluxo de identidade (que mandaria a
+      // imagem ou repetiria o aviso para um simples "obrigado"). Só para
+      // mensagens curtas: agradecimento embutido em texto maior vai ao Gemini.
+      const isThanksOnly = messageType === 'text' && !hasActiveOtherAreaFlow &&
+        !identityTriggered && textBody.trim().length <= 30 && detectThanks(textBody);
+      log('boleto_identity_state', { isBoleto: !!isBoleto, isNevesCosta: !!isNevesCosta, isCnpj: !!isCnpjIdentity, isBank: !!isBankIdentity, isThanks: !!isThanksOnly, currentArea: conversation.legal_area || 'none', skippedForActiveFlow: hasActiveOtherAreaFlow });
       if (identityTriggered) {
         log('boleto_handler_selected', { isIdentity: !!isBoleto, isNevesCosta: !!isNevesCosta, isCnpj: !!isCnpjIdentity, isBank: !!isBankIdentity });
         // Invalida pergunta pendente do domínio anterior, mas mantém fatos históricos
@@ -838,6 +853,20 @@ export default async function handler(req, res) {
         // Aviso textual já entregue e imagem nunca enviada (conversa legada):
         // não reenvia nem repete — segue o fluxo normal.
       }
+
+      // Agradecimento sem reincidência de identidade: resposta calorosa curta.
+      if (isThanksOnly && conversation) {
+        const thanksReply = getThanksReply();
+        const savedThanks = await saveMessage(conversation.id, thanksReply, 'ai', 'text', '', '', outMeta());
+        const thanksWaId = await sendWhatsAppMessage(from, thanksReply);
+        if (savedThanks && thanksWaId) {
+          await supabase.from('messages').update({ wa_message_id: thanksWaId, status: 'sent' }).eq('id', savedThanks.id);
+        }
+        log('response_sent', { handler: 'thanks', replyLength: thanksReply.length });
+        __stageMs.boleto_ms = Date.now() - __tBoleto;
+        logPipelineTiming('thanks');
+        return res.status(200).json({ success: true, thanks: true });
+      }
       __stageMs.boleto_ms = Date.now() - __tBoleto;
       const __tIntake = Date.now();
 
@@ -878,6 +907,11 @@ export default async function handler(req, res) {
         if (messageType === 'image' && !visionMedia) {
           // Sem mídia processada: o fallback é determinístico, sem pedir para "contar por texto"
           promptForAI = 'Não foi possível processar a imagem recebida.';
+        } else if (messageType === 'document' && visionMedia) {
+          // Documento legível (PDF/imagem): o Gemini lê o conteúdo real.
+          const docName = documentFilename ? ` chamado "${documentFilename}"` : '';
+          const docCaption = documentCaption ? ` Legenda do cliente: "${documentCaption}".` : '';
+          promptForAI = `O cliente enviou um documento${docName}.${docCaption} Analise o conteúdo do documento anexado e responda em uma ou duas frases o que ele é e quem aparece como emissor, beneficiário ou responsável, sem inventar dados. Se o documento indicar outra empresa (por exemplo, "Neves Costa" sem "&"), esclareça com naturalidade que não temos relação com ela.`;
         } else if (isMediaAudio) {
           // Se for áudio/vídeo, tenta transcrever de forma assíncrona (sem bloquear resposta)
           if (publicUrl) {
@@ -895,7 +929,7 @@ export default async function handler(req, res) {
         } else if (messageType !== 'image' && textBody && !textBody.includes('processando transcrição') && !isPlaceholderCaption) {
           promptForAI = `O cliente enviou ${messageType} com a seguinte legenda/descrição: ${textBody}. Responda apenas sobre essa legenda, sem descrever ou inventar o conteúdo do arquivo.`;
         } else if (messageType !== 'image') {
-          promptForAI = `Cliente enviou ${messageType}. Responda: "Recebido! Consegue descrever o conteúdo do arquivo?" NUNCA mencione equipe, advogado ou retorno.`;
+          promptForAI = `O cliente enviou um ${messageType}, mas não foi possível ler o conteúdo. Responda em uma frase breve e natural que recebeu o arquivo mas não conseguiu abri-lo, e peça uma descrição rápida do que é. NUNCA mencione equipe, advogado ou retorno.`;
         }
       }
 
@@ -1617,10 +1651,9 @@ function getSpecialReply(text, clientName, history = '', log = () => {}) {
 
   if (isMarketingMessage(text)) return 'NO_REPLY';
 
-  if (detectThanks(text)) {
-    return getThanksReply();
-  }
-
+  // Agradecimentos NÃO são respondidos aqui: quem decide é o chamador, pois um
+  // retorno não-nulo desta função é tratado como gatilho do aviso institucional
+  // (imagem/texto). Um "obrigado" não pode entrar nesse fluxo.
   const isIdentity = IDENTITY_KEYWORDS.some(k => lower.includes(k));
   const alreadySaid = IDENTITY_ALREADY_SAID.some(s => historyLower.includes(s));
 

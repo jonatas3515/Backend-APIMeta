@@ -184,6 +184,15 @@ describe('Webhook media real path', () => {
     fetchSpy = jest.spyOn(global, 'fetch').mockImplementation((url) => {
       const u = String(url);
       const baseResponse = (extra) => Promise.resolve({ text: async () => 'error', ...extra });
+      if (u.includes('graph.facebook.com/v20.0/MEDIA-ID-DOC')) {
+        return baseResponse({
+          ok: true,
+          json: async () => ({
+            url: 'https://example.com/media-content.pdf',
+            mime_type: 'application/pdf'
+          })
+        });
+      }
       if (u.includes('graph.facebook.com/v20.0/MEDIA-ID')) {
         return baseResponse({
           ok: true,
@@ -191,6 +200,12 @@ describe('Webhook media real path', () => {
             url: 'https://example.com/media-content.jpg',
             mime_type: 'image/jpeg'
           })
+        });
+      }
+      if (u === 'https://example.com/media-content.pdf') {
+        return baseResponse({
+          ok: true,
+          arrayBuffer: async () => new ArrayBuffer(16)
         });
       }
       if (u === 'https://example.com/media-content.jpg') {
@@ -245,7 +260,7 @@ describe('Webhook media real path', () => {
     expect(parts.some(p => p.text)).toBe(true);
   });
 
-  test('documento recebido não gera entrada de visão e não chama Gemini multimodal', async () => {
+  test('documento PDF recebido é anexado ao Gemini como inline_data', async () => {
     const { req, res } = createMocks({
       method: 'POST',
       body: buildDocumentPayload(),
@@ -259,11 +274,21 @@ describe('Webhook media real path', () => {
     const geminiCalls = fetchSpy.mock.calls.filter(([u]) =>
       String(u).includes('generativelanguage.googleapis.com')
     );
-    if (geminiCalls.length > 0) {
-      const geminiBody = JSON.parse(geminiCalls[0][1].body);
-      const parts = geminiBody.contents?.[0]?.parts || [];
-      expect(parts.some(p => p.inline_data)).toBe(false);
-    }
+    expect(geminiCalls.length).toBeGreaterThan(0);
+    const geminiBody = JSON.parse(geminiCalls[0][1].body);
+    const parts = geminiBody.contents?.[0]?.parts || [];
+    const inlinePart = parts.find(p => p.inline_data);
+    expect(inlinePart).toBeTruthy();
+    expect(inlinePart.inline_data.mime_type).toBe('application/pdf');
+    expect(parts.some(p => p.text)).toBe(true);
+
+    // A resposta enviada ao cliente é a análise do documento, não o fallback
+    // "Recebido! Consegue descrever o conteúdo do arquivo?"
+    const whatsappCalls = fetchSpy.mock.calls.filter(([u]) =>
+      String(u).includes('/messages')
+    );
+    const body = JSON.parse(whatsappCalls[whatsappCalls.length - 1][1].body);
+    expect(body.text.body).not.toMatch(/Consegue descrever o conteúdo/i);
   });
 
   test('imagem ilegível ou falha no Gemini retorna mensagem de descrição', async () => {

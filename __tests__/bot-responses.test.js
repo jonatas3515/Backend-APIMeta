@@ -27,12 +27,12 @@ describe('bot-responses', () => {
 
   test('getThanksReply retorna resposta de agradecimento', () => {
     const reply = getThanksReply();
-    expect(reply).toMatch(/De nada|Por nada|Ficamos felizes|à disposição/);
+    expect(reply).toMatch(/De nada|Por nada|Imagina|ajudar|à disposição|Conte conosco/);
   });
 
   test('correctCommonMistakes corrige "Entendi" após agradecimento', () => {
     const result = correctCommonMistakes('Obrigada', 'Entendi.');
-    expect(result).toMatch(/De nada|Por nada|Ficamos felizes|à disposição/);
+    expect(result).toMatch(/De nada|Por nada|Imagina|ajudar|à disposição|Conte conosco/);
   });
 
   test('correctCommonMistakes mantém resposta quando não é agradecimento', () => {
