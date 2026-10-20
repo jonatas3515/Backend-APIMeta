@@ -31,6 +31,8 @@ export default async function handler(req, res) {
   try {
     let mode = 'bot';
     let pausedUntil = null;
+    let clientStatus = null;
+    let unread = null;
 
     if (action === 'pause') {
       mode = 'human';
@@ -44,12 +46,26 @@ export default async function handler(req, res) {
     } else if (action === 'resume') {
       mode = 'bot';
       pausedUntil = null;
+    } else if (action === 'block_spam') {
+      // Bloqueio definitivo de telemarketing: humano assume (bot silenciado),
+      // status 'spam' impede a reativação automática do bot no webhook e
+      // unread=false evita notificação para a equipe.
+      mode = 'human';
+      clientStatus = 'spam';
+      unread = false;
+    } else if (action === 'unblock_spam') {
+      mode = 'bot';
+      clientStatus = 'lead';
     }
+
+    const updateData = { mode };
+    if (clientStatus !== null) updateData.client_status = clientStatus;
+    if (unread !== null) updateData.unread = unread;
 
     // Atualiza conversa (sem paused_until por enquanto)
     const { data, error } = await supabase
       .from('conversations')
-      .update({ mode })
+      .update(updateData)
       .eq('id', conversationId)
       .select()
       .single();
@@ -64,7 +80,8 @@ export default async function handler(req, res) {
     return res.status(200).json({ 
       success: true, 
       mode,
-      pausedUntil 
+      pausedUntil,
+      client_status: clientStatus
     });
   } catch (error) {
     console.error('[AUTOMATION] Erro:', error);

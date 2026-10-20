@@ -43,7 +43,8 @@ export default function LegalClassification({ conversation, onUpdate }) {
     { value: 'lead', label: '🎯 Lead' },
     { value: 'cliente_ativo', label: '✅ Cliente Ativo' },
     { value: 'cliente_antigo', label: '📁 Cliente Antigo' },
-    { value: 'caso_recusado', label: '❌ Caso Recusado' }
+    { value: 'caso_recusado', label: '❌ Caso Recusado' },
+    { value: 'spam', label: '🚫 Telemarketing / Spam' }
   ];
 
   const priorities = [

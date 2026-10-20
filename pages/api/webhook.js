@@ -281,6 +281,16 @@ export default async function handler(req, res) {
         };
       };
       
+      // Contatos marcados como telemarketing/spam ficam silenciados de forma
+      // definitiva: a mensagem é gravada para histórico, mas o bot não é
+      // reativado, o Gemini não é chamado e a conversa não vira "não lida"
+      // (evita notificar a equipe por telemarketing).
+      if (conversation.client_status === 'spam') {
+        log('spam_contact_ignored', { phoneHash: hashPhone(from) });
+        await saveMessage(conversation.id, textBody, 'client', messageType, '', '', inboundExtra, waMessageId);
+        return res.status(200).json({ status: 'ignored_spam' });
+      }
+
       // Verificar se o bot está pausado e se deve reativar automaticamente.
       // Um modo 'human' só silencia o bot quando um humano realmente assumiu
       // (mensagem com sender_type='human' dentro da janela de 30 minutos).
@@ -298,7 +308,7 @@ export default async function handler(req, res) {
         const humanAssumed = Array.isArray(recentHumanMsgs) && recentHumanMsgs.length > 0;
         log('human_assumed', { assumed: humanAssumed });
 
-        if (!humanAssumed) {
+        if (!humanAssumed && conversation.client_status !== 'spam') {
           log('bot_reactivated', { reason: 'no_human_assumed' });
           await supabase
             .from('conversations')

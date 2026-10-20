@@ -678,6 +678,53 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
     }
   };
 
+  const isSpam = conversation?.client_status === 'spam';
+
+  const handleBlockSpam = async () => {
+    try {
+      const response = await apiCall('/api/automation-control', {
+        method: 'POST',
+        body: JSON.stringify({
+          conversationId: conversation.id,
+          action: 'block_spam'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro ao bloquear telemarketing: ${response.status}`);
+      }
+
+      setMode('human');
+      setShowPauseMenu(false);
+      if (onConversationUpdate) onConversationUpdate();
+    } catch (error) {
+      console.error('Erro ao bloquear telemarketing:', error);
+      alert('Erro ao bloquear telemarketing');
+    }
+  };
+
+  const handleUnblockSpam = async () => {
+    try {
+      const response = await apiCall('/api/automation-control', {
+        method: 'POST',
+        body: JSON.stringify({
+          conversationId: conversation.id,
+          action: 'unblock_spam'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro ao desbloquear: ${response.status}`);
+      }
+
+      setMode('bot');
+      if (onConversationUpdate) onConversationUpdate();
+    } catch (error) {
+      console.error('Erro ao desbloquear:', error);
+      alert('Erro ao desbloquear');
+    }
+  };
+
   const toggleConfidential = async () => {
     const newValue = !confidential;
     setSavingConfidential(true);
@@ -946,6 +993,8 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
             <p className="text-xs md:text-sm text-nc-text-secondary truncate">{formatPhone(conversation.client_phone)}</p>
           </div>
           <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
+            {!isSpam && (
+            <>
             <select
               value={funnelStage}
               onChange={handleFunnelStageChange}
@@ -968,6 +1017,8 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
             >
               📊 <span className="hidden sm:inline">Funil</span>
             </button>
+            </>
+            )}
             <div className={`flex items-center gap-1.5 px-2 py-1 md:px-2.5 md:py-1.5 rounded-full text-xs font-medium border ${
               mode === 'bot'
                 ? 'bg-nc-gray-100 text-nc-text border-nc-gray-200'
@@ -997,6 +1048,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           </div>
         </div>
 
+        {!isSpam && (
         <div className="relative flex flex-wrap items-center gap-1.5 md:gap-2">
           {/* Desktop: botoes individuais */}
           <div className="hidden md:flex flex-wrap items-center gap-1.5 md:gap-2">
@@ -1192,9 +1244,17 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
               <button onClick={() => handlePauseBot('180')} className="w-full text-left px-3 py-2 text-sm text-nc-text hover:bg-nc-gray-100 rounded transition">⏱️ 3 horas</button>
               <button onClick={() => handlePauseBot('1440')} className="w-full text-left px-3 py-2 text-sm text-nc-text hover:bg-nc-gray-100 rounded transition">📅 1 dia</button>
               <button onClick={() => handlePauseBot('forever')} className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded transition">⏹️ Pausar sempre</button>
+              <button
+                onClick={handleBlockSpam}
+                className="w-full text-left px-3 py-2 text-sm text-red-700 bg-red-50 hover:bg-red-100 rounded transition font-medium flex items-center gap-1.5"
+                data-testid="block-spam-btn"
+              >
+                🚫 Bloquear Telemarketing
+              </button>
             </div>
           )}
         </div>
+        )}
         
         {/* Busca de mensagens */}
         <div className="mt-3">
@@ -1207,6 +1267,22 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
           />
         </div>
         </div>
+
+      {isSpam && (
+        <div className="bg-red-50 border-b border-red-200 p-2.5 px-4 flex items-center justify-between text-xs sm:text-sm text-red-800" data-testid="spam-banner">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🚫</span>
+            <span><strong>Telemarketing / Spam:</strong> A IA está silenciada permanentemente para este número.</span>
+          </div>
+          <button
+            onClick={handleUnblockSpam}
+            className="ml-3 px-2.5 py-1 bg-white border border-red-300 text-red-700 rounded hover:bg-red-100 transition text-xs whitespace-nowrap font-medium"
+            data-testid="unblock-spam-btn"
+          >
+            ↩ Desbloquear
+          </button>
+        </div>
+      )}
 
       {/* Painel de Classificação Jurídica */}
       {activePanel === 'classification' && (
@@ -1261,7 +1337,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
       )}
 
       {/* Banner de Sugestão de Caso */}
-      {userRole && (
+      {userRole && !isSpam && (
         <div className="px-4 pt-4">
           <CaseSuggestionBanner
             conversation={conversation}

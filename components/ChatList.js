@@ -192,7 +192,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
               className={`px-3 py-2 border-b border-nc-gray-150 cursor-pointer transition relative ${
                 selectedConversation?.id === conv.id
                   ? 'bg-nc-gray-100 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-nc-yellow'
-                  : 'hover:bg-nc-gray-50'
+                  : `hover:bg-nc-gray-50 ${conv.client_status === 'spam' ? 'bg-red-50/20' : ''}`
               }`}
             >
               <div className="flex justify-between items-start gap-2">
@@ -217,6 +217,11 @@ export default function ChatList({ conversations, selectedConversation, onSelect
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-0.5 mb-1">
+                    {conv.client_status === 'spam' && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 font-semibold" data-testid="spam-badge">
+                        🚫 Telemarketing
+                      </span>
+                    )}
                     <span
                       className="text-[9px] px-1 py-0.5 rounded bg-nc-gray-100 text-nc-text-secondary border border-nc-gray-200"
                       title={getFunnelStageLabel(conv.funnel_stage)}
