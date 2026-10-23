@@ -165,7 +165,11 @@ async function handler(req, res) {
     } else {
       const buffer = await readRawBody(req);
       rawBody = buffer.toString('utf8');
-      event = JSON.parse(rawBody);
+      try {
+        event = JSON.parse(rawBody);
+      } catch {
+        return res.status(400).json({ error: 'Payload inválido' });
+      }
     }
 
     // Verificacao de assinatura obrigatoria quando o secret esta configurado
