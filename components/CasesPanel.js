@@ -19,6 +19,16 @@ import CaseDetailPanel from './CaseDetailPanel';
 import CaseInsightsPanel from './CaseInsightsPanel';
 import ConversationSelectorModal from './ConversationSelectorModal';
 
+const PROCEDURAL_STEP_LABELS = {
+  conciliacao: 'Conciliação',
+  instrucao: 'Instrução',
+  sentenca: 'Sentença',
+  recurso: 'Recurso',
+  execucao: 'Execução',
+  acordo: 'Acordo',
+  outro: 'Outro'
+};
+
 export default function CasesPanel({ notice }) {
   const router = useRouter();
   const { profile } = useAuth();
@@ -36,7 +46,9 @@ export default function CasesPanel({ notice }) {
     status: '',
     priority: '',
     legal_area: '',
-    document_status: ''
+    document_status: '',
+    court: '',
+    procedural_step: ''
   });
 
   // Sincroniza filtro local com a área global
@@ -68,7 +80,14 @@ export default function CasesPanel({ notice }) {
     priority: 'media',
     deadline_date: '',
     deadline_type: '',
-    notes: ''
+    notes: '',
+    process_number: '',
+    court: '',
+    court_division: '',
+    judicial_district: '',
+    procedural_step: '',
+    case_value: '',
+    distribution_date: ''
   });
 
   // Sincroniza com query string (caseId, caseView) e carrega aba de detalhe
@@ -123,7 +142,14 @@ export default function CasesPanel({ notice }) {
         priority: 'media',
         deadline_date: '',
         deadline_type: '',
-        notes: ''
+        notes: '',
+        process_number: '',
+        court: '',
+        court_division: '',
+        judicial_district: '',
+        procedural_step: '',
+        case_value: '',
+        distribution_date: ''
       });
       setShowForm(true);
       const query = { ...router.query };
@@ -161,6 +187,8 @@ export default function CasesPanel({ notice }) {
       if (filters.status) query = query.eq('status', filters.status);
       if (filters.priority) query = query.eq('priority', filters.priority);
       if (filters.legal_area) query = query.eq('legal_area', filters.legal_area);
+      if (filters.court) query = query.eq('court', filters.court);
+      if (filters.procedural_step) query = query.eq('procedural_step', filters.procedural_step);
 
       const { data, error } = await query.order('deadline_date', { ascending: true, nullsFirst: false });
 
@@ -237,6 +265,12 @@ export default function CasesPanel({ notice }) {
       if (!payload.conversation_id) {
         delete payload.conversation_id;
       }
+      for (const field of ['process_number', 'court', 'court_division', 'judicial_district', 'procedural_step', 'distribution_date']) {
+        if (payload[field] === '' || payload[field] === undefined) payload[field] = null;
+      }
+      payload.case_value = payload.case_value === '' || payload.case_value === undefined || payload.case_value === null
+        ? null
+        : Number(payload.case_value);
 
       if (editingCase) {
         const { data, error } = await supabase
@@ -270,7 +304,14 @@ export default function CasesPanel({ notice }) {
         priority: 'media',
         deadline_date: '',
         deadline_type: '',
-        notes: ''
+        notes: '',
+        process_number: '',
+        court: '',
+        court_division: '',
+        judicial_district: '',
+        procedural_step: '',
+        case_value: '',
+        distribution_date: ''
       });
       fetchCases();
       setActionMessage({ type: 'success', text: 'Caso salvo com sucesso.' });
@@ -314,6 +355,16 @@ export default function CasesPanel({ notice }) {
       addToast(text, 'error');
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const handleCopyProcessNumber = async (processNumber) => {
+    if (!processNumber) return;
+    try {
+      await navigator.clipboard.writeText(processNumber);
+      addToast('Número do processo copiado.', 'success');
+    } catch (error) {
+      addToast('Não foi possível copiar o número do processo.', 'error');
     }
   };
 
@@ -568,7 +619,14 @@ export default function CasesPanel({ notice }) {
                   priority: 'media',
                   deadline_date: '',
                   deadline_type: '',
-                  notes: ''
+                  notes: '',
+                  process_number: '',
+                  court: '',
+                  court_division: '',
+                  judicial_district: '',
+                  procedural_step: '',
+                  case_value: '',
+                  distribution_date: ''
                 });
               }}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
@@ -626,6 +684,35 @@ export default function CasesPanel({ notice }) {
           {LEGAL_AREAS.map((area) => (
             <option key={area.value} value={area.value}>{area.label}</option>
           ))}
+        </select>
+
+        <select
+          value={filters.court}
+          onChange={(e) => setFilters({ ...filters, court: e.target.value })}
+          className="px-3 py-2 border rounded"
+        >
+          <option value="">Todos os Tribunais</option>
+          <option value="TRT">TRT</option>
+          <option value="TRF">TRF</option>
+          <option value="TJ">TJ</option>
+          <option value="STJ">STJ</option>
+          <option value="STF">STF</option>
+          <option value="Outro">Outro</option>
+        </select>
+
+        <select
+          value={filters.procedural_step}
+          onChange={(e) => setFilters({ ...filters, procedural_step: e.target.value })}
+          className="px-3 py-2 border rounded"
+        >
+          <option value="">Todas as Fases</option>
+          <option value="conciliacao">Conciliação</option>
+          <option value="instrucao">Instrução</option>
+          <option value="sentenca">Sentença</option>
+          <option value="recurso">Recurso</option>
+          <option value="execucao">Execução</option>
+          <option value="acordo">Acordo</option>
+          <option value="outro">Outro</option>
         </select>
       </div>
 
@@ -711,6 +798,78 @@ export default function CasesPanel({ notice }) {
               className="px-3 py-2 border rounded col-span-2"
               rows="3"
             />
+
+            <div className="col-span-2 border-t pt-4 mt-2">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Dados Processuais (Opcional)</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  placeholder="Número do processo (CNJ)"
+                  value={formData.process_number || ''}
+                  onChange={(e) => setFormData({ ...formData, process_number: e.target.value })}
+                  className="px-3 py-2 border rounded"
+                />
+                <select
+                  value={formData.court || ''}
+                  onChange={(e) => setFormData({ ...formData, court: e.target.value })}
+                  className="px-3 py-2 border rounded"
+                >
+                  <option value="">Tribunal</option>
+                  <option value="TRT">TRT</option>
+                  <option value="TRF">TRF</option>
+                  <option value="TJ">TJ</option>
+                  <option value="STJ">STJ</option>
+                  <option value="STF">STF</option>
+                  <option value="Outro">Outro</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Vara ou Juizado"
+                  value={formData.court_division || ''}
+                  onChange={(e) => setFormData({ ...formData, court_division: e.target.value })}
+                  className="px-3 py-2 border rounded"
+                />
+                <input
+                  type="text"
+                  placeholder="Comarca"
+                  value={formData.judicial_district || ''}
+                  onChange={(e) => setFormData({ ...formData, judicial_district: e.target.value })}
+                  className="px-3 py-2 border rounded"
+                />
+                <select
+                  value={formData.procedural_step || ''}
+                  onChange={(e) => setFormData({ ...formData, procedural_step: e.target.value })}
+                  className="px-3 py-2 border rounded"
+                >
+                  <option value="">Fase processual</option>
+                  <option value="conciliacao">Conciliação</option>
+                  <option value="instrucao">Instrução</option>
+                  <option value="sentenca">Sentença</option>
+                  <option value="recurso">Recurso</option>
+                  <option value="execucao">Execução</option>
+                  <option value="acordo">Acordo</option>
+                  <option value="outro">Outro</option>
+                </select>
+                <input
+                  type="number"
+                  placeholder="Valor da causa (R$)"
+                  min="0"
+                  step="0.01"
+                  value={formData.case_value ?? ''}
+                  onChange={(e) => setFormData({ ...formData, case_value: e.target.value })}
+                  className="px-3 py-2 border rounded"
+                />
+                <label className="flex flex-col text-xs text-gray-500 gap-1">
+                  Data de distribuição
+                  <input
+                    type="date"
+                    value={formData.distribution_date || ''}
+                    onChange={(e) => setFormData({ ...formData, distribution_date: e.target.value })}
+                    className="px-3 py-2 border rounded text-sm text-gray-900"
+                  />
+                </label>
+              </div>
+            </div>
           </div>
           <div className="flex gap-2 mt-4">
             <button
@@ -779,6 +938,32 @@ export default function CasesPanel({ notice }) {
                         <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${pendingDocs > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                           {pendingDocs > 0 ? `${pendingDocs} de ${totalDocs} pendentes` : '✓ completo'}
                         </span>
+                      )}
+                      {(caseItem.process_number || caseItem.court || caseItem.procedural_step) && (
+                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                          {caseItem.process_number && (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-gray-600">
+                              <span className="font-mono">{caseItem.process_number}</span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleCopyProcessNumber(caseItem.process_number); }}
+                                title="Copiar número do processo"
+                                className="px-1 py-0.5 text-[10px] bg-gray-100 hover:bg-gray-200 rounded border border-gray-300"
+                              >
+                                Copiar
+                              </button>
+                            </span>
+                          )}
+                          {caseItem.court && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium">
+                              {caseItem.court}
+                            </span>
+                          )}
+                          {caseItem.procedural_step && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">
+                              {PROCEDURAL_STEP_LABELS[caseItem.procedural_step] || caseItem.procedural_step}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="border p-3">{caseItem.legal_area || '-'}</td>

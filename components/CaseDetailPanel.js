@@ -42,6 +42,23 @@ const PRIORITY_COLORS = {
   alta: 'text-red-600'
 };
 
+const PROCEDURAL_STEP_LABELS = {
+  conciliacao: 'Conciliação',
+  instrucao: 'Instrução',
+  sentenca: 'Sentença',
+  recurso: 'Recurso',
+  execucao: 'Execução',
+  acordo: 'Acordo',
+  outro: 'Outro'
+};
+
+function formatCurrency(value) {
+  if (value === null || value === undefined || value === '') return '-';
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return '-';
+  return parsed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
 export default function CaseDetailPanel({
   caseItem,
   caseView,
@@ -78,6 +95,15 @@ export default function CaseDetailPanel({
 
   const daysLeft = daysUntilDeadline(caseItem?.deadline_date);
   const linkedConversation = conversations?.find((c) => c.id === caseItem?.conversation_id);
+  const hasProcessData = Boolean(
+    caseItem?.process_number ||
+    caseItem?.court ||
+    caseItem?.court_division ||
+    caseItem?.judicial_district ||
+    caseItem?.procedural_step ||
+    caseItem?.case_value ||
+    caseItem?.distribution_date
+  );
 
   return (
     <div className="flex-1 h-full flex flex-col bg-white rounded-lg shadow overflow-hidden">
@@ -164,6 +190,58 @@ export default function CaseDetailPanel({
                 <p className="text-sm font-medium">{caseItem.deadline_type || '-'}</p>
               </div>
             </div>
+
+            {hasProcessData && (
+              <div className="p-3 bg-gray-50 rounded border">
+                <p className="text-xs text-gray-500 mb-2">Dados processuais</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {caseItem.process_number && (
+                    <div>
+                      <p className="text-xs text-gray-500">Número do processo</p>
+                      <p className="text-sm font-medium">{caseItem.process_number}</p>
+                    </div>
+                  )}
+                  {caseItem.court && (
+                    <div>
+                      <p className="text-xs text-gray-500">Tribunal</p>
+                      <p className="text-sm font-medium">{caseItem.court}</p>
+                    </div>
+                  )}
+                  {caseItem.court_division && (
+                    <div>
+                      <p className="text-xs text-gray-500">Vara / Juizado</p>
+                      <p className="text-sm font-medium">{caseItem.court_division}</p>
+                    </div>
+                  )}
+                  {caseItem.judicial_district && (
+                    <div>
+                      <p className="text-xs text-gray-500">Comarca</p>
+                      <p className="text-sm font-medium">{caseItem.judicial_district}</p>
+                    </div>
+                  )}
+                  {caseItem.procedural_step && (
+                    <div>
+                      <p className="text-xs text-gray-500">Fase processual</p>
+                      <p className="text-sm font-medium">
+                        {PROCEDURAL_STEP_LABELS[caseItem.procedural_step] || caseItem.procedural_step}
+                      </p>
+                    </div>
+                  )}
+                  {caseItem.case_value !== null && caseItem.case_value !== undefined && caseItem.case_value !== '' && (
+                    <div>
+                      <p className="text-xs text-gray-500">Valor da causa</p>
+                      <p className="text-sm font-medium">{formatCurrency(caseItem.case_value)}</p>
+                    </div>
+                  )}
+                  {caseItem.distribution_date && (
+                    <div>
+                      <p className="text-xs text-gray-500">Data de distribuição</p>
+                      <p className="text-sm font-medium">{formatDate(caseItem.distribution_date)}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="p-3 bg-gray-50 rounded border">
               <p className="text-xs text-gray-500 mb-1">Conversa vinculada</p>

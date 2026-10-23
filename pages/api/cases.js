@@ -6,8 +6,60 @@ import { getCache, setCache, deleteCache, clearCacheByPrefix } from '@/lib/cache
 
 const ACTIVE_CLIENT_STATUSES = ['ativo', 'active', ''];
 
+const PROCESS_STRING_FIELDS = [
+  'process_number',
+  'court',
+  'court_division',
+  'judicial_district',
+  'procedural_step'
+];
+
+const PROCESS_FIELDS = [...PROCESS_STRING_FIELDS, 'case_value', 'distribution_date'];
+
+const CASE_UPDATABLE_FIELDS = [
+  'conversation_id',
+  'title',
+  'legal_area',
+  'case_type',
+  'municipality',
+  'agency',
+  'client_role',
+  'status',
+  'priority',
+  'deadline_date',
+  'deadline_type',
+  'notes',
+  'assigned_user_id',
+  ...PROCESS_FIELDS
+];
+
 const CACHE_TTL_LIST = 10_000;
 const CACHE_TTL_DETAIL = 15_000;
+
+function sanitizeProcessField(field, value) {
+  if (PROCESS_STRING_FIELDS.includes(field)) {
+    return { value: typeof value === 'string' && value.trim() !== '' ? value.trim() : null };
+  }
+
+  if (field === 'case_value') {
+    if (value === undefined || value === null || value === '') return { value: null };
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      return { error: 'Valor da causa inválido' };
+    }
+    return { value: parsed };
+  }
+
+  if (field === 'distribution_date') {
+    if (value === undefined || value === null || value === '') return { value: null };
+    if (Number.isNaN(Date.parse(value))) {
+      return { error: 'Data de distribuição inválida' };
+    }
+    return { value };
+  }
+
+  return { value };
+}
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -93,7 +145,7 @@ function buildFiltersHash(filters) {
 }
 
 async function handleGet(req, res) {
-  const { id, conversation_id, status, priority, legal_area, municipality } = req.query;
+  const { id, conversation_id, status, priority, legal_area, municipality, process_number, court, procedural_step } = req.query;
   const user = req.user;
 
   try {
@@ -139,7 +191,7 @@ async function handleGet(req, res) {
       }
     }
 
-    const filters = { conversation_id, status, priority, legal_area, municipality };
+    const filters = { conversation_id, status, priority, legal_area, municipality, process_number, court, procedural_step };
     const listKey = `cases:list:${user.id}:${buildFiltersHash(filters)}`;
     const cachedList = getCache(listKey);
     if (cachedList) {
@@ -159,6 +211,9 @@ async function handleGet(req, res) {
     if (priority) query = query.eq('priority', priority);
     if (legal_area) query = query.eq('legal_area', legal_area);
     if (municipality) query = query.eq('municipality', municipality);
+    if (process_number) query = query.ilike('process_number', `%${process_number}%`);
+    if (court) query = query.eq('court', court);
+    if (procedural_step) query = query.eq('procedural_step', procedural_step);
 
     query = query.order('deadline_date', { ascending: true, nullsFirst: false });
 
@@ -230,6 +285,16 @@ async function handlePost(req, res) {
         });
       }
     }
+    const processData = {};
+    for (const field of PROCESS_FIELDS) {
+      const sanitized = sanitizeProcessField(field, req.body?.[field]);
+      if (sanitized.error) {
+        logger('warn', 'CASE_CREATE_VALIDATION', { userId, httpStatus: 400, errorCode: 'INVALID_PROCESS_FIELD', field });
+        return res.status(400).json({ error: sanitized.error });
+      }
+      processData[field] = sanitized.value;
+    }
+
     const insertData = {
       conversation_id: conversation_id || null,
       title,
@@ -242,7 +307,8 @@ async function handlePost(req, res) {
       priority: priority || 'media',
       deadline_date: deadline_date || null,
       deadline_type: deadline_type || null,
-      notes: notes || null
+      notes: notes || null,
+      ...processData
     };
 
     const { data, error } = await supabase
@@ -330,9 +396,29 @@ async function handlePatch(req, res) {
         });
       }
     }
+    const sanitizedUpdates = {};
+    for (const field of CASE_UPDATABLE_FIELDS) {
+      if (!Object.prototype.hasOwnProperty.call(updates, field)) continue;
+      if (PROCESS_FIELDS.includes(field)) {
+        const sanitized = sanitizeProcessField(field, updates[field]);
+        if (sanitized.error) {
+          logger('warn', 'CASE_UPDATE_VALIDATION', { userId, caseId: id, httpStatus: 400, errorCode: 'INVALID_PROCESS_FIELD', field });
+          return res.status(400).json({ error: sanitized.error });
+        }
+        sanitizedUpdates[field] = sanitized.value;
+      } else {
+        sanitizedUpdates[field] = updates[field];
+      }
+    }
+
+    if (Object.keys(sanitizedUpdates).length === 0) {
+      logger('warn', 'CASE_UPDATE_VALIDATION', { userId, caseId: id, httpStatus: 400, errorCode: 'NO_FIELDS' });
+      return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+    }
+
     const { data, error } = await supabase
       .from('cases')
-      .update(updates)
+      .update(sanitizedUpdates)
       .eq('id', id)
       .select()
       .single();
