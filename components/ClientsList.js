@@ -30,7 +30,7 @@ export default function ClientsList({ onSelectClient }) {
     try {
       const { data, error } = await supabase
         .from('conversations')
-        .select('id, client_name, client_phone, created_at, updated_at, messages(created_at)')
+        .select('id, client_name, client_phone, person_type, document_number, email, created_at, updated_at, messages(created_at)')
         .order('client_name', { ascending: true });
 
       if (error) throw error;
@@ -60,11 +60,18 @@ export default function ClientsList({ onSelectClient }) {
 
   const filteredClients = clients.filter(client => {
     const search = searchTerm.toLowerCase();
+    const searchDigits = searchTerm.replace(/\D/g, '');
     const name = client.client_name?.toLowerCase() || '';
     const phone = client.client_phone || '';
-    
-    // Filtro por texto
-    const matchesSearch = name.includes(search) || phone.includes(search);
+    const email = client.email?.toLowerCase() || '';
+    const documentDigits = (client.document_number || '').replace(/\D/g, '');
+
+    // Filtro por texto (nome, telefone, CPF/CNPJ ou e-mail)
+    const matchesSearch =
+      name.includes(search) ||
+      phone.includes(search) ||
+      email.includes(search) ||
+      (searchDigits.length > 0 && documentDigits.includes(searchDigits));
     
     // Filtro por letra
     const matchesLetter = !letterFilter || name.startsWith(letterFilter.toLowerCase());
@@ -94,7 +101,7 @@ export default function ClientsList({ onSelectClient }) {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Pesquisar por nome ou telefone..."
+            placeholder="Pesquisar por nome, telefone, CPF/CNPJ ou e-mail..."
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
@@ -182,6 +189,15 @@ export default function ClientsList({ onSelectClient }) {
                       }}
                     >
                       {client.client_name || 'Sem nome'}
+                      <span
+                        className={`ml-1.5 text-[10px] px-1 py-0.5 rounded font-medium align-middle ${
+                          client.person_type === 'juridica'
+                            ? 'bg-indigo-100 text-indigo-700'
+                            : 'bg-blue-50 text-blue-600'
+                        }`}
+                      >
+                        {client.person_type === 'juridica' ? 'PJ' : 'PF'}
+                      </span>
                     </span>
                   )}
                 </div>

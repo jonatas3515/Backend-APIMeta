@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiJson } from '../lib/apiClient';
-import { supabase } from '../lib/supabaseClient';
-import { formatPhone } from '../lib/formatters';
+import { formatPhone, formatDocument } from '../lib/formatters';
 import LgpdExportButton from './LgpdExportButton';
 import LgpdDeletionRequestButton from './LgpdDeletionRequestButton';
 import ConsentManager from './ConsentManager';
@@ -69,7 +68,16 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
   const [creatingCase, setCreatingCase] = useState(false);
 
   const [showEdit, setShowEdit] = useState(false);
-  const [editData, setEditData] = useState({ client_name: '', municipality: '', state: '' });
+  const [editData, setEditData] = useState({
+    client_name: '',
+    municipality: '',
+    state: '',
+    person_type: 'fisica',
+    document_number: '',
+    company_contact_name: '',
+    email: '',
+    birth_or_foundation_date: ''
+  });
   const [savingEdit, setSavingEdit] = useState(false);
   const [requestingConsent, setRequestingConsent] = useState(false);
 
@@ -88,7 +96,12 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
       setEditData({
         client_name: result.customer?.name || '',
         municipality: result.customer?.municipality || '',
-        state: result.customer?.state || ''
+        state: result.customer?.state || '',
+        person_type: result.customer?.person_type || 'fisica',
+        document_number: result.customer?.document_number || '',
+        company_contact_name: result.customer?.company_contact_name || '',
+        email: result.customer?.email || '',
+        birth_or_foundation_date: result.customer?.birth_or_foundation_date || ''
       });
     } catch (err) {
       console.error('[CUSTOMER-PROFILE] Erro:', err);
@@ -156,22 +169,27 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
     e.preventDefault();
     setSavingEdit(true);
     try {
-      const { error } = await supabase
-        .from('conversations')
-        .update({
+      await apiJson(`/api/customer-profile?conversation_id=${encodeURIComponent(conversationId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           client_name: editData.client_name,
           municipality: editData.municipality,
-          state: editData.state
+          state: editData.state,
+          person_type: editData.person_type,
+          document_number: editData.document_number,
+          company_contact_name: editData.person_type === 'juridica' ? editData.company_contact_name : '',
+          email: editData.email,
+          birth_or_foundation_date: editData.birth_or_foundation_date
         })
-        .eq('id', conversationId);
+      });
 
-      if (error) throw error;
       setShowEdit(false);
       fetchProfile();
       if (onConversationUpdate) onConversationUpdate();
     } catch (err) {
       console.error('[CUSTOMER-PROFILE] Erro ao atualizar dados:', err);
-      alert('Erro ao atualizar dados');
+      alert(err?.message || 'Erro ao atualizar dados');
     } finally {
       setSavingEdit(false);
     }
@@ -238,9 +256,38 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
                   </span>
                 </div>
                 <div className="space-y-2 text-sm">
-                  <p><span className="text-nc-text-secondary">Nome:</span> <strong className="text-nc-text">{customer.name || 'Sem nome'}</strong></p>
+                  <p>
+                    <span className="text-nc-text-secondary">{customer.person_type === 'juridica' ? 'Razão Social:' : 'Nome:'}</span>{' '}
+                    <strong className="text-nc-text">{customer.name || 'Sem nome'}</strong>
+                    <span
+                      className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-semibold ${
+                        customer.person_type === 'juridica'
+                          ? 'bg-indigo-100 text-indigo-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}
+                    >
+                      {customer.person_type === 'juridica' ? 'PJ' : 'PF'}
+                    </span>
+                  </p>
+                  {customer.document_number && (
+                    <p>
+                      <span className="text-nc-text-secondary">{customer.person_type === 'juridica' ? 'CNPJ:' : 'CPF:'}</span>{' '}
+                      {formatDocument(customer.document_number)}
+                    </p>
+                  )}
+                  {customer.person_type === 'juridica' && customer.company_contact_name && (
+                    <p><span className="text-nc-text-secondary">Contato:</span> {customer.company_contact_name}</p>
+                  )}
                   <p><span className="text-nc-text-secondary">Telefone:</span> {formatPhone(customer.phone)}</p>
                   {customer.email && <p><span className="text-nc-text-secondary">Email:</span> {customer.email}</p>}
+                  {customer.birth_or_foundation_date && (
+                    <p>
+                      <span className="text-nc-text-secondary">
+                        {customer.person_type === 'juridica' ? 'Fundação:' : 'Nascimento:'}
+                      </span>{' '}
+                      {shortDate(customer.birth_or_foundation_date)}
+                    </p>
+                  )}
                   <p><span className="text-nc-text-secondary">Localização:</span> {customer.municipality || '-'}{customer.state ? `/${customer.state}` : ''}</p>
                   <p><span className="text-nc-text-secondary">Primeiro contato:</span> {shortDate(customer.first_contact_at)}</p>
                 </div>
@@ -447,13 +494,53 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
           {showEdit && (
             <form onSubmit={handleUpdateCustomer} className="bg-white border border-nc-gray-200 rounded p-3 space-y-2">
               <p className="text-sm font-bold text-nc-text-title">Atualizar Dados</p>
+              <select
+                value={editData.person_type}
+                onChange={(e) => setEditData({ ...editData, person_type: e.target.value })}
+                className="nc-input text-xs"
+              >
+                <option value="fisica">Pessoa Física</option>
+                <option value="juridica">Pessoa Jurídica</option>
+              </select>
+              <input
+                type="text"
+                value={editData.document_number}
+                onChange={(e) => setEditData({ ...editData, document_number: e.target.value })}
+                placeholder={editData.person_type === 'juridica' ? 'CNPJ' : 'CPF'}
+                className="nc-input text-xs"
+              />
               <input
                 type="text"
                 value={editData.client_name}
                 onChange={(e) => setEditData({ ...editData, client_name: e.target.value })}
-                placeholder="Nome"
+                placeholder={editData.person_type === 'juridica' ? 'Razão Social / Nome da Empresa' : 'Nome Completo'}
                 className="nc-input text-xs"
               />
+              {editData.person_type === 'juridica' && (
+                <input
+                  type="text"
+                  value={editData.company_contact_name}
+                  onChange={(e) => setEditData({ ...editData, company_contact_name: e.target.value })}
+                  placeholder="Nome do Contato / Representante"
+                  className="nc-input text-xs"
+                />
+              )}
+              <input
+                type="email"
+                value={editData.email}
+                onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                placeholder={editData.person_type === 'juridica' ? 'E-mail Corporativo' : 'E-mail'}
+                className="nc-input text-xs"
+              />
+              <label className="block text-[10px] text-nc-text-secondary">
+                {editData.person_type === 'juridica' ? 'Data de Fundação / Abertura' : 'Data de Nascimento'}
+                <input
+                  type="date"
+                  value={editData.birth_or_foundation_date}
+                  onChange={(e) => setEditData({ ...editData, birth_or_foundation_date: e.target.value })}
+                  className="nc-input text-xs mt-0.5"
+                />
+              </label>
               <input
                 type="text"
                 value={editData.municipality}

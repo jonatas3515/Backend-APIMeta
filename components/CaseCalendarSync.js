@@ -92,11 +92,13 @@ export default function CaseCalendarSync({
       setMessage({ type: 'success', text: 'Sincronizado com o Google Calendar' });
     } catch (err) {
       safeError('calendar_sync_event_error', err, { component: 'CaseCalendarSync' });
-      const statusCode = err.response?.status;
-      const serverMessage = err.response?.data?.error;
+      const statusCode = err.status ?? err.response?.status;
+      const payload = err.payload ?? err.response?.data;
+      const serverMessage = payload?.error;
 
-      if (statusCode === 401 || err.response?.data?.reconnect) {
+      if (statusCode === 401 || payload?.reconnect) {
         setConnected(false);
+        setStatus(null);
         setMessage({ type: 'error', text: serverMessage || 'Conexão com o Google Calendar expirou. Conecte novamente.' });
       } else {
         setMessage({ type: 'error', text: serverMessage || 'Não foi possível sincronizar com o Google Calendar. Tente novamente.' });
@@ -126,11 +128,13 @@ export default function CaseCalendarSync({
       setMessage({ type: 'success', text: 'Removido do Google Calendar' });
     } catch (err) {
       safeError('calendar_delete_event_error', err, { component: 'CaseCalendarSync' });
-      const statusCode = err.response?.status;
-      const serverMessage = err.response?.data?.error;
+      const statusCode = err.status ?? err.response?.status;
+      const payload = err.payload ?? err.response?.data;
+      const serverMessage = payload?.error;
 
-      if (statusCode === 401 || err.response?.data?.reconnect) {
+      if (statusCode === 401 || payload?.reconnect) {
         setConnected(false);
+        setStatus(null);
         setMessage({ type: 'error', text: serverMessage || 'Conexão com o Google Calendar expirou. Conecte novamente.' });
       } else {
         setMessage({ type: 'error', text: serverMessage || 'Não foi possível remover do Google Calendar. Tente novamente.' });

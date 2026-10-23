@@ -16,6 +16,15 @@ function isConfigured() {
     !!(MICROSOFT_CLIENT_ID && MICROSOFT_CLIENT_SECRET && MICROSOFT_REDIRECT_URI);
 }
 
+const GOOGLE_AUTH_MESSAGE = 'Conexão com o Google Calendar expirou ou não encontrada. Conecte novamente.';
+
+function isGoogleAuthError(error) {
+  if (!error) return false;
+  if (error.code === 'GOOGLE_AUTH_REQUIRED' || error.reconnect) return true;
+  const msg = String(error.message || '').toLowerCase();
+  return /invalid_grant|invalid_token|unauthorized|token.*n[aã]o (dispon[íi]vel|encontrado)|integra[çc][ãa]o (n[ãa]o encontrada|desativada)/.test(msg);
+}
+
 async function handler(req, res) {
   if (!supabaseAdmin) {
     return res.status(500).json({ error: 'Supabase não configurado' });
@@ -146,8 +155,8 @@ async function handler(req, res) {
     });
 
   } catch (error) {
-    if (error.code === 'GOOGLE_AUTH_REQUIRED' || error.reconnect) {
-      return res.status(401).json({ error: error.message, reconnect: true });
+    if (isGoogleAuthError(error)) {
+      return res.status(401).json({ error: GOOGLE_AUTH_MESSAGE, reconnect: true });
     }
 
     if (error.code === 'GOOGLE_EVENT_NOT_FOUND' && event) {

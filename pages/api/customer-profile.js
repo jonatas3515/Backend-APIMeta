@@ -9,6 +9,60 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
   : null;
 
+const PERSON_TYPES = ['fisica', 'juridica'];
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const CUSTOMER_UPDATABLE_FIELDS = [
+  'client_name',
+  'municipality',
+  'state',
+  'person_type',
+  'document_number',
+  'company_contact_name',
+  'email',
+  'birth_or_foundation_date'
+];
+
+function sanitizeCustomerField(field, value) {
+  if (field === 'person_type') {
+    if (value === undefined || value === null || value === '') return { value: 'fisica' };
+    if (!PERSON_TYPES.includes(value)) {
+      return { error: 'Tipo de pessoa inválido' };
+    }
+    return { value };
+  }
+
+  if (field === 'document_number') {
+    if (value === undefined || value === null) return { value: null };
+    const digits = String(value).replace(/\D/g, '');
+    return { value: digits || null };
+  }
+
+  if (field === 'email') {
+    if (value === undefined || value === null || value === '') return { value: null };
+    const email = String(value).trim().toLowerCase();
+    if (!EMAIL_REGEX.test(email)) {
+      return { error: 'E-mail inválido' };
+    }
+    return { value: email };
+  }
+
+  if (field === 'birth_or_foundation_date') {
+    if (value === undefined || value === null || value === '') return { value: null };
+    if (Number.isNaN(Date.parse(value))) {
+      return { error: 'Data de nascimento/fundação inválida' };
+    }
+    return { value };
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return { value: trimmed === '' ? null : trimmed };
+  }
+
+  return { value: value === undefined ? null : value };
+}
+
 async function handler(req, res) {
   if (!supabase) {
     return res.status(500).json({ error: 'Supabase não configurado' });
@@ -19,6 +73,10 @@ async function handler(req, res) {
   try {
     if (method === 'POST') {
       return handlePost(req, res);
+    }
+
+    if (method === 'PATCH') {
+      return handlePatch(req, res);
     }
 
     if (method !== 'GET') {
@@ -160,7 +218,11 @@ async function handler(req, res) {
       id: conversation.id,
       name: conversation.client_name,
       phone: conversation.client_phone,
-      email: conversation.client_email || null,
+      email: conversation.email || conversation.client_email || null,
+      person_type: conversation.person_type || 'fisica',
+      document_number: conversation.document_number || null,
+      company_contact_name: conversation.company_contact_name || null,
+      birth_or_foundation_date: conversation.birth_or_foundation_date || null,
       municipality: conversation.municipality,
       state: conversation.state,
       legal_area: conversation.legal_area,
@@ -187,6 +249,51 @@ async function handler(req, res) {
   } catch (error) {
     console.error('[CUSTOMER-PROFILE] Erro:', error);
     return res.status(500).json({ error: 'Erro ao carregar perfil do cliente' });
+  }
+}
+
+async function handlePatch(req, res) {
+  const conversationId = req.query.conversation_id || req.body?.conversation_id;
+
+  if (!conversationId) {
+    return res.status(400).json({ error: 'conversation_id é obrigatório' });
+  }
+
+  try {
+    const updates = {};
+    for (const field of CUSTOMER_UPDATABLE_FIELDS) {
+      if (!Object.prototype.hasOwnProperty.call(req.body || {}, field)) continue;
+      const sanitized = sanitizeCustomerField(field, req.body[field]);
+      if (sanitized.error) {
+        return res.status(400).json({ error: sanitized.error });
+      }
+      updates[field] = sanitized.value;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
+    }
+
+    const { data, error } = await supabase
+      .from('conversations')
+      .update(updates)
+      .eq('id', conversationId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[CUSTOMER-PROFILE] Erro ao atualizar cliente:', error);
+      return res.status(500).json({ error: 'Erro ao atualizar dados do cliente' });
+    }
+
+    if (!data) {
+      return res.status(404).json({ error: 'Conversa não encontrada' });
+    }
+
+    return res.status(200).json({ success: true, conversation: data });
+  } catch (error) {
+    console.error('[CUSTOMER-PROFILE] Erro ao atualizar cliente:', error);
+    return res.status(500).json({ error: 'Erro ao atualizar dados do cliente' });
   }
 }
 
