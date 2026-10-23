@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../lib/useAuth';
 import { NAV_ITEMS } from '../lib/tabResolver';
+import OfficeBadge from './OfficeBadge';
 
 const MOBILE_PRIMARY_KEYS = ['chat', 'cases', 'agenda', 'triage'];
 
@@ -57,6 +58,7 @@ export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' })
         </nav>
 
         <div className="w-full px-2 pb-2 mt-2 border-t border-nc-gray-800 pt-2">
+          <OfficeBadge />
           <button
             onClick={handleSignOut}
             className="w-full p-2 rounded transition text-nc-gray-500 hover:text-red-400 hover:bg-nc-gray-800/50 flex flex-col items-center gap-0.5"

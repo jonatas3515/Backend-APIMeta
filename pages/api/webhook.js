@@ -15,6 +15,7 @@ import { detectThanks, getThanksReply, correctCommonMistakes } from '../../lib/b
 import { semanticSearch } from '../../lib/knowledge-embeddings.js';
 import { detectNeedsHuman, notifyAdminHandoff, EXPRESS_HUMAN_KEYWORDS } from '../../lib/needsHuman.js';
 import { SYSTEM_PROMPT } from '../../lib/systemPrompt.js';
+import { getDefaultOfficeId } from '../../lib/officeContext.js';
 const laborIntegration = require('../../lib/laborWebhookIntegration.js');
 const { classifyLaborIntent } = require('../../lib/laborSettlementIntent.js');
 
@@ -1150,18 +1151,35 @@ async function getOrCreateConversation(phoneNumber, clientName) {
     }
 
     // Cria nova conversa
-    const { data: newConv, error: createError } = await supabase
+    const conversationInsert = {
+      client_phone: phoneNumber,
+      client_phone_normalized: normalizedPhone,
+      client_name: clientName || 'Cliente',
+      status: 'open',
+      mode: 'bot',
+      office_id: getDefaultOfficeId(),
+      intake_data: { consent_request_status: 'pending', consent_request_sent_at: null }
+    };
+
+    let { data: newConv, error: createError } = await supabase
       .from('conversations')
-      .insert({
-        client_phone: phoneNumber,
-        client_phone_normalized: normalizedPhone,
-        client_name: clientName || 'Cliente',
-        status: 'open',
-        mode: 'bot',
-        intake_data: { consent_request_status: 'pending', consent_request_sent_at: null }
-      })
+      .insert(conversationInsert)
       .select()
       .single();
+
+    // Fallback: migration 064 ainda nao aplicada (coluna office_id ausente)
+    if (createError && createError.message && createError.message.includes('office_id')) {
+      const legacyInsert = { ...conversationInsert };
+      delete legacyInsert.office_id;
+      const { data: fallbackConv, error: fallbackError } = await supabase
+        .from('conversations')
+        .insert(legacyInsert)
+        .select()
+        .single();
+
+      newConv = fallbackConv;
+      createError = fallbackError;
+    }
 
     if (createError) throw createError;
     console.log(`[SUPABASE] Nova conversa criada: ${newConv.id}`);

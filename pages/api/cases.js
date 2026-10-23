@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { withAuth } from '@/lib/auth';
+import { getDefaultOfficeId } from '@/lib/officeContext';
 import logger from '@/lib/logger';
 import { incrementMetric } from '@/lib/metrics';
 import { getCache, setCache, deleteCache, clearCacheByPrefix } from '@/lib/cache';
@@ -30,6 +31,7 @@ const CASE_UPDATABLE_FIELDS = [
   'deadline_type',
   'notes',
   'assigned_user_id',
+  'office_id',
   ...PROCESS_FIELDS
 ];
 
@@ -244,7 +246,8 @@ async function handlePost(req, res) {
     priority,
     deadline_date,
     deadline_type,
-    notes
+    notes,
+    office_id
   } = req.body;
   const userId = req.user?.id;
 
@@ -308,6 +311,7 @@ async function handlePost(req, res) {
       deadline_date: deadline_date || null,
       deadline_type: deadline_type || null,
       notes: notes || null,
+      office_id: office_id || getDefaultOfficeId(),
       ...processData
     };
 
