@@ -88,12 +88,12 @@ export default function LandingPage({ onOpenLogin }) {
 
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-4 py-20 text-center">
-        <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/30 mb-6">
+        <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-red-500/10 text-red-500 border border-red-500/30 mb-6">
           Plataforma completa para advocacia
         </span>
         <h1 className="text-3xl md:text-5xl font-bold leading-tight mb-6">
           O Sistema Operacional Completo para{' '}
-          <span className="text-rose-400 font-extrabold">
+          <span className="text-red-500 font-extrabold">
             Escritórios de Advocacia
           </span>
         </h1>
@@ -104,7 +104,7 @@ export default function LandingPage({ onOpenLogin }) {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={() => setSignupOpen(true)}
-            className="px-8 py-3 rounded-lg font-bold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-lg shadow-red-500/25 transition"
+            className="px-8 py-3 rounded-lg font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/25 transition"
           >
             Começar 14 dias grátis
           </button>
@@ -147,7 +147,7 @@ export default function LandingPage({ onOpenLogin }) {
                 }`}
               >
                 {highlight && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold px-3 py-1 rounded-full bg-gradient-to-r from-red-500 to-rose-600 text-white">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold px-3 py-1 rounded-full bg-red-600 text-white">
                     MAIS ESCOLHIDO
                   </span>
                 )}
@@ -161,7 +161,7 @@ export default function LandingPage({ onOpenLogin }) {
                   onClick={() => setSignupOpen(true)}
                   className={`w-full py-2.5 rounded-lg font-semibold transition ${
                     highlight
-                      ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold shadow-lg shadow-red-500/25'
+                      ? 'bg-red-600 hover:bg-red-700 text-white font-bold shadow-lg shadow-red-500/25'
                       : 'bg-gray-700 hover:bg-gray-600 text-white'
                   }`}
                 >
@@ -173,9 +173,63 @@ export default function LandingPage({ onOpenLogin }) {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-800 py-8 text-center text-xs text-gray-500">
-        JNC Legal SaaS — Gestão jurídica inteligente.
+      {/* Banner final */}
+      <section className="border-t border-gray-800 bg-gradient-to-r from-red-950/40 via-gray-900 to-red-950/40">
+        <div className="max-w-4xl mx-auto px-4 py-16 text-center">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
+            Pronto para transformar seu escritório?
+          </h2>
+          <p className="text-gray-400 mb-8">
+            Comece hoje mesmo e ganhe 30 dias grátis para testar todas as funcionalidades
+          </p>
+          <button
+            onClick={() => setSignupOpen(true)}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold px-8 py-3 rounded-lg shadow-lg shadow-red-500/25 transition"
+            data-testid="cta-final"
+          >
+            Criar Conta Grátis
+          </button>
+        </div>
+      </section>
+
+      {/* Footer oficial */}
+      <footer className="border-t border-gray-800 bg-gray-950">
+        <div className="max-w-6xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Marca */}
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <img src="/JusJNC_White.png" alt="JusJNC" className="h-8 object-contain" />
+            </div>
+            <p className="text-xs text-gray-400 mb-3">Desenvolvido por JNC Tecnologia</p>
+            <div className="flex items-center gap-3">
+              <img src="/FastSavorys.png" alt="FastSavorys" className="h-6 object-contain opacity-80" />
+              <img src="/Logo transparente.png" alt="N&C" className="h-6 object-contain opacity-80" />
+            </div>
+          </div>
+
+          {/* Links */}
+          <div>
+            <h4 className="text-sm font-bold text-white mb-3">Links</h4>
+            <ul className="space-y-2 text-xs text-gray-400">
+              <li><a href="#planos" className="hover:text-red-500 transition">Recursos</a></li>
+              <li><a href="#planos" className="hover:text-red-500 transition">Planos</a></li>
+              <li><a href="/politica-de-privacidade" className="hover:text-red-500 transition">Termos de Uso</a></li>
+              <li><a href="/politica-de-privacidade" className="hover:text-red-500 transition">Privacidade</a></li>
+            </ul>
+          </div>
+
+          {/* Contato */}
+          <div>
+            <h4 className="text-sm font-bold text-white mb-3">Contato</h4>
+            <ul className="space-y-2 text-xs text-gray-400">
+              <li><a href="mailto:contato@nevesecosta.com.br" className="hover:text-red-500 transition">contato@nevesecosta.com.br</a></li>
+              <li><a href="tel:+5573999348552" className="hover:text-red-500 transition">(73) 99934-8552</a></li>
+            </ul>
+          </div>
+        </div>
+        <div className="border-t border-gray-800 py-4 text-center text-[11px] text-gray-500">
+          © 2026 Jus JNC. Todos os direitos reservados. Desenvolvido por JNC
+        </div>
       </footer>
 
       {/* Modal de cadastro */}
@@ -194,7 +248,7 @@ export default function LandingPage({ onOpenLogin }) {
             </div>
             <form onSubmit={handleSignup} className="p-4 space-y-3">
               {feedback && (
-                <div className={`p-3 rounded text-sm ${feedback.type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'bg-green-500/10 text-green-400 border border-green-500/30'}`}>
+                <div className={`p-3 rounded text-sm ${feedback.type === 'error' ? 'bg-red-500/10 text-red-500 border border-red-500/30' : 'bg-green-500/10 text-green-400 border border-green-500/30'}`}>
                   {feedback.text}
                 </div>
               )}
@@ -216,12 +270,12 @@ export default function LandingPage({ onOpenLogin }) {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-2.5 rounded-lg font-bold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-lg shadow-red-500/25 transition disabled:opacity-60"
+                className="w-full py-2.5 rounded-lg font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/25 transition disabled:opacity-60"
               >
                 {submitting ? 'Criando...' : 'Criar minha conta grátis'}
               </button>
               {feedback?.type === 'success' && (
-                <a href="/" className="block text-center text-sm text-red-400 hover:text-red-300 font-medium">
+                <a href="/" className="block text-center text-sm text-red-500 hover:text-red-400 font-medium">
                   Entrar no sistema →
                 </a>
               )}

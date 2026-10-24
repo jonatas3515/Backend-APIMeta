@@ -513,6 +513,15 @@ export default function Home() {
             )}
             <div className="flex-1" />
             <div className="flex items-center gap-2">
+              {profile?.role === 'admin' && (
+                <button
+                  onClick={() => router.push('/admin')}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs md:text-sm transition"
+                  data-testid="header-admin-btn"
+                >
+                  Painel Admin
+                </button>
+              )}
               <button
                 onClick={() => {
                   if (typeof window !== 'undefined') {
