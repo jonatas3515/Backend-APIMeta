@@ -46,15 +46,16 @@ const PrioridadesPanel = require('../components/PrioridadesPanel').default;
 const MonthlyCalendarPanel = require('../components/MonthlyCalendarPanel').default;
 
 describe('tabResolver - novas abas do legado', () => {
-  test('registra priorities, tasks, monthly-calendar e saas-admin', () => {
+  test('registra priorities, tasks e monthly-calendar; saas-admin removida', () => {
     const keys = NAV_ITEMS.map((i) => i.key);
-    ['priorities', 'tasks', 'monthly-calendar', 'saas-admin'].forEach((k) => {
+    ['priorities', 'tasks', 'monthly-calendar'].forEach((k) => {
       expect(keys).toContain(k);
     });
+    expect(keys).not.toContain('saas-admin');
+    expect(resolveTab('saas-admin')).toBeNull();
   });
 
-  test('saas-admin restrita a admin; demais acessíveis a estagiario', () => {
-    expect(resolveTab('saas-admin').minRole).toBe('admin');
+  test('novas abas acessiveis a estagiario', () => {
     expect(resolveTab('priorities').minRole).toBe('estagiario');
     expect(resolveTab('tasks').minRole).toBe('estagiario');
     expect(resolveTab('monthly-calendar').minRole).toBe('estagiario');
@@ -78,6 +79,6 @@ describe('MonthlyCalendarPanel', () => {
     const now = new Date();
     await waitFor(() => expect(screen.getByTestId('calendar-today')).toBeInTheDocument());
     expect(screen.getByTestId('monthly-calendar-panel')).toHaveTextContent(`${monthNames[now.getMonth()]} ${now.getFullYear()}`);
-    expect(screen.getByText(/Aniversariantes de Hoje/)).toBeInTheDocument();
+    expect(screen.getByText(/Aniversariantes de/)).toBeInTheDocument();
   });
 });

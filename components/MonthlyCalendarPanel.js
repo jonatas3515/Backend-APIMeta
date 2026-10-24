@@ -22,12 +22,13 @@ export default function MonthlyCalendarPanel() {
   const [cursor, setCursor] = useState(() => new Date());
   const [cases, setCases] = useState([]);
   const [birthdays, setBirthdays] = useState([]);
+  const [selectedDay, setSelectedDay] = useState(() => new Date());
 
   useEffect(() => {
     let mounted = true;
     Promise.allSettled([
       apiJson('/api/cases'),
-      supabase.from('conversations').select('id, client_name, birth_or_foundation_date').not('birth_or_foundation_date', 'is', null)
+      supabase.from('conversations').select('id, client_name, phone, birth_or_foundation_date').not('birth_or_foundation_date', 'is', null)
     ]).then(([casesR, bdaysR]) => {
       if (!mounted) return;
       if (casesR.status === 'fulfilled') setCases(casesR.value || []);
@@ -75,7 +76,9 @@ export default function MonthlyCalendarPanel() {
 
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
-  const todayBirthdays = birthdaysByDay[`${today.getMonth()}-${today.getDate()}`] || [];
+  const selectedKey = `${selectedDay.getFullYear()}-${selectedDay.getMonth()}-${selectedDay.getDate()}`;
+  const selectedBirthdays = birthdaysByDay[`${selectedDay.getMonth()}-${selectedDay.getDate()}`] || [];
+  const selectedDeadlines = deadlinesByDay[selectedKey] || [];
 
   const prev = () => setCursor(new Date(year, month - 1, 1));
   const next = () => setCursor(new Date(year, month + 1, 1));
@@ -110,7 +113,8 @@ export default function MonthlyCalendarPanel() {
               return (
                 <div
                   key={key}
-                  className={`min-h-[70px] p-1 rounded border text-xs ${
+                  onClick={() => setSelectedDay(day)}
+                  className={`min-h-[70px] p-1 rounded border text-xs cursor-pointer ${
                     isToday ? 'border-nc-yellow bg-yellow-50 ring-1 ring-nc-yellow' : feriado ? 'border-red-200 bg-red-50/50' : 'border-gray-100 bg-white'
                   }`}
                   data-testid={isToday ? 'calendar-today' : undefined}
@@ -132,27 +136,42 @@ export default function MonthlyCalendarPanel() {
         {/* Painel lateral */}
         <div className="space-y-4">
           <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-bold text-sm text-gray-800 mb-3">🎂 Aniversariantes de Hoje</h3>
-            {todayBirthdays.length === 0 ? (
-              <p className="text-sm text-gray-400">Nenhum aniversariante hoje.</p>
+            <h3 className="font-bold text-sm text-gray-800 mb-3">🎂 Aniversariantes de {selectedDay.toLocaleDateString('pt-BR')}</h3>
+            {selectedBirthdays.length === 0 ? (
+              <p className="text-sm text-gray-400">Nenhum aniversariante neste dia.</p>
             ) : (
               <ul className="space-y-2">
-                {todayBirthdays.map((b) => (
-                  <li key={b.id} className="text-sm text-gray-800 flex items-center gap-2">
-                    <span className="text-pink-500">🎂</span> {b.client_name || 'Cliente'}
-                  </li>
-                ))}
+                {selectedBirthdays.map((b) => {
+                  const phone = (b.phone || '').replace(/\D/g, '');
+                  const msg = encodeURIComponent(`Feliz aniversário, ${b.client_name || 'Cliente'}! 🎂`);
+                  return (
+                    <li key={b.id} className="text-sm text-gray-800 flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-2"><span className="text-pink-500">🎂</span> {b.client_name || 'Cliente'}</span>
+                      {phone && (
+                        <a
+                          href={`https://wa.me/${phone}?text=${msg}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] px-2 py-1 rounded bg-green-500 hover:bg-green-600 text-white font-bold whitespace-nowrap"
+                          data-testid={`whatsapp-btn-${b.id}`}
+                        >
+                          Enviar WhatsApp
+                        </a>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>
 
           <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-bold text-sm text-gray-800 mb-3">⏰ Prazos de Hoje</h3>
-            {(deadlinesByDay[todayKey] || []).length === 0 ? (
-              <p className="text-sm text-gray-400">Nenhum prazo hoje.</p>
+            <h3 className="font-bold text-sm text-gray-800 mb-3">⏰ Prazos de {selectedDay.toLocaleDateString('pt-BR')}</h3>
+            {selectedDeadlines.length === 0 ? (
+              <p className="text-sm text-gray-400">Nenhum prazo neste dia.</p>
             ) : (
               <ul className="space-y-2">
-                {deadlinesByDay[todayKey].map((c) => (
+                {selectedDeadlines.map((c) => (
                   <li key={c.id} className="text-sm text-gray-800">⚖️ {c.title}</li>
                 ))}
               </ul>

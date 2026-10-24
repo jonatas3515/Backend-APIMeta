@@ -65,6 +65,9 @@ describe('SettingsPanel - navegacao de perfil', () => {
     expect(container.textContent).toContain('SignatureSettings');
 
     fireEvent.click(container.querySelector('button:nth-child(3)'));
+    expect(container.textContent).toContain('Configurações do Escritório');
+
+    fireEvent.click(container.querySelector('button:nth-child(4)'));
     expect(container.textContent).toContain('ProfilePanel');
   });
 });

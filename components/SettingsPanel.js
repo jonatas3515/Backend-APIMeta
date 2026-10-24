@@ -3,6 +3,7 @@ import { useAuth } from '../lib/useAuth';
 import UserManagement from './UserManagement';
 import SignatureSettings from './SignatureSettings';
 import ProfilePanel from './ProfilePanel';
+import OfficeSettingsPanel from './OfficeSettingsPanel';
 
 export default function SettingsPanel({ initialView = 'users' }) {
   const { profile } = useAuth();
@@ -31,6 +32,7 @@ export default function SettingsPanel({ initialView = 'users' }) {
   const tabs = [
     { key: 'users', label: '👥 Usuários', visible: canAccessUsers },
     { key: 'signatures', label: '✍️ Assinaturas', visible: canAccessSignatures },
+    { key: 'office', label: '🏢 Escritório', visible: canAccessUsers },
     { key: 'profile', label: '👤 Perfil', visible: true },
   ].filter(tab => tab.visible);
 
@@ -60,6 +62,9 @@ export default function SettingsPanel({ initialView = 'users' }) {
         )}
         {activeView === 'signatures' && canAccessSignatures && (
           <SignatureSettings />
+        )}
+        {activeView === 'office' && canAccessUsers && (
+          <OfficeSettingsPanel />
         )}
         {activeView === 'profile' && (
           <ProfilePanel />

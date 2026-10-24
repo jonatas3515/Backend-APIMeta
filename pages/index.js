@@ -23,7 +23,6 @@ import ExecutiveDashboard from '../components/ExecutiveDashboard';
 import PrioridadesPanel from '../components/PrioridadesPanel';
 import TarefasPanel from '../components/TarefasPanel';
 import MonthlyCalendarPanel from '../components/MonthlyCalendarPanel';
-import AdminMasterPanel from '../components/AdminMasterPanel';
 import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
 import useAreaFilter from '../hooks/useAreaFilter';
@@ -634,8 +633,6 @@ export default function Home() {
             <TarefasPanel />
           ) : activeTab === 'monthly-calendar' ? (
             <MonthlyCalendarPanel />
-          ) : activeTab === 'saas-admin' ? (
-            <AdminMasterPanel />
           ) : activeTab === 'funnel' ? (
             <FunnelKanban
               conversations={conversations}
