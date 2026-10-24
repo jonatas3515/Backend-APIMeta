@@ -65,7 +65,7 @@ describe('tabResolver - novas abas do legado', () => {
 describe('PrioridadesPanel', () => {
   test('agrupa itens em Atrasados, Hoje e Próximos 7 dias', async () => {
     render(<PrioridadesPanel />);
-    await waitFor(() => expect(screen.getByText('Caso Atrasado')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText('Caso Atrasado').length).toBeGreaterThan(0));
     expect(screen.getByTestId('group-overdue')).toHaveTextContent('Caso Atrasado');
     expect(screen.getByTestId('group-today')).toHaveTextContent('Caso de Hoje');
     expect(screen.getByTestId('group-week')).toHaveTextContent('Caso Semana');
@@ -79,6 +79,6 @@ describe('MonthlyCalendarPanel', () => {
     const now = new Date();
     await waitFor(() => expect(screen.getByTestId('calendar-today')).toBeInTheDocument());
     expect(screen.getByTestId('monthly-calendar-panel')).toHaveTextContent(`${monthNames[now.getMonth()]} ${now.getFullYear()}`);
-    expect(screen.getByText(/Aniversariantes de/)).toBeInTheDocument();
+    expect(screen.getByText(/Aniversariantes -/)).toBeInTheDocument();
   });
 });

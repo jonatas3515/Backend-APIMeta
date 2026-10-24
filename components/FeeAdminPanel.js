@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import HonorariosCentralPanel from './HonorariosCentralPanel';
 import { useAuth } from '../lib/useAuth';
 import FeeServiceAdmin from './FeeServiceAdmin';
 import FeeTablesManager from './FeeTablesManager';
@@ -26,6 +27,7 @@ export default function FeeAdminPanel({ initialView = 'services' }) {
   }
 
   const tabs = [
+    { key: 'central', label: '$ Central de Honorários', visible: isAdminOrLawyer },
     { key: 'services', label: '📋 Serviços', visible: isAdminOrLawyer },
     { key: 'reference-tables', label: '📊 Tabela OAB', visible: isAdminOrLawyer },
     { key: 'simulations', label: '💰 Simulações', visible: isAdminOrLawyer },
@@ -52,7 +54,12 @@ export default function FeeAdminPanel({ initialView = 'services' }) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 pb-24 md:pb-4">
+      <div className="flex-1 overflow-y-auto">
+        {activeView === 'central' && (
+          <HonorariosCentralPanel />
+        )}
+        {activeView !== 'central' && (
+        <div className="p-4 pb-24 md:pb-4">
         {activeView === 'services' && (
           <FeeServiceAdmin viewMode="services" />
         )}
@@ -64,6 +71,8 @@ export default function FeeAdminPanel({ initialView = 'services' }) {
         )}
         {activeView === 'tracking' && (
           <FeeSimulator isAdminOrLawyer={isAdminOrLawyer} showTracking={true} hideForm={true} />
+        )}
+        </div>
         )}
       </div>
     </div>

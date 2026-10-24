@@ -16,7 +16,7 @@ const FERIADOS = {
 };
 
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const WEEK_DAYS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const WEEK_DAYS = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
 
 export default function MonthlyCalendarPanel() {
   const [cursor, setCursor] = useState(() => new Date());
@@ -77,6 +77,9 @@ export default function MonthlyCalendarPanel() {
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
   const selectedKey = `${selectedDay.getFullYear()}-${selectedDay.getMonth()}-${selectedDay.getDate()}`;
+  const monthFeriados = Object.entries(FERIADOS)
+    .filter(([mm]) => Number(mm.slice(0, 2)) === month + 1)
+    .map(([mm, name]) => ({ day: mm.slice(3, 5).replace(/^0/, ''), name }));
   const selectedBirthdays = birthdaysByDay[`${selectedDay.getMonth()}-${selectedDay.getDate()}`] || [];
   const selectedDeadlines = deadlinesByDay[selectedKey] || [];
 
@@ -88,19 +91,20 @@ export default function MonthlyCalendarPanel() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Grade mensal */}
         <div className="lg:col-span-3 bg-white rounded-lg shadow p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">
-              🗓️ {MONTH_NAMES[month]} {year}
+          <div className="flex items-center justify-between mb-4 bg-[#1e293b] text-white rounded-t-lg -m-4 mb-4 px-4 py-3">
+            <h2 className="text-lg font-bold capitalize">
+              {MONTH_NAMES[month]} {year}
             </h2>
-            <div className="flex gap-2">
-              <button onClick={prev} className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm">←</button>
-              <button onClick={() => setCursor(new Date())} className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm">Hoje</button>
-              <button onClick={next} className="px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-sm">→</button>
+            <div className="flex gap-1">
+              <button onClick={() => setCursor(new Date(year - 1, month, 1))} className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs">«</button>
+              <button onClick={prev} className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs">‹</button>
+              <button onClick={next} className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs">›</button>
+              <button onClick={() => setCursor(new Date(year + 1, month, 1))} className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs">»</button>
             </div>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-gray-500 mb-1">
-            {WEEK_DAYS.map((d) => <div key={d}>{d}</div>)}
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-gray-500 mb-1 uppercase">
+            {WEEK_DAYS.map((d) => <div key={d}>{d.toUpperCase()}</div>)}
           </div>
 
           <div className="grid grid-cols-7 gap-1">
@@ -119,8 +123,13 @@ export default function MonthlyCalendarPanel() {
                   }`}
                   data-testid={isToday ? 'calendar-today' : undefined}
                 >
-                  <span className={`text-[11px] font-bold ${isToday ? 'text-nc-black' : 'text-gray-600'}`}>{day.getDate()}</span>
-                  {feriado && <p className="text-[9px] text-red-500 font-medium leading-tight" title={feriado}>🇧🇷 {feriado}</p>}
+                  <span className={`text-[11px] font-bold ${isToday ? 'text-nc-black' : feriado ? 'text-red-700' : 'text-gray-600'}`}>{day.getDate()}</span>
+                  {feriado && <p className="text-[9px] text-red-700 font-bold leading-tight" title={feriado}>{feriado}</p>}
+                  {(birthdaysByDay[`${day.getMonth()}-${day.getDate()}`] || []).length > 0 && (
+                    <p className="text-[9px] mt-0.5">
+                      🎂 <span className="px-1 rounded bg-green-500 text-white text-[8px] font-bold">({birthdaysByDay[`${day.getMonth()}-${day.getDate()}`].length})</span>
+                    </p>
+                  )}
                   {dayCases.slice(0, 2).map((c) => (
                     <p key={c.id} className="text-[9px] bg-blue-100 text-blue-700 rounded px-1 truncate mt-0.5" title={c.title}>
                       ⏰ {c.title}
@@ -131,12 +140,24 @@ export default function MonthlyCalendarPanel() {
               );
             })}
           </div>
+
+          {/* Feriados do mes */}
+          {monthFeriados.length > 0 && (
+            <div className="mt-3 p-3 bg-red-900/20 border border-red-800 rounded-lg">
+              <h4 className="text-xs font-bold text-red-300 mb-1">🇧🇷 Feriados do mês</h4>
+              <ul className="text-[11px] text-red-200 space-y-0.5">
+                {monthFeriados.map((f) => (
+                  <li key={f.day}>{f.day} - {f.name}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         {/* Painel lateral */}
         <div className="space-y-4">
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-bold text-sm text-gray-800 mb-3">🎂 Aniversariantes de {selectedDay.toLocaleDateString('pt-BR')}</h3>
+          <div className="bg-gray-800 border border-gray-700 rounded-xl shadow p-4">
+            <h3 className="font-bold text-sm text-white mb-3">🎂 Aniversariantes - {selectedDay.toLocaleDateString('pt-BR')}</h3>
             {selectedBirthdays.length === 0 ? (
               <p className="text-sm text-gray-400">Nenhum aniversariante neste dia.</p>
             ) : (
@@ -145,8 +166,8 @@ export default function MonthlyCalendarPanel() {
                   const phone = (b.phone || '').replace(/\D/g, '');
                   const msg = encodeURIComponent(`Feliz aniversário, ${b.client_name || 'Cliente'}! 🎂`);
                   return (
-                    <li key={b.id} className="text-sm text-gray-800 flex items-center justify-between gap-2">
-                      <span className="flex items-center gap-2"><span className="text-pink-500">🎂</span> {b.client_name || 'Cliente'}</span>
+                    <li key={b.id} className="text-sm text-gray-200 flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-2"><span className="text-pink-400">🎂</span> {b.client_name || 'Cliente'}</span>
                       {phone && (
                         <a
                           href={`https://wa.me/${phone}?text=${msg}`}
@@ -165,14 +186,14 @@ export default function MonthlyCalendarPanel() {
             )}
           </div>
 
-          <div className="bg-white rounded-lg shadow p-4">
-            <h3 className="font-bold text-sm text-gray-800 mb-3">⏰ Prazos de {selectedDay.toLocaleDateString('pt-BR')}</h3>
+          <div className="bg-gray-800 border border-gray-700 rounded-xl shadow p-4">
+            <h3 className="font-bold text-sm text-white mb-3">⏰ Prazos de {selectedDay.toLocaleDateString('pt-BR')}</h3>
             {selectedDeadlines.length === 0 ? (
               <p className="text-sm text-gray-400">Nenhum prazo neste dia.</p>
             ) : (
               <ul className="space-y-2">
                 {selectedDeadlines.map((c) => (
-                  <li key={c.id} className="text-sm text-gray-800">⚖️ {c.title}</li>
+                  <li key={c.id} className="text-sm text-gray-200">⚖️ {c.title}</li>
                 ))}
               </ul>
             )}
