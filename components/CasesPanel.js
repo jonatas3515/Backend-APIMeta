@@ -980,21 +980,31 @@ export default function CasesPanel({ notice }) {
                     <td className="border p-3">
                       {caseItem.deadline_date ? (
                         <div>
-                          <div>{formatDate(caseItem.deadline_date)}</div>
-                          {daysLeft !== null && (
-                            <div className={`text-sm ${daysLeft < 0 ? 'text-red-600 font-bold' : daysLeft < 7 ? 'text-orange-600' : 'text-gray-600'}`}>
-                              {daysLeft < 0 ? `${Math.abs(daysLeft)} dias atrasado` : `${daysLeft} dias`}
-                            </div>
-                          )}
-                          <div className="mt-1">
-                            <CaseCalendarSync
-                              eventId={caseItem.id}
-                              table="cases"
-                              deadlineDate={caseItem.deadline_date}
-                              title={caseItem.title}
-                              internalUpdatedAt={caseItem.updated_at}
-                            />
+                          <div className={caseItem.status === 'encerrado' || caseItem.status === 'arquivado' ? 'text-gray-400 line-through text-xs' : ''}>
+                            {formatDate(caseItem.deadline_date)}
                           </div>
+                          {caseItem.status === 'encerrado' || caseItem.status === 'arquivado' ? (
+                            <div className="text-xs text-emerald-700 font-semibold flex items-center gap-1 mt-1 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 w-fit">
+                              <span>✓</span> Encerrado / Concluído
+                            </div>
+                          ) : (
+                            <>
+                              {daysLeft !== null && (
+                                <div className={`text-sm ${daysLeft < 0 ? 'text-red-600 font-bold' : daysLeft < 7 ? 'text-orange-600' : 'text-gray-600'}`}>
+                                  {daysLeft < 0 ? `${Math.abs(daysLeft)} dias atrasado` : `${daysLeft} dias`}
+                                </div>
+                              )}
+                              <div className="mt-1">
+                                <CaseCalendarSync
+                                  eventId={caseItem.id}
+                                  table="cases"
+                                  deadlineDate={caseItem.deadline_date}
+                                  title={caseItem.title}
+                                  internalUpdatedAt={caseItem.updated_at}
+                                />
+                              </div>
+                            </>
+                          )}
                         </div>
                       ) : (
                         '-'
