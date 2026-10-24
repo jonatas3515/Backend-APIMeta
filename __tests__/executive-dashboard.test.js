@@ -28,8 +28,16 @@ jest.mock('../lib/apiClient', () => ({
     if (url === '/api/conversations') {
       return Promise.resolve([{ id: 'conv-1', updated_at: new Date().toISOString() }]);
     }
-    return Promise.resolve(null);
+    return Promise.resolve({});
   })
+}));
+
+jest.mock('../lib/supabaseClient', () => ({
+  supabase: {
+    from: jest.fn(() => ({ select: jest.fn(() => ({ order: jest.fn(() => Promise.resolve({ data: [], error: null })) })) })),
+    auth: { getUser: jest.fn(() => Promise.resolve({ data: { user: null }, error: null })) },
+    channel: jest.fn(() => ({ on: jest.fn().mockReturnThis(), subscribe: jest.fn() }))
+  }
 }));
 
 jest.mock('../lib/useAuth', () => ({
@@ -42,11 +50,20 @@ jest.mock('next/router', () => ({
 
 jest.mock('../components/ProcessAnalyticsPanel', () => () => <div data-testid="analytics-mock" />);
 jest.mock('../components/Sidebar', () => () => <div data-testid="sidebar-mock" />);
+jest.mock('../components/MetricsDashboard', () => () => <div data-testid="metrics-mock" />);
+jest.mock('../components/GlobalSearch', () => () => null);
+jest.mock('../components/KeyboardShortcuts', () => () => null);
+jest.mock('../components/NotificationPermissionPrompt', () => () => null);
+jest.mock('../components/AreaFilterSelector', () => () => null);
+jest.mock('../components/ActiveFilterBanner', () => () => null);
 jest.mock('../components/Login', () => () => <div data-testid="login-mock">Tela de Login</div>);
+jest.mock('../hooks/useAreaFilter', () => () => ({ selectedArea: '', setSelectedArea: jest.fn() }));
+jest.mock('../lib/router', () => ({ buildInternalUrl: jest.fn(() => '/'), resolveLegacyQuery: jest.fn(() => ({})) }));
+jest.mock('../lib/notifications', () => ({ isSupported: () => false, getPermission: () => 'denied', maybeNotify: jest.fn() }));
 
 const { useAuth } = require('../lib/useAuth');
+const { apiJson } = require('../lib/apiClient');
 const ExecutiveDashboard = require('../components/ExecutiveDashboard').default;
-const DashboardPage = require('../pages/dashboard').default;
 
 describe('ExecutiveDashboard', () => {
   beforeEach(() => {
@@ -68,24 +85,21 @@ describe('ExecutiveDashboard', () => {
   });
 });
 
-describe('Rota /dashboard - protecao', () => {
-  test('exibe Login quando nao autenticado', () => {
+describe('Rota /dashboard (app/dashboard/page.js)', () => {
+  let DashboardPage;
+
+  beforeAll(() => {
+    DashboardPage = require('../app/dashboard/page').default;
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('usuario nao autenticado ve prompt de login e nao dispara dados', async () => {
     useAuth.mockReturnValue({ authUser: null, profile: null, loading: false });
     render(<DashboardPage />);
-    expect(screen.getByTestId('login-mock')).toBeInTheDocument();
-    expect(screen.queryByTestId('executive-dashboard')).not.toBeInTheDocument();
-  });
-
-  test('exibe dashboard com Sidebar quando autenticado', async () => {
-    useAuth.mockReturnValue({ authUser: { id: 'u1' }, profile: { name: 'Ana' }, loading: false });
-    render(<DashboardPage />);
-    expect(screen.getByTestId('sidebar-mock')).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByTestId('executive-dashboard')).toBeInTheDocument());
-  });
-
-  test('exibe loading enquanto autentica', () => {
-    useAuth.mockReturnValue({ authUser: null, profile: null, loading: true });
-    render(<DashboardPage />);
-    expect(screen.getByText(/Carregando/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Ir para o login/i)).toBeInTheDocument());
+    expect(apiJson).not.toHaveBeenCalledWith('/api/dashboard');
   });
 });

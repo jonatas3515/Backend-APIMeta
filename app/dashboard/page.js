@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { apiJson } from '@/lib/apiClient';
 import Sidebar from '@/components/Sidebar';
 import MetricsDashboard from '@/components/MetricsDashboard';
+import ExecutiveDashboard from '@/components/ExecutiveDashboard';
 import AreaFilterSelector from '@/components/AreaFilterSelector';
 import ActiveFilterBanner from '@/components/ActiveFilterBanner';
 import GlobalSearch from '@/components/GlobalSearch';
@@ -367,6 +368,8 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
+
+          <ExecutiveDashboard />
 
           <div className="mt-8">
             <MetricsDashboard conversations={conversations} />
