@@ -32,8 +32,24 @@ const STATUS_COLORS = {
   proposta_enviada: 'bg-yellow-100 text-yellow-800',
   contrato_assinado: 'bg-purple-100 text-purple-800',
   acao_protocolada: 'bg-orange-100 text-orange-800',
-  aguardando_decisao: 'bg-red-100 text-red-800',
-  encerrado: 'bg-green-100 text-green-800'
+  aguardando_decisao: 'bg-rose-100 text-rose-800',
+  em_recurso: 'bg-indigo-100 text-indigo-800',
+  em_execucao: 'bg-amber-100 text-amber-800',
+  encerrado: 'bg-green-100 text-green-800',
+  arquivado: 'bg-gray-100 text-gray-600'
+};
+
+const STATUS_LABELS = {
+  prospect: 'Prospect',
+  em_analise: 'Em Análise',
+  proposta_enviada: 'Proposta Enviada',
+  contrato_assinado: 'Contrato Assinado',
+  acao_protocolada: 'Ação Protocolada',
+  aguardando_decisao: 'Aguardando Decisão',
+  em_recurso: 'Fase de Recurso',
+  em_execucao: 'Fase de Execução',
+  encerrado: 'Encerrado',
+  arquivado: 'Arquivado'
 };
 
 const PRIORITY_COLORS = {
@@ -117,8 +133,8 @@ export default function CaseDetailPanel({
             ← Voltar para lista
           </button>
           <h2 className="text-lg font-bold text-gray-800 truncate px-2">{caseItem.title}</h2>
-          <span className={`text-xs px-2 py-1 rounded ${STATUS_COLORS[caseItem.status] || 'bg-gray-100 text-gray-800'}`}>
-            {caseItem.status || 'sem status'}
+          <span className={`text-xs px-2 py-1 rounded font-semibold ${STATUS_COLORS[caseItem.status] || 'bg-gray-100 text-gray-800'}`}>
+            {STATUS_LABELS[caseItem.status] || caseItem.status || 'sem status'}
           </span>
         </div>
 

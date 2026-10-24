@@ -11,11 +11,15 @@ export default function CaseDecisionExtractorModal({ caseItem, onClose, onRefres
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
+  // Valores editáveis de condenação e honorários
+  const [editableCondenacao, setEditableCondenacao] = useState('');
+  const [editableHonorariosPercentual, setEditableHonorariosPercentual] = useState(20);
+
   // Seletores para aplicação
   const [selectedTasks, setSelectedTasks] = useState({});
   const [applyPhase, setApplyPhase] = useState(true);
   const [applyDeadline, setApplyDeadline] = useState(true);
-  const [applyFees, setApplyFees] = useState(true);
+  const [applyFees, setApplyFees] = useState(false); // Opcional por padrão a pedido do usuário
   const [saveMovement, setSaveMovement] = useState(true);
 
   const handleAnalyze = async (e) => {
@@ -38,6 +42,14 @@ export default function CaseDecisionExtractorModal({ caseItem, onClose, onRefres
 
       if (res && res.analysis) {
         setAnalysis(res.analysis);
+        if (res.analysis.valores?.valor_condenacao) {
+          setEditableCondenacao(String(res.analysis.valores.valor_condenacao));
+        } else {
+          setEditableCondenacao('');
+        }
+        if (res.analysis.valores?.honorarios_percentual) {
+          setEditableHonorariosPercentual(Number(res.analysis.valores.honorarios_percentual));
+        }
         // Inicializa tarefas selecionadas como verdadeiras por padrão
         const initialTasks = {};
         (res.analysis.tarefas_sugeridas || []).forEach((t, i) => {
@@ -65,6 +77,11 @@ export default function CaseDecisionExtractorModal({ caseItem, onClose, onRefres
       // 1. Fase processual
       if (applyPhase && analysis.fase_sugerida) {
         updates.procedural_step = analysis.fase_sugerida;
+        if (analysis.fase_sugerida === 'execucao') {
+          updates.status = 'em_execucao';
+        } else if (analysis.fase_sugerida === 'recurso') {
+          updates.status = 'em_recurso';
+        }
       }
 
       // 2. Audiência ou Prazo
@@ -78,14 +95,18 @@ export default function CaseDecisionExtractorModal({ caseItem, onClose, onRefres
         }
       }
 
-      // 3. Honorários e Valores
-      if (applyFees && analysis.valores?.tem_valores) {
+      // 3. Honorários e Valores (editáveis)
+      if (applyFees && (editableCondenacao || editableHonorariosPercentual)) {
+        const valCond = Number(editableCondenacao) || null;
+        const pct = Number(editableHonorariosPercentual) || 20;
+        const finalEst = valCond ? (valCond * pct) / 100 : null;
+
         const feeData = {
           fee_type: 'percentual',
-          fee_percentage: analysis.valores.honorarios_percentual || 20,
-          fee_basis: analysis.valores.honorarios_base || 'condenacao',
-          awarded_value: analysis.valores.valor_condenacao || null,
-          fee_final_value: analysis.valores.honorarios_valor_estimado || null
+          fee_percentage: pct,
+          fee_basis: 'condenacao',
+          awarded_value: valCond,
+          fee_final_value: finalEst
         };
         updates.notes = serializeFeeIntoNotes(caseItem.notes, feeData);
       }
@@ -304,26 +325,44 @@ export default function CaseDecisionExtractorModal({ caseItem, onClose, onRefres
                       <span>💰</span> Valores & Honorários
                     </span>
                     {analysis.valores?.tem_valores ? (
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Fixados</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Fixados / Editáveis</span>
                     ) : (
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-500">Sem condenação</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-500">Opcional</span>
                     )}
                   </div>
-                  {analysis.valores?.tem_valores ? (
-                    <div className="space-y-1 text-gray-700">
-                      {analysis.valores.valor_condenacao && (
-                        <p><strong>Condenação:</strong> R$ {Number(analysis.valores.valor_condenacao).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                      )}
-                      {analysis.valores.honorarios_percentual && (
-                        <p><strong>Honorários:</strong> <span className="text-emerald-700 font-bold">{analysis.valores.honorarios_percentual}%</span> sobre {analysis.valores.honorarios_base === 'condenacao' ? 'a condenação' : 'o valor da causa'}</p>
-                      )}
-                      {analysis.valores.detalhes && (
-                        <p className="text-[11px] text-gray-500">{analysis.valores.detalhes}</p>
-                      )}
+                  <div className="space-y-2 text-gray-700 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-600 mb-0.5">
+                          Valor da Condenação (R$):
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={editableCondenacao}
+                          onChange={(e) => setEditableCondenacao(e.target.value)}
+                          className="w-full p-1.5 border border-gray-300 rounded text-xs font-semibold bg-gray-50 text-gray-900"
+                          placeholder="Ex: 7154.68"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-600 mb-0.5">
+                          % Honorários:
+                        </label>
+                        <input
+                          type="number"
+                          step="1"
+                          value={editableHonorariosPercentual}
+                          onChange={(e) => setEditableHonorariosPercentual(e.target.value)}
+                          className="w-full p-1.5 border border-gray-300 rounded text-xs font-semibold bg-gray-50 text-gray-900"
+                          placeholder="Ex: 20"
+                        />
+                      </div>
                     </div>
-                  ) : (
-                    <p className="text-gray-400">Sem condenação ou arbitramento expresso de valores.</p>
-                  )}
+                    {analysis.valores?.detalhes && (
+                      <p className="text-[11px] text-gray-500 italic">{analysis.valores.detalhes}</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* 4. Fase Sugerida */}

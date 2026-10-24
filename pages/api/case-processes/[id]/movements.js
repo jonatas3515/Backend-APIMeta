@@ -43,6 +43,7 @@ async function handler(req, res) {
         case_process_id: id,
         movement_date: movement_date ? new Date(movement_date).toISOString() : new Date().toISOString(),
         movement_text: movement_text.trim(),
+        movement_text_normalized: String(movement_text || '').toLowerCase().replace(/\s+/g, ' ').trim(),
         source: source || 'manual',
         detected_at: new Date().toISOString(),
         review_status: 'revisada',

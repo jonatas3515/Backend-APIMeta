@@ -32,13 +32,15 @@ export default function MonthlyCalendarPanel({ initialView = 'calendar' }) {
     let mounted = true;
     Promise.allSettled([
       apiJson('/api/cases'),
-      supabase.from('conversations').select('id, client_name, phone, birth_or_foundation_date').not('birth_or_foundation_date', 'is', null),
+      supabase.from('conversations').select('id, client_name, client_phone, birth_or_foundation_date').not('birth_or_foundation_date', 'is', null).then((r) => r).catch(() => ({ data: [] })),
       supabase.from('chat_clients').select('id, name, phone, birth_or_foundation_date').not('birth_or_foundation_date', 'is', null).then((r) => r).catch(() => ({ data: [] })),
       supabase.from('offices').select('*').limit(1).maybeSingle().then((r) => r).catch(() => ({ data: null }))
     ]).then(([casesR, bdaysR, chatR, officeR]) => {
       if (!mounted) return;
       if (casesR.status === 'fulfilled') setCases(casesR.value || []);
-      const convBdays = (bdaysR.status === 'fulfilled' && !bdaysR.value.error) ? (bdaysR.value.data || []) : [];
+      const convBdays = (bdaysR.status === 'fulfilled' && !bdaysR.value.error)
+        ? (bdaysR.value.data || []).map((c) => ({ ...c, phone: c.client_phone || c.phone }))
+        : [];
       const chatBdays = (chatR.status === 'fulfilled' && !chatR.value.error)
         ? (chatR.value.data || []).map((c) => ({ ...c, client_name: c.client_name || c.name }))
         : [];

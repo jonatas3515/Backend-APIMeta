@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { safeError } from '../lib/safeLogger';
+import { apiJson } from '../lib/apiClient';
 
 const PRIORITY_BADGE = {
   alta: 'bg-red-50 text-red-700 border-red-200',

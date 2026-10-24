@@ -32,6 +32,19 @@ const PROCEDURAL_STEP_LABELS = {
   outro: 'Outro'
 };
 
+const STATUS_LABELS = {
+  prospect: 'Prospect',
+  em_analise: 'Em Análise',
+  proposta_enviada: 'Proposta Enviada',
+  contrato_assinado: 'Contrato Assinado',
+  acao_protocolada: 'Ação Protocolada',
+  aguardando_decisao: 'Aguardando Decisão',
+  em_recurso: 'Fase de Recurso',
+  em_execucao: 'Fase de Execução',
+  encerrado: 'Encerrado',
+  arquivado: 'Arquivado'
+};
+
 export default function CasesPanel({ notice }) {
   const router = useRouter();
   const { profile } = useAuth();
@@ -449,6 +462,22 @@ export default function CasesPanel({ notice }) {
     }
   };
 
+  const handleClearDeadline = async (id) => {
+    try {
+      await apiJson(`/api/cases?id=${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ deadline_date: null, deadline_type: null })
+      });
+      addToast('Prazo/audiência marcado como realizado e data limpa com sucesso!', 'success');
+      fetchCases();
+      if (selectedCase && selectedCase.id === id) {
+        setSelectedCase((prev) => ({ ...prev, deadline_date: null, deadline_type: null }));
+      }
+    } catch (err) {
+      addToast('Erro ao atualizar prazo.', 'error');
+    }
+  };
+
   const handleCopyProcessNumber = async (processNumber) => {
     if (!processNumber) return;
     try {
@@ -461,13 +490,16 @@ export default function CasesPanel({ notice }) {
 
   const getStatusColor = (status) => {
     const colors = {
-      prospect: 'bg-gray-100 text-gray-800',
-      em_analise: 'bg-blue-100 text-blue-800',
-      proposta_enviada: 'bg-yellow-100 text-yellow-800',
-      contrato_assinado: 'bg-purple-100 text-purple-800',
-      acao_protocolada: 'bg-orange-100 text-orange-800',
-      aguardando_decisao: 'bg-red-100 text-red-800',
-      encerrado: 'bg-green-100 text-green-800'
+      prospect: 'bg-gray-100 text-gray-800 border border-gray-200',
+      em_analise: 'bg-blue-100 text-blue-800 border border-blue-200',
+      proposta_enviada: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
+      contrato_assinado: 'bg-purple-100 text-purple-800 border border-purple-200',
+      acao_protocolada: 'bg-orange-100 text-orange-800 border border-orange-200',
+      aguardando_decisao: 'bg-rose-100 text-rose-800 border border-rose-200',
+      em_recurso: 'bg-indigo-100 text-indigo-800 border border-indigo-200',
+      em_execucao: 'bg-amber-100 text-amber-800 border border-amber-200',
+      encerrado: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
+      arquivado: 'bg-gray-100 text-gray-600 border border-gray-200'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -749,6 +781,8 @@ export default function CasesPanel({ notice }) {
           <option value="contrato_assinado">Contrato Assinado</option>
           <option value="acao_protocolada">Ação Protocolada</option>
           <option value="aguardando_decisao">Aguardando Decisão</option>
+          <option value="em_recurso">Fase de Recurso</option>
+          <option value="em_execucao">Fase de Execução</option>
           <option value="encerrado">Encerrado</option>
         </select>
 
@@ -865,6 +899,8 @@ export default function CasesPanel({ notice }) {
               <option value="contrato_assinado">Contrato Assinado</option>
               <option value="acao_protocolada">Ação Protocolada</option>
               <option value="aguardando_decisao">Aguardando Decisão</option>
+              <option value="em_recurso">Fase de Recurso</option>
+              <option value="em_execucao">Fase de Execução / Cumprimento de Sentença</option>
               <option value="encerrado">Encerrado</option>
             </select>
             <select
@@ -878,12 +914,12 @@ export default function CasesPanel({ notice }) {
             </select>
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-gray-700">Data limite / Prazo (opcional)</label>
+                <label className="text-xs font-semibold text-gray-700">Próxima Audiência ou Prazo (opcional)</label>
                 {formData.deadline_date && (
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, deadline_date: '' })}
-                    className="text-[11px] text-red-600 hover:text-red-800 underline"
+                    onClick={() => setFormData({ ...formData, deadline_date: '', deadline_type: '' })}
+                    className="text-[11px] text-red-600 hover:text-red-800 underline font-semibold"
                   >
                     ✕ Limpar prazo
                   </button>
@@ -895,14 +931,20 @@ export default function CasesPanel({ notice }) {
                 onChange={(e) => setFormData({ ...formData, deadline_date: e.target.value })}
                 className="px-3 py-2 border rounded text-sm text-gray-900 bg-white"
               />
+              <span className="text-[10px] text-gray-500">
+                Preencha apenas se houver audiência agendada ou prazo fatal. Se já ocorreu, deixe vazio.
+              </span>
             </div>
-            <input
-              type="text"
-              placeholder="Tipo de prazo"
-              value={formData.deadline_type}
-              onChange={(e) => setFormData({ ...formData, deadline_type: e.target.value })}
-              className="px-3 py-2 border rounded"
-            />
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-semibold text-gray-700">Tipo de Prazo / Evento</label>
+              <input
+                type="text"
+                placeholder="Ex: Audiência de Conciliação, Recurso, etc."
+                value={formData.deadline_type || ''}
+                onChange={(e) => setFormData({ ...formData, deadline_type: e.target.value })}
+                className="px-3 py-2 border rounded text-sm"
+              />
+            </div>
             <textarea
               placeholder="Notas"
               value={formData.notes}
@@ -1198,8 +1240,8 @@ export default function CasesPanel({ notice }) {
                     </td>
                     <td className="border p-3">{caseItem.legal_area || '-'}</td>
                     <td className="border p-3">
-                      <span className={`px-2 py-1 rounded text-sm ${getStatusColor(caseItem.status)}`}>
-                        {caseItem.status}
+                      <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(caseItem.status)}`}>
+                        {STATUS_LABELS[caseItem.status] || caseItem.status}
                       </span>
                     </td>
                     <td className="border p-3">
@@ -1210,7 +1252,7 @@ export default function CasesPanel({ notice }) {
                     <td className="border p-3">
                       {caseItem.deadline_date ? (
                         <div>
-                          <div className={caseItem.status === 'encerrado' || caseItem.status === 'arquivado' ? 'text-gray-400 line-through text-xs' : ''}>
+                          <div className={caseItem.status === 'encerrado' || caseItem.status === 'arquivado' ? 'text-gray-400 line-through text-xs' : 'font-medium text-gray-900 text-sm'}>
                             {formatDate(caseItem.deadline_date)}
                           </div>
                           {caseItem.status === 'encerrado' || caseItem.status === 'arquivado' ? (
@@ -1220,9 +1262,23 @@ export default function CasesPanel({ notice }) {
                           ) : (
                             <>
                               {daysLeft !== null && (
-                                <div className={`text-sm ${daysLeft < 0 ? 'text-red-600 font-bold' : daysLeft < 7 ? 'text-orange-600' : 'text-gray-600'}`}>
-                                  {daysLeft < 0 ? `${Math.abs(daysLeft)} dias atrasado` : `${daysLeft} dias`}
+                                <div className={`text-xs mt-0.5 ${daysLeft < 0 ? 'text-red-600 font-bold' : daysLeft < 7 ? 'text-orange-600 font-medium' : 'text-gray-600'}`}>
+                                  {daysLeft < 0 ? `${Math.abs(daysLeft)} dias atrasado` : `${daysLeft} dias restantes`}
                                 </div>
+                              )}
+                              {canEdit && daysLeft !== null && daysLeft < 0 && (
+                                <button
+                                  type="button"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (!confirm(`Deseja marcar este prazo/audiência de "${caseItem.title}" como concluído e limpar a data? O processo continuará ativo.`)) return;
+                                    await handleClearDeadline(caseItem.id);
+                                  }}
+                                  className="mt-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 block w-fit"
+                                  title="Marcar audiência/prazo como realizado e limpar data"
+                                >
+                                  ✓ Concluir / Limpar
+                                </button>
                               )}
                               <div className="mt-1">
                                 <CaseCalendarSync
@@ -1237,72 +1293,108 @@ export default function CasesPanel({ notice }) {
                           )}
                         </div>
                       ) : (
-                        '-'
+                        <span className="text-xs text-gray-400 italic">Sem prazo pendente</span>
                       )}
                     </td>
-                    <td className="border p-3 flex gap-2">
-                      {canEdit && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleEditCase(caseItem); }}
-                          className="px-2 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-                        >
-                          Editar
-                        </button>
-                      )}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setChecklistCase(caseItem); }}
-                        className="px-2 py-1 bg-teal-500 text-white rounded text-sm hover:bg-teal-600"
-                      >
-                        Checklist
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setDocsCase(caseItem); }}
-                        className="px-2 py-1 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600"
-                      >
-                        Documentos
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); if (!caseItem.conversation_id) { alert('Caso sem conversa vinculada. Vincule uma conversa antes de solicitar documentos.'); return; } setRequestCase(caseItem); }}
-                        className="px-2 py-1 bg-cyan-500 text-white rounded text-sm hover:bg-cyan-600"
-                      >
-                        Solicitar
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setFeeCase(caseItem); }}
-                        className="px-2 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
-                      >
-                        Honorarios
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setProcessCase(caseItem); }}
-                        className="px-2 py-1 bg-indigo-500 text-white rounded text-sm hover:bg-indigo-600"
-                      >
-                        Processo
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setDecisionExtractorCase(caseItem); }}
-                        className="px-2 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 font-medium inline-flex items-center gap-1 shadow-xs"
-                        title="Analisar despacho ou decisão com Inteligência Artificial"
-                      >
-                        <span>🤖</span> IA Decisão
-                      </button>
-                      {caseItem.status !== 'encerrado' && caseItem.status !== 'arquivado' && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setFinalizeCase(caseItem); }}
-                          className="px-2 py-1 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700 font-medium inline-flex items-center gap-1 shadow-xs"
-                          title="Finalizar e encerrar processo judicial"
-                        >
-                          <span>🏁</span> Finalizar
-                        </button>
-                      )}
-                      {canEdit && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteCase(caseItem.id); }}
-                          className="px-2 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-                        >
-                          Deletar
-                        </button>
-                      )}
+                    <td className="border p-2.5">
+                      <div className="flex flex-col gap-1.5 min-w-[320px]">
+                        {/* Linha 1: Editar - Checklist - Documentos - Solicitar - Finalizar */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleEditCase(caseItem); }}
+                              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold shadow-xs transition"
+                              title="Editar detalhes do caso"
+                            >
+                              Editar
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setChecklistCase(caseItem); }}
+                            className="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded text-xs font-semibold shadow-xs transition"
+                            title="Checklist de pendências"
+                          >
+                            Checklist
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setDocsCase(caseItem); }}
+                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded text-xs font-semibold shadow-xs transition"
+                            title="Documentos anexados"
+                          >
+                            Documentos
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!caseItem.conversation_id) {
+                                alert('Caso sem conversa vinculada. Vincule uma conversa antes de solicitar documentos.');
+                                return;
+                              }
+                              setRequestCase(caseItem);
+                            }}
+                            className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-xs font-semibold shadow-xs transition"
+                            title="Solicitar informações ao cliente"
+                          >
+                            Solicitar
+                          </button>
+                          {caseItem.status !== 'encerrado' && caseItem.status !== 'arquivado' ? (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setFinalizeCase(caseItem); }}
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold shadow-xs inline-flex items-center gap-1 transition"
+                              title="Finalizar e encerrar processo judicial"
+                            >
+                              <span>🏁</span> Finalizar
+                            </button>
+                          ) : (
+                            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              ✓ Encerrado
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Linha 2: Honorários - Processo - 🤖 IA Decisão - Deletar */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setFeeCase(caseItem); }}
+                            className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-semibold shadow-xs transition"
+                            title="Simulador e gestão de honorários"
+                          >
+                            Honorários
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setProcessCase(caseItem); }}
+                            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-semibold shadow-xs transition"
+                            title="Monitoramento e movimentações processuais"
+                          >
+                            Processo
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setDecisionExtractorCase(caseItem); }}
+                            className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-bold shadow-xs inline-flex items-center gap-1 transition"
+                            title="Analisar despacho ou decisão com Inteligência Artificial"
+                          >
+                            <span>🤖</span> IA Decisão
+                          </button>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteCase(caseItem.id); }}
+                              className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold shadow-xs transition"
+                              title="Excluir caso"
+                            >
+                              Deletar
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 );
