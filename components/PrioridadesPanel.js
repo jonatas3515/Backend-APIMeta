@@ -62,20 +62,26 @@ export default function PrioridadesPanel() {
 
   const handleMarcarComoCumprido = async (item) => {
     setItems((prev) => prev.filter((i) => i.id !== item.id));
-    setFeedbackMsg(`"${item.titulo}" marcado como cumprido!`);
-    setTimeout(() => setFeedbackMsg(null), 3000);
+    setFeedbackMsg(`"${item.tipo || 'Prazo'}: ${item.titulo}" cumprido(a) com sucesso! O processo continua ativo.`);
+    setTimeout(() => setFeedbackMsg(null), 4000);
 
     try {
       if (item.origin === 'task') {
         await supabase.from('tasks').update({ done: true, status: 'concluida', updated_at: new Date().toISOString() }).eq('id', item.rawId);
       } else if (item.origin === 'case') {
+        // Cumpre a audiência ou prazo específico, limpando a pendência temporal SEM encerrar o processo
+        const updatePayload = {
+          deadline_date: null,
+          deadline_type: null,
+          updated_at: new Date().toISOString()
+        };
         try {
           await apiJson(`/api/cases?id=${item.rawId}`, {
             method: 'PATCH',
-            body: JSON.stringify({ status: 'encerrado' })
+            body: JSON.stringify(updatePayload)
           });
         } catch {
-          await supabase.from('cases').update({ status: 'encerrado', updated_at: new Date().toISOString() }).eq('id', item.rawId);
+          await supabase.from('cases').update(updatePayload).eq('id', item.rawId);
         }
       }
     } catch (e) {

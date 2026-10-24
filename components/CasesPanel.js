@@ -18,6 +18,9 @@ import DocumentRequestModal from './DocumentRequestModal';
 import CaseDetailPanel from './CaseDetailPanel';
 import CaseInsightsPanel from './CaseInsightsPanel';
 import ConversationSelectorModal from './ConversationSelectorModal';
+import CaseDecisionExtractorModal from './CaseDecisionExtractorModal';
+import CaseFinalizeModal from './CaseFinalizeModal';
+import { parseCaseFee, calculateFeeAmount, serializeFeeIntoNotes } from '../lib/caseFeeHelper';
 
 const PROCEDURAL_STEP_LABELS = {
   conciliacao: 'Conciliação',
@@ -68,6 +71,8 @@ export default function CasesPanel({ notice }) {
   const [requestCase, setRequestCase] = useState(null);
   const [showConversationSelector, setShowConversationSelector] = useState(false);
   const [conversations, setConversations] = useState([]);
+  const [decisionExtractorCase, setDecisionExtractorCase] = useState(null);
+  const [finalizeCase, setFinalizeCase] = useState(null);
   const [formData, setFormData] = useState({
     conversation_id: '',
     title: '',
@@ -87,7 +92,13 @@ export default function CasesPanel({ notice }) {
     judicial_district: '',
     procedural_step: '',
     case_value: '',
-    distribution_date: ''
+    distribution_date: '',
+    fee_type: 'percentual',
+    fee_percentage: '30',
+    fee_basis: 'condenacao',
+    awarded_value: '',
+    fee_fixed_value: '',
+    fee_final_value: ''
   });
 
   // Sincroniza com query string (caseId, caseView) e carrega aba de detalhe
@@ -314,6 +325,17 @@ export default function CasesPanel({ notice }) {
         ? null
         : Number(payload.case_value);
 
+      // Salva dados de honorários personalizados (em notes estruturado)
+      const feeData = {
+        fee_type: formData.fee_type || 'percentual',
+        fee_percentage: Number(formData.fee_percentage) || 30,
+        fee_basis: formData.fee_basis || 'condenacao',
+        awarded_value: formData.awarded_value ? Number(formData.awarded_value) : null,
+        fee_fixed_value: formData.fee_fixed_value ? Number(formData.fee_fixed_value) : null,
+        fee_final_value: formData.fee_final_value ? Number(formData.fee_final_value) : null
+      };
+      payload.notes = serializeFeeIntoNotes(payload.notes, feeData);
+
       if (editingCase) {
         const { data, error } = await supabase
           .from('cases')
@@ -372,6 +394,7 @@ export default function CasesPanel({ notice }) {
       console.warn('[CASES] Permissão negada para editar caso.');
       return;
     }
+    const feeInfo = parseCaseFee(caseItem);
     setEditingCase(caseItem);
     setFormData({
       conversation_id: caseItem.conversation_id || '',
@@ -392,7 +415,13 @@ export default function CasesPanel({ notice }) {
       judicial_district: caseItem.judicial_district || '',
       procedural_step: caseItem.procedural_step || '',
       case_value: caseItem.case_value ?? '',
-      distribution_date: caseItem.distribution_date || ''
+      distribution_date: caseItem.distribution_date || '',
+      fee_type: feeInfo.fee_type || 'percentual',
+      fee_percentage: feeInfo.fee_percentage != null ? String(feeInfo.fee_percentage) : '30',
+      fee_basis: feeInfo.fee_basis || 'condenacao',
+      awarded_value: feeInfo.awarded_value != null ? String(feeInfo.awarded_value) : '',
+      fee_fixed_value: feeInfo.fee_fixed_value != null ? String(feeInfo.fee_fixed_value) : '',
+      fee_final_value: feeInfo.fee_final_value != null ? String(feeInfo.fee_final_value) : ''
     });
     setShowForm(true);
   };
@@ -660,6 +689,13 @@ export default function CasesPanel({ notice }) {
       <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <h2 className="text-xl sm:text-2xl font-bold">Casos</h2>
         <div className="flex flex-wrap gap-2 items-center">
+          <button
+            onClick={() => setDecisionExtractorCase(selectedCase || cases[0] || {})}
+            className="px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded font-bold text-xs shadow-sm inline-flex items-center gap-1.5 transition"
+            title="Extrair prazos, audiências, decisões e honorários usando IA"
+          >
+            <span>🤖</span> Analisar Decisão / Despacho (IA)
+          </button>
           <ExportButtons
             onExcel={() => exportCasesExcel(cases)}
             disabled={loading || cases.length === 0}
@@ -951,6 +987,118 @@ export default function CasesPanel({ notice }) {
                   />
                 </label>
               </div>
+
+              {/* Seção de Honorários do Escritório */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <span>💰 Configuração de Honorários Advocatícios</span>
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    {(() => {
+                      const preview = calculateFeeAmount({
+                        fee_type: formData.fee_type,
+                        fee_percentage: Number(formData.fee_percentage) || 0,
+                        fee_basis: formData.fee_basis,
+                        awarded_value: formData.awarded_value ? Number(formData.awarded_value) : null,
+                        fee_fixed_value: formData.fee_fixed_value ? Number(formData.fee_fixed_value) : null,
+                        case_value: formData.case_value
+                      });
+                      return `Honorários estimados: R$ ${preview.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                    })()}
+                  </span>
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Tipo de Honorários</label>
+                    <select
+                      value={formData.fee_type || 'percentual'}
+                      onChange={(e) => setFormData({ ...formData, fee_type: e.target.value })}
+                      className="w-full px-3 py-2 border rounded text-sm text-gray-900 bg-white"
+                    >
+                      <option value="percentual">Percentual (%)</option>
+                      <option value="fixo">Valor Fixo (R$)</option>
+                    </select>
+                  </div>
+
+                  {formData.fee_type === 'percentual' ? (
+                    <>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Percentual (%)</label>
+                        <div className="flex gap-1.5">
+                          <input
+                            type="number"
+                            step="1"
+                            min="1"
+                            max="100"
+                            placeholder="30"
+                            value={formData.fee_percentage || ''}
+                            onChange={(e) => setFormData({ ...formData, fee_percentage: e.target.value })}
+                            className="w-full px-3 py-2 border rounded text-sm text-gray-900 bg-white"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, fee_percentage: '20' })}
+                            className={`px-2 py-1 rounded text-xs font-bold border ${formData.fee_percentage === '20' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white border-gray-300 text-gray-700'}`}
+                          >
+                            20%
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, fee_percentage: '30' })}
+                            className={`px-2 py-1 rounded text-xs font-bold border ${formData.fee_percentage === '30' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white border-gray-300 text-gray-700'}`}
+                          >
+                            30%
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Base de Cálculo</label>
+                        <select
+                          value={formData.fee_basis || 'condenacao'}
+                          onChange={(e) => setFormData({ ...formData, fee_basis: e.target.value })}
+                          className="w-full px-3 py-2 border rounded text-sm text-gray-900 bg-white"
+                        >
+                          <option value="condenacao">Sobre Condenação / Acordo (Recomendado)</option>
+                          <option value="causa">Sobre o Valor da Causa</option>
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Valor Fixo em Reais (R$)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="Ex: 3000.00"
+                        value={formData.fee_fixed_value || ''}
+                        onChange={(e) => setFormData({ ...formData, fee_fixed_value: e.target.value })}
+                        className="w-full px-3 py-2 border rounded text-sm text-gray-900 bg-white font-mono"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {formData.fee_type === 'percentual' && formData.fee_basis === 'condenacao' && (
+                  <div className="mt-3">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Valor da Condenação / Acordo Obtido (R$) - preenchido após decisão/sentença
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="Ex: 6207.59 (como no caso de Amanda)"
+                      value={formData.awarded_value || ''}
+                      onChange={(e) => setFormData({ ...formData, awarded_value: e.target.value })}
+                      className="w-full md:w-1/2 px-3 py-2 border rounded text-sm text-gray-900 bg-white font-mono"
+                    />
+                    <span className="block text-[11px] text-gray-500 mt-1">
+                      Quando preenchido, os honorários serão calculados exatamente sobre este montante (ex: {formData.fee_percentage || 30}% sobre {formData.awarded_value ? `R$ ${Number(formData.awarded_value).toFixed(2)}` : 'R$ 0,00'}).
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex gap-2 mt-4">
@@ -1131,6 +1279,22 @@ export default function CasesPanel({ notice }) {
                       >
                         Processo
                       </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDecisionExtractorCase(caseItem); }}
+                        className="px-2 py-1 bg-purple-600 text-white rounded text-sm hover:bg-purple-700 font-medium inline-flex items-center gap-1 shadow-xs"
+                        title="Analisar despacho ou decisão com Inteligência Artificial"
+                      >
+                        <span>🤖</span> IA Decisão
+                      </button>
+                      {caseItem.status !== 'encerrado' && caseItem.status !== 'arquivado' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setFinalizeCase(caseItem); }}
+                          className="px-2 py-1 bg-emerald-600 text-white rounded text-sm hover:bg-emerald-700 font-medium inline-flex items-center gap-1 shadow-xs"
+                          title="Finalizar e encerrar processo judicial"
+                        >
+                          <span>🏁</span> Finalizar
+                        </button>
+                      )}
                       {canEdit && (
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDeleteCase(caseItem.id); }}
@@ -1196,6 +1360,22 @@ export default function CasesPanel({ notice }) {
           caseItem={selectedCase}
           onSelect={handleLinkConversation}
           onClose={() => setShowConversationSelector(false)}
+        />
+      )}
+
+      {decisionExtractorCase && (
+        <CaseDecisionExtractorModal
+          caseItem={decisionExtractorCase}
+          onClose={() => setDecisionExtractorCase(null)}
+          onRefresh={fetchCases}
+        />
+      )}
+
+      {finalizeCase && (
+        <CaseFinalizeModal
+          caseItem={finalizeCase}
+          onClose={() => setFinalizeCase(null)}
+          onRefresh={fetchCases}
         />
       )}
     </div>

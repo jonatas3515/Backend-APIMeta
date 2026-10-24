@@ -15,7 +15,10 @@ const PROCESS_STRING_FIELDS = [
   'procedural_step'
 ];
 
-const PROCESS_FIELDS = [...PROCESS_STRING_FIELDS, 'case_value', 'distribution_date'];
+const FEE_NUMERIC_FIELDS = ['awarded_value', 'fee_fixed_value', 'fee_final_value', 'fee_percentage'];
+const FEE_STRING_FIELDS = ['fee_type', 'fee_basis'];
+
+const PROCESS_FIELDS = [...PROCESS_STRING_FIELDS, 'case_value', 'distribution_date', ...FEE_NUMERIC_FIELDS, ...FEE_STRING_FIELDS];
 
 const CASE_UPDATABLE_FIELDS = [
   'conversation_id',
@@ -39,15 +42,15 @@ const CACHE_TTL_LIST = 10_000;
 const CACHE_TTL_DETAIL = 15_000;
 
 function sanitizeProcessField(field, value) {
-  if (PROCESS_STRING_FIELDS.includes(field)) {
+  if (PROCESS_STRING_FIELDS.includes(field) || FEE_STRING_FIELDS.includes(field)) {
     return { value: typeof value === 'string' && value.trim() !== '' ? value.trim() : null };
   }
 
-  if (field === 'case_value') {
+  if (field === 'case_value' || FEE_NUMERIC_FIELDS.includes(field)) {
     if (value === undefined || value === null || value === '') return { value: null };
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed < 0) {
-      return { error: 'Valor da causa inválido' };
+      return { error: field === 'case_value' ? 'Valor da causa inválido' : `Campo ${field} inválido` };
     }
     return { value: parsed };
   }

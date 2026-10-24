@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { apiJson } from '../lib/apiClient';
 import { DATAJUD_COURTS, getCourtByCode } from '../lib/datajudCourts';
+import CaseDecisionExtractorModal from './CaseDecisionExtractorModal';
 
 const FREQUENCY_OPTIONS = [
   { value: 'manual', label: 'Manual' },
@@ -43,6 +44,7 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
   const [eventForm, setEventForm] = useState({ event_date: '', event_time: '', title: '', description: '', priority: 'media' });
   const [activeMovement, setActiveMovement] = useState(null);
   const [showManualMovementModal, setShowManualMovementModal] = useState(false);
+  const [showExtractorModal, setShowExtractorModal] = useState(false);
   const [manualForm, setManualForm] = useState({
     movement_date: new Date().toISOString().slice(0, 10),
     movement_text: '',
@@ -359,13 +361,23 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
                   <span>📜</span> Movimentações
                 </h4>
                 {isLawyer && (
-                  <button
-                    type="button"
-                    onClick={() => setShowManualMovementModal(!showManualMovementModal)}
-                    className="px-2.5 py-1 text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded font-semibold transition"
-                  >
-                    {showManualMovementModal ? '✕ Cancelar' : '+ Andamento Manual (Projudi / PJe)'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowExtractorModal(true)}
+                      className="px-2.5 py-1 text-xs bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-100 rounded font-semibold transition inline-flex items-center gap-1"
+                      title="Analisar despacho ou decisão do processo com IA"
+                    >
+                      <span>🤖</span> Analisar com IA
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowManualMovementModal(!showManualMovementModal)}
+                      className="px-2.5 py-1 text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded font-semibold transition"
+                    >
+                      {showManualMovementModal ? '✕ Cancelar' : '+ Andamento Manual (Projudi / PJe)'}
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -483,6 +495,15 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
             </div>
           )}
         </div>
+      )}
+      {showExtractorModal && (
+        <CaseDecisionExtractorModal
+          caseItem={{ id: caseId, process_number: selectedProcess?.process_number }}
+          onClose={() => setShowExtractorModal(false)}
+          onRefresh={() => {
+            if (selectedProcess) fetchMovements(selectedProcess.id);
+          }}
+        />
       )}
     </div>
   );

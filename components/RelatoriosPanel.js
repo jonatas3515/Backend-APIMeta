@@ -3,6 +3,7 @@ import { apiJson } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import { safeError } from '../lib/safeLogger';
 import ProcessAnalyticsPanel from './ProcessAnalyticsPanel';
+import { parseCaseFee } from '../lib/caseFeeHelper';
 
 const brl = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -73,13 +74,21 @@ export default function RelatoriosPanel() {
   const totalHonorariosAtivos = useMemo(() => {
     return cases
       .filter((c) => c.status !== 'encerrado' && c.status !== 'arquivado')
-      .reduce((acc, c) => acc + ((Number(c.case_value) || 0) * 0.20), 0);
+      .reduce((acc, c) => {
+        const fee = parseCaseFee(c);
+        const val = fee.fee_final_value != null ? fee.fee_final_value : (Number(c.case_value) || 0) * (fee.fee_percentage / 100);
+        return acc + (Number(val) || 0);
+      }, 0);
   }, [cases]);
 
   const totalHonorariosEncerrados = useMemo(() => {
     return cases
       .filter((c) => c.status === 'encerrado' || c.status === 'arquivado')
-      .reduce((acc, c) => acc + ((Number(c.case_value) || 0) * 0.20), 0);
+      .reduce((acc, c) => {
+        const fee = parseCaseFee(c);
+        const val = fee.fee_final_value != null ? fee.fee_final_value : (Number(c.case_value) || 0) * (fee.fee_percentage / 100);
+        return acc + (Number(val) || 0);
+      }, 0);
   }, [cases]);
 
   return (
@@ -225,36 +234,45 @@ export default function RelatoriosPanel() {
               <div className="bg-white border border-gray-200 rounded-xl p-5 text-center shadow-sm">
                 <p className="text-xs text-gray-500 mb-1">Volume da Causa (Patrimônio Total)</p>
                 <p className="text-2xl font-bold text-gray-900">{brl(totalPatrimonio)}</p>
-                <p className="text-[10px] text-gray-400 mt-1">{cases.length} casos com valor cadastrado</p>
+                <p className="text-[10px] text-gray-400 mt-1">{cases.length} casos no acervo</p>
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-5 text-center shadow-sm">
-                <p className="text-xs text-gray-500 mb-1">Honorários Estimados Ativos (20%)</p>
+                <p className="text-xs text-gray-500 mb-1">Honorários Estimados Ativos</p>
                 <p className="text-2xl font-bold text-amber-700">{brl(totalHonorariosAtivos)}</p>
-                <p className="text-[10px] text-gray-400 mt-1">20% padrão sucumbencial / contratual</p>
+                <p className="text-[10px] text-gray-400 mt-1">Conforme % e base configurada por caso</p>
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-5 text-center shadow-sm">
-                <p className="text-xs text-gray-500 mb-1">Honorários Concluídos (20%)</p>
+                <p className="text-xs text-gray-500 mb-1">Honorários Concluídos / Liquidados</p>
                 <p className="text-2xl font-bold text-emerald-700">{brl(totalHonorariosEncerrados)}</p>
-                <p className="text-[10px] text-gray-400 mt-1">Processos encerrados e liquidados</p>
+                <p className="text-[10px] text-gray-400 mt-1">Processos encerrados e honorários apurados</p>
               </div>
             </div>
 
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
               <h3 className="font-bold text-sm text-gray-900 mb-3">Extrato de Honorários e Valores da Causa</h3>
               <div className="space-y-2">
-                {cases.filter((c) => Number(c.case_value) > 0).map((c) => {
+                {cases.filter((c) => Number(c.case_value) > 0 || parseCaseFee(c).fee_final_value > 0).map((c) => {
                   const valorCausa = Number(c.case_value) || 0;
-                  const honorario = valorCausa * 0.20;
+                  const fee = parseCaseFee(c);
+                  const honorario = fee.fee_final_value != null ? fee.fee_final_value : (valorCausa * (fee.fee_percentage / 100));
                   const isClosed = c.status === 'encerrado' || c.status === 'arquivado';
                   return (
                     <div key={c.id} className="p-3.5 rounded-lg bg-gray-50 border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div>
                         <p className="text-sm font-semibold text-gray-900">{c.title}</p>
                         <p className="text-xs text-gray-500">{c.client_name || 'Sem cliente'} • {c.court || 'Justiça'} {c.process_number ? `(${c.process_number})` : ''}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">Valor da Causa: <span className="font-mono font-medium text-gray-700">{brl(valorCausa)}</span></p>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 mt-1">
+                          <span>Valor da Causa: <strong className="font-mono">{brl(valorCausa)}</strong></span>
+                          {fee.awarded_value != null && (
+                            <span className="text-emerald-700">Condenação/Acordo: <strong className="font-mono">{brl(fee.awarded_value)}</strong></span>
+                          )}
+                          <span className="text-[10px] bg-gray-200 px-1.5 py-0.5 rounded text-gray-700">
+                            Regra: {fee.fee_type === 'fixo' ? 'Valor Fixo' : `${fee.fee_percentage}% s/ ${fee.fee_basis === 'condenacao' ? 'condenação' : 'causa'}`}
+                          </span>
+                        </div>
                       </div>
                       <div className="text-left sm:text-right">
-                        <p className="text-xs text-gray-500">Honorários Estimados (20%)</p>
+                        <p className="text-xs text-gray-500">Honorários {isClosed ? 'Apurados' : 'Estimados'}</p>
                         <p className="text-base font-bold text-emerald-700">{brl(honorario)}</p>
                         <span className={`inline-block text-[10px] px-2 py-0.5 rounded font-medium mt-1 ${isClosed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
                           {isClosed ? '✓ Encerrado / Liquidado' : '⚡ Ativo / Em andamento'}

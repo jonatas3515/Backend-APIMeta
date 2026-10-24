@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiJson } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import { safeError } from '../lib/safeLogger';
+import { parseCaseFee } from '../lib/caseFeeHelper';
 
 const brl = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const startOfToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
@@ -18,10 +19,14 @@ export default function HonorariosCentralPanel() {
         if (!mounted) return;
         setEventos(
           (cases || [])
-            .filter((c) => c.deadline_date && Number(c.case_value) > 0 && c.status !== 'encerrado' && c.status !== 'arquivado')
+            .filter((c) => c.deadline_date && c.status !== 'encerrado' && c.status !== 'arquivado')
             .map((c) => {
+              const fee = parseCaseFee(c);
               const valorCausa = Number(c.case_value) || 0;
-              const honorarioEstimado = valorCausa * 0.20;
+              const honorarioEstimado = fee.fee_final_value != null
+                ? fee.fee_final_value
+                : (fee.awarded_value != null ? fee.awarded_value * (fee.fee_percentage / 100) : valorCausa * (fee.fee_percentage / 100));
+
               return {
                 id: c.id,
                 cliente: c.client_name || c.title,
@@ -29,10 +34,15 @@ export default function HonorariosCentralPanel() {
                 processo: c.process_number,
                 data: c.deadline_date,
                 valorCausa,
+                awardedValue: fee.awarded_value,
+                feeType: fee.fee_type,
+                feePercentage: fee.fee_percentage,
+                feeBasis: fee.fee_basis,
                 honorarioEstimado,
                 valor: honorarioEstimado
               };
             })
+            .filter((item) => item.valor > 0)
         );
       })
       .catch((err) => safeError('honorarios_load_error', err, { component: 'HonorariosCentralPanel' }))
@@ -165,9 +175,13 @@ export default function HonorariosCentralPanel() {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-[10px] text-gray-500">Honorários (20%)</p>
+                          <p className="text-[10px] text-gray-500 font-medium">
+                            Honorários ({item.feeType === 'fixo' ? 'Fixo' : `${item.feePercentage}%`})
+                          </p>
                           <p className="text-sm font-bold text-emerald-700">{brl(item.honorarioEstimado)}</p>
-                          <p className="text-[10px] text-gray-400">Causa: {brl(item.valorCausa)}</p>
+                          <p className="text-[10px] text-gray-400">
+                            {item.awardedValue ? `Conden.: ${brl(item.awardedValue)}` : `Causa: ${brl(item.valorCausa)}`}
+                          </p>
                           <button
                             onClick={() => marcarRecebido(item)}
                             className="mt-1 px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition shadow-sm"

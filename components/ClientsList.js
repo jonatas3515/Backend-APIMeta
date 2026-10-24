@@ -89,11 +89,19 @@ export default function ClientsList({ onSelectClient }) {
 
     setSavingNew(true);
     try {
-      const cleanPhone = newClient.client_phone.replace(/\D/g, '');
+      let cleanPhone = newClient.client_phone.replace(/\D/g, '');
+      if (cleanPhone.startsWith('55') && (cleanPhone.length === 12 || cleanPhone.length === 13)) {
+        cleanPhone = cleanPhone.slice(2);
+      }
+      if (cleanPhone.length === 10 && ['6', '7', '8', '9'].includes(cleanPhone[2])) {
+        cleanPhone = cleanPhone.slice(0, 2) + '9' + cleanPhone.slice(2);
+      }
+      const canonicalPhone = cleanPhone.length === 11 ? `55${cleanPhone}` : cleanPhone;
+
       const payload = {
         client_name: newClient.client_name.trim(),
-        client_phone: cleanPhone,
-        phone: cleanPhone,
+        client_phone: canonicalPhone,
+        phone: canonicalPhone,
         person_type: newClient.person_type,
         document_number: newClient.document_number.trim() || null,
         email: newClient.email.trim() || null,
@@ -159,12 +167,19 @@ export default function ClientsList({ onSelectClient }) {
     const searchDigits = searchTerm.replace(/\D/g, '');
     const name = client.client_name?.toLowerCase() || '';
     const phone = client.client_phone || '';
+    const phoneDigits = phone.replace(/\D/g, '');
     const email = client.email?.toLowerCase() || '';
     const documentDigits = (client.document_number || '').replace(/\D/g, '');
+
+    const matchesPhone = searchDigits.length >= 4 && (
+      phoneDigits.includes(searchDigits) ||
+      (searchDigits.length >= 8 && phoneDigits.endsWith(searchDigits.slice(-8)))
+    );
 
     const matchesSearch =
       name.includes(search) ||
       phone.includes(search) ||
+      matchesPhone ||
       email.includes(search) ||
       (searchDigits.length > 0 && documentDigits.includes(searchDigits));
 
