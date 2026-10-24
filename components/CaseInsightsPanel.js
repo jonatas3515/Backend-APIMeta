@@ -3,6 +3,7 @@ import { apiCall } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import useAreaFilter from '../hooks/useAreaFilter';
 import { LEGAL_AREAS } from '../lib/legalAreas';
+import ProcessAnalyticsPanel from './ProcessAnalyticsPanel';
 
 export default function CaseInsightsPanel({ conversationId, caseId, onClose, initialTab = 'list' }) {
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -159,6 +160,17 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
           >
             📋 Insights
           </button>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            disabled={activeTab !== 'analytics'}
+            className={`px-4 py-2 rounded font-medium transition ${
+              activeTab === 'analytics'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed'
+            }`}
+          >
+            📊 Análise
+          </button>
           {conversationId && (
             <>
               <button
@@ -190,6 +202,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
 
       {/* Conteúdo */}
       <div className="p-4">
+        {activeTab === 'analytics' && <ProcessAnalyticsPanel />}
         {activeTab === 'list' && (
           <div>
             {/* Filtros */}
