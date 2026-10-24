@@ -30,7 +30,7 @@ const PLAN_ORDER = [
   { key: 'enterprise', highlight: false }
 ];
 
-export default function LandingPage() {
+export default function LandingPage({ onOpenLogin }) {
   const [signupOpen, setSignupOpen] = useState(false);
   const [form, setForm] = useState({ office_name: '', admin_name: '', email: '', phone: '', password: '', plan: 'trial' });
   const [submitting, setSubmitting] = useState(false);
@@ -63,19 +63,25 @@ export default function LandingPage() {
       <header className="border-b border-gray-800 bg-gray-900/90 sticky top-0 z-40">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-2xl font-bold bg-gradient-to-r from-red-500 to-rose-600 bg-clip-text text-transparent">
-              JNC
-            </span>
-            <span className="hidden sm:block text-sm text-gray-400">Legal SaaS</span>
+            <img src="/JusJNC_White.png" alt="JusJNC Logo" className="h-8 object-contain" />
           </div>
           <div className="flex items-center gap-3">
             <a href="#planos" className="text-sm text-gray-300 hover:text-white transition">Planos</a>
-            <a
-              href="/"
-              className="text-sm px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 text-white font-medium transition"
-            >
-              Entrar no Sistema
-            </a>
+            {onOpenLogin ? (
+              <button
+                onClick={onOpenLogin}
+                className="text-sm px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 text-white font-medium transition"
+              >
+                Entrar no Sistema
+              </button>
+            ) : (
+              <a
+                href="/"
+                className="text-sm px-4 py-2 rounded bg-gray-800 hover:bg-gray-700 text-white font-medium transition"
+              >
+                Entrar no Sistema
+              </a>
+            )}
           </div>
         </div>
       </header>

@@ -37,7 +37,7 @@ export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' })
       <div
         className={`hidden md:flex ${widthClass} bg-nc-black flex-col items-center py-4 border-r border-nc-gray-800 flex-shrink-0`}
       >
-        <img src="/Logo transparente.png" alt="N&C Logo" className="w-8 h-8 object-contain" />
+        <img src="/JNC.png" alt="JNC Logo" className="w-8 h-8 object-contain" />
 
         <nav className="flex-1 flex flex-col space-y-2 mt-6 w-full px-2 overflow-y-auto scrollbar-thin">
           {visibleItems.map((item) => (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/router';
+
 import { apiJson } from '../lib/apiClient';
 import { useAuth } from '../lib/useAuth';
 import { safeError } from '../lib/safeLogger';
@@ -18,8 +18,11 @@ function shortDate(value) {
   return value ? new Date(value).toLocaleDateString('pt-BR') : '-';
 }
 
-export default function ExecutiveDashboard() {
-  const router = useRouter();
+export default function ExecutiveDashboard({ onNavigateTab }) {
+  const navigate = (tab, extra = '') => {
+    if (onNavigateTab) return onNavigateTab(tab);
+    if (typeof window !== 'undefined') window.location.href = `/?tab=${tab}${extra}`;
+  };
   const { profile } = useAuth();
   const [office, setOffice] = useState(null);
   const [metrics, setMetrics] = useState(null);
@@ -124,16 +127,16 @@ export default function ExecutiveDashboard() {
       <section className="bg-white rounded-lg shadow p-4">
         <h2 className="font-bold text-sm text-gray-800 mb-3">⚡ Ações Rápidas</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button onClick={() => router.push('/?tab=cases&new=1')} className="p-3 rounded-lg bg-nc-black text-white text-sm font-medium hover:opacity-90" data-testid="action-new-case">
+          <button onClick={() => navigate('cases', '&new=1')} className="p-3 rounded-lg bg-nc-black text-white text-sm font-medium hover:opacity-90" data-testid="action-new-case">
             ➕ Novo Caso
           </button>
-          <button onClick={() => router.push('/?tab=funnel')} className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium">
+          <button onClick={() => navigate('funnel')} className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium">
             🔀 Funil de Atendimento
           </button>
-          <button onClick={() => router.push('/?tab=agenda')} className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium">
+          <button onClick={() => navigate('agenda')} className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium">
             📅 Agenda de Prazos
           </button>
-          <button onClick={() => router.push('/?tab=cases')} className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium">
+          <button onClick={() => navigate('cases')} className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium">
             💰 Simular Honorários
           </button>
         </div>
@@ -164,7 +167,7 @@ export default function ExecutiveDashboard() {
                   <td className="py-2 hidden md:table-cell text-gray-500">{STEP_LABELS[c.procedural_step] || c.procedural_step || '-'}</td>
                   <td className="py-2 text-right">
                     <button
-                      onClick={() => router.push(`/?tab=cases&caseId=${c.id}`)}
+                      onClick={() => navigate('cases', `&caseId=${c.id}`)}
                       className="text-xs text-blue-600 hover:underline font-medium"
                     >
                       Abrir →

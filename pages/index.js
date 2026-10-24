@@ -18,6 +18,8 @@ import KnowledgeBaseManager from '../components/KnowledgeBaseManager';
 import { resolveLegacyQuery, buildInternalUrl } from '../lib/router';
 import { NAV_ITEMS } from '../lib/tabResolver';
 import Login from '../components/Login';
+import LandingPage from '../components/LandingPage';
+import ExecutiveDashboard from '../components/ExecutiveDashboard';
 import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
 import useAreaFilter from '../hooks/useAreaFilter';
@@ -40,7 +42,8 @@ export default function Home() {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [supabaseReady, setSupabaseReady] = useState(false);
-  const [activeTab, setActiveTab] = useState('chat');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [showLogin, setShowLogin] = useState(false);
   const [chatView, setChatView] = useState('conversas');
   const [modelsRoutinesView, setModelsRoutinesView] = useState('templates');
   const [configView, setConfigView] = useState('users');
@@ -461,7 +464,9 @@ export default function Home() {
   }
 
   if (!authUser) {
-    return <Login onLogin={handleLogin} />;
+    return showLogin
+      ? <Login onLogin={handleLogin} />
+      : <LandingPage onOpenLogin={() => setShowLogin(true)} />;
   }
 
   if (!supabaseReady) {
@@ -603,6 +608,8 @@ export default function Home() {
                 />
               )}
             </>
+          ) : activeTab === 'dashboard' ? (
+            <ExecutiveDashboard onNavigateTab={(tab) => setActiveTab(tab)} />
           ) : activeTab === 'funnel' ? (
             <FunnelKanban
               conversations={conversations}

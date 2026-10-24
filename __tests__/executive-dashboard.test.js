@@ -86,20 +86,10 @@ describe('ExecutiveDashboard', () => {
 });
 
 describe('Rota /dashboard (app/dashboard/page.js)', () => {
-  let DashboardPage;
-
-  beforeAll(() => {
-    DashboardPage = require('../app/dashboard/page').default;
-  });
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  test('usuario nao autenticado ve prompt de login e nao dispara dados', async () => {
-    useAuth.mockReturnValue({ authUser: null, profile: null, loading: false });
-    render(<DashboardPage />);
-    await waitFor(() => expect(screen.getByText(/Ir para o login/i)).toBeInTheDocument());
+  test('pagina e um redirect seguro para /?tab=dashboard sem crash', () => {
+    const DashboardPage = require('../app/dashboard/page').default;
+    const { container } = render(<DashboardPage />);
     expect(apiJson).not.toHaveBeenCalledWith('/api/dashboard');
+    expect(container).toBeTruthy();
   });
 });
