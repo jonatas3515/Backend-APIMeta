@@ -80,8 +80,22 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
   });
   const [savingEdit, setSavingEdit] = useState(false);
   const [requestingConsent, setRequestingConsent] = useState(false);
+  const [copiedFollowUp, setCopiedFollowUp] = useState(false);
 
   const conversationId = conversation?.id;
+
+  const followUpInfo = useMemo(() => {
+    if (!data?.customer) return null;
+    const lastDate = data.recent_messages?.[0]?.created_at || data.customer.last_contact_at || data.customer.first_contact_at;
+    const daysSince = lastDate ? Math.floor((Date.now() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    const clientName = data.customer.name || 'Cliente';
+    const suggestedMessage = `Olá ${clientName}, tudo bem? Sou da Neves & Costa Advogados. Gostaria de saber como você está e se tem alguma dúvida sobre o andamento do seu atendimento.`;
+    return {
+      daysSince,
+      isNeeded: daysSince >= 7,
+      suggestedMessage
+    };
+  }, [data]);
 
   const fetchProfile = async () => {
     if (!conversationId) return;
@@ -290,6 +304,55 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
                   )}
                   <p><span className="text-nc-text-secondary">Localização:</span> {customer.municipality || '-'}{customer.state ? `/${customer.state}` : ''}</p>
                   <p><span className="text-nc-text-secondary">Primeiro contato:</span> {shortDate(customer.first_contact_at)}</p>
+                </div>
+              </section>
+
+              {/* Seção CRM Follow-up (Legado) */}
+              <section className="bg-nc-surface rounded-lg border border-nc-gray-200 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-bold text-sm text-nc-text-title flex items-center gap-1.5">
+                    <span>⚡</span> CRM & Follow-Up
+                  </h3>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    followUpInfo?.isNeeded ? 'bg-orange-100 text-orange-700 animate-pulse' : 'bg-green-100 text-green-700'
+                  }`}>
+                    {followUpInfo?.daysSince ? `${followUpInfo.daysSince} dias sem contato` : 'Contato recente'}
+                  </span>
+                </div>
+                <p className="text-xs text-nc-text-secondary mb-2">
+                  {followUpInfo?.isNeeded
+                    ? 'Recomendamos enviar uma mensagem de acompanhamento para manter o relacionamento ativo.'
+                    : 'Atendimento atualizado nos últimos 7 dias.'}
+                </p>
+                {followUpInfo && (
+                  <div className="bg-gray-50 rounded-lg p-2.5 border border-gray-200 text-xs text-gray-700 mb-2 italic">
+                    "{followUpInfo.suggestedMessage}"
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (followUpInfo) {
+                        navigator.clipboard?.writeText(followUpInfo.suggestedMessage);
+                        setCopiedFollowUp(true);
+                        setTimeout(() => setCopiedFollowUp(false), 2000);
+                      }
+                    }}
+                    className="flex-1 py-1.5 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-semibold transition"
+                  >
+                    {copiedFollowUp ? '✓ Mensagem Copiada!' : '📋 Copiar Mensagem'}
+                  </button>
+                  {customer.phone && (
+                    <a
+                      href={`https://wa.me/${String(customer.phone).replace(/\D/g, '')}?text=${encodeURIComponent(followUpInfo?.suggestedMessage || '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded bg-green-600 hover:bg-green-700 text-white text-xs font-bold transition flex items-center gap-1"
+                    >
+                      <span>💬</span> WhatsApp
+                    </a>
+                  )}
                 </div>
               </section>
 

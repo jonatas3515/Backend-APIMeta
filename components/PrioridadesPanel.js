@@ -12,6 +12,7 @@ const startOfToday = () => {
 export default function PrioridadesPanel() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [feedbackMsg, setFeedbackMsg] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -25,18 +26,26 @@ export default function PrioridadesPanel() {
       const merged = [
         ...caseItems
           .filter((c) => c.deadline_date && c.status !== 'encerrado')
-          .map((c) => ({
-            id: `case-${c.id}`,
-            tipo: 'Prazo',
-            cliente: c.client_name || c.title,
-            titulo: c.title,
-            processo: c.process_number,
-            tribunal: c.court,
-            data: c.deadline_date
-          })),
+          .map((c) => {
+            const isHearing = `${c.title || ''} ${c.case_type || ''}`.toLowerCase().includes('audiência') || `${c.title || ''} ${c.case_type || ''}`.toLowerCase().includes('audiencia');
+            return {
+              id: `case-${c.id}`,
+              rawId: c.id,
+              origin: 'case',
+              tipo: isHearing ? 'Audiência' : (Number(c.case_value) > 0 ? 'Honorário' : 'Prazo'),
+              cliente: c.client_name || c.title,
+              titulo: c.title,
+              processo: c.process_number,
+              tribunal: c.court,
+              valor: Number(c.case_value) || null,
+              data: c.deadline_date
+            };
+          }),
         ...taskItems
           .map((t) => ({
             id: `task-${t.id}`,
+            rawId: t.id,
+            origin: 'task',
             tipo: 'Tarefa',
             cliente: t.title,
             titulo: t.title,
@@ -50,6 +59,22 @@ export default function PrioridadesPanel() {
     });
     return () => { mounted = false; };
   }, []);
+
+  const handleMarcarComoCumprido = async (item) => {
+    setItems((prev) => prev.filter((i) => i.id !== item.id));
+    setFeedbackMsg(`"${item.titulo}" marcado como cumprido!`);
+    setTimeout(() => setFeedbackMsg(null), 3000);
+
+    try {
+      if (item.origin === 'task') {
+        await supabase.from('tasks').update({ done: true, status: 'concluida', updated_at: new Date().toISOString() }).eq('id', item.rawId);
+      } else if (item.origin === 'case') {
+        await supabase.from('cases').update({ status: 'encerrado', updated_at: new Date().toISOString() }).eq('id', item.rawId);
+      }
+    } catch (e) {
+      safeError('prioridade_cumprir_error', e, { component: 'PrioridadesPanel' });
+    }
+  };
 
   const groups = useMemo(() => {
     const today = startOfToday();
@@ -76,8 +101,26 @@ export default function PrioridadesPanel() {
   const renderItem = (i) => (
     <li key={i.id} className="bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-yellow-500/50 transition-colors">
       <div className="flex items-start justify-between gap-2 mb-2">
-        <p className="text-sm font-semibold text-white truncate">{i.titulo}</p>
-        <span className="text-[10px] px-2 py-0.5 rounded bg-gray-700 text-gray-300 font-medium">{i.tipo}</span>
+        <p className="text-sm font-semibold text-white truncate flex-1">{i.titulo}</p>
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${
+            i.tipo === 'Audiência' ? 'bg-orange-900/60 text-orange-300 border border-orange-700' :
+            i.tipo === 'Honorário' ? 'bg-purple-900/60 text-purple-300 border border-purple-700' :
+            i.tipo === 'Tarefa' ? 'bg-blue-900/60 text-blue-300 border border-blue-700' :
+            'bg-gray-700 text-gray-300'
+          }`}>
+            {i.tipo}
+          </span>
+          <button
+            onClick={() => handleMarcarComoCumprido(i)}
+            className="p-1 rounded text-green-400 hover:text-green-300 hover:bg-green-900/40 transition-colors"
+            title="Marcar como cumprido"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+        </div>
       </div>
       <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
         <svg className="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,6 +140,12 @@ export default function PrioridadesPanel() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           {i.processo}
+        </div>
+      )}
+      {i.valor && (
+        <div className="flex items-center gap-1 text-xs font-bold text-yellow-400 mt-1">
+          <span>💰</span>
+          <span>{i.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
         </div>
       )}
       {i.tribunal && (
@@ -126,11 +175,17 @@ export default function PrioridadesPanel() {
         {/* Banner explicativo */}
         <div className="bg-blue-900 bg-opacity-20 border border-blue-700 rounded-lg p-4 mb-6 text-sm text-blue-300">
           📌 <span className="text-white font-medium">Como funciona:</span> Os itens são organizados automaticamente por urgência.
-          Fique atento aos atrasados e ao que vence hoje para não perder prazos processuais.
+          Primeiro aparecem os <span className="text-red-400 font-semibold">atrasados</span>, depois os de <span className="text-yellow-400 font-semibold">hoje</span> e por fim os dos <span className="text-blue-400 font-semibold">próximos 7 dias</span>. Eventos com honorários têm destaque financeiro.
         </div>
 
+        {feedbackMsg && (
+          <div className="mb-4 p-3 rounded-lg bg-green-900/50 border border-green-700 text-green-300 text-sm flex items-center gap-2">
+            <span>✓</span> {feedbackMsg}
+          </div>
+        )}
+
         {loading ? (
-          <p className="text-sm text-gray-400">Carregando...</p>
+          <p className="text-sm text-gray-400">Carregando prioridades...</p>
         ) : (
           <>
             {/* Cards de resumo */}

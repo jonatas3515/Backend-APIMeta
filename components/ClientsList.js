@@ -11,6 +11,20 @@ export default function ClientsList({ onSelectClient }) {
   const [editingName, setEditingName] = useState('');
   const [expandedId, setExpandedId] = useState(null);
 
+  // Modal Novo Cliente
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [savingNew, setSavingNew] = useState(false);
+  const [newClient, setNewClient] = useState({
+    client_name: '',
+    client_phone: '',
+    person_type: 'fisica',
+    document_number: '',
+    email: '',
+    birth_or_foundation_date: '',
+    municipality: '',
+    state: 'BA'
+  });
+
   useEffect(() => {
     fetchClients();
 
@@ -30,7 +44,7 @@ export default function ClientsList({ onSelectClient }) {
     try {
       const { data, error } = await supabase
         .from('conversations')
-        .select('id, client_name, client_phone, person_type, document_number, email, created_at, updated_at, messages(created_at)')
+        .select('id, client_name, client_phone, person_type, document_number, email, birth_or_foundation_date, municipality, state, created_at, updated_at, messages(created_at)')
         .order('client_name', { ascending: true });
 
       if (error) throw error;
@@ -39,6 +53,64 @@ export default function ClientsList({ onSelectClient }) {
     } catch (error) {
       console.error('Erro ao buscar clientes:', error);
       setLoading(false);
+    }
+  };
+
+  const handleCreateClient = async (e) => {
+    e.preventDefault();
+    if (!newClient.client_name.trim() || !newClient.client_phone.trim()) {
+      alert('Nome e WhatsApp são obrigatórios');
+      return;
+    }
+
+    setSavingNew(true);
+    try {
+      const cleanPhone = newClient.client_phone.replace(/\D/g, '');
+      const payload = {
+        client_name: newClient.client_name.trim(),
+        client_phone: cleanPhone,
+        phone: cleanPhone,
+        person_type: newClient.person_type,
+        document_number: newClient.document_number.trim() || null,
+        email: newClient.email.trim() || null,
+        birth_or_foundation_date: newClient.birth_or_foundation_date || null,
+        municipality: newClient.municipality.trim() || null,
+        state: newClient.state || 'BA',
+        office_id: '00000000-0000-0000-0000-000000000001',
+        unread: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from('conversations')
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setShowNewModal(false);
+      setNewClient({
+        client_name: '',
+        client_phone: '',
+        person_type: 'fisica',
+        document_number: '',
+        email: '',
+        birth_or_foundation_date: '',
+        municipality: '',
+        state: 'BA'
+      });
+
+      await fetchClients();
+      if (onSelectClient && data) {
+        onSelectClient(data);
+      }
+    } catch (err) {
+      console.error('Erro ao criar cliente:', err);
+      alert('Erro ao cadastrar cliente: ' + (err.message || ''));
+    } finally {
+      setSavingNew(false);
     }
   };
 
@@ -66,16 +138,14 @@ export default function ClientsList({ onSelectClient }) {
     const email = client.email?.toLowerCase() || '';
     const documentDigits = (client.document_number || '').replace(/\D/g, '');
 
-    // Filtro por texto (nome, telefone, CPF/CNPJ ou e-mail)
     const matchesSearch =
       name.includes(search) ||
       phone.includes(search) ||
       email.includes(search) ||
       (searchDigits.length > 0 && documentDigits.includes(searchDigits));
-    
-    // Filtro por letra
+
     const matchesLetter = !letterFilter || name.startsWith(letterFilter.toLowerCase());
-    
+
     return matchesSearch && matchesLetter;
   });
 
@@ -93,8 +163,19 @@ export default function ClientsList({ onSelectClient }) {
     <div className="flex-1 flex flex-col bg-white min-h-0">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 p-4">
-        <h1 className="text-2xl font-bold mb-3 text-gray-900">📋 Lista de Clientes</h1>
-        
+        <div className="flex items-center justify-between mb-3">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <span>📋</span> Lista de Clientes
+          </h1>
+          <button
+            onClick={() => setShowNewModal(true)}
+            className="px-3 py-1.5 rounded-lg bg-nc-yellow text-nc-black font-bold text-xs hover:opacity-90 transition shadow flex items-center gap-1"
+            data-testid="btn-novo-cliente"
+          >
+            <span>+</span> Novo Cliente
+          </button>
+        </div>
+
         {/* Barra de pesquisa */}
         <div className="mb-3">
           <input
@@ -102,7 +183,7 @@ export default function ClientsList({ onSelectClient }) {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Pesquisar por nome, telefone, CPF/CNPJ ou e-mail..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-yellow-500"
           />
         </div>
 
@@ -112,7 +193,7 @@ export default function ClientsList({ onSelectClient }) {
             onClick={() => setLetterFilter('')}
             className={`px-2 py-1 text-xs font-medium rounded transition ${
               letterFilter === ''
-                ? 'bg-blue-600 text-white'
+                ? 'bg-nc-black text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -124,7 +205,7 @@ export default function ClientsList({ onSelectClient }) {
               onClick={() => setLetterFilter(letter)}
               className={`px-2 py-1 text-xs font-medium rounded transition ${
                 letterFilter === letter
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-nc-black text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             >
@@ -161,7 +242,7 @@ export default function ClientsList({ onSelectClient }) {
               <div
                 key={client.id}
                 onClick={() => onSelectClient && onSelectClient(client)}
-                className="px-4 py-2 hover:bg-blue-50 transition grid grid-cols-12 gap-2 items-center text-sm cursor-pointer"
+                className="px-4 py-2 hover:bg-yellow-50/40 transition grid grid-cols-12 gap-2 items-center text-sm cursor-pointer"
               >
                 <div className="col-span-1 font-semibold text-gray-600">{index + 1}</div>
 
@@ -177,7 +258,7 @@ export default function ClientsList({ onSelectClient }) {
                           if (e.key === 'Enter') updateClientName(client.id, editingName);
                         }}
                         autoFocus
-                        className="w-full px-2 py-1 border border-blue-500 rounded text-sm"
+                        className="w-full px-2 py-1 border border-yellow-500 rounded text-sm"
                       />
                     </div>
                   ) : (
@@ -192,8 +273,8 @@ export default function ClientsList({ onSelectClient }) {
                       <span
                         className={`ml-1.5 text-[10px] px-1 py-0.5 rounded font-medium align-middle ${
                           client.person_type === 'juridica'
-                            ? 'bg-indigo-100 text-indigo-700'
-                            : 'bg-blue-50 text-blue-600'
+                            ? 'bg-purple-100 text-purple-700 font-bold'
+                            : 'bg-blue-50 text-blue-600 font-bold'
                         }`}
                       >
                         {client.person_type === 'juridica' ? 'PJ' : 'PF'}
@@ -215,7 +296,7 @@ export default function ClientsList({ onSelectClient }) {
                 </div>
 
                 <div className="hidden md:col-span-1 md:block text-center">
-                  <span className="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">
+                  <span className="inline-block bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs font-medium">
                     {client.messages?.length || 0}
                   </span>
                 </div>
@@ -227,7 +308,7 @@ export default function ClientsList({ onSelectClient }) {
                       setEditingId(client.id);
                       setEditingName(client.client_name || '');
                     }}
-                    className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                    className="text-yellow-600 hover:text-yellow-800 text-xs font-medium"
                     title="Editar nome"
                   >
                     ✏️
@@ -250,7 +331,7 @@ export default function ClientsList({ onSelectClient }) {
                       </div>
                       <div>
                         <span className="block text-gray-400 text-[10px]">Mensagens</span>
-                        <span className="inline-block bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs font-medium">
+                        <span className="inline-block bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs font-medium">
                           {client.messages?.length || 0}
                         </span>
                       </div>
@@ -267,6 +348,117 @@ export default function ClientsList({ onSelectClient }) {
       <div className="bg-gray-50 border-t border-gray-200 px-4 py-3 text-sm text-gray-600">
         <span>Total: <strong>{clients.length}</strong> | Exibindo: <strong>{filteredClients.length}</strong></span>
       </div>
+
+      {/* Modal Novo Cliente */}
+      {showNewModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowNewModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-200" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 bg-nc-black border-b border-gray-800 flex justify-between items-center text-white">
+              <h3 className="font-bold text-base text-nc-yellow flex items-center gap-2">
+                <span>➕</span> Cadastrar Novo Cliente
+              </h3>
+              <button onClick={() => setShowNewModal(false)} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <form onSubmit={handleCreateClient} className="p-5 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Nome Completo *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nome do cliente ou razão social"
+                  value={newClient.client_name}
+                  onChange={(e) => setNewClient({ ...newClient, client_name: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">WhatsApp / Telefone *</label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="73999999999"
+                    value={newClient.client_phone}
+                    onChange={(e) => setNewClient({ ...newClient, client_phone: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Tipo de Pessoa</label>
+                  <select
+                    value={newClient.person_type}
+                    onChange={(e) => setNewClient({ ...newClient, person_type: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                  >
+                    <option value="fisica">Pessoa Física (CPF)</option>
+                    <option value="juridica">Pessoa Jurídica (CNPJ)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    {newClient.person_type === 'juridica' ? 'CNPJ' : 'CPF'}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={newClient.person_type === 'juridica' ? '00.000.000/0001-00' : '000.000.000-00'}
+                    value={newClient.document_number}
+                    onChange={(e) => setNewClient({ ...newClient, document_number: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    {newClient.person_type === 'juridica' ? 'Data de Fundação' : 'Data de Nascimento'}
+                  </label>
+                  <input
+                    type="date"
+                    value={newClient.birth_or_foundation_date}
+                    onChange={(e) => setNewClient({ ...newClient, birth_or_foundation_date: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail</label>
+                  <input
+                    type="email"
+                    placeholder="cliente@exemplo.com"
+                    value={newClient.email}
+                    onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Município/UF</label>
+                  <input
+                    type="text"
+                    placeholder="Ilhéus / BA"
+                    value={newClient.municipality}
+                    onChange={(e) => setNewClient({ ...newClient, municipality: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={savingNew}
+                  className="w-full py-2.5 rounded-lg bg-nc-yellow text-nc-black font-bold text-sm hover:opacity-90 disabled:opacity-60 transition"
+                >
+                  {savingNew ? 'Cadastrando...' : 'Cadastrar Cliente'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

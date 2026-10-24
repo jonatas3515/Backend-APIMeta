@@ -24,6 +24,7 @@ export default function MonthlyCalendarPanel() {
   const [birthdays, setBirthdays] = useState([]);
   const [birthdayTemplate, setBirthdayTemplate] = useState('Feliz aniversário, {nome}! 🎂');
   const [selectedDay, setSelectedDay] = useState(() => new Date());
+  const [feedbackMsg, setFeedbackMsg] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -96,118 +97,207 @@ export default function MonthlyCalendarPanel() {
 
   const prev = () => setCursor(new Date(year, month - 1, 1));
   const next = () => setCursor(new Date(year, month + 1, 1));
+  const goToday = () => {
+    const now = new Date();
+    setCursor(new Date(now.getFullYear(), now.getMonth(), 1));
+    setSelectedDay(now);
+  };
+
+  const handleMarcarCumprido = async (c) => {
+    setCases((prev) => prev.filter((item) => item.id !== c.id));
+    setFeedbackMsg(`Prazo "${c.title}" marcado como cumprido!`);
+    setTimeout(() => setFeedbackMsg(null), 3000);
+    try {
+      await supabase.from('cases').update({ status: 'encerrado', updated_at: new Date().toISOString() }).eq('id', c.id);
+    } catch (err) {
+      safeError('calendar_cumprir_error', err, { component: 'MonthlyCalendarPanel' });
+    }
+  };
 
   return (
-    <div className="p-4 md:p-6" data-testid="monthly-calendar-panel">
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* Grade mensal */}
-        <div className="lg:col-span-3 bg-white rounded-lg shadow p-4">
-          <div className="flex items-center justify-between mb-4 bg-nc-black border-b-2 border-nc-yellow/40 text-white rounded-t-lg -m-4 mb-4 px-4 py-3">
-            <h2 className="text-lg font-bold capitalize text-nc-yellow">
-              {MONTH_NAMES[month]} {year}
-            </h2>
-            <div className="flex gap-1">
-              <button onClick={() => setCursor(new Date(year - 1, month, 1))} className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs">«</button>
-              <button onClick={prev} className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs">‹</button>
-              <button onClick={next} className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs">›</button>
-              <button onClick={() => setCursor(new Date(year + 1, month, 1))} className="px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs">»</button>
+    <div className="p-4 md:p-6 bg-gray-900 text-white min-h-full" data-testid="monthly-calendar-panel">
+      <div className="max-w-7xl mx-auto space-y-4">
+        {feedbackMsg && (
+          <div className="p-3 rounded-lg bg-green-900/50 border border-green-700 text-green-300 text-sm">
+            {feedbackMsg}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Grade mensal */}
+          <div className="lg:col-span-3 bg-gray-800 rounded-xl border border-gray-700 p-5 shadow-lg">
+            <div className="flex items-center justify-between mb-4 bg-nc-black border-b-2 border-nc-yellow/40 text-white rounded-t-lg -m-5 mb-5 px-5 py-3">
+              <h2 className="text-lg font-bold capitalize text-nc-yellow flex items-center gap-2">
+                <span>📅</span> {MONTH_NAMES[month]} {year}
+              </h2>
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => setCursor(new Date(year - 1, month, 1))} className="px-2.5 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs font-bold" title="Ano anterior">«</button>
+                <button onClick={prev} className="px-2.5 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs font-bold" title="Mês anterior">‹</button>
+                <button onClick={goToday} className="px-2.5 py-1 rounded bg-nc-yellow text-nc-black hover:opacity-90 text-xs font-bold">Hoje</button>
+                <button onClick={next} className="px-2.5 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs font-bold" title="Próximo mês">›</button>
+                <button onClick={() => setCursor(new Date(year + 1, month, 1))} className="px-2.5 py-1 rounded bg-gray-700 hover:bg-gray-600 text-xs font-bold" title="Próximo ano">»</button>
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-gray-500 mb-1 uppercase">
-            {WEEK_DAYS.map((d) => <div key={d}>{d.toUpperCase()}</div>)}
-          </div>
-
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((day, idx) => {
-              if (!day) return <div key={`e-${idx}`} className="min-h-[70px]" />;
-              const key = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
-              const feriado = FERIADOS[`${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`];
-              const dayCases = deadlinesByDay[key] || [];
-              const isToday = key === todayKey;
-              return (
-                <div
-                  key={key}
-                  onClick={() => setSelectedDay(day)}
-                  className={`min-h-[70px] p-1 rounded border text-xs cursor-pointer ${
-                    isToday ? 'border-nc-yellow bg-yellow-50 ring-1 ring-nc-yellow' : feriado ? 'border-red-200 bg-red-50/50' : 'border-gray-100 bg-white'
-                  }`}
-                  data-testid={isToday ? 'calendar-today' : undefined}
-                >
-                  <span className={`text-[11px] font-bold ${isToday ? 'text-nc-black' : feriado ? 'text-red-700' : 'text-gray-600'}`}>{day.getDate()}</span>
-                  {feriado && <p className="text-[9px] text-red-700 font-bold leading-tight" title={feriado}>{feriado}</p>}
-                  {(birthdaysByDay[`${day.getMonth()}-${day.getDate()}`] || []).length > 0 && (
-                    <p className="text-[9px] mt-0.5">
-                      🎂 <span className="px-1 rounded bg-green-500 text-white text-[8px] font-bold">({birthdaysByDay[`${day.getMonth()}-${day.getDate()}`].length})</span>
-                    </p>
-                  )}
-                  {dayCases.slice(0, 2).map((c) => (
-                    <p key={c.id} className="text-[9px] bg-yellow-100 text-yellow-800 rounded px-1 truncate mt-0.5" title={c.title}>
-                      ⏰ {c.title}
-                    </p>
-                  ))}
-                  {dayCases.length > 2 && <p className="text-[9px] text-gray-400">+{dayCases.length - 2} mais</p>}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Feriados do mes */}
-          {monthFeriados.length > 0 && (
-            <div className="mt-3 p-3 bg-red-900/20 border border-red-800 rounded-lg">
-              <h4 className="text-xs font-bold text-red-300 mb-1">🇧🇷 Feriados do mês</h4>
-              <ul className="text-[11px] text-red-200 space-y-0.5">
-                {monthFeriados.map((f) => (
-                  <li key={f.day}>{f.day} - {f.name}</li>
-                ))}
-              </ul>
+            <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-bold text-gray-400 mb-2 uppercase">
+              {WEEK_DAYS.map((d) => <div key={d}>{d}</div>)}
             </div>
-          )}
-        </div>
 
-        {/* Painel lateral */}
-        <div className="space-y-4">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl shadow p-4">
-            <h3 className="font-bold text-sm text-nc-yellow mb-3">🎂 Aniversariantes - {selectedDay.toLocaleDateString('pt-BR')}</h3>
-            {selectedBirthdays.length === 0 ? (
-              <p className="text-sm text-gray-400">Nenhum aniversariante neste dia.</p>
-            ) : (
-              <ul className="space-y-2">
-                {selectedBirthdays.map((b) => {
-                  const phone = (b.phone || '').replace(/\D/g, '');
-                  const msg = encodeURIComponent(birthdayTemplate.replace(/\{nome\}/g, b.client_name || 'Cliente'));
-                  return (
-                    <li key={b.id} className="text-sm text-gray-200 flex items-center justify-between gap-2">
-                      <span className="flex items-center gap-2"><span className="text-pink-400">🎂</span> {b.client_name || 'Cliente'}</span>
-                      {phone && (
-                        <a
-                          href={`https://wa.me/${phone}?text=${msg}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] px-2 py-1 rounded bg-green-500 hover:bg-green-600 text-white font-bold whitespace-nowrap"
-                          data-testid={`whatsapp-btn-${b.id}`}
-                        >
-                          Enviar WhatsApp
-                        </a>
+            <div className="grid grid-cols-7 gap-1.5">
+              {cells.map((day, idx) => {
+                if (!day) return <div key={`e-${idx}`} className="min-h-[85px] bg-gray-850/40 rounded-lg border border-transparent" />;
+                const key = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
+                const bdayKey = `${day.getMonth()}-${day.getDate()}`;
+                const feriado = FERIADOS[`${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`];
+                const dayCases = deadlinesByDay[key] || [];
+                const dayBdays = birthdaysByDay[bdayKey] || [];
+                const dayHonorarios = dayCases.filter((c) => Number(c.case_value) > 0);
+                const isToday = key === todayKey;
+                const isSelected = key === selectedKey;
+
+                return (
+                  <div
+                    key={key}
+                    onClick={() => setSelectedDay(day)}
+                    className={`min-h-[85px] p-1.5 rounded-lg border text-xs cursor-pointer transition-all ${
+                      isSelected
+                        ? 'border-nc-yellow bg-gray-750 ring-2 ring-nc-yellow'
+                        : isToday
+                        ? 'border-yellow-500/80 bg-yellow-950/20 ring-1 ring-yellow-500'
+                        : feriado
+                        ? 'border-red-900/60 bg-red-950/20'
+                        : 'border-gray-700/80 bg-gray-800/80 hover:border-gray-500'
+                    }`}
+                    data-testid={isToday ? 'calendar-today' : undefined}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-[11px] font-bold ${isToday ? 'text-nc-yellow' : feriado ? 'text-red-400 font-extrabold' : 'text-gray-300'}`}>
+                        {day.getDate()}
+                      </span>
+                      {dayBdays.length > 0 && (
+                        <span className="text-[9px] font-bold text-green-400">
+                          ({dayBdays.length}) 🎂
+                        </span>
                       )}
+                    </div>
+
+                    {feriado && (
+                      <p className="text-[9px] text-red-400 font-semibold leading-tight line-clamp-1 mb-0.5" title={feriado}>
+                        {feriado}
+                      </p>
+                    )}
+
+                    {/* Chips do dia */}
+                    <div className="space-y-0.5">
+                      {dayCases.slice(0, 2).map((c) => (
+                        <p
+                          key={c.id}
+                          className={`text-[9px] rounded px-1 truncate ${
+                            Number(c.case_value) > 0
+                              ? 'bg-purple-900/50 text-purple-200 border border-purple-700/60'
+                              : 'bg-yellow-900/50 text-yellow-200 border border-yellow-700/60'
+                          }`}
+                          title={c.title}
+                        >
+                          {Number(c.case_value) > 0 ? '💰' : '⏰'} {c.title}
+                        </p>
+                      ))}
+                      {dayCases.length > 2 && (
+                        <p className="text-[8px] text-gray-400 text-center font-medium">+{dayCases.length - 2} mais</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Feriados do mês */}
+            {monthFeriados.length > 0 && (
+              <div className="mt-4 p-3 bg-red-900/20 border border-red-800 rounded-lg">
+                <h4 className="text-xs font-bold text-red-300 mb-1 flex items-center gap-1">
+                  <span>🇧🇷</span> Feriados Nacionais do Mês
+                </h4>
+                <ul className="text-[11px] text-red-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1">
+                  {monthFeriados.map((f) => (
+                    <li key={f.day} className="flex items-center gap-1.5">
+                      <span className="font-bold text-red-400">{f.day}:</span> {f.name}
                     </li>
-                  );
-                })}
-              </ul>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
 
-          <div className="bg-gray-800 border border-gray-700 rounded-xl shadow p-4">
-            <h3 className="font-bold text-sm text-nc-yellow mb-3">⏰ Prazos de {selectedDay.toLocaleDateString('pt-BR')}</h3>
-            {selectedDeadlines.length === 0 ? (
-              <p className="text-sm text-gray-400">Nenhum prazo neste dia.</p>
-            ) : (
-              <ul className="space-y-2">
-                {selectedDeadlines.map((c) => (
-                  <li key={c.id} className="text-sm text-gray-200">⚖️ {c.title}</li>
-                ))}
-              </ul>
-            )}
+          {/* Painel lateral: Agenda do dia selecionado */}
+          <div className="space-y-4">
+            {/* Aniversariantes */}
+            <div className="bg-gray-800 border border-gray-700 rounded-xl shadow p-4">
+              <h3 className="font-bold text-sm text-nc-yellow mb-3 flex items-center gap-2">
+                <span>🎂</span> Aniversariantes - {selectedDay.toLocaleDateString('pt-BR')}
+              </h3>
+              {selectedBirthdays.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-3">Nenhum aniversariante neste dia.</p>
+              ) : (
+                <ul className="space-y-2.5">
+                  {selectedBirthdays.map((b) => {
+                    const phone = (b.phone || '').replace(/\D/g, '');
+                    const msg = encodeURIComponent(birthdayTemplate.replace(/\{nome\}/g, b.client_name || 'Cliente'));
+                    return (
+                      <li key={b.id} className="text-xs text-gray-200 bg-gray-750 p-2.5 rounded-lg border border-gray-700 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-white">{b.client_name || 'Cliente'}</span>
+                          <span className="text-[10px] text-yellow-400">🎂 Aniversário</span>
+                        </div>
+                        {phone && (
+                          <a
+                            href={`https://wa.me/${phone}?text=${msg}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full text-center block text-[11px] px-2.5 py-1.5 rounded bg-green-600 hover:bg-green-700 text-white font-bold transition shadow"
+                            data-testid={`whatsapp-btn-${b.id}`}
+                          >
+                            Enviar Parabéns via WhatsApp
+                          </a>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            {/* Prazos do dia selecionado */}
+            <div className="bg-gray-800 border border-gray-700 rounded-xl shadow p-4">
+              <h3 className="font-bold text-sm text-nc-yellow mb-3 flex items-center gap-2">
+                <span>⏰</span> Prazos de {selectedDay.toLocaleDateString('pt-BR')}
+              </h3>
+              {selectedDeadlines.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-3">Nenhum prazo neste dia.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {selectedDeadlines.map((c) => (
+                    <li key={c.id} className="text-xs text-gray-200 bg-gray-750 p-2.5 rounded-lg border border-gray-700 flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-white">{c.title}</p>
+                        {c.client_name && <p className="text-[11px] text-gray-400">Cliente: {c.client_name}</p>}
+                        {Number(c.case_value) > 0 && (
+                          <p className="text-[11px] font-bold text-yellow-400 mt-0.5">
+                            💰 {Number(c.case_value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleMarcarCumprido(c)}
+                        className="text-[10px] px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white font-bold whitespace-nowrap"
+                        title="Marcar como cumprido"
+                      >
+                        ✓ Cumprir
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       </div>
