@@ -48,25 +48,22 @@ export default function ExecutiveDashboard() {
     return () => { mounted = false; };
   }, []);
 
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const in7days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const newThisMonth = useMemo(
-    () => cases.filter((c) => c.created_at && new Date(c.created_at) >= monthStart).length,
+    () => cases.filter((c) => { const now = new Date(); return c.created_at && new Date(c.created_at) >= new Date(now.getFullYear(), now.getMonth(), 1); }).length,
     [cases]
   );
 
   const urgentDeadlines = useMemo(
     () => cases
-      .filter((c) => c.deadline_date && new Date(c.deadline_date) <= in7days && c.status !== 'encerrado')
+      .filter((c) => c.deadline_date && new Date(c.deadline_date) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) && c.status !== 'encerrado')
       .sort((a, b) => new Date(a.deadline_date) - new Date(b.deadline_date)),
     [cases]
   );
 
   const upcoming = urgentDeadlines.slice(0, 5);
   const convsThisMonth = useMemo(
-    () => conversations.filter((c) => c.updated_at && new Date(c.updated_at) >= monthStart).length,
+    () => conversations.filter((c) => { const now = new Date(); return c.updated_at && new Date(c.updated_at) >= new Date(now.getFullYear(), now.getMonth(), 1); }).length,
     [conversations]
   );
 
@@ -160,7 +157,7 @@ export default function ExecutiveDashboard() {
             <tbody>
               {upcoming.map((c) => (
                 <tr key={c.id} className="border-b last:border-0">
-                  <td className={`py-2 font-medium ${new Date(c.deadline_date) < now ? 'text-red-600' : 'text-amber-600'}`}>
+                  <td className={`py-2 font-medium ${new Date(c.deadline_date) < new Date() ? 'text-red-600' : 'text-amber-600'}`}>
                     {shortDate(c.deadline_date)}
                   </td>
                   <td className="py-2">{c.title}</td>
