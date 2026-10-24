@@ -18,15 +18,21 @@ export default function HonorariosCentralPanel() {
         if (!mounted) return;
         setEventos(
           (cases || [])
-            .filter((c) => c.deadline_date && Number(c.case_value) > 0 && c.status !== 'encerrado')
-            .map((c) => ({
-              id: c.id,
-              cliente: c.client_name || c.title,
-              titulo: c.title,
-              processo: c.process_number,
-              data: c.deadline_date,
-              valor: Number(c.case_value)
-            }))
+            .filter((c) => c.deadline_date && Number(c.case_value) > 0 && c.status !== 'encerrado' && c.status !== 'arquivado')
+            .map((c) => {
+              const valorCausa = Number(c.case_value) || 0;
+              const honorarioEstimado = valorCausa * 0.20;
+              return {
+                id: c.id,
+                cliente: c.client_name || c.title,
+                titulo: c.title,
+                processo: c.process_number,
+                data: c.deadline_date,
+                valorCausa,
+                honorarioEstimado,
+                valor: honorarioEstimado
+              };
+            })
         );
       })
       .catch((err) => safeError('honorarios_load_error', err, { component: 'HonorariosCentralPanel' }))
@@ -49,15 +55,20 @@ export default function HonorariosCentralPanel() {
   }, [eventos]);
 
   const total = (arr) => arr.reduce((s, e) => s + e.valor, 0);
+  const totalCausa = (arr) => arr.reduce((s, e) => s + (e.valorCausa || 0), 0);
 
   const marcarRecebido = async (evento) => {
     setEventos((prev) => prev.filter((e) => e.id !== evento.id));
-    setMsg({ type: 'success', text: `Recebimento de ${evento.cliente} registrado com sucesso!` });
+    setMsg({ type: 'success', text: `Recebimento de honorários de ${evento.cliente} registrado com sucesso!` });
     setTimeout(() => setMsg(null), 3000);
 
-    const { error } = await supabase.from('cases').update({ status: 'encerrado', updated_at: new Date().toISOString() }).eq('id', evento.id);
-    if (error) {
-      safeError('honorarios_recebido_error', error, { component: 'HonorariosCentralPanel' });
+    try {
+      await apiJson(`/api/cases?id=${evento.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'encerrado' })
+      });
+    } catch {
+      await supabase.from('cases').update({ status: 'encerrado', updated_at: new Date().toISOString() }).eq('id', evento.id);
     }
   };
 
@@ -154,7 +165,9 @@ export default function HonorariosCentralPanel() {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-bold text-gray-900">{brl(item.valor)}</p>
+                          <p className="text-[10px] text-gray-500">Honorários (20%)</p>
+                          <p className="text-sm font-bold text-emerald-700">{brl(item.honorarioEstimado)}</p>
+                          <p className="text-[10px] text-gray-400">Causa: {brl(item.valorCausa)}</p>
                           <button
                             onClick={() => marcarRecebido(item)}
                             className="mt-1 px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition shadow-sm"

@@ -43,10 +43,10 @@ export default function TarefasPanel() {
 
   const load = async () => {
     try {
-      const [tasksRes, clientsRes, casesRes] = await Promise.all([
+      const [tasksRes, clientsRes, casesList] = await Promise.all([
         supabase.from('tasks').select('*').order('created_at', { ascending: false }),
-        supabase.from('conversations').select('id, client_name, phone').order('client_name', { ascending: true }),
-        supabase.from('cases').select('id, title, client_name, process_number')
+        supabase.from('conversations').select('id, client_name, client_phone').order('client_name', { ascending: true }),
+        apiJson('/api/cases').catch(() => [])
       ]);
 
       if (tasksRes.error) {
@@ -55,7 +55,7 @@ export default function TarefasPanel() {
         setTasks(tasksRes.data || []);
       }
       setClients(clientsRes.data || []);
-      setCases(casesRes.data || []);
+      setCases(Array.isArray(casesList) ? casesList : (casesList?.data || []));
     } catch (err) {
       safeError('tarefas_load_catch', err, { component: 'TarefasPanel' });
     } finally {
@@ -382,9 +382,28 @@ export default function TarefasPanel() {
               </div>
             )}
 
-            {pendentes.length === 0 && (
+            {pendentes.length === 0 && concluidas.length === 0 && (
+              <div className="bg-white rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500 shadow-sm">
+                <div className="w-12 h-12 bg-amber-50 text-amber-700 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
+                  📝
+                </div>
+                <h4 className="font-semibold text-gray-800 text-sm mb-1">Nenhuma tarefa cadastrada ainda</h4>
+                <p className="text-xs text-gray-500 mb-4 max-w-md mx-auto">
+                  Organize diligências, protocolos, contatos com clientes e tarefas internas do escritório vinculadas aos casos ou avulsas.
+                </p>
+                <button
+                  type="button"
+                  onClick={openNew}
+                  className="px-4 py-2 bg-nc-yellow text-nc-black hover:bg-yellow-400 font-bold rounded-lg text-xs shadow inline-flex items-center gap-1.5 transition-colors"
+                >
+                  + Criar Primeira Tarefa
+                </button>
+              </div>
+            )}
+
+            {pendentes.length === 0 && concluidas.length > 0 && (
               <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500 shadow-sm">
-                <p>Nenhuma tarefa pendente encontrada com os filtros atuais.</p>
+                <p>Nenhuma tarefa pendente com os filtros atuais (todas as tarefas estão concluídas!).</p>
               </div>
             )}
 

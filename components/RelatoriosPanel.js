@@ -71,7 +71,15 @@ export default function RelatoriosPanel() {
   }, [cases]);
 
   const totalHonorariosAtivos = useMemo(() => {
-    return cases.filter((c) => c.status !== 'encerrado').reduce((acc, c) => acc + (Number(c.case_value) || 0), 0);
+    return cases
+      .filter((c) => c.status !== 'encerrado' && c.status !== 'arquivado')
+      .reduce((acc, c) => acc + ((Number(c.case_value) || 0) * 0.20), 0);
+  }, [cases]);
+
+  const totalHonorariosEncerrados = useMemo(() => {
+    return cases
+      .filter((c) => c.status === 'encerrado' || c.status === 'arquivado')
+      .reduce((acc, c) => acc + ((Number(c.case_value) || 0) * 0.20), 0);
   }, [cases]);
 
   return (
@@ -215,41 +223,46 @@ export default function RelatoriosPanel() {
           <div className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               <div className="bg-white border border-gray-200 rounded-xl p-5 text-center shadow-sm">
-                <p className="text-xs text-gray-500 mb-1">Patrimônio Sob Gestão</p>
-                <p className="text-2xl font-bold text-emerald-700">{brl(totalPatrimonio)}</p>
-                <p className="text-[10px] text-gray-400 mt-1">{cases.length} casos no acervo</p>
+                <p className="text-xs text-gray-500 mb-1">Volume da Causa (Patrimônio Total)</p>
+                <p className="text-2xl font-bold text-gray-900">{brl(totalPatrimonio)}</p>
+                <p className="text-[10px] text-gray-400 mt-1">{cases.length} casos com valor cadastrado</p>
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-5 text-center shadow-sm">
-                <p className="text-xs text-gray-500 mb-1">Honorários em Andamento</p>
+                <p className="text-xs text-gray-500 mb-1">Honorários Estimados Ativos (20%)</p>
                 <p className="text-2xl font-bold text-amber-700">{brl(totalHonorariosAtivos)}</p>
-                <p className="text-[10px] text-gray-400 mt-1">Casos não encerrados</p>
+                <p className="text-[10px] text-gray-400 mt-1">20% padrão sucumbencial / contratual</p>
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-5 text-center shadow-sm">
-                <p className="text-xs text-gray-500 mb-1">Média por Processo</p>
-                <p className="text-2xl font-bold text-blue-700">
-                  {brl(cases.length > 0 ? totalPatrimonio / cases.length : 0)}
-                </p>
-                <p className="text-[10px] text-gray-400 mt-1">Ticket médio estimado</p>
+                <p className="text-xs text-gray-500 mb-1">Honorários Concluídos (20%)</p>
+                <p className="text-2xl font-bold text-emerald-700">{brl(totalHonorariosEncerrados)}</p>
+                <p className="text-[10px] text-gray-400 mt-1">Processos encerrados e liquidados</p>
               </div>
             </div>
 
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-              <h3 className="font-bold text-sm text-gray-900 mb-3">Extrato de Casos com Valor Registrado</h3>
+              <h3 className="font-bold text-sm text-gray-900 mb-3">Extrato de Honorários e Valores da Causa</h3>
               <div className="space-y-2">
-                {cases.filter((c) => Number(c.case_value) > 0).map((c) => (
-                  <div key={c.id} className="p-3 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">{c.title}</p>
-                      <p className="text-xs text-gray-500">{c.client_name} • {c.court || 'Justiça Estadual'}</p>
+                {cases.filter((c) => Number(c.case_value) > 0).map((c) => {
+                  const valorCausa = Number(c.case_value) || 0;
+                  const honorario = valorCausa * 0.20;
+                  const isClosed = c.status === 'encerrado' || c.status === 'arquivado';
+                  return (
+                    <div key={c.id} className="p-3.5 rounded-lg bg-gray-50 border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">{c.title}</p>
+                        <p className="text-xs text-gray-500">{c.client_name || 'Sem cliente'} • {c.court || 'Justiça'} {c.process_number ? `(${c.process_number})` : ''}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Valor da Causa: <span className="font-mono font-medium text-gray-700">{brl(valorCausa)}</span></p>
+                      </div>
+                      <div className="text-left sm:text-right">
+                        <p className="text-xs text-gray-500">Honorários Estimados (20%)</p>
+                        <p className="text-base font-bold text-emerald-700">{brl(honorario)}</p>
+                        <span className={`inline-block text-[10px] px-2 py-0.5 rounded font-medium mt-1 ${isClosed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                          {isClosed ? '✓ Encerrado / Liquidado' : '⚡ Ativo / Em andamento'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-emerald-700">{brl(Number(c.case_value))}</p>
-                      <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${c.status === 'encerrado' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-                        {c.status === 'encerrado' ? 'Encerrado / Recebido' : 'Ativo / Em andamento'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>

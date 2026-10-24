@@ -15,12 +15,58 @@ async function handler(req, res) {
     return res.status(500).json({ error: 'Supabase não configurado' });
   }
 
-  if (req.method !== 'GET') {
+  if (req.method !== 'GET' && req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
   }
 
   const { id } = req.query;
   if (!id) return res.status(400).json({ error: 'ID do processo é obrigatório' });
+
+  if (req.method === 'POST') {
+    const { movement_date, movement_text, source = 'Projudi TJBA' } = req.body || {};
+    if (!movement_text || !movement_text.trim()) {
+      return res.status(400).json({ error: 'Texto da movimentação é obrigatório' });
+    }
+
+    try {
+      const caseId = await resolveCaseIdForProcess({ supabase, processId: id });
+      if (!caseId) {
+        return res.status(404).json({ error: 'Processo não encontrado' });
+      }
+
+      const { allowed } = await verifyCaseAccess({ supabase, caseId, user: req.user });
+      if (!allowed) {
+        return res.status(403).json({ error: 'Acesso não autorizado ao caso.' });
+      }
+
+      const payload = {
+        case_process_id: id,
+        movement_date: movement_date ? new Date(movement_date).toISOString() : new Date().toISOString(),
+        movement_text: movement_text.trim(),
+        source: source || 'manual',
+        detected_at: new Date().toISOString(),
+        review_status: 'revisada',
+        reviewed_by: req.user?.id || null,
+        reviewed_at: new Date().toISOString()
+      };
+
+      const { data: newMov, error: insertError } = await supabase
+        .from('process_movements')
+        .insert([payload])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+      return res.status(201).json(newMov);
+    } catch (error) {
+      safeError('manual_movement_insert_error', error, {
+        route: '/api/case-processes/[id]/movements',
+        role: req.user?.role,
+        processIdHash: String(id).slice(0, 8),
+      });
+      return res.status(500).json({ error: 'Erro ao registrar movimentação manual' });
+    }
+  }
 
   const { limit = '20', offset = '0' } = req.query;
 

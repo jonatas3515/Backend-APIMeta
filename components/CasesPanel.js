@@ -261,11 +261,53 @@ export default function CasesPanel({ notice }) {
     setActionMessage(null);
 
     try {
-      const payload = { ...formData };
+      const allowedFields = [
+        'conversation_id',
+        'title',
+        'legal_area',
+        'case_type',
+        'municipality',
+        'agency',
+        'client_role',
+        'status',
+        'priority',
+        'deadline_date',
+        'deadline_type',
+        'notes',
+        'process_number',
+        'court',
+        'court_division',
+        'judicial_district',
+        'procedural_step',
+        'distribution_date',
+        'case_value'
+      ];
+      const payload = {};
+      allowedFields.forEach((field) => {
+        if (formData[field] !== undefined) {
+          payload[field] = formData[field];
+        }
+      });
       if (!payload.conversation_id) {
-        delete payload.conversation_id;
+        payload.conversation_id = null;
       }
-      for (const field of ['process_number', 'court', 'court_division', 'judicial_district', 'procedural_step', 'distribution_date']) {
+      for (const field of [
+        'conversation_id',
+        'process_number',
+        'court',
+        'court_division',
+        'judicial_district',
+        'procedural_step',
+        'distribution_date',
+        'deadline_date',
+        'deadline_type',
+        'notes',
+        'municipality',
+        'agency',
+        'client_role',
+        'legal_area',
+        'case_type'
+      ]) {
         if (payload[field] === '' || payload[field] === undefined) payload[field] = null;
       }
       payload.case_value = payload.case_value === '' || payload.case_value === undefined || payload.case_value === null
@@ -331,7 +373,27 @@ export default function CasesPanel({ notice }) {
       return;
     }
     setEditingCase(caseItem);
-    setFormData(caseItem);
+    setFormData({
+      conversation_id: caseItem.conversation_id || '',
+      title: caseItem.title || '',
+      legal_area: caseItem.legal_area || '',
+      case_type: caseItem.case_type || '',
+      municipality: caseItem.municipality || '',
+      agency: caseItem.agency || '',
+      client_role: caseItem.client_role || '',
+      status: caseItem.status || 'prospect',
+      priority: caseItem.priority || 'media',
+      deadline_date: caseItem.deadline_date || '',
+      deadline_type: caseItem.deadline_type || '',
+      notes: caseItem.notes || '',
+      process_number: caseItem.process_number || '',
+      court: caseItem.court || '',
+      court_division: caseItem.court_division || '',
+      judicial_district: caseItem.judicial_district || '',
+      procedural_step: caseItem.procedural_step || '',
+      case_value: caseItem.case_value ?? '',
+      distribution_date: caseItem.distribution_date || ''
+    });
     setShowForm(true);
   };
 
@@ -778,12 +840,26 @@ export default function CasesPanel({ notice }) {
               <option value="media">Média</option>
               <option value="alta">Alta</option>
             </select>
-            <input
-              type="date"
-              value={formData.deadline_date}
-              onChange={(e) => setFormData({ ...formData, deadline_date: e.target.value })}
-              className="px-3 py-2 border rounded"
-            />
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-gray-700">Data limite / Prazo (opcional)</label>
+                {formData.deadline_date && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, deadline_date: '' })}
+                    className="text-[11px] text-red-600 hover:text-red-800 underline"
+                  >
+                    ✕ Limpar prazo
+                  </button>
+                )}
+              </div>
+              <input
+                type="date"
+                value={formData.deadline_date || ''}
+                onChange={(e) => setFormData({ ...formData, deadline_date: e.target.value })}
+                className="px-3 py-2 border rounded text-sm text-gray-900 bg-white"
+              />
+            </div>
             <input
               type="text"
               placeholder="Tipo de prazo"
@@ -850,15 +926,21 @@ export default function CasesPanel({ notice }) {
                   <option value="acordo">Acordo</option>
                   <option value="outro">Outro</option>
                 </select>
-                <input
-                  type="number"
-                  placeholder="Valor da causa (R$)"
-                  min="0"
-                  step="0.01"
-                  value={formData.case_value ?? ''}
-                  onChange={(e) => setFormData({ ...formData, case_value: e.target.value })}
-                  className="px-3 py-2 border rounded"
-                />
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-medium text-gray-700">Valor da Causa / Patrimônio (R$)</label>
+                  <input
+                    type="number"
+                    placeholder="Valor total da causa (R$)"
+                    min="0"
+                    step="0.01"
+                    value={formData.case_value ?? ''}
+                    onChange={(e) => setFormData({ ...formData, case_value: e.target.value })}
+                    className="px-3 py-2 border rounded text-sm text-gray-900 bg-white"
+                  />
+                  <span className="text-[10px] text-gray-500">
+                    {formData.case_value ? `Honorários estimados (20% sucumbência/contratual): R$ ${(Number(formData.case_value) * 0.20).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Reflete o valor da ação. Honorários calculados em % ou no simulador.'}
+                  </span>
+                </div>
                 <label className="flex flex-col text-xs text-gray-500 gap-1">
                   Data de distribuição
                   <input

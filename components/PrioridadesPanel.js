@@ -25,7 +25,7 @@ export default function PrioridadesPanel() {
       const taskItems = tasksR.status === 'fulfilled' && !tasksR.value.error ? (tasksR.value.data || []) : [];
       const merged = [
         ...caseItems
-          .filter((c) => c.deadline_date && c.status !== 'encerrado')
+          .filter((c) => c.deadline_date && c.status !== 'encerrado' && c.status !== 'arquivado')
           .map((c) => {
             const isHearing = `${c.title || ''} ${c.case_type || ''}`.toLowerCase().includes('audiência') || `${c.title || ''} ${c.case_type || ''}`.toLowerCase().includes('audiencia');
             return {
@@ -69,7 +69,14 @@ export default function PrioridadesPanel() {
       if (item.origin === 'task') {
         await supabase.from('tasks').update({ done: true, status: 'concluida', updated_at: new Date().toISOString() }).eq('id', item.rawId);
       } else if (item.origin === 'case') {
-        await supabase.from('cases').update({ status: 'encerrado', updated_at: new Date().toISOString() }).eq('id', item.rawId);
+        try {
+          await apiJson(`/api/cases?id=${item.rawId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: 'encerrado' })
+          });
+        } catch {
+          await supabase.from('cases').update({ status: 'encerrado', updated_at: new Date().toISOString() }).eq('id', item.rawId);
+        }
       }
     } catch (e) {
       safeError('prioridade_cumprir_error', e, { component: 'PrioridadesPanel' });

@@ -42,6 +42,13 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
   const [noteText, setNoteText] = useState('');
   const [eventForm, setEventForm] = useState({ event_date: '', event_time: '', title: '', description: '', priority: 'media' });
   const [activeMovement, setActiveMovement] = useState(null);
+  const [showManualMovementModal, setShowManualMovementModal] = useState(false);
+  const [manualForm, setManualForm] = useState({
+    movement_date: new Date().toISOString().slice(0, 10),
+    movement_text: '',
+    source: 'Projudi TJBA'
+  });
+  const [savingManual, setSavingManual] = useState(false);
 
   const isAdmin = userRole === 'admin';
   const isLawyer = userRole === 'admin' || userRole === 'advogado';
@@ -176,6 +183,32 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
       if (selectedProcess) fetchMovements(selectedProcess.id);
     } catch (e) {
       setError(e.message || 'Erro ao criar evento');
+    }
+  };
+
+  const handleSaveManualMovement = async (e) => {
+    e.preventDefault();
+    if (!selectedProcess || !manualForm.movement_text.trim() || savingManual) return;
+    setSavingManual(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await apiJson(`/api/case-processes/${selectedProcess.id}/movements`, {
+        method: 'POST',
+        body: JSON.stringify(manualForm)
+      });
+      setMessage('Movimentação registrada com sucesso no histórico do processo.');
+      setManualForm({
+        movement_date: new Date().toISOString().slice(0, 10),
+        movement_text: '',
+        source: 'Projudi TJBA'
+      });
+      setShowManualMovementModal(false);
+      fetchMovements(selectedProcess.id);
+    } catch (e) {
+      setError(e.message || 'Erro ao salvar movimentação manual.');
+    } finally {
+      setSavingManual(false);
     }
   };
 
@@ -321,7 +354,78 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
 
           {selectedProcess && (
             <div className="bg-white p-4 border rounded">
-              <h4 className="font-semibold mb-2">📜 Movimentações</h4>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <h4 className="font-semibold flex items-center gap-1.5 text-gray-900">
+                  <span>📜</span> Movimentações
+                </h4>
+                {isLawyer && (
+                  <button
+                    type="button"
+                    onClick={() => setShowManualMovementModal(!showManualMovementModal)}
+                    className="px-2.5 py-1 text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded font-semibold transition"
+                  >
+                    {showManualMovementModal ? '✕ Cancelar' : '+ Andamento Manual (Projudi / PJe)'}
+                  </button>
+                )}
+              </div>
+
+              {showManualMovementModal && (
+                <form onSubmit={handleSaveManualMovement} className="mb-4 p-3.5 bg-blue-50/60 border border-blue-200 rounded-lg space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-blue-900">Registrar Andamento Recente</span>
+                    <span className="text-[11px] text-gray-500">Ideal quando o DataJud atrasa ou está em timeout</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[11px] font-medium text-gray-700 mb-0.5">Data da Decisão / Andamento</label>
+                      <input
+                        type="date"
+                        required
+                        value={manualForm.movement_date}
+                        onChange={(e) => setManualForm({ ...manualForm, movement_date: e.target.value })}
+                        className="w-full px-2 py-1 border rounded text-xs text-gray-900 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-medium text-gray-700 mb-0.5">Fonte (Tribunal / Sistema)</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Projudi TJBA, PJe, DJE..."
+                        value={manualForm.source}
+                        onChange={(e) => setManualForm({ ...manualForm, source: e.target.value })}
+                        className="w-full px-2 py-1 border rounded text-xs text-gray-900 bg-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-gray-700 mb-0.5">Texto do Andamento / Decisão</label>
+                    <textarea
+                      required
+                      rows={3}
+                      placeholder="Cole o teor da decisão ou certidão (ex: Negado provimento ao recurso da TAM, mantida sentença, 20% honorários)..."
+                      value={manualForm.movement_text}
+                      onChange={(e) => setManualForm({ ...manualForm, movement_text: e.target.value })}
+                      className="w-full px-2.5 py-1.5 border rounded text-xs text-gray-900 bg-white"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowManualMovementModal(false)}
+                      className="px-3 py-1 text-xs border rounded text-gray-600 hover:bg-gray-100"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingManual}
+                      className="px-3 py-1 text-xs bg-indigo-600 text-white rounded font-bold hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      {savingManual ? 'Salvando...' : 'Salvar no Histórico'}
+                    </button>
+                  </div>
+                </form>
+              )}
               {movements.length === 0 && <p className="text-gray-500">Nenhuma movimentação registrada.</p>}
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {movements.map((m) => (
