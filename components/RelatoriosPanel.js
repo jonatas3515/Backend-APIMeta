@@ -21,9 +21,9 @@ export default function RelatoriosPanel() {
       apiJson('/api/conversations')
     ]).then(([casesR, metricsR, convsR]) => {
       if (!mounted) return;
-      if (casesR.status === 'fulfilled') setCases(casesR.value || []);
-      if (metricsR.status === 'fulfilled') setMetrics(metricsR.value || null);
-      if (convsR.status === 'fulfilled') setConversations(convsR.value || []);
+      if (casesR.status === 'fulfilled' && Array.isArray(casesR.value)) setCases(casesR.value);
+      if (metricsR.status === 'fulfilled' && metricsR.value && typeof metricsR.value === 'object') setMetrics(metricsR.value);
+      if (convsR.status === 'fulfilled' && Array.isArray(convsR.value)) setConversations(convsR.value);
       setLoading(false);
     });
     return () => { mounted = false; };

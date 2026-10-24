@@ -107,9 +107,9 @@ export default function LandingPage({ onOpenLogin }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
+    <div className="min-h-screen bg-black text-white selection:bg-red-600 selection:text-white">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-gray-900/80 backdrop-blur-md border-b border-gray-700/50">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-neutral-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -119,13 +119,13 @@ export default function LandingPage({ onOpenLogin }) {
 
             {/* Desktop Menu */}
             <nav className="hidden md:flex items-center gap-6">
-              <a href="#features" className="text-gray-300 hover:text-white transition-colors">
+              <a href="#features" className="text-neutral-300 hover:text-white transition-colors">
                 Recursos
               </a>
-              <a href="#pricing" className="text-gray-300 hover:text-white transition-colors">
+              <a href="#pricing" className="text-neutral-300 hover:text-white transition-colors">
                 Planos
               </a>
-              <a href="#contact" className="text-gray-300 hover:text-white transition-colors">
+              <a href="#contact" className="text-neutral-300 hover:text-white transition-colors">
                 Contato
               </a>
             </nav>
@@ -134,7 +134,7 @@ export default function LandingPage({ onOpenLogin }) {
             <div className="hidden md:flex items-center gap-4">
               <button
                 onClick={() => onNavigate('login')}
-                className="px-4 py-2 text-gray-300 hover:text-white transition-colors font-medium"
+                className="px-4 py-2 text-neutral-300 hover:text-white transition-colors font-medium"
               >
                 Entrar
               </button>
@@ -149,7 +149,7 @@ export default function LandingPage({ onOpenLogin }) {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="md:hidden p-2 text-gray-300 hover:text-white"
+              className="md:hidden p-2 text-neutral-300 hover:text-white"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {menuOpen ? (
@@ -163,21 +163,21 @@ export default function LandingPage({ onOpenLogin }) {
 
           {/* Mobile Menu */}
           {menuOpen && (
-            <div className="md:hidden py-4 border-t border-gray-700/50">
+            <div className="md:hidden py-4 border-t border-neutral-800">
               <nav className="flex flex-col gap-4">
-                <a href="#features" className="text-gray-300 hover:text-white transition-colors">
+                <a href="#features" className="text-neutral-300 hover:text-white transition-colors">
                   Recursos
                 </a>
-                <a href="#pricing" className="text-gray-300 hover:text-white transition-colors">
+                <a href="#pricing" className="text-neutral-300 hover:text-white transition-colors">
                   Planos
                 </a>
-                <a href="#contact" className="text-gray-300 hover:text-white transition-colors">
+                <a href="#contact" className="text-neutral-300 hover:text-white transition-colors">
                   Contato
                 </a>
-                <div className="flex flex-col gap-2 pt-4 border-t border-gray-700/50">
+                <div className="flex flex-col gap-2 pt-4 border-t border-neutral-800">
                   <button
                     onClick={() => onNavigate('login')}
-                    className="px-4 py-2 text-gray-300 hover:text-white transition-colors font-medium text-left"
+                    className="px-4 py-2 text-neutral-300 hover:text-white transition-colors font-medium text-left"
                   >
                     Entrar
                   </button>
@@ -209,7 +209,7 @@ export default function LandingPage({ onOpenLogin }) {
             </span>
           </h1>
 
-          <p className="text-xl text-gray-400 max-w-3xl mx-auto mb-10">
+          <p className="text-xl text-neutral-400 max-w-3xl mx-auto mb-10">
             Calendário jurídico, gestão de clientes, processos, tarefas e muito mais.
             Tudo em um único lugar para otimizar o trabalho do seu escritório.
           </p>
@@ -223,7 +223,7 @@ export default function LandingPage({ onOpenLogin }) {
             </button>
             <button
               onClick={() => onNavigate('login')}
-              className="w-full sm:w-auto px-8 py-4 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl font-semibold text-lg transition-all"
+              className="w-full sm:w-auto px-8 py-4 bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 rounded-xl font-semibold text-lg transition-all"
             >
               Já tenho conta
             </button>
@@ -232,92 +232,92 @@ export default function LandingPage({ onOpenLogin }) {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-800/30">
+      <section id="features" className="py-20 px-4 sm:px-6 lg:px-8 bg-neutral-950 border-y border-neutral-900">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
               Tudo que você precisa em um só lugar
             </h2>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto">
+            <p className="text-neutral-400 text-lg max-w-2xl mx-auto">
               Ferramentas poderosas para otimizar a gestão do seu escritório
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Feature 1 */}
-            <div className="p-6 bg-gray-800/50 border border-gray-700/50 rounded-2xl hover:border-blue-500/50 transition-all group">
+            <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl hover:border-blue-500/50 transition-all group">
               <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-500/30 transition-colors">
                 <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
               <h3 className="text-xl font-semibold mb-2">Calendário Jurídico</h3>
-              <p className="text-gray-400">
+              <p className="text-neutral-400">
                 Controle de prazos, audiências e compromissos com alertas automáticos
               </p>
             </div>
 
             {/* Feature 2 */}
-            <div className="p-6 bg-gray-800/50 border border-gray-700/50 rounded-2xl hover:border-purple-500/50 transition-all group">
+            <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl hover:border-purple-500/50 transition-all group">
               <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-500/30 transition-colors">
                 <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
               </div>
               <h3 className="text-xl font-semibold mb-2">Gestão de Clientes</h3>
-              <p className="text-gray-400">
+              <p className="text-neutral-400">
                 Cadastro completo de clientes com histórico de processos e atendimentos
               </p>
             </div>
 
             {/* Feature 3 */}
-            <div className="p-6 bg-gray-800/50 border border-gray-700/50 rounded-2xl hover:border-green-500/50 transition-all group">
+            <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl hover:border-green-500/50 transition-all group">
               <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-green-500/30 transition-colors">
                 <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </div>
               <h3 className="text-xl font-semibold mb-2">Controle de Processos</h3>
-              <p className="text-gray-400">
+              <p className="text-neutral-400">
                 Acompanhamento detalhado de processos com status e andamentos
               </p>
             </div>
 
             {/* Feature 4 */}
-            <div className="p-6 bg-gray-800/50 border border-gray-700/50 rounded-2xl hover:border-yellow-500/50 transition-all group">
+            <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl hover:border-yellow-500/50 transition-all group">
               <div className="w-12 h-12 bg-yellow-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-yellow-500/30 transition-colors">
                 <svg className="w-6 h-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
               </div>
               <h3 className="text-xl font-semibold mb-2">Tarefas e Prioridades</h3>
-              <p className="text-gray-400">
+              <p className="text-neutral-400">
                 Organize tarefas por urgência e não perca nenhum prazo importante
               </p>
             </div>
 
             {/* Feature 5 */}
-            <div className="p-6 bg-gray-800/50 border border-gray-700/50 rounded-2xl hover:border-pink-500/50 transition-all group">
+            <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl hover:border-pink-500/50 transition-all group">
               <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-pink-500/30 transition-colors">
                 <svg className="w-6 h-6 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <h3 className="text-xl font-semibold mb-2">Controle Financeiro</h3>
-              <p className="text-gray-400">
+              <p className="text-neutral-400">
                 Honorários, despesas e relatórios financeiros detalhados
               </p>
             </div>
 
             {/* Feature 6 */}
-            <div className="p-6 bg-gray-800/50 border border-gray-700/50 rounded-2xl hover:border-cyan-500/50 transition-all group">
+            <div className="p-6 bg-neutral-900 border border-neutral-800 rounded-2xl hover:border-cyan-500/50 transition-all group">
               <div className="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:bg-cyan-500/30 transition-colors">
                 <svg className="w-6 h-6 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
               </div>
               <h3 className="text-xl font-semibold mb-2">Relatórios e Dashboard</h3>
-              <p className="text-gray-400">
+              <p className="text-neutral-400">
                 Visão geral do escritório com métricas e indicadores importantes
               </p>
             </div>
@@ -332,7 +332,7 @@ export default function LandingPage({ onOpenLogin }) {
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
               Conheça nossos planos
             </h2>
-            <p className="text-gray-400 text-lg max-w-2xl mx-auto mb-8">
+            <p className="text-neutral-400 text-lg max-w-2xl mx-auto mb-8">
               Escolha o plano ideal para seu negócio
             </p>
 
@@ -359,16 +359,16 @@ export default function LandingPage({ onOpenLogin }) {
             {planosLoading ? (
               <>
                 {[1, 2, 3].map(i => (
-                  <div key={i} className="p-8 bg-gray-800/50 border border-gray-700/50 rounded-2xl animate-pulse">
-                    <div className="h-6 bg-gray-700 rounded w-24 mb-2"></div>
-                    <div className="h-4 bg-gray-700 rounded w-32 mb-6"></div>
-                    <div className="h-10 bg-gray-700 rounded w-28 mb-6"></div>
+                  <div key={i} className="p-8 bg-neutral-900 border border-neutral-800 rounded-2xl animate-pulse">
+                    <div className="h-6 bg-neutral-800 rounded w-24 mb-2"></div>
+                    <div className="h-4 bg-neutral-800 rounded w-32 mb-6"></div>
+                    <div className="h-10 bg-neutral-800 rounded w-28 mb-6"></div>
                     <div className="space-y-3 mb-8">
                       {[1, 2, 3].map(j => (
-                        <div key={j} className="h-4 bg-gray-700 rounded w-full"></div>
+                        <div key={j} className="h-4 bg-neutral-800 rounded w-full"></div>
                       ))}
                     </div>
-                    <div className="h-12 bg-gray-700 rounded"></div>
+                    <div className="h-12 bg-neutral-800 rounded"></div>
                   </div>
                 ))}
               </>
@@ -383,7 +383,7 @@ export default function LandingPage({ onOpenLogin }) {
                     key={plano.id}
                     className={`p-8 rounded-2xl relative ${isDestaque
                       ? 'bg-gradient-to-b from-yellow-500/20 to-amber-500/20 border-2 border-amber-500/50'
-                      : 'bg-gray-800/50 border border-gray-700/50'
+                      : 'bg-neutral-900 border border-neutral-800'
                       }`}
                   >
                     {/* Tag de destaque */}
@@ -395,13 +395,13 @@ export default function LandingPage({ onOpenLogin }) {
 
                     {/* Nome e subtítulo */}
                     <h3 className="text-xl font-semibold mb-2">{plano.nome}</h3>
-                    <p className="text-gray-400 mb-6">{plano.subtituloLanding}</p>
+                    <p className="text-neutral-400 mb-6">{plano.subtituloLanding}</p>
 
                     {/* Preço */}
                     <div className="mb-6">
-                      <span className="text-sm text-gray-400">R$</span>
+                      <span className="text-sm text-neutral-400">R$</span>
                       <span className="text-4xl font-bold">{formatarPreco(preco)}</span>
-                      <span className="text-gray-400">/{periodo}</span>
+                      <span className="text-neutral-400">/{periodo}</span>
                       {isAnual && plano.precoAnual > 0 && (
                         <span className="ml-2 px-2 py-1 bg-green-500/20 text-green-400 text-xs rounded-full">
                           Economize 17%
@@ -410,7 +410,7 @@ export default function LandingPage({ onOpenLogin }) {
                     </div>
 
                     {/* Descrição como lista de features */}
-                    <ul className="space-y-3 mb-8 text-gray-300">
+                    <ul className="space-y-3 mb-8 text-neutral-300">
                       {plano.descricaoLanding && (
                         <li className="flex items-center gap-2">
                           <CheckIcon />
@@ -444,7 +444,7 @@ export default function LandingPage({ onOpenLogin }) {
                       onClick={() => onNavigate('signup')}
                       className={`w-full py-3 rounded-xl font-medium transition-colors ${isDestaque
                         ? 'bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-gray-900'
-                        : 'bg-gray-700 hover:bg-gray-600'
+                        : 'bg-neutral-800 hover:bg-gray-600'
                         }`}
                     >
                       {plano.textoBotao}
@@ -458,12 +458,12 @@ export default function LandingPage({ onOpenLogin }) {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-red-600/20 to-rose-600/20">
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-red-950/40 via-neutral-950 to-red-950/40 border-y border-neutral-900">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-6">
             Pronto para transformar seu escritório?
           </h2>
-          <p className="text-xl text-gray-300 mb-8">
+          <p className="text-xl text-neutral-300 mb-8">
             Comece hoje mesmo e ganhe 30 dias grátis para testar todas as funcionalidades
           </p>
           <button
@@ -477,7 +477,7 @@ export default function LandingPage({ onOpenLogin }) {
       </section>
 
       {/* Footer */}
-      <footer id="contact" className="py-12 px-4 sm:px-6 lg:px-8 border-t border-gray-800">
+      <footer id="contact" className="py-12 px-4 sm:px-6 lg:px-8 border-t border-neutral-900 bg-black">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {/* Desenvolvidos por JNC Tecnologia - com logos */}
@@ -540,10 +540,10 @@ export default function LandingPage({ onOpenLogin }) {
 
               {/* Popup do Jus JNC */}
               {showJusJNCPopup && (
-                <div className="bg-gray-800 border border-yellow-500/30 rounded-lg p-3 relative inline-block">
+                <div className="bg-neutral-900 border border-yellow-500/30 rounded-lg p-3 relative inline-block">
                   <button
                     onClick={() => setShowJusJNCPopup(false)}
-                    className="absolute top-1 right-2 text-gray-400 hover:text-white text-sm"
+                    className="absolute top-1 right-2 text-neutral-400 hover:text-white text-sm"
                   >
                     ✕
                   </button>
@@ -557,7 +557,7 @@ export default function LandingPage({ onOpenLogin }) {
             {/* Links */}
             <div>
               <h4 className="font-semibold mb-4">Links</h4>
-              <ul className="space-y-2 text-gray-400">
+              <ul className="space-y-2 text-neutral-400">
                 <li><a href="#features" className="hover:text-white transition-colors">Recursos</a></li>
                 <li><a href="#pricing" className="hover:text-white transition-colors">Planos</a></li>
                 <li><a href="/termos-de-uso" className="hover:text-white transition-colors">Termos de Uso</a></li>
@@ -568,7 +568,7 @@ export default function LandingPage({ onOpenLogin }) {
             {/* Contact */}
             <div>
               <h4 className="font-semibold mb-4">Contato</h4>
-              <ul className="space-y-2 text-gray-400">
+              <ul className="space-y-2 text-neutral-400">
                 <li>contato@nevesecosta.com.br</li>
                 <li>(73) 99934-8552</li>
               </ul>
@@ -588,15 +588,15 @@ export default function LandingPage({ onOpenLogin }) {
       {signupOpen && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setSignupOpen(false)}>
           <div
-            className="bg-gray-800 border border-gray-700 rounded-2xl shadow-xl shadow-red-500/10 w-full max-w-md"
+            className="bg-neutral-900 border border-neutral-800 rounded-2xl shadow-xl shadow-red-500/10 w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4 border-b border-gray-700 flex justify-between items-center">
               <div>
                 <h3 className="font-bold text-lg text-white">Criar escritório</h3>
-                <p className="text-xs text-gray-400">14 dias grátis, sem cartão</p>
+                <p className="text-xs text-neutral-400">14 dias grátis, sem cartão</p>
               </div>
-              <button onClick={() => setSignupOpen(false)} className="text-gray-400 hover:text-white">✕</button>
+              <button onClick={() => setSignupOpen(false)} className="text-neutral-400 hover:text-white">✕</button>
             </div>
             <form onSubmit={handleSignup} className="p-4 space-y-3">
               {feedback && (
@@ -606,19 +606,19 @@ export default function LandingPage({ onOpenLogin }) {
               )}
               <input required type="text" placeholder="Nome do escritório" value={form.office_name}
                 onChange={(e) => setForm({ ...form, office_name: e.target.value })}
-                className="w-full px-3 py-2 rounded bg-gray-900 border border-gray-700 text-sm text-white focus:border-red-500 focus:outline-none" />
+                className="w-full px-3 py-2 rounded bg-black border border-neutral-800 text-sm text-white focus:border-red-500 focus:outline-none" />
               <input required type="text" placeholder="Seu nome completo" value={form.admin_name}
                 onChange={(e) => setForm({ ...form, admin_name: e.target.value })}
-                className="w-full px-3 py-2 rounded bg-gray-900 border border-gray-700 text-sm text-white focus:border-red-500 focus:outline-none" />
+                className="w-full px-3 py-2 rounded bg-black border border-neutral-800 text-sm text-white focus:border-red-500 focus:outline-none" />
               <input required type="email" placeholder="E-mail" value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-3 py-2 rounded bg-gray-900 border border-gray-700 text-sm text-white focus:border-red-500 focus:outline-none" />
+                className="w-full px-3 py-2 rounded bg-black border border-neutral-800 text-sm text-white focus:border-red-500 focus:outline-none" />
               <input type="tel" placeholder="Telefone / WhatsApp" value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="w-full px-3 py-2 rounded bg-gray-900 border border-gray-700 text-sm text-white focus:border-red-500 focus:outline-none" />
+                className="w-full px-3 py-2 rounded bg-black border border-neutral-800 text-sm text-white focus:border-red-500 focus:outline-none" />
               <input required type="password" placeholder="Senha (mín. 8 caracteres)" minLength={8} value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className="w-full px-3 py-2 rounded bg-gray-900 border border-gray-700 text-sm text-white focus:border-red-500 focus:outline-none" />
+                className="w-full px-3 py-2 rounded bg-black border border-neutral-800 text-sm text-white focus:border-red-500 focus:outline-none" />
               <button
                 type="submit"
                 disabled={submitting}

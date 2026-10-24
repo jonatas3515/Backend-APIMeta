@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { supabase } from '../lib/supabaseClient';
 import { formatPhone, getFirstName } from '../lib/formatters';
 import { FUNNEL_STAGES, getFunnelStageShortLabel, getFunnelStageLabel, normalizeFunnelStage } from '../lib/funnelStages';
 
@@ -32,7 +33,7 @@ const LEGAL_AREA_OPTIONS = [
   { value: 'consumidor', label: 'Consumidor' }
 ];
 
-export default function ChatList({ conversations, selectedConversation, onSelectConversation, loading, onNewConversation, onDeleteConversation, deletingId }) {
+export default function ChatList({ conversations, selectedConversation, onSelectConversation, loading, onNewConversation, onDeleteConversation, deletingId, onConversationUpdate }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [triageFilters, setTriageFilters] = useState({ legal_area: '', municipality: '', agency: '', client_role: '', funnel_stage: '' });
@@ -85,13 +86,29 @@ export default function ChatList({ conversations, selectedConversation, onSelect
       <div className="p-4 border-b border-nc-gray-200">
         <div className="flex justify-between items-center mb-3">
           <h1 className="text-xl font-bold text-nc-text-title">Conversas</h1>
-          <button
-            onClick={onNewConversation}
-            className="w-8 h-8 bg-nc-yellow text-nc-black rounded-nc hover:bg-nc-yellow-600 flex items-center justify-center text-xl font-semibold transition"
-            title="Nova conversa"
-          >
-            +
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={async () => {
+                try {
+                  await supabase.from('conversations').update({ unread: false }).eq('unread', true);
+                  if (onConversationUpdate) onConversationUpdate();
+                } catch (e) {
+                  console.error('Erro ao marcar lidas:', e);
+                }
+              }}
+              className="px-2 py-1 bg-nc-gray-100 hover:bg-nc-gray-200 text-nc-text-secondary rounded text-[11px] font-medium transition"
+              title="Marcar todas as conversas como lidas"
+            >
+              ✓✓ Lidas
+            </button>
+            <button
+              onClick={onNewConversation}
+              className="w-8 h-8 bg-nc-yellow text-nc-black rounded-nc hover:bg-nc-yellow-600 flex items-center justify-center text-xl font-semibold transition"
+              title="Nova conversa"
+            >
+              +
+            </button>
+          </div>
         </div>
         <input
           type="text"

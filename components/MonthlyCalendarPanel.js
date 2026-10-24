@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiJson } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import { safeError } from '../lib/safeLogger';
+import AgendaPanel from './AgendaPanel';
 
 const FERIADOS = {
   '01-01': 'Confraternização Universal',
@@ -18,7 +19,8 @@ const FERIADOS = {
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const WEEK_DAYS = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
 
-export default function MonthlyCalendarPanel() {
+export default function MonthlyCalendarPanel({ initialView = 'calendar' }) {
+  const [activeSubView, setActiveSubView] = useState(initialView);
   const [cursor, setCursor] = useState(() => new Date());
   const [cases, setCases] = useState([]);
   const [birthdays, setBirthdays] = useState([]);
@@ -117,13 +119,43 @@ export default function MonthlyCalendarPanel() {
   return (
     <div className="p-4 md:p-6 bg-gray-900 text-white min-h-full" data-testid="monthly-calendar-panel">
       <div className="max-w-7xl mx-auto space-y-4">
-        {feedbackMsg && (
-          <div className="p-3 rounded-lg bg-green-900/50 border border-green-700 text-green-300 text-sm">
-            {feedbackMsg}
-          </div>
-        )}
+        {/* Toggle Unificado Calendário & Agenda */}
+        <div className="flex gap-2 border-b border-gray-750 pb-3">
+          <button
+            onClick={() => setActiveSubView('calendar')}
+            className={`px-4 py-2 rounded-lg font-bold text-xs md:text-sm transition flex items-center gap-2 ${
+              activeSubView === 'calendar'
+                ? 'bg-yellow-500 text-black shadow-md'
+                : 'bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700'
+            }`}
+          >
+            <span>🗓️</span> Grade Mensal & Aniversariantes
+          </button>
+          <button
+            onClick={() => setActiveSubView('agenda')}
+            className={`px-4 py-2 rounded-lg font-bold text-xs md:text-sm transition flex items-center gap-2 ${
+              activeSubView === 'agenda'
+                ? 'bg-yellow-500 text-black shadow-md'
+                : 'bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700'
+            }`}
+          >
+            <span>📋</span> Agenda & Prazos
+          </button>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {activeSubView === 'agenda' ? (
+          <div className="bg-gray-900 rounded-xl">
+            <AgendaPanel />
+          </div>
+        ) : (
+          <>
+            {feedbackMsg && (
+              <div className="p-3 rounded-lg bg-green-900/50 border border-green-700 text-green-300 text-sm">
+                {feedbackMsg}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Grade mensal */}
           <div className="lg:col-span-3 bg-gray-800 rounded-xl border border-gray-700 p-5 shadow-lg">
             <div className="flex items-center justify-between mb-4 bg-nc-black border-b-2 border-nc-yellow/40 text-white rounded-t-lg -m-5 mb-5 px-5 py-3">
@@ -300,6 +332,8 @@ export default function MonthlyCalendarPanel() {
             </div>
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

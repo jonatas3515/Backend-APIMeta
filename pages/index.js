@@ -595,6 +595,7 @@ export default function Home() {
                       onNewConversation={() => setShowNewConvModal(true)}
                       onDeleteConversation={handleDeleteConversation}
                       deletingId={deletingId}
+                      onConversationUpdate={fetchConversations}
                     />
                   </div>
                   {selectedConversation && (
@@ -632,8 +633,10 @@ export default function Home() {
             <PrioridadesPanel />
           ) : activeTab === 'tasks' ? (
             <TarefasPanel />
-          ) : activeTab === 'monthly-calendar' ? (
-            <MonthlyCalendarPanel />
+          ) : activeTab === 'monthly-calendar' || activeTab === 'agenda' ? (
+            <MonthlyCalendarPanel initialView={activeTab === 'agenda' ? 'agenda' : 'calendar'} />
+          ) : activeTab === 'reports' ? (
+            <RelatoriosPanel />
           ) : activeTab === 'funnel' ? (
             <FunnelKanban
               conversations={conversations}
@@ -642,8 +645,6 @@ export default function Home() {
                 setActiveTab('chat');
               }}
             />
-          ) : activeTab === 'agenda' ? (
-            <AgendaPanel />
           ) : activeTab === 'triage' ? (
             <ProcessTriagePanel movementId={triageMovementId} profile={profile} />
           ) : activeTab === 'cases' ? (

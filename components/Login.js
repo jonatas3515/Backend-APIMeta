@@ -104,7 +104,7 @@ export default function Login({ onLogin }) {
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 text-nc-yellow border-nc-gray-300 rounded focus:ring-nc-yellow"
+              className="h-4 w-4 text-red-600 border-nc-gray-300 rounded focus:ring-red-500"
             />
             <label htmlFor="remember-me" className="ml-2 text-sm text-nc-text-secondary">
               Lembrar-me (salvar email)
@@ -120,7 +120,7 @@ export default function Login({ onLogin }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full nc-btn-primary py-3 disabled:opacity-50"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg shadow-md transition disabled:opacity-50"
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
