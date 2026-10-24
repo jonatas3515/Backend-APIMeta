@@ -20,6 +20,10 @@ import { NAV_ITEMS } from '../lib/tabResolver';
 import Login from '../components/Login';
 import LandingPage from '../components/LandingPage';
 import ExecutiveDashboard from '../components/ExecutiveDashboard';
+import PrioridadesPanel from '../components/PrioridadesPanel';
+import TarefasPanel from '../components/TarefasPanel';
+import MonthlyCalendarPanel from '../components/MonthlyCalendarPanel';
+import AdminMasterPanel from '../components/AdminMasterPanel';
 import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
 import useAreaFilter from '../hooks/useAreaFilter';
@@ -624,6 +628,14 @@ export default function Home() {
             </>
           ) : activeTab === 'dashboard' ? (
             <ExecutiveDashboard onNavigateTab={(tab) => setActiveTab(tab)} />
+          ) : activeTab === 'priorities' ? (
+            <PrioridadesPanel />
+          ) : activeTab === 'tasks' ? (
+            <TarefasPanel />
+          ) : activeTab === 'monthly-calendar' ? (
+            <MonthlyCalendarPanel />
+          ) : activeTab === 'saas-admin' ? (
+            <AdminMasterPanel />
           ) : activeTab === 'funnel' ? (
             <FunnelKanban
               conversations={conversations}

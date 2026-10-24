@@ -54,10 +54,10 @@ export default function Login({ onLogin }) {
       <img
         src="/JusJNC_White.png"
         alt="JusJNC"
-        className="h-12 mx-auto mb-2 object-contain"
+        className="h-28 w-auto mx-auto mb-3 object-contain"
       />
-      <h1 className="text-center text-nc-text font-bold text-xl mb-1">JusJNC — Plataforma Jurídica</h1>
-      <p className="text-center text-nc-text-secondary text-sm mb-6">Acesse o painel do seu escritório</p>
+      <h1 className="text-center text-white text-xl md:text-2xl font-bold tracking-tight mb-1">JusJNC — Plataforma Jurídica</h1>
+      <p className="text-center text-gray-200 text-sm md:text-base font-medium mb-6">Acesse o painel do seu escritório</p>
 
       <div className="bg-nc-white rounded-nc shadow-card p-8 w-full max-w-md border border-nc-gray-300">
         <form onSubmit={handleSubmit} className="space-y-6">
