@@ -27,7 +27,7 @@ export default function AreaFilterSelector({ compact = false, showClear = true }
         value={selectedArea}
         onChange={(e) => handleChange(e.target.value)}
         className={`block border border-gray-300 rounded bg-white text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
-          compact ? 'px-2 py-1 text-xs w-40' : 'px-3 py-2 text-sm w-full'
+          compact ? 'px-2 py-1 text-xs max-w-[130px] sm:max-w-none sm:w-40 truncate' : 'px-3 py-2 text-sm w-full'
         }`}
         aria-label="Filtrar por área jurídica"
       >

@@ -1,3 +1,4 @@
+import { DEFAULT_LANDING_CONTENT } from '../lib/legalContent';
 import { useState, useEffect } from 'react';
 import { safeError } from '../lib/safeLogger';
 
@@ -58,6 +59,26 @@ export default function LandingPage({ onOpenLogin }) {
   const [form, setForm] = useState({ office_name: '', admin_name: '', email: '', phone: '', password: '', plan: 'trial' });
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  const [landingContent, setLandingContent] = useState(DEFAULT_LANDING_CONTENT);
+  const [legalModal, setLegalModal] = useState(null);
+
+  const displayPlanos = [
+    {
+      ...PLANOS_FALLBACK[0],
+      precoMensal: landingContent.preco_basico_mensal || 49,
+      precoAnual: landingContent.preco_basico_anual || 490
+    },
+    {
+      ...PLANOS_FALLBACK[1],
+      precoMensal: landingContent.preco_profissional_mensal || 99,
+      precoAnual: landingContent.preco_profissional_anual || 990
+    },
+    {
+      ...PLANOS_FALLBACK[2],
+      precoMensal: landingContent.preco_enterprise_mensal || 199,
+      precoAnual: landingContent.preco_enterprise_anual || 1990
+    }
+  ];
 
   // Legado buscava planos publicos da API; aqui usamos fallback (endpoint publico ainda nao existe)
   useEffect(() => {
@@ -373,7 +394,7 @@ export default function LandingPage({ onOpenLogin }) {
                 ))}
               </>
             ) : (
-              planos.map((plano) => {
+              displayPlanos.map((plano) => {
                 const isDestaque = !!plano.tagDestaque;
                 const preco = isAnual ? plano.precoAnual : plano.precoMensal;
                 const periodo = isAnual ? 'ano' : 'mês';

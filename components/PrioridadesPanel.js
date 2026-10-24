@@ -93,27 +93,27 @@ export default function PrioridadesPanel() {
   }, [items]);
 
   const resumo = [
-    { key: 'overdue', titulo: 'Itens Atrasados', count: groups.overdue.length, card: 'bg-red-900 bg-opacity-20 border border-red-700', label: 'text-red-300', icon: '🔴' },
-    { key: 'today', titulo: 'Para Hoje', count: groups.today.length, card: 'bg-yellow-900 bg-opacity-20 border border-yellow-700', label: 'text-yellow-300', icon: '🟡' },
-    { key: 'week', titulo: 'Próximos 7 Dias', count: groups.week.length, card: 'bg-blue-900 bg-opacity-20 border border-blue-700', label: 'text-blue-300', icon: '🔵' }
+    { key: 'overdue', titulo: 'Itens Atrasados', count: groups.overdue.length, card: 'bg-red-50 border border-red-200 text-red-700', label: 'text-red-700', countClass: 'text-red-700', icon: '🔴' },
+    { key: 'today', titulo: 'Para Hoje', count: groups.today.length, card: 'bg-amber-50 border border-amber-200 text-amber-700', label: 'text-amber-700', countClass: 'text-amber-700', icon: '🟡' },
+    { key: 'week', titulo: 'Próximos 7 Dias', count: groups.week.length, card: 'bg-blue-50 border border-blue-200 text-blue-700', label: 'text-blue-700', countClass: 'text-blue-700', icon: '🔵' }
   ];
 
   const renderItem = (i) => (
-    <li key={i.id} className="bg-gray-800 border border-gray-700 rounded-lg p-4 hover:border-yellow-500/50 transition-colors">
+    <li key={i.id} className="bg-white border border-gray-200 rounded-lg p-4 hover:border-nc-yellow shadow-sm transition-colors">
       <div className="flex items-start justify-between gap-2 mb-2">
-        <p className="text-sm font-semibold text-white truncate flex-1">{i.titulo}</p>
+        <p className="text-sm font-semibold text-gray-900 truncate flex-1">{i.titulo}</p>
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${
-            i.tipo === 'Audiência' ? 'bg-orange-900/60 text-orange-300 border border-orange-700' :
-            i.tipo === 'Honorário' ? 'bg-purple-900/60 text-purple-300 border border-purple-700' :
-            i.tipo === 'Tarefa' ? 'bg-blue-900/60 text-blue-300 border border-blue-700' :
-            'bg-gray-700 text-gray-300'
+          <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+            i.tipo === 'Audiência' ? 'bg-orange-100 text-orange-800 border border-orange-200' :
+            i.tipo === 'Honorário' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+            i.tipo === 'Tarefa' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+            'bg-gray-100 text-gray-700 border border-gray-200'
           }`}>
             {i.tipo}
           </span>
           <button
             onClick={() => handleMarcarComoCumprido(i)}
-            className="p-1 rounded text-green-400 hover:text-green-300 hover:bg-green-900/40 transition-colors"
+            className="p-1 rounded text-green-600 hover:text-green-700 hover:bg-green-50 transition-colors"
             title="Marcar como cumprido"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,14 +122,14 @@ export default function PrioridadesPanel() {
           </button>
         </div>
       </div>
-      <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
-        <svg className="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="flex items-center gap-2 text-xs text-gray-600 mb-1">
+        <svg className="w-3.5 h-3.5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
         {new Date(i.data).toLocaleDateString('pt-BR')}
       </div>
-      <div className="flex items-center gap-2 text-xs text-gray-400 mb-1">
-        <svg className="w-3.5 h-3.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="flex items-center gap-2 text-xs text-gray-600 mb-1">
+        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
         </svg>
         {i.cliente}
@@ -143,24 +143,24 @@ export default function PrioridadesPanel() {
         </div>
       )}
       {i.valor && (
-        <div className="flex items-center gap-1 text-xs font-bold text-yellow-400 mt-1">
+        <div className="flex items-center gap-1 text-xs font-bold text-amber-700 mt-1">
           <span>💰</span>
           <span>{i.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
         </div>
       )}
       {i.tribunal && (
-        <span className="inline-block mt-2 text-[10px] px-1.5 py-0.5 rounded bg-indigo-900/50 text-indigo-300 border border-indigo-700 font-bold">{i.tribunal}</span>
+        <span className="inline-block mt-2 text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 font-bold">{i.tribunal}</span>
       )}
     </li>
   );
 
   const renderColumn = (titulo, list, accent, testid) => (
-    <section className="bg-gray-800/50 border border-gray-700 rounded-xl p-4" data-testid={testid}>
+    <section className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm" data-testid={testid}>
       <h3 className={`font-bold text-sm mb-4 flex items-center gap-2 ${accent}`}>
-        {titulo} <span className="text-xs text-gray-500">({list.length})</span>
+        {titulo} <span className="text-xs text-gray-500 font-normal">({list.length})</span>
       </h3>
       {list.length === 0 ? (
-        <p className="text-sm text-gray-500">Nenhum item.</p>
+        <p className="text-sm text-gray-400 py-4 text-center">Nenhum item pendente.</p>
       ) : (
         <ul className="space-y-3">{list.map(renderItem)}</ul>
       )}
@@ -168,41 +168,44 @@ export default function PrioridadesPanel() {
   );
 
   return (
-    <div className="min-h-full bg-gray-900 text-white p-4 md:p-6" data-testid="prioridades-panel">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold text-yellow-500 mb-2">Prioridades</h1>
+    <div className="min-h-full bg-nc-surface text-gray-900 p-4 md:p-6" data-testid="prioridades-panel">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Prioridades</h1>
+          <p className="text-xs text-gray-500 mt-0.5">Gestão automatizada por urgência de prazos e audiências</p>
+        </div>
 
         {/* Banner explicativo */}
-        <div className="bg-blue-900 bg-opacity-20 border border-blue-700 rounded-lg p-4 mb-6 text-sm text-blue-300">
-          📌 <span className="text-white font-medium">Como funciona:</span> Os itens são organizados automaticamente por urgência.
-          Primeiro aparecem os <span className="text-red-400 font-semibold">atrasados</span>, depois os de <span className="text-yellow-400 font-semibold">hoje</span> e por fim os dos <span className="text-blue-400 font-semibold">próximos 7 dias</span>. Eventos com honorários têm destaque financeiro.
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs md:text-sm text-blue-900">
+          📌 <span className="font-bold">Como funciona:</span> Os itens são organizados automaticamente por urgência.
+          Primeiro aparecem os <span className="text-red-700 font-bold">atrasados</span>, depois os de <span className="text-amber-700 font-bold">hoje</span> e por fim os dos <span className="text-blue-700 font-bold">próximos 7 dias</span>. Eventos com honorários têm destaque financeiro.
         </div>
 
         {feedbackMsg && (
-          <div className="mb-4 p-3 rounded-lg bg-green-900/50 border border-green-700 text-green-300 text-sm flex items-center gap-2">
+          <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-green-800 text-sm flex items-center gap-2">
             <span>✓</span> {feedbackMsg}
           </div>
         )}
 
         {loading ? (
-          <p className="text-sm text-gray-400">Carregando prioridades...</p>
+          <p className="text-sm text-gray-500 py-6 text-center">Carregando prioridades...</p>
         ) : (
           <>
             {/* Cards de resumo */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {resumo.map((r) => (
-                <div key={r.key} className={`${r.card} rounded-xl p-6`} data-testid={`summary-${r.key}`}>
-                  <div className="text-4xl font-bold text-white mb-1">{r.count}</div>
-                  <div className={`text-sm ${r.label}`}>{r.icon} {r.titulo}</div>
+                <div key={r.key} className={`${r.card} rounded-xl p-5 shadow-sm`} data-testid={`summary-${r.key}`}>
+                  <div className={`text-3xl font-extrabold ${r.countClass} mb-1`}>{r.count}</div>
+                  <div className={`text-xs font-bold ${r.label}`}>{r.icon} {r.titulo}</div>
                 </div>
               ))}
             </div>
 
             {/* Grade de 3 colunas */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {renderColumn('📌 Hoje', groups.today, 'text-yellow-400', 'group-today')}
-              {renderColumn('📅 Próximos 7 Dias', groups.week, 'text-blue-400', 'group-week')}
-              {renderColumn('❗ Atrasos', groups.overdue, 'text-red-400', 'group-overdue')}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {renderColumn('📌 Hoje', groups.today, 'text-amber-700', 'group-today')}
+              {renderColumn('📅 Próximos 7 Dias', groups.week, 'text-blue-700', 'group-week')}
+              {renderColumn('❗ Atrasos', groups.overdue, 'text-red-700', 'group-overdue')}
             </div>
           </>
         )}

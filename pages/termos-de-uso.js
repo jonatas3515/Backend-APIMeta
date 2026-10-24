@@ -5,17 +5,17 @@ export default function TermosDeUso() {
   return (
     <>
       <Head>
-        <title>Termos de Uso - JusJNC & Neves & Costa</title>
+        <title>Termos de Uso - JusJNC</title>
         <meta name="description" content="Termos de Uso e Condições Gerais dos Serviços Jurídicos e da Plataforma JusJNC SaaS" />
       </Head>
       <main className="max-w-4xl mx-auto p-6 md:p-10 bg-white min-h-screen text-gray-800">
-        <div className="mb-8 border-b pb-4">
-          <Link href="/" className="text-sm font-semibold text-red-600 hover:underline">
-            ← Voltar para o início
+        <div className="mb-8 border-b border-gray-200 pb-4">
+          <Link href="/" className="inline-flex items-center gap-1 text-sm font-semibold text-red-600 hover:text-red-700 hover:underline">
+            <span>←</span> Voltar para a Página Inicial
           </Link>
           <h1 className="text-3xl font-extrabold mt-3 text-gray-900">📄 Termos de Uso e Condições Gerais</h1>
           <p className="text-sm text-gray-500 mt-1">
-            <strong>Última atualização:</strong> 24 de outubro de 2026 | <strong>Versão:</strong> 3.0
+            <strong>Última atualização:</strong> 24 de outubro de 2026 | <strong>Versão:</strong> 3.1
           </p>
         </div>
 
@@ -23,7 +23,7 @@ export default function TermosDeUso() {
           <section>
             <h2 className="text-lg font-bold text-gray-900 mb-2">1. Aceitação dos Termos</h2>
             <p>
-              Ao acessar ou utilizar a plataforma <strong>JusJNC</strong> e os serviços de atendimento jurídico integrados do escritório <strong>Neves & Costa Advocacia e Consultoria</strong> (&quot;Plataforma&quot;, &quot;Nós&quot; ou &quot;Escritório&quot;), você concorda integralmente com estes Termos de Uso e com a nossa{' '}
+              Ao acessar ou utilizar a plataforma <strong>JusJNC</strong> e os serviços de atendimento jurídico integrados (&quot;Plataforma&quot;, &quot;Nós&quot; ou &quot;JusJNC Tecnologia&quot;), você concorda integralmente com estes Termos de Uso e com a nossa{' '}
               <Link href="/politica-de-privacidade" className="text-red-600 hover:underline font-medium">
                 Política de Privacidade
               </Link>.
@@ -37,7 +37,7 @@ export default function TermosDeUso() {
               O <strong>JusJNC</strong> é uma plataforma SaaS (Software as a Service) voltada à gestão de escritórios de advocacia, combinando automação de atendimento via WhatsApp (Meta Cloud API), triagem processual, acompanhamento de prazos, cálculos de honorários e inteligência jurídica generativa.
             </p>
             <p>
-              A atuação jurídica fornecida diretamente aos clientes finais segue rigorosamente o Estatuto da Advocacia e da OAB (Lei nº 8.906/1994), o Código de Ética e Disciplina da OAB e o Provimento nº 205/2021 sobre publicidade e tecnologia jurídica.
+              A atuação jurídica segue rigorosamente o Estatuto da Advocacia e da OAB (Lei nº 8.906/1994), o Código de Ética e Disciplina da OAB e o Provimento nº 205/2021 sobre publicidade e tecnologia jurídica.
             </p>
           </section>
 
@@ -87,14 +87,14 @@ export default function TermosDeUso() {
           <section>
             <h2 className="text-lg font-bold text-gray-900 mb-2">8. Foro de Eleição</h2>
             <p>
-              Estes Termos são regidos pelas leis da República Federativa do Brasil. Para dirimir eventuais controvérsias oriundas deste documento, fica eleito o Foro da Comarca de Ilhéus, Estado da Bahia, com exclusão de qualquer outro, por mais privilegiado que seja.
+              Estes Termos são regidos pelas leis da República Federativa do Brasil. Para dirimir eventuais controvérsias oriundas deste documento, fica expressamente eleito o <strong>Foro da Comarca de Itamaraju - Estado da Bahia</strong>, com exclusão de qualquer outro, por mais privilegiado que seja.
             </p>
           </section>
 
-          <section className="pt-4 border-t text-xs text-gray-500">
+          <section className="pt-4 border-t border-gray-200 text-xs text-gray-500">
             Dúvidas sobre estes Termos de Uso? Entre em contato pelo e-mail:{' '}
-            <a href="mailto:contato@nevesecosta.com.br" className="text-red-600 hover:underline">
-              contato@nevesecosta.com.br
+            <a href="mailto:contato@jusjnc.com.br" className="text-red-600 hover:underline">
+              contato@jusjnc.com.br
             </a>
           </section>
         </div>

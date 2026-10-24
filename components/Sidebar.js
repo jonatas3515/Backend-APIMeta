@@ -3,14 +3,14 @@ import { useAuth } from '../lib/useAuth';
 import { NAV_ITEMS } from '../lib/tabResolver';
 import OfficeBadge from './OfficeBadge';
 
-const MOBILE_PRIMARY_KEYS = ['chat', 'cases', 'agenda', 'triage'];
+const MOBILE_PRIMARY_KEYS = ['dashboard', 'chat', 'cases', 'monthly-calendar'];
 
 export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' }) {
   const { canAccess, signOut } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
 
   const visibleItems = NAV_ITEMS.filter((item) => canAccess(item.minRole));
-  const primaryItems = visibleItems.filter((item) => MOBILE_PRIMARY_KEYS.includes(item.key));
+  const primaryItems = MOBILE_PRIMARY_KEYS.map((k) => visibleItems.find((item) => item.key === k)).filter(Boolean);
   const overflowItems = visibleItems.filter((item) => !MOBILE_PRIMARY_KEYS.includes(item.key));
 
   const handleClick = (item) => {

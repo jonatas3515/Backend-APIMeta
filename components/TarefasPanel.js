@@ -3,16 +3,16 @@ import { supabase } from '../lib/supabaseClient';
 import { safeError } from '../lib/safeLogger';
 
 const PRIORITY_BADGE = {
-  alta: 'bg-red-900/40 text-red-300 border-red-700',
-  media: 'bg-yellow-900/40 text-yellow-300 border-yellow-700',
-  baixa: 'bg-green-900/40 text-green-300 border-green-700'
+  alta: 'bg-red-50 text-red-700 border-red-200',
+  media: 'bg-amber-50 text-amber-700 border-amber-200',
+  baixa: 'bg-emerald-50 text-emerald-700 border-emerald-200'
 };
 
 const STATUS_BADGE = {
-  pendente: 'bg-blue-900/40 text-blue-300 border-blue-700',
-  em_andamento: 'bg-yellow-900/40 text-yellow-300 border-yellow-700',
-  concluida: 'bg-green-900/40 text-green-300 border-green-700',
-  cancelada: 'bg-gray-800 text-gray-400 border-gray-700'
+  pendente: 'bg-blue-50 text-blue-700 border-blue-200',
+  em_andamento: 'bg-amber-50 text-amber-700 border-amber-200',
+  concluida: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  cancelada: 'bg-gray-100 text-gray-500 border-gray-200'
 };
 
 const STATUS_LABELS = {
@@ -168,30 +168,30 @@ export default function TarefasPanel() {
     const linkedCase = cases.find((c) => c.id === t.case_id);
 
     return (
-      <div key={t.id} className={`p-4 rounded-lg border bg-gray-800 ${isAtrasada ? 'border-red-600' : 'border-gray-700'} hover:border-yellow-500/50 transition-colors`}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className={`font-semibold text-sm ${st === 'concluida' ? 'line-through text-gray-400' : 'text-white'}`}>
+      <div key={t.id} className={`p-4 rounded-lg border bg-white ${isAtrasada ? 'border-red-300' : 'border-gray-200'} hover:border-nc-yellow shadow-sm transition-colors`}>
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h4 className={`font-semibold text-sm ${st === 'concluida' ? 'line-through text-gray-400' : 'text-gray-900'}`}>
                 {t.title}
               </h4>
               {isAtrasada && (
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-red-600 text-white uppercase animate-pulse">
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-red-100 text-red-700 border border-red-200 uppercase">
                   Atrasado
                 </span>
               )}
             </div>
             {t.description && (
-              <p className="text-gray-300 text-xs mb-2 leading-relaxed">{t.description}</p>
+              <p className="text-gray-600 text-xs mb-2 leading-relaxed">{t.description}</p>
             )}
-            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400 mb-2">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mb-2">
               {linkedCase && (
-                <span className="flex items-center gap-1 font-mono text-[11px] text-gray-300">
+                <span className="flex items-center gap-1 font-mono text-[11px] text-gray-600">
                   📁 {linkedCase.client_name || linkedCase.title} {linkedCase.process_number ? `(${linkedCase.process_number})` : ''}
                 </span>
               )}
               {t.due_date && (
-                <span className={`flex items-center gap-1 ${isAtrasada ? 'text-red-400 font-bold' : ''}`}>
+                <span className={`flex items-center gap-1 ${isAtrasada ? 'text-red-600 font-bold' : ''}`}>
                   ⏰ Limite: {new Date(t.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
                 </span>
               )}
@@ -206,11 +206,11 @@ export default function TarefasPanel() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-end sm:self-center">
             <select
               value={st}
               onChange={(e) => setStatus(t, e.target.value)}
-              className="px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-xs focus:outline-none focus:border-yellow-500"
+              className="px-2.5 py-1.5 bg-white border border-gray-300 rounded text-gray-800 text-xs focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
             >
               <option value="pendente">Pendente</option>
               <option value="em_andamento">Em andamento</option>
@@ -219,14 +219,14 @@ export default function TarefasPanel() {
             </select>
             <button
               onClick={() => openEdit(t)}
-              className="text-yellow-400 hover:text-yellow-300 p-1 text-xs"
+              className="text-gray-600 hover:text-yellow-600 p-1.5 text-xs rounded hover:bg-gray-100 transition-colors"
               title="Editar tarefa"
             >
               ✏️
             </button>
             <button
               onClick={() => removeTask(t)}
-              className="text-red-400 hover:text-red-300 p-1 text-xs"
+              className="text-red-500 hover:text-red-700 p-1.5 text-xs rounded hover:bg-red-50 transition-colors"
               title="Excluir tarefa"
             >
               🗑️
@@ -238,19 +238,19 @@ export default function TarefasPanel() {
   };
 
   return (
-    <div className="min-h-full bg-gray-900 text-white p-4 md:p-6" data-testid="tarefas-panel">
+    <div className="min-h-full bg-nc-surface text-gray-900 p-4 md:p-6" data-testid="tarefas-panel">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-yellow-500 flex items-center gap-2">
-              ✅ Tarefas Jurídicas
+            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+              <span>✅</span> Tarefas Jurídicas
             </h1>
-            <p className="text-gray-400 text-xs">Gerencie prazos internos, diligências e rotinas do escritório</p>
+            <p className="text-gray-500 text-xs">Gerencie prazos internos, diligências e rotinas do escritório</p>
           </div>
           <button
             onClick={openNew}
-            className="px-4 py-2 rounded-lg bg-nc-yellow text-nc-black font-bold text-sm hover:opacity-90 transition shadow"
+            className="px-4 py-2 rounded-lg bg-nc-yellow text-nc-black font-bold text-sm hover:bg-yellow-400 transition shadow-sm"
             data-testid="task-new-btn"
           >
             + Nova Tarefa
@@ -258,50 +258,50 @@ export default function TarefasPanel() {
         </div>
 
         {msg && (
-          <div className={`p-3 rounded-lg text-sm border ${msg.type === 'error' ? 'bg-red-900/50 border-red-700 text-red-200' : 'bg-green-900/50 border-green-700 text-green-200'}`}>
+          <div className={`p-3 rounded-lg text-sm border ${msg.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
             {msg.text}
           </div>
         )}
 
-        {/* Resumo Rápido (4 cards do legado) */}
+        {/* Resumo Rápido */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-red-900/20 border border-red-700 rounded-xl p-4 text-center">
-            <div className="text-3xl font-bold text-red-400">{pendentes.length}</div>
-            <div className="text-xs text-red-300 mt-1 font-medium">Tarefas Pendentes</div>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center shadow-sm">
+            <div className="text-3xl font-bold text-blue-700">{pendentes.length}</div>
+            <div className="text-xs text-blue-600 mt-1 font-medium">Tarefas Pendentes</div>
           </div>
-          <div className="bg-yellow-900/20 border border-yellow-700 rounded-xl p-4 text-center">
-            <div className="text-3xl font-bold text-yellow-400">{atrasadas.length}</div>
-            <div className="text-xs text-yellow-300 mt-1 font-medium">Atrasadas</div>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center shadow-sm">
+            <div className="text-3xl font-bold text-red-700">{atrasadas.length}</div>
+            <div className="text-xs text-red-600 mt-1 font-medium">Atrasadas</div>
           </div>
-          <div className="bg-green-900/20 border border-green-700 rounded-xl p-4 text-center">
-            <div className="text-3xl font-bold text-green-400">{concluidas.length}</div>
-            <div className="text-xs text-green-300 mt-1 font-medium">Tarefas Concluídas</div>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center shadow-sm">
+            <div className="text-3xl font-bold text-emerald-700">{concluidas.length}</div>
+            <div className="text-xs text-emerald-600 mt-1 font-medium">Tarefas Concluídas</div>
           </div>
-          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 text-center">
-            <div className="text-3xl font-bold text-gray-300">{filtered.length}</div>
-            <div className="text-xs text-gray-400 mt-1 font-medium">Total Filtradas</div>
+          <div className="bg-white border border-gray-200 rounded-xl p-4 text-center shadow-sm">
+            <div className="text-3xl font-bold text-gray-800">{filtered.length}</div>
+            <div className="text-xs text-gray-500 mt-1 font-medium">Total Filtradas</div>
           </div>
         </div>
 
         {/* Barra de Filtros */}
-        <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
+        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1">Buscar</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Buscar</label>
               <input
                 type="text"
                 placeholder="Título ou descrição..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-white text-xs focus:outline-none focus:border-yellow-500"
+                className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-xs focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1">Prioridade</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Prioridade</label>
               <select
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value)}
-                className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-white text-xs focus:outline-none focus:border-yellow-500"
+                className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-xs focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
               >
                 <option value="todas">Todas</option>
                 <option value="alta">🔴 Alta</option>
@@ -310,11 +310,11 @@ export default function TarefasPanel() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1">Status</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-white text-xs focus:outline-none focus:border-yellow-500"
+                className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-xs focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
               >
                 <option value="todas">Todos</option>
                 <option value="pendente">Pendente</option>
@@ -324,11 +324,11 @@ export default function TarefasPanel() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1">Cliente / Caso</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Cliente / Caso</label>
               <select
                 value={filterClient}
                 onChange={(e) => setFilterClient(e.target.value)}
-                className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-white text-xs focus:outline-none focus:border-yellow-500"
+                className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-xs focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
               >
                 <option value="">Todos os clientes</option>
                 {clients.map((c) => (
@@ -343,12 +343,12 @@ export default function TarefasPanel() {
 
         {/* Seções agrupadas por urgência */}
         {loading ? (
-          <p className="text-center py-8 text-gray-400 text-sm">Carregando tarefas...</p>
+          <p className="text-center py-8 text-gray-500 text-sm">Carregando tarefas...</p>
         ) : (
           <div className="space-y-6">
             {atrasadas.length > 0 && (
-              <div className="bg-gray-800/60 rounded-xl border border-red-700 p-4">
-                <h3 className="text-sm font-bold text-red-400 mb-3 flex items-center gap-2">
+              <div className="bg-white rounded-xl border border-red-200 p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-red-700 mb-3 flex items-center gap-2">
                   <span>⏰</span> Atrasadas ({atrasadas.length})
                 </h3>
                 <div className="space-y-3">{atrasadas.map(renderCard)}</div>
@@ -356,8 +356,8 @@ export default function TarefasPanel() {
             )}
 
             {deHoje.length > 0 && (
-              <div className="bg-gray-800/60 rounded-xl border border-yellow-700 p-4">
-                <h3 className="text-sm font-bold text-yellow-400 mb-3 flex items-center gap-2">
+              <div className="bg-white rounded-xl border border-amber-200 p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-amber-700 mb-3 flex items-center gap-2">
                   <span>📌</span> Para Hoje ({deHoje.length})
                 </h3>
                 <div className="space-y-3">{deHoje.map(renderCard)}</div>
@@ -365,8 +365,8 @@ export default function TarefasPanel() {
             )}
 
             {proximos.length > 0 && (
-              <div className="bg-gray-800/60 rounded-xl border border-blue-700 p-4">
-                <h3 className="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
+              <div className="bg-white rounded-xl border border-blue-200 p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-blue-700 mb-3 flex items-center gap-2">
                   <span>🗓️</span> Próximos 7 Dias ({proximos.length})
                 </h3>
                 <div className="space-y-3">{proximos.map(renderCard)}</div>
@@ -374,8 +374,8 @@ export default function TarefasPanel() {
             )}
 
             {outras.length > 0 && (
-              <div className="bg-gray-800/60 rounded-xl border border-gray-700 p-4">
-                <h3 className="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
+              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                   <span>📋</span> Outras / Sem Prazo ({outras.length})
                 </h3>
                 <div className="space-y-3">{outras.map(renderCard)}</div>
@@ -383,14 +383,14 @@ export default function TarefasPanel() {
             )}
 
             {pendentes.length === 0 && (
-              <div className="bg-gray-800 rounded-xl border border-gray-700 p-8 text-center text-gray-400">
+              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500 shadow-sm">
                 <p>Nenhuma tarefa pendente encontrada com os filtros atuais.</p>
               </div>
             )}
 
             {concluidas.length > 0 && (
-              <div className="bg-gray-800/40 rounded-xl border border-gray-700 p-4 opacity-75">
-                <h3 className="text-sm font-bold text-green-400 mb-3 flex items-center gap-2">
+              <div className="bg-white/80 rounded-xl border border-gray-200 p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-emerald-700 mb-3 flex items-center gap-2">
                   <span>✓</span> Concluídas ({concluidas.length})
                 </h3>
                 <div className="space-y-3">{concluidas.map(renderCard)}</div>
@@ -401,42 +401,42 @@ export default function TarefasPanel() {
 
         {/* Modal criar/editar */}
         {modal && (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setModal(null)}>
-            <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-lg text-white" onClick={(e) => e.stopPropagation()}>
-              <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-                <h3 className="font-bold text-base text-yellow-500">{modal.mode === 'new' ? '+ Nova Tarefa Jurídica' : 'Editar Tarefa'}</h3>
-                <button onClick={() => setModal(null)} className="text-gray-400 hover:text-white">✕</button>
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setModal(null)}>
+            <div className="bg-white border border-gray-200 rounded-xl shadow-2xl w-full max-w-lg text-gray-900" onClick={(e) => e.stopPropagation()}>
+              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 className="font-bold text-base text-gray-900">{modal.mode === 'new' ? '+ Nova Tarefa Jurídica' : 'Editar Tarefa'}</h3>
+                <button onClick={() => setModal(null)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
               </div>
               <form onSubmit={saveModal} className="p-4 space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-300 mb-1">Título *</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Título *</label>
                   <input
                     required
                     type="text"
                     placeholder="Ex: Protocolar contestação, Ligar para cliente..."
                     value={modal.form.title}
                     onChange={(e) => setModal({ ...modal, form: { ...modal.form, title: e.target.value } })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500"
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
                     data-testid="task-modal-title"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-300 mb-1">Descrição</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Descrição</label>
                   <textarea
                     rows={3}
                     placeholder="Detalhes da diligência..."
                     value={modal.form.description}
                     onChange={(e) => setModal({ ...modal, form: { ...modal.form, description: e.target.value } })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500"
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-300 mb-1">Prioridade</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Prioridade</label>
                     <select
                       value={modal.form.priority}
                       onChange={(e) => setModal({ ...modal, form: { ...modal.form, priority: e.target.value } })}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500"
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
                     >
                       <option value="alta">🔴 Alta</option>
                       <option value="media">🟡 Média</option>
@@ -444,21 +444,21 @@ export default function TarefasPanel() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-300 mb-1">Data Limite</label>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Data Limite</label>
                     <input
                       type="date"
                       value={modal.form.due_date}
                       onChange={(e) => setModal({ ...modal, form: { ...modal.form, due_date: e.target.value } })}
-                      className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500"
+                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-300 mb-1">Vincular a Processo / Caso</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Vincular a Processo / Caso</label>
                   <select
                     value={modal.form.case_id || ''}
                     onChange={(e) => setModal({ ...modal, form: { ...modal.form, case_id: e.target.value } })}
-                    className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-yellow-500"
+                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
                   >
                     <option value="">Sem vínculo</option>
                     {cases.map((c) => (
@@ -471,7 +471,7 @@ export default function TarefasPanel() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="w-full py-2.5 rounded-lg bg-nc-yellow text-nc-black text-sm font-bold hover:opacity-90 disabled:opacity-60 transition"
+                  className="w-full py-2.5 rounded-lg bg-nc-yellow text-nc-black text-sm font-bold hover:bg-yellow-400 disabled:opacity-60 transition shadow-sm"
                 >
                   {saving ? 'Salvando...' : modal.mode === 'new' ? 'Criar Tarefa' : 'Salvar Alterações'}
                 </button>

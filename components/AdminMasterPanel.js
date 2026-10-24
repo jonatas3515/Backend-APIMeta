@@ -1,3 +1,4 @@
+import { DEFAULT_LANDING_CONTENT } from '../lib/legalContent';
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { apiJson } from '../lib/apiClient';
@@ -11,7 +12,8 @@ const TABS = [
   { key: 'cupons', label: 'Cupons' },
   { key: 'mensagens', label: 'Mensagens' },
   { key: 'pagamentos', label: 'Pagamentos' },
-  { key: 'modelos', label: 'Modelos' }
+  { key: 'modelos', label: 'Modelos' },
+  { key: 'landing', label: 'Landing Page' }
 ];
 
 const TIPOS_MODELO = {
@@ -78,6 +80,8 @@ export default function AdminMasterPanel() {
   const [filtroModeloArea, setFiltroModeloArea] = useState('');
   const [filtroModeloTipo, setFiltroModeloTipo] = useState('');
   const [buscaModelo, setBuscaModelo] = useState('');
+  const [landingData, setLandingData] = useState(DEFAULT_LANDING_CONTENT);
+  const [savingLanding, setSavingLanding] = useState(false);
 
   const isAdmin = profile?.role === 'admin';
 
@@ -94,14 +98,15 @@ export default function AdminMasterPanel() {
   const carregarTudo = async () => {
     setLoading(true);
     try {
-      const [o, m, p, c, msg, pag, mod] = await Promise.allSettled([
+      const [o, m, p, c, msg, pag, mod, lnd] = await Promise.allSettled([
         apiJson('/api/admin/offices'),
         apiJson('/api/admin/metrics'),
         apiJson('/api/admin/planos'),
         apiJson('/api/admin/cupons'),
         apiJson('/api/admin/mensagens'),
         apiJson('/api/admin/pagamentos'),
-        apiJson('/api/admin/modelos')
+        apiJson('/api/admin/modelos'),
+        apiJson('/api/admin/landing-content')
       ]);
 
       if (o.status === 'fulfilled') setOffices(o.value?.offices || []);
@@ -111,6 +116,7 @@ export default function AdminMasterPanel() {
       if (msg.status === 'fulfilled') setMensagens(msg.value?.mensagens || []);
       if (pag.status === 'fulfilled') setPagamentos(pag.value?.pagamentos || []);
       if (mod.status === 'fulfilled') setModelos(mod.value?.modelos || []);
+      if (lnd.status === 'fulfilled' && lnd.value?.content) setLandingData(lnd.value.content);
     } catch (err) {
       safeError('admin_carregar_error', err, { component: 'AdminMasterPanel' });
     } finally {
@@ -271,6 +277,22 @@ export default function AdminMasterPanel() {
       await carregarTudo();
     } catch (err) {
       showFeedback('error', err.message || 'Erro ao salvar modelo');
+    }
+  };
+
+  const handleSaveLandingContent = async (e) => {
+    if (e) e.preventDefault();
+    setSavingLanding(true);
+    try {
+      await apiJson('/api/admin/landing-content', {
+        method: 'POST',
+        body: JSON.stringify(landingData)
+      });
+      showFeedback('success', 'Conteúdo da Landing Page atualizado com sucesso!');
+    } catch (err) {
+      showFeedback('error', err.message || 'Erro ao salvar conteúdo da Landing Page');
+    } finally {
+      setSavingLanding(false);
     }
   };
 
@@ -986,6 +1008,251 @@ export default function AdminMasterPanel() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {tab === 'landing' && (
+          <div className="bg-gray-800/40 border border-gray-700/60 rounded-2xl p-6 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-700/60 pb-4">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <span>🌐</span> Editor da Landing Page & CMS
+                </h2>
+                <p className="text-gray-400 text-xs md:text-sm mt-1">
+                  Personalize títulos, propostas de valor, tabela de preços e documentos legais diretamente no banco de dados
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveLandingContent}
+                disabled={savingLanding}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs md:text-sm flex items-center gap-2 transition shadow-lg shadow-red-600/30 disabled:opacity-50 self-start sm:self-auto"
+              >
+                <span>💾</span> {savingLanding ? 'Salvando...' : 'Salvar Alterações'}
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveLandingContent} className="space-y-6">
+              {/* Card 1: Textos do Hero */}
+              <div className="bg-gray-900/60 border border-gray-700/60 rounded-xl p-5 space-y-4">
+                <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-wider flex items-center gap-2">
+                  <span>🚀</span> 1. Hero & Apresentação Principal
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Badge de Destaque Superior</label>
+                    <input
+                      type="text"
+                      value={landingData.hero_badge || ''}
+                      onChange={(e) => setLandingData({ ...landingData, hero_badge: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Título - Prefixo</label>
+                    <input
+                      type="text"
+                      value={landingData.hero_title_prefix || ''}
+                      onChange={(e) => setLandingData({ ...landingData, hero_title_prefix: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Título - Destaque em Vermelho</label>
+                    <input
+                      type="text"
+                      value={landingData.hero_title_highlight || ''}
+                      onChange={(e) => setLandingData({ ...landingData, hero_title_highlight: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Subtítulo / Proposta de Valor</label>
+                    <textarea
+                      rows={2}
+                      value={landingData.hero_subtitle || ''}
+                      onChange={(e) => setLandingData({ ...landingData, hero_subtitle: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Botão de Ação Primário (CTA)</label>
+                    <input
+                      type="text"
+                      value={landingData.cta_primary || ''}
+                      onChange={(e) => setLandingData({ ...landingData, cta_primary: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Botão de Ação Secundário</label>
+                    <input
+                      type="text"
+                      value={landingData.cta_secondary || ''}
+                      onChange={(e) => setLandingData({ ...landingData, cta_secondary: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Contato e Foro Oficial */}
+              <div className="bg-gray-900/60 border border-gray-700/60 rounded-xl p-5 space-y-4">
+                <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-wider flex items-center gap-2">
+                  <span>🏢</span> 2. Informações de Contato & Foro Oficial
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">E-mail de Contato</label>
+                    <input
+                      type="email"
+                      value={landingData.contact_email || ''}
+                      onChange={(e) => setLandingData({ ...landingData, contact_email: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Telefone / WhatsApp</label>
+                    <input
+                      type="text"
+                      value={landingData.contact_phone || ''}
+                      onChange={(e) => setLandingData({ ...landingData, contact_phone: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Foro de Eleição dos Termos</label>
+                    <input
+                      type="text"
+                      value={landingData.contact_forum || ''}
+                      onChange={(e) => setLandingData({ ...landingData, contact_forum: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Preços dos Planos na Landing */}
+              <div className="bg-gray-900/60 border border-gray-700/60 rounded-xl p-5 space-y-4">
+                <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-wider flex items-center gap-2">
+                  <span>💳</span> 3. Preços Exibidos na Landing Page
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-3 bg-gray-800/60 rounded-lg border border-gray-700/60 space-y-2">
+                    <span className="text-xs font-bold text-gray-300">Plano Básico</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-gray-400 block">Mensal (R$)</label>
+                        <input
+                          type="number"
+                          value={landingData.preco_basico_mensal || 49}
+                          onChange={(e) => setLandingData({ ...landingData, preco_basico_mensal: Number(e.target.value) })}
+                          className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-400 block">Anual (R$)</label>
+                        <input
+                          type="number"
+                          value={landingData.preco_basico_anual || 490}
+                          onChange={(e) => setLandingData({ ...landingData, preco_basico_anual: Number(e.target.value) })}
+                          className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-gray-800/60 rounded-lg border border-gray-700/60 space-y-2">
+                    <span className="text-xs font-bold text-yellow-400">Plano Profissional (Destaque)</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-gray-400 block">Mensal (R$)</label>
+                        <input
+                          type="number"
+                          value={landingData.preco_profissional_mensal || 99}
+                          onChange={(e) => setLandingData({ ...landingData, preco_profissional_mensal: Number(e.target.value) })}
+                          className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-400 block">Anual (R$)</label>
+                        <input
+                          type="number"
+                          value={landingData.preco_profissional_anual || 990}
+                          onChange={(e) => setLandingData({ ...landingData, preco_profissional_anual: Number(e.target.value) })}
+                          className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-gray-800/60 rounded-lg border border-gray-700/60 space-y-2">
+                    <span className="text-xs font-bold text-gray-300">Plano Enterprise</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-gray-400 block">Mensal (R$)</label>
+                        <input
+                          type="number"
+                          value={landingData.preco_enterprise_mensal || 199}
+                          onChange={(e) => setLandingData({ ...landingData, preco_enterprise_mensal: Number(e.target.value) })}
+                          className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-400 block">Anual (R$)</label>
+                        <input
+                          type="number"
+                          value={landingData.preco_enterprise_anual || 1990}
+                          onChange={(e) => setLandingData({ ...landingData, preco_enterprise_anual: Number(e.target.value) })}
+                          className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Documentos Legais com Scroll */}
+              <div className="bg-gray-900/60 border border-gray-700/60 rounded-xl p-5 space-y-4">
+                <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-wider flex items-center gap-2">
+                  <span>⚖️</span> 4. Documentos Legais Integrados
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">
+                      Texto dos Termos de Uso (Editável)
+                    </label>
+                    <textarea
+                      rows={10}
+                      value={landingData.termos_de_uso || ''}
+                      onChange={(e) => setLandingData({ ...landingData, termos_de_uso: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-red-500 leading-relaxed"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">
+                      Texto da Política de Privacidade (Editável)
+                    </label>
+                    <textarea
+                      rows={10}
+                      value={landingData.politica_privacidade || ''}
+                      onChange={(e) => setLandingData({ ...landingData, politica_privacidade: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-red-500 leading-relaxed"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={savingLanding}
+                  className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-xl text-sm flex items-center gap-2 transition shadow-lg shadow-red-600/30 disabled:opacity-50"
+                >
+                  <span>💾</span> {savingLanding ? 'Salvando Alterações...' : 'Salvar Todas as Alterações na Landing Page'}
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </main>

@@ -494,7 +494,7 @@ export default function Home() {
 
         {/* Conteúdo principal */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <header className="flex items-center px-3 py-2 bg-white border-b border-gray-200 z-10 gap-2 relative">
+          <header className="flex items-center px-2 sm:px-3 py-2 bg-white border-b border-gray-200 z-10 gap-1.5 sm:gap-2 relative overflow-x-auto scrollbar-none">
             <h1 className="md:hidden text-base font-bold flex-shrink-0">N&C</h1>
             {activeTab === 'chat' && (
               <div className="flex gap-1 bg-nc-gray-100 p-1 rounded text-xs font-medium">
@@ -521,7 +521,7 @@ export default function Home() {
               </div>
             )}
             <div className="flex-1" />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               {profile?.role === 'admin' && (
                 <button
                   onClick={() => router.push('/admin')}
