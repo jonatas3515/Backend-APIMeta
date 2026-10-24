@@ -22,18 +22,29 @@ export default function MonthlyCalendarPanel() {
   const [cursor, setCursor] = useState(() => new Date());
   const [cases, setCases] = useState([]);
   const [birthdays, setBirthdays] = useState([]);
+  const [birthdayTemplate, setBirthdayTemplate] = useState('Feliz aniversário, {nome}! 🎂');
   const [selectedDay, setSelectedDay] = useState(() => new Date());
 
   useEffect(() => {
     let mounted = true;
     Promise.allSettled([
       apiJson('/api/cases'),
-      supabase.from('conversations').select('id, client_name, phone, birth_or_foundation_date').not('birth_or_foundation_date', 'is', null)
-    ]).then(([casesR, bdaysR]) => {
+      supabase.from('conversations').select('id, client_name, phone, birth_or_foundation_date').not('birth_or_foundation_date', 'is', null),
+      supabase.from('chat_clients').select('id, name, phone, birth_or_foundation_date').not('birth_or_foundation_date', 'is', null).then((r) => r).catch(() => ({ data: [] })),
+      supabase.from('offices').select('*').limit(1).maybeSingle().then((r) => r).catch(() => ({ data: null }))
+    ]).then(([casesR, bdaysR, chatR, officeR]) => {
       if (!mounted) return;
       if (casesR.status === 'fulfilled') setCases(casesR.value || []);
-      if (bdaysR.status === 'fulfilled' && !bdaysR.value.error) setBirthdays(bdaysR.value.data || []);
-      [casesR, bdaysR].filter((r) => r.status === 'rejected')
+      const convBdays = (bdaysR.status === 'fulfilled' && !bdaysR.value.error) ? (bdaysR.value.data || []) : [];
+      const chatBdays = (chatR.status === 'fulfilled' && !chatR.value.error)
+        ? (chatR.value.data || []).map((c) => ({ ...c, client_name: c.client_name || c.name }))
+        : [];
+      setBirthdays([...convBdays, ...chatBdays]);
+      if (officeR.status === 'fulfilled' && officeR.value?.data) {
+        const tpl = officeR.value.data.birthday_message || officeR.value.data.birthday_message_template;
+        if (tpl) setBirthdayTemplate(tpl);
+      }
+      [casesR, bdaysR, chatR, officeR].filter((r) => r.status === 'rejected')
         .forEach((r) => safeError('calendar_load_error', r.reason, { component: 'MonthlyCalendarPanel' }));
     });
     return () => { mounted = false; };
@@ -91,8 +102,8 @@ export default function MonthlyCalendarPanel() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* Grade mensal */}
         <div className="lg:col-span-3 bg-white rounded-lg shadow p-4">
-          <div className="flex items-center justify-between mb-4 bg-[#1e293b] text-white rounded-t-lg -m-4 mb-4 px-4 py-3">
-            <h2 className="text-lg font-bold capitalize">
+          <div className="flex items-center justify-between mb-4 bg-nc-black border-b-2 border-nc-yellow/40 text-white rounded-t-lg -m-4 mb-4 px-4 py-3">
+            <h2 className="text-lg font-bold capitalize text-nc-yellow">
               {MONTH_NAMES[month]} {year}
             </h2>
             <div className="flex gap-1">
@@ -131,7 +142,7 @@ export default function MonthlyCalendarPanel() {
                     </p>
                   )}
                   {dayCases.slice(0, 2).map((c) => (
-                    <p key={c.id} className="text-[9px] bg-blue-100 text-blue-700 rounded px-1 truncate mt-0.5" title={c.title}>
+                    <p key={c.id} className="text-[9px] bg-yellow-100 text-yellow-800 rounded px-1 truncate mt-0.5" title={c.title}>
                       ⏰ {c.title}
                     </p>
                   ))}
@@ -157,14 +168,14 @@ export default function MonthlyCalendarPanel() {
         {/* Painel lateral */}
         <div className="space-y-4">
           <div className="bg-gray-800 border border-gray-700 rounded-xl shadow p-4">
-            <h3 className="font-bold text-sm text-white mb-3">🎂 Aniversariantes - {selectedDay.toLocaleDateString('pt-BR')}</h3>
+            <h3 className="font-bold text-sm text-nc-yellow mb-3">🎂 Aniversariantes - {selectedDay.toLocaleDateString('pt-BR')}</h3>
             {selectedBirthdays.length === 0 ? (
               <p className="text-sm text-gray-400">Nenhum aniversariante neste dia.</p>
             ) : (
               <ul className="space-y-2">
                 {selectedBirthdays.map((b) => {
                   const phone = (b.phone || '').replace(/\D/g, '');
-                  const msg = encodeURIComponent(`Feliz aniversário, ${b.client_name || 'Cliente'}! 🎂`);
+                  const msg = encodeURIComponent(birthdayTemplate.replace(/\{nome\}/g, b.client_name || 'Cliente'));
                   return (
                     <li key={b.id} className="text-sm text-gray-200 flex items-center justify-between gap-2">
                       <span className="flex items-center gap-2"><span className="text-pink-400">🎂</span> {b.client_name || 'Cliente'}</span>
@@ -187,7 +198,7 @@ export default function MonthlyCalendarPanel() {
           </div>
 
           <div className="bg-gray-800 border border-gray-700 rounded-xl shadow p-4">
-            <h3 className="font-bold text-sm text-white mb-3">⏰ Prazos de {selectedDay.toLocaleDateString('pt-BR')}</h3>
+            <h3 className="font-bold text-sm text-nc-yellow mb-3">⏰ Prazos de {selectedDay.toLocaleDateString('pt-BR')}</h3>
             {selectedDeadlines.length === 0 ? (
               <p className="text-sm text-gray-400">Nenhum prazo neste dia.</p>
             ) : (

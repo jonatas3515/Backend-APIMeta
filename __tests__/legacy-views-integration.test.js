@@ -18,6 +18,7 @@ function supabaseChain(result = { data: [], error: null }) {
     order: jest.fn(() => chain),
     limit: jest.fn(() => chain),
     single: jest.fn(() => chain),
+    maybeSingle: jest.fn(() => chain),
     update: jest.fn(() => chain),
     insert: jest.fn(() => chain),
     then: promise.then.bind(promise)
