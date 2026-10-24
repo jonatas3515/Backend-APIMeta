@@ -1,7 +1,23 @@
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { DEFAULT_LANDING_CONTENT, renderFormattedDoc } from '../lib/legalContent';
 
 export default function TermosDeUso() {
+  const [content, setContent] = useState(DEFAULT_LANDING_CONTENT);
+
+  useEffect(() => {
+    fetch('/api/admin/landing-content')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res?.content) setContent((prev) => ({ ...prev, ...res.content }));
+      })
+      .catch(() => {});
+  }, []);
+
+  const contactEmail = content.contact_email || 'contato@nevesecosta.com.br';
+  const forum = content.contact_forum || 'Comarca de Itamaraju - Estado da Bahia';
+
   return (
     <>
       <Head>
@@ -70,7 +86,7 @@ export default function TermosDeUso() {
           <section>
             <h2 className="text-lg font-bold text-gray-900 mb-2">6. Planos, Assinaturas e Pagamentos</h2>
             <p className="mb-2">
-              Para advogados e escritórios terceiros utilizadores do software JusJNC, os planos de assinatura (Básico, Profissional e Enterprise) concedem licença de uso limitada, revogável e não exclusiva durante a vigência do contrato.
+              Para advogados e escritórios terceiros utilizadores do software JusJNC, os planos de assinatura (Básico, Profissional e Enterprise) concedem licença de uso limitada, revogável e não exclusiva durante a vigência do contrato com período de testes de {content.dias_teste || 30} dias grátis.
             </p>
             <p>
               O inadimplemento de mensalidades após o período de carência poderá resultar na suspensão temporária do acesso aos módulos premium até a regularização financeira.
@@ -87,14 +103,14 @@ export default function TermosDeUso() {
           <section>
             <h2 className="text-lg font-bold text-gray-900 mb-2">8. Foro de Eleição</h2>
             <p>
-              Estes Termos são regidos pelas leis da República Federativa do Brasil. Para dirimir eventuais controvérsias oriundas deste documento, fica expressamente eleito o <strong>Foro da Comarca de Itamaraju - Estado da Bahia</strong>, com exclusão de qualquer outro, por mais privilegiado que seja.
+              Estes Termos são regidos pelas leis da República Federativa do Brasil. Para dirimir eventuais controvérsias oriundas deste documento, fica expressamente eleito o <strong>Foro da {forum}</strong>, com exclusão de qualquer outro, por mais privilegiado que seja.
             </p>
           </section>
 
           <section className="pt-4 border-t border-gray-200 text-xs text-gray-500">
-            Dúvidas sobre estes Termos de Uso? Entre em contato pelo e-mail:{' '}
-            <a href="mailto:contato@jusjnc.com.br" className="text-red-600 hover:underline">
-              contato@jusjnc.com.br
+            Dúvidas sobre estes Termos de Uso? Entre em contato pelo e-mail oficial:{' '}
+            <a href={`mailto:${contactEmail}`} className="text-red-600 font-semibold hover:underline">
+              {contactEmail}
             </a>
           </section>
         </div>

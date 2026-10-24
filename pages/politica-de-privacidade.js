@@ -1,7 +1,25 @@
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import { DEFAULT_LANDING_CONTENT } from '../lib/legalContent';
 
 export default function PoliticaDePrivacidade() {
+  const [content, setContent] = useState(DEFAULT_LANDING_CONTENT);
+
+  useEffect(() => {
+    fetch('/api/admin/landing-content')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res?.content) setContent((prev) => ({ ...prev, ...res.content }));
+      })
+      .catch(() => {});
+  }, []);
+
+  const contactEmail = content.contact_email || 'contato@nevesecosta.com.br';
+  const dpoEmail = content.contact_dpo_email || contactEmail;
+  const phone = content.contact_phone || '(73) 99934-8552';
+  const forum = content.contact_forum || 'Comarca de Itamaraju - Estado da Bahia';
+
   return (
     <>
       <Head>
@@ -19,8 +37,8 @@ export default function PoliticaDePrivacidade() {
           </p>
           <p className="text-sm text-gray-600 mt-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
             Você pode solicitar a exclusão de seus dados pessoais a qualquer momento. Envie um e-mail para{' '}
-            <a href="mailto:dpo@jusjnc.com.br" className="text-red-600 font-semibold hover:underline">
-              dpo@jusjnc.com.br
+            <a href={`mailto:${dpoEmail}`} className="text-red-600 font-semibold hover:underline">
+              {dpoEmail}
             </a>{' '}
             com o assunto <strong>&quot;Direito ao Esquecimento - LGPD&quot;</strong>.
           </p>
@@ -40,7 +58,7 @@ export default function PoliticaDePrivacidade() {
           <section>
             <h2 className="text-lg font-bold text-gray-900 mb-2">2. Categorias de Dados Coletados</h2>
             <ul className="list-disc pl-5 space-y-1.5">
-              <li><strong>Dados Cadastrais e de Identificação:</strong> Nome completo, CPF, RG, data de nascimento, endereço, e-mail e número de telefone/WhatsApp.</li>
+              <li><strong>Dados Cadastrais e de Identificação:</strong> Nome completo, CPF, RG, data de nascimento, endereço, e-mail e número de telefone/WhatsApp ({phone}).</li>
               <li><strong>Dados Processuais:</strong> Número CNJ do processo, tribunal, vara, área jurídica, movimentações e prazos processuais.</li>
               <li><strong>Comunicações e Interações:</strong> Mensagens de texto, áudios e anexos trocados no atendimento automatizado via WhatsApp ou chat web.</li>
               <li><strong>Dados Operacionais e de Auditoria:</strong> Logs de acesso (IP, data e hora), permissões de usuários e registros de modificações.</li>
@@ -97,16 +115,16 @@ export default function PoliticaDePrivacidade() {
           <section>
             <h2 className="text-lg font-bold text-gray-900 mb-2">7. Foro de Eleição</h2>
             <p>
-              Esta Política é regida pelas leis da República Federativa do Brasil. Para a resolução de quaisquer conflitos decorrentes deste documento, fica eleito o <strong>Foro da Comarca de Itamaraju - Estado da Bahia</strong>.
+              Esta Política é regida pelas leis da República Federativa do Brasil. Para a resolução de quaisquer conflitos decorrentes deste documento, fica eleito o <strong>Foro da {forum}</strong>.
             </p>
           </section>
 
           <section className="pt-4 border-t border-gray-200 text-xs text-gray-500">
             Encarregado pelo Tratamento de Dados (DPO):{' '}
-            <a href="mailto:dpo@jusjnc.com.br" className="text-red-600 hover:underline">
-              dpo@jusjnc.com.br
+            <a href={`mailto:${dpoEmail}`} className="text-red-600 font-semibold hover:underline">
+              {dpoEmail}
             </a>{' '}
-            | Itamaraju - BA
+            | Telefone: {phone} | {forum}
           </section>
         </div>
       </main>

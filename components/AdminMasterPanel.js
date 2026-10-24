@@ -82,6 +82,7 @@ export default function AdminMasterPanel() {
   const [buscaModelo, setBuscaModelo] = useState('');
   const [landingData, setLandingData] = useState(DEFAULT_LANDING_CONTENT);
   const [savingLanding, setSavingLanding] = useState(false);
+  const [newFeatureInput, setNewFeatureInput] = useState({});
 
   const isAdmin = profile?.role === 'admin';
 
@@ -278,6 +279,54 @@ export default function AdminMasterPanel() {
     } catch (err) {
       showFeedback('error', err.message || 'Erro ao salvar modelo');
     }
+  };
+
+  // Handlers CMS Landing Page
+  const handleUpdateRecurso = (idx, field, value) => {
+    const list = [...(landingData.recursos || [])];
+    list[idx] = { ...list[idx], [field]: value };
+    setLandingData({ ...landingData, recursos: list });
+  };
+
+  const handleAddRecurso = () => {
+    const list = [...(landingData.recursos || [])];
+    list.push({
+      id: Date.now().toString(),
+      titulo: 'Novo Recurso',
+      descricao: 'Descrição do novo recurso...',
+      cor: 'blue'
+    });
+    setLandingData({ ...landingData, recursos: list });
+  };
+
+  const handleRemoveRecurso = (idx) => {
+    const list = (landingData.recursos || []).filter((_, i) => i !== idx);
+    setLandingData({ ...landingData, recursos: list });
+  };
+
+  const handleUpdatePlano = (idx, field, value) => {
+    const list = [...(landingData.planos || [])];
+    list[idx] = { ...list[idx], [field]: value };
+    setLandingData({ ...landingData, planos: list });
+  };
+
+  const handleAddFuncionalidade = (planoIdx) => {
+    const text = (newFeatureInput[planoIdx] || '').trim();
+    if (!text) return;
+    const list = [...(landingData.planos || [])];
+    const plano = { ...list[planoIdx] };
+    plano.funcionalidades = [...(plano.funcionalidades || []), text];
+    list[planoIdx] = plano;
+    setLandingData({ ...landingData, planos: list });
+    setNewFeatureInput({ ...newFeatureInput, [planoIdx]: '' });
+  };
+
+  const handleRemoveFuncionalidade = (planoIdx, featIdx) => {
+    const list = [...(landingData.planos || [])];
+    const plano = { ...list[planoIdx] };
+    plano.funcionalidades = (plano.funcionalidades || []).filter((_, i) => i !== featIdx);
+    list[planoIdx] = plano;
+    setLandingData({ ...landingData, planos: list });
   };
 
   const handleSaveLandingContent = async (e) => {
@@ -1016,10 +1065,10 @@ export default function AdminMasterPanel() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-700/60 pb-4">
               <div>
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span>🌐</span> Editor da Landing Page & CMS
+                  <span>🌐</span> Editor Completo da Landing Page & CMS
                 </h2>
                 <p className="text-gray-400 text-xs md:text-sm mt-1">
-                  Personalize títulos, propostas de valor, tabela de preços e documentos legais diretamente no banco de dados
+                  Gerencie todos os textos, dias de teste, ano de copyright, recursos (adicionar/excluir), planos e documentos legais
                 </p>
               </div>
               <button
@@ -1028,19 +1077,68 @@ export default function AdminMasterPanel() {
                 disabled={savingLanding}
                 className="bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs md:text-sm flex items-center gap-2 transition shadow-lg shadow-red-600/30 disabled:opacity-50 self-start sm:self-auto"
               >
-                <span>💾</span> {savingLanding ? 'Salvando...' : 'Salvar Alterações'}
+                <span>💾</span> {savingLanding ? 'Salvando...' : 'Salvar Todas as Alterações'}
               </button>
             </div>
 
             <form onSubmit={handleSaveLandingContent} className="space-y-6">
-              {/* Card 1: Textos do Hero */}
+              {/* Card 1: Configurações Gerais & Dias de Teste */}
               <div className="bg-gray-900/60 border border-gray-700/60 rounded-xl p-5 space-y-4">
                 <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-wider flex items-center gap-2">
-                  <span>🚀</span> 1. Hero & Apresentação Principal
+                  <span>⚙️</span> 1. Configurações Gerais, Dias de Teste & Rodapé
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Dias de Teste Grátis (Trial)</label>
+                    <input
+                      type="number"
+                      value={landingData.dias_teste ?? 30}
+                      onChange={(e) => setLandingData({ ...landingData, dias_teste: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
+                    />
+                    <span className="text-[10px] text-gray-500 mt-0.5 block">Aparece nos botões e no cadastro</span>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Ano do Copyright no Rodapé</label>
+                    <input
+                      type="number"
+                      value={landingData.copyright_ano ?? 2026}
+                      onChange={(e) => setLandingData({ ...landingData, copyright_ano: Number(e.target.value) })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
+                    />
+                    <span className="text-[10px] text-gray-500 mt-0.5 block">Exibido após o símbolo &copy;</span>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Texto de Copyright</label>
+                    <input
+                      type="text"
+                      value={landingData.copyright_texto || 'Jus JNC. Todos os direitos reservados.'}
+                      onChange={(e) => setLandingData({ ...landingData, copyright_texto: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
+                    />
+                    <span className="text-[10px] text-gray-500 mt-0.5 block">Texto da linha de copyright</span>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Título Bloco de Logos Parceiros</label>
+                    <input
+                      type="text"
+                      value={landingData.footer_dev_title || 'Desenvolvidos por JNC Tecnologia.'}
+                      onChange={(e) => setLandingData({ ...landingData, footer_dev_title: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
+                    />
+                    <span className="text-[10px] text-gray-500 mt-0.5 block">Título acima das logos</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Hero & Apresentação */}
+              <div className="bg-gray-900/60 border border-gray-700/60 rounded-xl p-5 space-y-4">
+                <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-wider flex items-center gap-2">
+                  <span>🚀</span> 2. Hero & Apresentação Principal
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Badge de Destaque Superior</label>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Badge Pulsante Superior</label>
                     <input
                       type="text"
                       value={landingData.hero_badge || ''}
@@ -1076,7 +1174,7 @@ export default function AdminMasterPanel() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Botão de Ação Primário (CTA)</label>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Botão Primário (CTA)</label>
                     <input
                       type="text"
                       value={landingData.cta_primary || ''}
@@ -1085,7 +1183,7 @@ export default function AdminMasterPanel() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Botão de Ação Secundário</label>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Botão Secundário</label>
                     <input
                       type="text"
                       value={landingData.cta_secondary || ''}
@@ -1096,18 +1194,29 @@ export default function AdminMasterPanel() {
                 </div>
               </div>
 
-              {/* Card 2: Contato e Foro Oficial */}
+              {/* Card 3: Contatos Oficiais & Foro Jurídico */}
               <div className="bg-gray-900/60 border border-gray-700/60 rounded-xl p-5 space-y-4">
                 <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-wider flex items-center gap-2">
-                  <span>🏢</span> 2. Informações de Contato & Foro Oficial
+                  <span>🏢</span> 3. Informações de Contato Oficiais & Foro de Eleição
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div>
-                    <label className="text-xs text-gray-400 font-semibold mb-1 block">E-mail de Contato</label>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">E-mail Principal</label>
                     <input
                       type="email"
                       value={landingData.contact_email || ''}
                       onChange={(e) => setLandingData({ ...landingData, contact_email: e.target.value })}
+                      placeholder="ex: contato@nevesecosta.com.br"
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">E-mail DPO / Privacidade (LGPD)</label>
+                    <input
+                      type="email"
+                      value={landingData.contact_dpo_email || ''}
+                      onChange={(e) => setLandingData({ ...landingData, contact_dpo_email: e.target.value })}
+                      placeholder="ex: dpo@nevesecosta.com.br"
                       className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-white focus:outline-none focus:border-red-500"
                     />
                   </div>
@@ -1121,7 +1230,7 @@ export default function AdminMasterPanel() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Foro de Eleição dos Termos</label>
+                    <label className="text-xs text-gray-400 font-semibold mb-1 block">Foro de Eleição (Termos)</label>
                     <input
                       type="text"
                       value={landingData.contact_forum || ''}
@@ -1132,90 +1241,246 @@ export default function AdminMasterPanel() {
                 </div>
               </div>
 
-              {/* Card 3: Preços dos Planos na Landing */}
+              {/* Card 4: Recursos / Features da Landing (Editar, Adicionar, Excluir) */}
               <div className="bg-gray-900/60 border border-gray-700/60 rounded-xl p-5 space-y-4">
-                <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-wider flex items-center gap-2">
-                  <span>💳</span> 3. Preços Exibidos na Landing Page
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-3 bg-gray-800/60 rounded-lg border border-gray-700/60 space-y-2">
-                    <span className="text-xs font-bold text-gray-300">Plano Básico</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] text-gray-400 block">Mensal (R$)</label>
-                        <input
-                          type="number"
-                          value={landingData.preco_basico_mensal || 49}
-                          onChange={(e) => setLandingData({ ...landingData, preco_basico_mensal: Number(e.target.value) })}
-                          className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-gray-400 block">Anual (R$)</label>
-                        <input
-                          type="number"
-                          value={landingData.preco_basico_anual || 490}
-                          onChange={(e) => setLandingData({ ...landingData, preco_basico_anual: Number(e.target.value) })}
-                          className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
-                        />
-                      </div>
-                    </div>
+                <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-wider flex items-center gap-2">
+                      <span>✨</span> 4. Recursos da Landing Page (Features)
+                    </h3>
+                    <p className="text-gray-400 text-xs mt-0.5">Adicione, edite textos, selecione cores ou exclua recursos exibidos aos clientes</p>
                   </div>
+                  <button
+                    type="button"
+                    onClick={handleAddRecurso}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 shadow"
+                  >
+                    <span>+</span> Novo Recurso
+                  </button>
+                </div>
 
-                  <div className="p-3 bg-gray-800/60 rounded-lg border border-gray-700/60 space-y-2">
-                    <span className="text-xs font-bold text-yellow-400">Plano Profissional (Destaque)</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-[10px] text-gray-400 block">Mensal (R$)</label>
-                        <input
-                          type="number"
-                          value={landingData.preco_profissional_mensal || 99}
-                          onChange={(e) => setLandingData({ ...landingData, preco_profissional_mensal: Number(e.target.value) })}
-                          className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
-                        />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {(landingData.recursos || []).map((rec, idx) => (
+                    <div key={rec.id || idx} className="p-4 bg-gray-800/80 border border-gray-700 rounded-xl relative space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Recurso #{idx + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRecurso(idx)}
+                          className="text-red-400 hover:text-red-300 p-1 text-xs rounded hover:bg-red-500/10 transition"
+                          title="Excluir recurso"
+                        >
+                          🗑️ Excluir
+                        </button>
                       </div>
-                      <div>
-                        <label className="text-[10px] text-gray-400 block">Anual (R$)</label>
-                        <input
-                          type="number"
-                          value={landingData.preco_profissional_anual || 990}
-                          onChange={(e) => setLandingData({ ...landingData, preco_profissional_anual: Number(e.target.value) })}
-                          className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
-                        />
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="p-3 bg-gray-800/60 rounded-lg border border-gray-700/60 space-y-2">
-                    <span className="text-xs font-bold text-gray-300">Plano Enterprise</span>
-                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] text-gray-400 block">Mensal (R$)</label>
+                        <label className="text-[10px] text-gray-400 block font-semibold mb-1">Título do Recurso</label>
                         <input
-                          type="number"
-                          value={landingData.preco_enterprise_mensal || 199}
-                          onChange={(e) => setLandingData({ ...landingData, preco_enterprise_mensal: Number(e.target.value) })}
-                          className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                          type="text"
+                          value={rec.titulo || ''}
+                          onChange={(e) => handleUpdateRecurso(idx, 'titulo', e.target.value)}
+                          className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
                         />
                       </div>
+
                       <div>
-                        <label className="text-[10px] text-gray-400 block">Anual (R$)</label>
-                        <input
-                          type="number"
-                          value={landingData.preco_enterprise_anual || 1990}
-                          onChange={(e) => setLandingData({ ...landingData, preco_enterprise_anual: Number(e.target.value) })}
-                          className="w-full px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                        <label className="text-[10px] text-gray-400 block font-semibold mb-1">Descrição</label>
+                        <textarea
+                          rows={2}
+                          value={rec.descricao || ''}
+                          onChange={(e) => handleUpdateRecurso(idx, 'descricao', e.target.value)}
+                          className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
                         />
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] text-gray-400 block font-semibold mb-1">Cor do Destaque</label>
+                        <select
+                          value={rec.cor || 'blue'}
+                          onChange={(e) => handleUpdateRecurso(idx, 'cor', e.target.value)}
+                          className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                        >
+                          <option value="blue">🔵 Azul</option>
+                          <option value="purple">🟣 Roxo</option>
+                          <option value="green">🟢 Verde</option>
+                          <option value="yellow">🟡 Amarelo</option>
+                          <option value="pink">🌸 Rosa</option>
+                          <option value="cyan">🌊 Ciano</option>
+                          <option value="red">🔴 Vermelho</option>
+                        </select>
                       </div>
                     </div>
-                  </div>
+                  ))}
+                  {(landingData.recursos || []).length === 0 && (
+                    <div className="col-span-full py-8 text-center text-gray-500 text-xs">
+                      Nenhum recurso cadastrado. Clique em "+ Novo Recurso" para adicionar.
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Card 4: Documentos Legais com Scroll */}
+              {/* Card 5: Planos Completos & Funcionalidades */}
+              <div className="bg-gray-900/60 border border-gray-700/60 rounded-xl p-5 space-y-4">
+                <div className="border-b border-gray-800 pb-3">
+                  <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-wider flex items-center gap-2">
+                    <span>💳</span> 5. Planos & Funcionalidades da Landing Page
+                  </h3>
+                  <p className="text-gray-400 text-xs mt-0.5">
+                    Edite nomes, valores mensais/anuais, tags de destaque e gerencie cada linha de funcionalidade de cada plano
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {(landingData.planos || []).map((plano, pIdx) => {
+                    const isDestaque = !!plano.tagDestaque;
+                    return (
+                      <div
+                        key={plano.id || pIdx}
+                        className={`p-4 rounded-xl border space-y-4 ${
+                          isDestaque ? 'bg-amber-950/20 border-amber-600/60 ring-1 ring-amber-500/40' : 'bg-gray-800/80 border-gray-700'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs font-bold uppercase tracking-wider ${isDestaque ? 'text-amber-400' : 'text-gray-300'}`}>
+                            Plano #{pIdx + 1}: {plano.nome}
+                          </span>
+                          {isDestaque && (
+                            <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-bold">
+                              Destaque
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-gray-400 block font-semibold mb-1">Nome do Plano</label>
+                            <input
+                              type="text"
+                              value={plano.nome || ''}
+                              onChange={(e) => handleUpdatePlano(pIdx, 'nome', e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-400 block font-semibold mb-1">Tag Destaque (opcional)</label>
+                            <input
+                              type="text"
+                              placeholder="ex: Mais escolhido"
+                              value={plano.tagDestaque || ''}
+                              onChange={(e) => handleUpdatePlano(pIdx, 'tagDestaque', e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-gray-400 block font-semibold mb-1">Preço Mensal (R$)</label>
+                            <input
+                              type="number"
+                              value={plano.precoMensal ?? 0}
+                              onChange={(e) => handleUpdatePlano(pIdx, 'precoMensal', Number(e.target.value))}
+                              className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-400 block font-semibold mb-1">Preço Anual (R$)</label>
+                            <input
+                              type="number"
+                              value={plano.precoAnual ?? 0}
+                              onChange={(e) => handleUpdatePlano(pIdx, 'precoAnual', Number(e.target.value))}
+                              className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-gray-400 block font-semibold mb-1">Subtítulo</label>
+                          <input
+                            type="text"
+                            value={plano.subtituloLanding || ''}
+                            onChange={(e) => handleUpdatePlano(pIdx, 'subtituloLanding', e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-gray-400 block font-semibold mb-1">Descrição</label>
+                          <textarea
+                            rows={2}
+                            value={plano.descricaoLanding || ''}
+                            onChange={(e) => handleUpdatePlano(pIdx, 'descricaoLanding', e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] text-gray-400 block font-semibold mb-1">Texto do Botão CTA</label>
+                          <input
+                            type="text"
+                            placeholder="ex: Começar 30 dias grátis"
+                            value={plano.textoBotao || ''}
+                            onChange={(e) => handleUpdatePlano(pIdx, 'textoBotao', e.target.value)}
+                            className="w-full px-2.5 py-1.5 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                          />
+                        </div>
+
+                        {/* Lista de Funcionalidades do Plano */}
+                        <div className="pt-2 border-t border-gray-700">
+                          <label className="text-[11px] text-yellow-400 font-bold block mb-2">
+                            Funcionalidades ({ (plano.funcionalidades || []).length })
+                          </label>
+                          <ul className="space-y-1.5 mb-2.5 max-h-40 overflow-y-auto pr-1">
+                            {(plano.funcionalidades || []).map((feat, fIdx) => (
+                              <li key={fIdx} className="flex items-center justify-between gap-2 p-1.5 bg-gray-700/60 rounded text-xs text-gray-200">
+                                <span className="truncate flex-1">✓ {feat}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveFuncionalidade(pIdx, fIdx)}
+                                  className="text-red-400 hover:text-red-300 px-1 font-bold text-xs"
+                                  title="Remover funcionalidade"
+                                >
+                                  ✕
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+
+                          {/* Adicionar Funcionalidade */}
+                          <div className="flex gap-1.5">
+                            <input
+                              type="text"
+                              placeholder="Nova funcionalidade..."
+                              value={newFeatureInput[pIdx] || ''}
+                              onChange={(e) => setNewFeatureInput({ ...newFeatureInput, [pIdx]: e.target.value })}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleAddFuncionalidade(pIdx);
+                                }
+                              }}
+                              className="flex-1 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-xs text-white"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleAddFuncionalidade(pIdx)}
+                              className="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-bold transition"
+                            >
+                              + Add
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Card 6: Documentos Legais com Scroll */}
               <div className="bg-gray-900/60 border border-gray-700/60 rounded-xl p-5 space-y-4">
                 <h3 className="text-sm font-bold text-yellow-500 uppercase tracking-wider flex items-center gap-2">
-                  <span>⚖️</span> 4. Documentos Legais Integrados
+                  <span>⚖️</span> 6. Documentos Legais Integrados
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
