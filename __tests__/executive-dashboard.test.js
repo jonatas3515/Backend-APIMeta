@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 jest.mock('../lib/apiClient', () => ({
@@ -51,6 +51,7 @@ jest.mock('next/router', () => ({
 jest.mock('../components/ProcessAnalyticsPanel', () => () => <div data-testid="analytics-mock" />);
 jest.mock('../components/Sidebar', () => () => <div data-testid="sidebar-mock" />);
 jest.mock('../components/MetricsDashboard', () => () => <div data-testid="metrics-mock" />);
+jest.mock('../components/TasksQuickPanel', () => () => <div data-testid="tasks-mock" />);
 jest.mock('../components/GlobalSearch', () => () => null);
 jest.mock('../components/KeyboardShortcuts', () => () => null);
 jest.mock('../components/NotificationPermissionPrompt', () => () => null);
@@ -82,6 +83,20 @@ describe('ExecutiveDashboard', () => {
     expect(screen.getByText('Caso Urgente')).toBeInTheDocument();
     expect(screen.getByTestId('kpi-new-month')).toBeInTheDocument();
     expect(screen.getByTestId('action-new-case')).toBeInTheDocument();
+    expect(screen.getByTestId('tasks-mock')).toBeInTheDocument();
+  });
+
+  test('alterna entre visao executiva e funil via seletor', async () => {
+    render(<ExecutiveDashboard />);
+    await waitFor(() => expect(screen.getByTestId('kpi-cases')).toBeInTheDocument());
+    expect(screen.queryByTestId('metrics-mock')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText(/Atendimento & Funil/));
+    await waitFor(() => expect(screen.getByTestId('metrics-mock')).toBeInTheDocument());
+    expect(screen.queryByTestId('kpi-cases')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText(/Visão Executiva & Processos/));
+    await waitFor(() => expect(screen.getByTestId('kpi-cases')).toBeInTheDocument());
   });
 });
 

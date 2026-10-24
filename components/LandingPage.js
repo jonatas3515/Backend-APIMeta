@@ -93,7 +93,7 @@ export default function LandingPage({ onOpenLogin }) {
         </span>
         <h1 className="text-3xl md:text-5xl font-bold leading-tight mb-6">
           O Sistema Operacional Completo para{' '}
-          <span className="bg-gradient-to-r from-red-500 to-rose-600 bg-clip-text text-transparent">
+          <span className="text-rose-400 font-extrabold">
             Escritórios de Advocacia
           </span>
         </h1>
@@ -104,7 +104,7 @@ export default function LandingPage({ onOpenLogin }) {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={() => setSignupOpen(true)}
-            className="px-8 py-3 rounded-lg font-semibold text-white bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 shadow-lg shadow-red-500/25 transition"
+            className="px-8 py-3 rounded-lg font-bold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-lg shadow-red-500/25 transition"
           >
             Começar 14 dias grátis
           </button>
@@ -121,7 +121,7 @@ export default function LandingPage({ onOpenLogin }) {
       <section className="max-w-6xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {FEATURES.map((f) => (
-            <div key={f.title} className="bg-gray-800 border border-gray-700 rounded-lg p-5 hover:border-red-500/50 transition">
+            <div key={f.title} className="bg-gray-800/90 border border-gray-700/80 rounded-lg p-5 hover:border-red-500/50 transition">
               <span className="text-3xl">{f.icon}</span>
               <h3 className="font-bold mt-3 mb-2 text-sm">{f.title}</h3>
               <p className="text-xs text-gray-400">{f.description}</p>
@@ -142,8 +142,8 @@ export default function LandingPage({ onOpenLogin }) {
                 key={key}
                 className={`relative rounded-lg p-6 flex flex-col ${
                   highlight
-                    ? 'bg-gray-800 border-2 border-red-500 shadow-lg shadow-red-500/25 md:-translate-y-2'
-                    : 'bg-gray-800/60 border border-gray-700'
+                    ? 'bg-gray-800/90 border-2 border-red-500 shadow-lg shadow-red-500/25 md:-translate-y-2'
+                    : 'bg-gray-800/90 border border-gray-700/80'
                 }`}
               >
                 {highlight && (
@@ -161,7 +161,7 @@ export default function LandingPage({ onOpenLogin }) {
                   onClick={() => setSignupOpen(true)}
                   className={`w-full py-2.5 rounded-lg font-semibold transition ${
                     highlight
-                      ? 'bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white shadow-lg shadow-red-500/25'
+                      ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold shadow-lg shadow-red-500/25'
                       : 'bg-gray-700 hover:bg-gray-600 text-white'
                   }`}
                 >
@@ -216,7 +216,7 @@ export default function LandingPage({ onOpenLogin }) {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-2.5 rounded-lg font-semibold text-white bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 shadow-lg shadow-red-500/25 transition disabled:opacity-60"
+                className="w-full py-2.5 rounded-lg font-bold text-white bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-lg shadow-red-500/25 transition disabled:opacity-60"
               >
                 {submitting ? 'Criando...' : 'Criar minha conta grátis'}
               </button>

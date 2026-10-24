@@ -4,6 +4,8 @@ import { apiJson } from '../lib/apiClient';
 import { useAuth } from '../lib/useAuth';
 import { safeError } from '../lib/safeLogger';
 import ProcessAnalyticsPanel from './ProcessAnalyticsPanel';
+import MetricsDashboard from './MetricsDashboard';
+import TasksQuickPanel from './TasksQuickPanel';
 
 const STEP_LABELS = {
   conciliacao: 'Conciliação', instrucao: 'Instrução', sentenca: 'Sentença',
@@ -29,6 +31,7 @@ export default function ExecutiveDashboard({ onNavigateTab }) {
   const [cases, setCases] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState('executive');
 
   useEffect(() => {
     let mounted = true;
@@ -77,7 +80,10 @@ export default function ExecutiveDashboard({ onNavigateTab }) {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900" data-testid="dashboard-greeting">{greeting}</h1>
+          <div className="flex items-center gap-3">
+            <img src="/JNC.png" alt="JNC" className="h-9 w-9 object-contain" />
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900" data-testid="dashboard-greeting">{greeting}</h1>
+          </div>
           <p className="text-sm text-gray-500">
             {office?.name || 'Neves & Costa Advogados'}
             {office?.plan && (
@@ -89,6 +95,36 @@ export default function ExecutiveDashboard({ onNavigateTab }) {
         </div>
       </div>
 
+      {/* Seletor de visao */}
+      <div className="flex gap-2" data-testid="dashboard-view-selector">
+        <button
+          onClick={() => setView('executive')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+            view === 'executive'
+              ? 'bg-nc-black text-white'
+              : 'bg-white text-gray-700 border hover:bg-gray-50'
+          }`}
+        >
+          📊 Visão Executiva & Processos
+        </button>
+        <button
+          onClick={() => setView('funil')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+            view === 'funil'
+              ? 'bg-nc-black text-white'
+              : 'bg-white text-gray-700 border hover:bg-gray-50'
+          }`}
+        >
+          📈 Atendimento & Funil
+        </button>
+      </div>
+
+      {view === 'funil' && (
+        <MetricsDashboard conversations={conversations} />
+      )}
+
+      {view === 'executive' && (
+      <>
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 bg-white rounded-lg shadow border-l-4 border-blue-500">
@@ -142,6 +178,9 @@ export default function ExecutiveDashboard({ onNavigateTab }) {
         </div>
       </section>
 
+      {/* Tarefas Juridicas */}
+      <TasksQuickPanel />
+
       {/* Próximos prazos */}
       <section className="bg-white rounded-lg shadow p-4">
         <h2 className="font-bold text-sm text-gray-800 mb-3">🗓️ Próximos Prazos</h2>
@@ -179,6 +218,8 @@ export default function ExecutiveDashboard({ onNavigateTab }) {
           </table>
         )}
       </section>
+      </>
+      )}
     </div>
   );
 }
