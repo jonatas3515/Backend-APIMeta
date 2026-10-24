@@ -109,7 +109,7 @@ export default function ExecutiveDashboard({ onNavigateTab }) {
   }, [cases]);
 
   return (
-    <div className="p-4 md:p-6 space-y-6 w-full" data-testid="executive-dashboard">
+    <div className="p-4 md:p-6 space-y-6 w-full h-full overflow-y-auto" data-testid="executive-dashboard">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>

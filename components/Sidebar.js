@@ -37,22 +37,22 @@ export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' })
       <div
         className={`hidden md:flex ${widthClass} bg-nc-black flex-col items-center py-4 border-r border-nc-gray-800 flex-shrink-0`}
       >
-        <img src="/JNC.png" alt="JNC Logo" className="w-8 h-8 object-contain" />
+        <img src="/JNC.png" alt="JNC Logo" className="w-9 h-9 object-contain" />
 
-        <nav className="flex-1 flex flex-col space-y-2 mt-6 w-full px-2 overflow-y-auto scrollbar-thin">
+        <nav className="flex-1 flex flex-col space-y-1.5 mt-5 w-full px-2 overflow-y-auto scrollbar-thin">
           {visibleItems.map((item) => (
             <button
               key={item.key}
               onClick={() => handleClick(item)}
-              className={`p-2 rounded transition relative flex flex-col items-center justify-center gap-0.5 ${
+              className={`w-full h-14 min-h-[56px] rounded-lg transition relative flex flex-col items-center justify-center p-1 gap-1 ${
                 activeTab === item.key
-                  ? 'text-nc-yellow bg-nc-gray-800/50'
-                  : 'text-nc-gray-400 hover:text-nc-white hover:bg-nc-gray-800/30'
+                  ? 'text-nc-yellow bg-nc-gray-800/80 border border-nc-yellow/30 shadow-sm'
+                  : 'text-nc-gray-400 hover:text-nc-white hover:bg-nc-gray-800/40'
               }`}
               title={item.label}
             >
-              <span className="text-base leading-none">{item.icon}</span>
-              <span className="text-[9px] truncate w-full text-center leading-tight">{item.label}</span>
+              <span className="text-xl leading-none">{item.icon}</span>
+              <span className="text-[10px] w-full text-center leading-tight truncate px-0.5 font-medium">{item.label}</span>
             </button>
           ))}
         </nav>
@@ -61,11 +61,11 @@ export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' })
           <OfficeBadge />
           <button
             onClick={handleSignOut}
-            className="w-full p-2 rounded transition text-nc-gray-500 hover:text-red-400 hover:bg-nc-gray-800/50 flex flex-col items-center gap-0.5"
+            className="w-full h-14 min-h-[56px] rounded-lg transition text-nc-gray-500 hover:text-red-400 hover:bg-nc-gray-800/50 flex flex-col items-center justify-center gap-1 p-1"
             title="Sair"
           >
-            <span className="text-base leading-none">🚪</span>
-            <span className="text-[9px]">Sair</span>
+            <span className="text-xl leading-none">🚪</span>
+            <span className="text-[10px] font-medium">Sair</span>
           </button>
         </div>
       </div>

@@ -2,6 +2,30 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { formatPhone } from '../lib/formatters';
 
+function calcAge(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return null;
+  const today = new Date();
+  let age = today.getFullYear() - d.getFullYear();
+  const m = today.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < d.getDate())) {
+    age--;
+  }
+  return age >= 0 ? age : null;
+}
+
+function formatBirthday(dateStr) {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '-';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const age = calcAge(dateStr);
+  return age !== null ? `${day}/${month} (${age} anos)` : `${day}/${month}`;
+}
+
+
 export default function ClientsList({ onSelectClient }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -231,9 +255,9 @@ export default function ClientsList({ onSelectClient }) {
               <div className="col-span-1">#</div>
               <div className="col-span-5 md:col-span-3">Nome</div>
               <div className="col-span-5 md:col-span-2">Telefone</div>
-              <div className="hidden md:col-span-2 md:block">Primeiro Contato</div>
+              <div className="hidden md:col-span-2 md:block">🎂 Aniversário / Idade</div>
               <div className="hidden md:col-span-2 md:block">Último Contato</div>
-              <div className="hidden md:col-span-1 md:block">Mensagens</div>
+              <div className="hidden md:col-span-1 md:block">Msgs</div>
               <div className="col-span-1">Ações</div>
             </div>
 
@@ -287,8 +311,8 @@ export default function ClientsList({ onSelectClient }) {
                   📱 {formatPhone(client.client_phone)}
                 </div>
 
-                <div className="hidden md:col-span-2 md:block text-gray-600 text-xs">
-                  {new Date(client.created_at).toLocaleDateString('pt-BR')}
+                <div className="hidden md:col-span-2 md:block text-xs font-medium text-gray-800">
+                  {formatBirthday(client.birth_or_foundation_date)}
                 </div>
 
                 <div className="hidden md:col-span-2 md:block text-gray-600 text-xs">

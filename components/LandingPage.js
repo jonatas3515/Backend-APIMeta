@@ -560,8 +560,8 @@ export default function LandingPage({ onOpenLogin }) {
               <ul className="space-y-2 text-gray-400">
                 <li><a href="#features" className="hover:text-white transition-colors">Recursos</a></li>
                 <li><a href="#pricing" className="hover:text-white transition-colors">Planos</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Termos de Uso</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Privacidade</a></li>
+                <li><a href="/termos-de-uso" className="hover:text-white transition-colors">Termos de Uso</a></li>
+                <li><a href="/politica-de-privacidade" className="hover:text-white transition-colors">Política de Privacidade</a></li>
               </ul>
             </div>
 

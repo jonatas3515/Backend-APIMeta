@@ -23,6 +23,7 @@ import ExecutiveDashboard from '../components/ExecutiveDashboard';
 import PrioridadesPanel from '../components/PrioridadesPanel';
 import TarefasPanel from '../components/TarefasPanel';
 import MonthlyCalendarPanel from '../components/MonthlyCalendarPanel';
+import RelatoriosPanel from '../components/RelatoriosPanel';
 import Setup from './setup';
 import { useAuth } from '../lib/useAuth';
 import useAreaFilter from '../hooks/useAreaFilter';
@@ -560,7 +561,7 @@ export default function Home() {
             </div>
           </header>
           <ActiveFilterBanner />
-          <main className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden relative min-h-0 pb-16 md:pb-0 w-full min-w-0 max-w-full overflow-x-hidden">
+          <main className={`flex-1 flex flex-col ${activeTab === 'chat' ? 'md:flex-row md:overflow-hidden' : 'overflow-y-auto'} relative min-h-0 pb-16 md:pb-0 w-full min-w-0 max-w-full overflow-x-hidden`}>
           {activeTab === 'chat' ? (
             <>
               {chatView === 'conversas' ? (
