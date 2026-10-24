@@ -52,10 +52,12 @@ export default function Login({ onLogin }) {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-nc-black">
       <img
-        src="/Logo transparente.png"
-        alt="N&C Logo"
-        className="w-64 h-64 mb-6 object-contain"
+        src="/JusJNC_White.png"
+        alt="JusJNC"
+        className="h-12 mx-auto mb-2 object-contain"
       />
+      <h1 className="text-center text-nc-text font-bold text-xl mb-1">JusJNC — Plataforma Jurídica</h1>
+      <p className="text-center text-nc-text-secondary text-sm mb-6">Acesse o painel do seu escritório</p>
 
       <div className="bg-nc-white rounded-nc shadow-card p-8 w-full max-w-md border border-nc-gray-300">
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -123,6 +125,11 @@ export default function Login({ onLogin }) {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
+        <div className="mt-4 text-center">
+          <a href="/" className="text-xs text-nc-text-muted hover:text-nc-text transition">
+            ← Voltar para a página inicial
+          </a>
+        </div>
         <div className="mt-6 pt-4 border-t border-nc-gray-200 text-center space-y-2">
           <a
             href="/landing"

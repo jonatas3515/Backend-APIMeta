@@ -44,6 +44,11 @@ export default function Home() {
   const [supabaseReady, setSupabaseReady] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showLogin, setShowLogin] = useState(false);
+
+  // ?login=1 abre a tela de login direto (usado pelo botao Entrar da /landing)
+  useEffect(() => {
+    if (router.isReady && router.query.login) setShowLogin(true);
+  }, [router.isReady, router.query]);
   const [chatView, setChatView] = useState('conversas');
   const [modelsRoutinesView, setModelsRoutinesView] = useState('templates');
   const [configView, setConfigView] = useState('users');
