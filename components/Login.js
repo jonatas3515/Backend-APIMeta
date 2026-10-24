@@ -123,6 +123,20 @@ export default function Login({ onLogin }) {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
+        <div className="mt-6 pt-4 border-t border-nc-gray-200 text-center space-y-2">
+          <a
+            href="/landing"
+            className="block text-sm font-medium text-red-500 hover:text-red-600 transition"
+          >
+            Conheça os Planos e Recursos do JusJNC SaaS →
+          </a>
+          <a
+            href="/landing#planos"
+            className="block text-xs text-nc-text-secondary hover:text-red-500 transition"
+          >
+            Criar conta para meu escritório (14 dias grátis)
+          </a>
+        </div>
       </div>
     </div>
   );
