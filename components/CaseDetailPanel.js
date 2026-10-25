@@ -3,6 +3,7 @@ import CaseInsightsPanel from './CaseInsightsPanel';
 import CaseProcessMonitoring from './CaseProcessMonitoring';
 import CaseRoutinesPanel from './CaseRoutinesPanel';
 import GeneratedDocumentsPanel from './GeneratedDocumentsPanel';
+import { stripFeeFromNotes } from '../lib/caseFeeHelper';
 
 const TABS = [
   { key: 'visao-geral', label: 'Visão Geral' },
@@ -308,10 +309,10 @@ export default function CaseDetailPanel({
               )}
             </div>
 
-            {caseItem.notes && (
+            {stripFeeFromNotes(caseItem.notes) && (
               <div className="p-3 bg-gray-50 rounded border">
                 <p className="text-xs text-gray-500">Notas</p>
-                <p className="text-sm whitespace-pre-wrap">{caseItem.notes}</p>
+                <p className="text-sm whitespace-pre-wrap">{stripFeeFromNotes(caseItem.notes)}</p>
               </div>
             )}
 

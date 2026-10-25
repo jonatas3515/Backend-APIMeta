@@ -20,7 +20,7 @@ import CaseInsightsPanel from './CaseInsightsPanel';
 import ConversationSelectorModal from './ConversationSelectorModal';
 import CaseDecisionExtractorModal from './CaseDecisionExtractorModal';
 import CaseFinalizeModal from './CaseFinalizeModal';
-import { parseCaseFee, calculateFeeAmount, serializeFeeIntoNotes } from '../lib/caseFeeHelper';
+import { parseCaseFee, calculateFeeAmount, serializeFeeIntoNotes, stripFeeFromNotes } from '../lib/caseFeeHelper';
 
 const PROCEDURAL_STEP_LABELS = {
   conciliacao: 'Conciliação',
@@ -421,7 +421,7 @@ export default function CasesPanel({ notice }) {
       priority: caseItem.priority || 'media',
       deadline_date: caseItem.deadline_date || '',
       deadline_type: caseItem.deadline_type || '',
-      notes: caseItem.notes || '',
+      notes: stripFeeFromNotes(caseItem.notes),
       process_number: caseItem.process_number || '',
       court: caseItem.court || '',
       court_division: caseItem.court_division || '',

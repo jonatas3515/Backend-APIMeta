@@ -17,6 +17,10 @@ import { safeError } from '../lib/safeLogger';
 
 const NotificationContext = createContext(null);
 
+const LIST_THROTTLE_MS = 5000;
+const COUNT_THROTTLE_MS = 3500;
+const FORCED_LIST_THROTTLE_MS = 3500;
+
 const initialState = {
   notifications: [],
   unreadCount: 0,
@@ -262,9 +266,7 @@ export function NotificationProvider({ children }) {
     return promise;
   }, [handleResponse]);
 
-  const LIST_THROTTLE_MS = 5000;
-  const COUNT_THROTTLE_MS = 3500;
-  const FORCED_LIST_THROTTLE_MS = 3500;
+
 
   const refreshNotifications = useCallback(async ({ force = false } = {}) => {
     if (
