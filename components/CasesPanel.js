@@ -722,7 +722,7 @@ export default function CasesPanel({ notice }) {
         <h2 className="text-xl sm:text-2xl font-bold">Casos</h2>
         <div className="flex flex-wrap gap-2 items-center">
           <button
-            onClick={() => setDecisionExtractorCase(selectedCase || cases[0] || {})}
+            onClick={() => setDecisionExtractorCase({ isGeneral: true })}
             className="px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded font-bold text-xs shadow-sm inline-flex items-center gap-1.5 transition"
             title="Extrair prazos, audiências, decisões e honorários usando IA"
           >
@@ -1457,7 +1457,8 @@ export default function CasesPanel({ notice }) {
 
       {decisionExtractorCase && (
         <CaseDecisionExtractorModal
-          caseItem={decisionExtractorCase}
+          caseItem={decisionExtractorCase?.id ? decisionExtractorCase : null}
+          allCases={cases}
           onClose={() => setDecisionExtractorCase(null)}
           onRefresh={fetchCases}
         />

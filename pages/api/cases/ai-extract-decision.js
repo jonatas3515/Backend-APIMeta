@@ -35,6 +35,17 @@ ${decisionText.slice(0, 6000)}
 
 Retorne ESTRITAMENTE um objeto JSON válido (sem markdown em volta, sem introdução e sem explicações), seguindo EXATAMENTE esta estrutura:
 {
+  "dados_processo": {
+    "numero_processo": "<Número CNJ completo se encontrado, ex: 0001620-89.2025.8.05.0120 ou null>",
+    "tribunal": "<TJ | TRT | TRF | STJ | STF ou null>",
+    "comarca": "<Nome da comarca ou município se identificado, ex: Itamaraju ou null>",
+    "vara": "<Nome da vara ou juízo de origem se identificado, ex: Vara do Sistema dos Juizados ou null>",
+    "autor": "<Nome da parte autora / exequente / recorrida se identificado>",
+    "reu": "<Nome da parte ré / executada / recorrente se identificado>",
+    "cliente_provavel": "<Nome da parte que é o cliente (normalmente a pessoa física ou recorrida/exequente)>",
+    "titulo_sugerido": "<Título do caso, ex: Cumprimento de Sentença — Beatriz Soares Andrade>",
+    "area_juridica": "<civel | trabalhista | consumidor | previdenciario | outro>"
+  },
   "tipo_ato": "<Decisão Monocrática | Sentença | Despacho | Acórdão | Certidão | Audiência Designada | Intimação>",
   "resumo": "<Resumo claro e objetivo em 1 a 3 frases do que foi decidido>",
   "resultado": "<recurso_negado_provimento | recurso_provido | procedencia | procedencia_parcial | improcedencia | acordo_homologado | intimacao_prazo | audiencia_marcada | mero_expediente>",
@@ -70,9 +81,10 @@ Retorne ESTRITAMENTE um objeto JSON válido (sem markdown em volta, sem introdu�
 }
 
 Regras Cruciais:
-1. Se houver condenação expressa em valor ou honorários (ex: "honorários em 20% do valor da condenação"), preencha "honorarios_percentual": 20 e "honorarios_base": "condenacao". Se houver o valor numérico da condenação no texto, calcule "honorarios_valor_estimado".
-2. Se o recurso foi improvido/negado provimento e mantida a sentença condenatória, a fase sugerida deve ser "execucao" (cumprimento de sentença).
-3. Seja estrito: não invente datas ou valores ausentes no texto.`;
+1. Extraia o número do processo CNJ e dados das partes (autor/réu) com máxima fidelidade.
+2. Se houver condenação expressa em valor ou honorários (ex: "honorários em 20% do valor da condenação"), preencha "honorarios_percentual": 20 e "honorarios_base": "condenacao". Se houver o valor numérico da condenação no texto, calcule "honorarios_valor_estimado".
+3. Se o recurso foi improvido/negado provimento e mantida a sentença condenatória ou execução, a fase sugerida deve ser "execucao" (cumprimento de sentença).
+4. Seja estrito: não invente datas ou valores ausentes no texto.`;
 }
 
 async function handler(req, res) {
