@@ -161,9 +161,13 @@ async function handleGet(req, res) {
         return res.status(200).json(cached);
       }
 
+      const selectClause = user.role === 'admin'
+        ? '*, conversations(assigned_user_id)'
+        : '*, conversations!inner(assigned_user_id)';
+
       const { data, error } = await supabase
         .from('cases')
-        .select('*, conversations!inner(assigned_user_id)')
+        .select(selectClause)
         .eq('id', id)
         .maybeSingle();
 
@@ -203,9 +207,13 @@ async function handleGet(req, res) {
       return res.status(200).json(cachedList);
     }
 
+    const selectClause = user.role === 'admin'
+      ? '*, conversations(assigned_user_id)'
+      : '*, conversations!inner(assigned_user_id)';
+
     let query = supabase
       .from('cases')
-      .select('*, conversations!inner(assigned_user_id)');
+      .select(selectClause);
 
     if (user.role !== 'admin') {
       query = query.eq('conversations.assigned_user_id', user.id);

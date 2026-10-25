@@ -111,7 +111,16 @@ export default function CasesPanel({ notice }) {
     fee_basis: 'condenacao',
     awarded_value: '',
     fee_fixed_value: '',
-    fee_final_value: ''
+    fee_final_value: '',
+    fee_paid: false,
+    fee_has_entry: false,
+    fee_entry_value: '',
+    fee_entry_paid: false,
+    fee_entry_date: '',
+    fee_is_installment: false,
+    fee_installments_count: '1',
+    fee_due_date: '',
+    fee_notify_due: true
   });
 
   // Sincroniza com query string (caseId, caseView) e carrega aba de detalhe
@@ -345,10 +354,20 @@ export default function CasesPanel({ notice }) {
         fee_basis: formData.fee_basis || 'condenacao',
         awarded_value: formData.awarded_value ? Number(formData.awarded_value) : null,
         fee_fixed_value: formData.fee_fixed_value ? Number(formData.fee_fixed_value) : null,
-        fee_final_value: formData.fee_final_value ? Number(formData.fee_final_value) : null
+        fee_final_value: formData.fee_final_value ? Number(formData.fee_final_value) : null,
+        fee_paid: Boolean(formData.fee_paid),
+        fee_has_entry: Boolean(formData.fee_has_entry),
+        fee_entry_value: formData.fee_entry_value ? Number(formData.fee_entry_value) : null,
+        fee_entry_paid: Boolean(formData.fee_entry_paid),
+        fee_entry_date: formData.fee_entry_date || null,
+        fee_is_installment: Boolean(formData.fee_is_installment),
+        fee_installments_count: formData.fee_installments_count ? Number(formData.fee_installments_count) : 1,
+        fee_due_date: formData.fee_due_date || null,
+        fee_notify_due: formData.fee_notify_due !== false
       };
       payload.notes = serializeFeeIntoNotes(payload.notes, feeData);
 
+      let savedCaseId = editingCase ? editingCase.id : null;
       if (editingCase) {
         const { data, error } = await supabase
           .from('cases')
@@ -360,11 +379,31 @@ export default function CasesPanel({ notice }) {
         if (error) throw error;
         setSelectedCase((prev) => (prev && prev.id === editingCase.id ? data : prev));
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('cases')
-          .insert([payload]);
+          .insert([payload])
+          .select()
+          .single();
 
         if (error) throw error;
+        if (data) savedCaseId = data.id;
+      }
+
+      // Agenda notificação de vencimento na tabela tasks se selecionado
+      if (formData.fee_notify_due && formData.fee_due_date && !formData.fee_paid && savedCaseId) {
+        try {
+          await supabase.from('tasks').insert([{
+            title: `Cobrança de Honorários — ${payload.title}`,
+            description: `Vencimento de honorários agendado para ${formData.fee_due_date}. Valor: R$ ${formData.fee_fixed_value || 'a apurar'}.`,
+            case_id: savedCaseId,
+            due_date: formData.fee_due_date,
+            priority: 'alta',
+            status: 'pendente',
+            done: false
+          }]);
+        } catch (e) {
+          console.warn('[CASES] Erro ao registrar tarefa de honorários:', e);
+        }
       }
 
       setShowForm(false);
@@ -388,7 +427,22 @@ export default function CasesPanel({ notice }) {
         judicial_district: '',
         procedural_step: '',
         case_value: '',
-        distribution_date: ''
+        distribution_date: '',
+        fee_type: 'percentual',
+        fee_percentage: '30',
+        fee_basis: 'condenacao',
+        awarded_value: '',
+        fee_fixed_value: '',
+        fee_final_value: '',
+        fee_paid: false,
+        fee_has_entry: false,
+        fee_entry_value: '',
+        fee_entry_paid: false,
+        fee_entry_date: '',
+        fee_is_installment: false,
+        fee_installments_count: '1',
+        fee_due_date: '',
+        fee_notify_due: true
       });
       fetchCases();
       setActionMessage({ type: 'success', text: 'Caso salvo com sucesso.' });
@@ -434,7 +488,16 @@ export default function CasesPanel({ notice }) {
       fee_basis: feeInfo.fee_basis || 'condenacao',
       awarded_value: feeInfo.awarded_value != null ? String(feeInfo.awarded_value) : '',
       fee_fixed_value: feeInfo.fee_fixed_value != null ? String(feeInfo.fee_fixed_value) : '',
-      fee_final_value: feeInfo.fee_final_value != null ? String(feeInfo.fee_final_value) : ''
+      fee_final_value: feeInfo.fee_final_value != null ? String(feeInfo.fee_final_value) : '',
+      fee_paid: feeInfo.fee_paid || false,
+      fee_has_entry: feeInfo.fee_has_entry || false,
+      fee_entry_value: feeInfo.fee_entry_value != null ? String(feeInfo.fee_entry_value) : '',
+      fee_entry_paid: feeInfo.fee_entry_paid || false,
+      fee_entry_date: feeInfo.fee_entry_date || '',
+      fee_is_installment: feeInfo.fee_is_installment || false,
+      fee_installments_count: feeInfo.fee_installments_count != null ? String(feeInfo.fee_installments_count) : '1',
+      fee_due_date: feeInfo.fee_due_date || '',
+      fee_notify_due: feeInfo.fee_notify_due !== false
     });
     setShowForm(true);
   };
@@ -848,25 +911,39 @@ export default function CasesPanel({ notice }) {
         </select>
       </div>
 
-      {/* Formulário */}
+      {/* Formulário Modal Centralizado */}
       {showForm && (
-        <div className="mb-6 p-4 border rounded bg-gray-50">
-          <h3 className="text-lg font-bold mb-4">{editingCase ? 'Editar Caso' : 'Novo Caso'}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              type="text"
-              placeholder="ID da conversa (opcional)"
-              value={formData.conversation_id}
-              onChange={(e) => setFormData({ ...formData, conversation_id: e.target.value })}
-              className="px-3 py-2 border rounded"
-            />
-            <input
-              type="text"
-              placeholder="Título do caso"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="px-3 py-2 border rounded"
-            />
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto" onClick={() => { setShowForm(false); setEditingCase(null); }}>
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-4xl max-h-[90vh] overflow-y-auto p-5 md:p-6 text-gray-900 animate-fadeIn my-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-3 border-b border-gray-200 mb-4">
+              <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900">
+                <span>{editingCase ? '✏️' : '➕'}</span>
+                <span>{editingCase ? `Editar Caso: ${editingCase.title}` : 'Novo Caso'}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => { setShowForm(false); setEditingCase(null); }}
+                className="text-gray-400 hover:text-gray-700 text-xl p-1 rounded-lg hover:bg-gray-100 transition"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                type="text"
+                placeholder="ID da conversa (opcional)"
+                value={formData.conversation_id}
+                onChange={(e) => setFormData({ ...formData, conversation_id: e.target.value })}
+                className="px-3 py-2 border rounded text-sm text-gray-900 bg-white"
+              />
+              <input
+                type="text"
+                placeholder="Título do caso *"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="px-3 py-2 border rounded text-sm font-semibold text-gray-900 bg-white"
+                required
+              />
             <input
               type="text"
               placeholder="Área jurídica"
@@ -1121,6 +1198,149 @@ export default function CasesPanel({ notice }) {
                   )}
                 </div>
 
+                {/* Opções de Pagamento, Entrada, Parcelamento e Notificação */}
+                <div className="mt-4 p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-white border border-gray-200">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={!!formData.fee_paid}
+                        onChange={(e) => setFormData({ ...formData, fee_paid: e.target.checked })}
+                        className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                      />
+                      <span className="text-xs font-bold text-gray-900">
+                        Honorários 100% Pagos / Recebidos (marcar se já recebeu o valor integral)
+                      </span>
+                    </label>
+                    {formData.fee_paid && (
+                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[11px] font-bold">
+                        ✓ Quitado / Recebido
+                      </span>
+                    )}
+                  </div>
+
+                  {!formData.fee_paid && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                      {/* Opção de Entrada */}
+                      <div className="p-3 bg-white rounded-lg border border-gray-200 space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-gray-800">
+                          <input
+                            type="checkbox"
+                            checked={!!formData.fee_has_entry}
+                            onChange={(e) => setFormData({ ...formData, fee_has_entry: e.target.checked })}
+                            className="h-3.5 w-3.5 rounded text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span>Cobrança de Valor de Entrada</span>
+                        </label>
+
+                        {formData.fee_has_entry && (
+                          <div className="space-y-2 pt-1 text-xs">
+                            <div>
+                              <label className="block text-[11px] text-gray-600 font-medium mb-0.5">Valor da Entrada (R$):</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                placeholder="Ex: 1000.00"
+                                value={formData.fee_entry_value || ''}
+                                onChange={(e) => setFormData({ ...formData, fee_entry_value: e.target.value })}
+                                className="w-full p-1.5 border rounded text-xs font-mono bg-gray-50 text-gray-900"
+                              />
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id="fee_entry_paid_input"
+                                checked={!!formData.fee_entry_paid}
+                                onChange={(e) => setFormData({ ...formData, fee_entry_paid: e.target.checked })}
+                                className="rounded text-emerald-600"
+                              />
+                              <label htmlFor="fee_entry_paid_input" className="text-[11px] text-gray-700 cursor-pointer font-medium">
+                                Entrada já foi paga pelo cliente
+                              </label>
+                            </div>
+                            <div>
+                              <label className="block text-[11px] text-gray-600 font-medium mb-0.5">Data de Vencimento / Pagamento da Entrada:</label>
+                              <input
+                                type="date"
+                                value={formData.fee_entry_date || ''}
+                                onChange={(e) => setFormData({ ...formData, fee_entry_date: e.target.value })}
+                                className="w-full p-1.5 border rounded text-xs bg-gray-50 text-gray-900"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Opção de Parcelamento */}
+                      <div className="p-3 bg-white rounded-lg border border-gray-200 space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-gray-800">
+                          <input
+                            type="checkbox"
+                            checked={!!formData.fee_is_installment}
+                            onChange={(e) => setFormData({ ...formData, fee_is_installment: e.target.checked })}
+                            className="h-3.5 w-3.5 rounded text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span>Honorários Parcelados</span>
+                        </label>
+
+                        {formData.fee_is_installment && (
+                          <div className="space-y-2 pt-1 text-xs">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-[11px] text-gray-600 font-medium mb-0.5">Qtd de Parcelas:</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="60"
+                                  placeholder="Ex: 3"
+                                  value={formData.fee_installments_count || '1'}
+                                  onChange={(e) => setFormData({ ...formData, fee_installments_count: e.target.value })}
+                                  className="w-full p-1.5 border rounded text-xs font-mono bg-gray-50 text-gray-900"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[11px] text-gray-600 font-medium mb-0.5">1º Vencimento:</label>
+                                <input
+                                  type="date"
+                                  value={formData.fee_due_date || ''}
+                                  onChange={(e) => setFormData({ ...formData, fee_due_date: e.target.value })}
+                                  className="w-full p-1.5 border rounded text-xs bg-gray-50 text-gray-900"
+                                />
+                              </div>
+                            </div>
+
+                            {formData.fee_fixed_value && (
+                              <div className="p-2 bg-indigo-50/70 border border-indigo-100 rounded text-[11px] text-indigo-900 font-semibold">
+                                {(() => {
+                                  const total = Number(formData.fee_fixed_value) || 0;
+                                  const entrada = formData.fee_has_entry ? (Number(formData.fee_entry_value) || 0) : 0;
+                                  const restante = Math.max(0, total - entrada);
+                                  const parcelas = Number(formData.fee_installments_count) || 1;
+                                  const valorParcela = restante / parcelas;
+                                  return `Restante a parcelar: R$ ${restante.toFixed(2)} (${parcelas}x de R$ ${valorParcela.toFixed(2)})`;
+                                })()}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Indicação por Notificação */}
+                  <div className="pt-1 flex items-center justify-between text-xs">
+                    <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-medium">
+                      <input
+                        type="checkbox"
+                        checked={formData.fee_notify_due !== false}
+                        onChange={(e) => setFormData({ ...formData, fee_notify_due: e.target.checked })}
+                        className="rounded text-amber-600 focus:ring-amber-500"
+                      />
+                      <span>🔔 Gerar notificação e alerta de vencimento para este pagamento</span>
+                    </label>
+                  </div>
+                </div>
+
                 {formData.fee_type === 'percentual' && formData.fee_basis === 'condenacao' && (
                   <div className="mt-3">
                     <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -1143,29 +1363,31 @@ export default function CasesPanel({ notice }) {
               </div>
             </div>
           </div>
-          <div className="flex gap-2 mt-4">
+          <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-200">
             <button
-              onClick={handleSaveCase}
-              disabled={saving}
-              title={saving ? 'Salvando...' : 'Salvar caso'}
-              aria-describedby={saving ? 'saving-hint' : undefined}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-60"
-            >
-              {saving ? 'Salvando...' : 'Salvar'}
-            </button>
-            <button
+              type="button"
               onClick={() => {
                 setShowForm(false);
                 setEditingCase(null);
               }}
               disabled={saving}
-              className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 disabled:opacity-60"
+              className="px-4 py-2 border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-100 transition disabled:opacity-60"
             >
               Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveCase}
+              disabled={saving}
+              title={saving ? 'Salvando...' : 'Salvar caso'}
+              className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs shadow-md transition disabled:opacity-60"
+            >
+              {saving ? 'Salvando...' : 'Salvar Alterações'}
             </button>
             {saving && <span id="saving-hint" className="sr-only">Salvando o caso, aguarde.</span>}
           </div>
         </div>
+      </div>
       )}
 
       {loading ? (
@@ -1183,9 +1405,9 @@ export default function CasesPanel({ notice }) {
             <thead>
               <tr className="bg-gray-100 text-xs md:text-sm">
                 <th className="border p-3 text-left">Título</th>
-                <th className="border p-3 text-left">Área</th>
-                <th className="border p-3 text-left">Status</th>
-                <th className="border p-3 text-left">Prioridade</th>
+                <th className="border p-2.5 text-left text-[11px] font-bold text-gray-700">Área</th>
+                <th className="border p-2.5 text-left text-[11px] font-bold text-gray-700">Status</th>
+                <th className="border p-2.5 text-left text-[11px] font-bold text-gray-700">Prioridade</th>
                 <th className="border p-3 text-left">Prazo</th>
                 <th className="border p-3 text-left">Ações</th>
               </tr>
@@ -1238,14 +1460,14 @@ export default function CasesPanel({ notice }) {
                         </div>
                       )}
                     </td>
-                    <td className="border p-3">{caseItem.legal_area || '-'}</td>
-                    <td className="border p-3">
-                      <span className={`px-2 py-1 rounded text-xs font-semibold ${getStatusColor(caseItem.status)}`}>
+                    <td className="border p-2 text-[11px] text-gray-700">{caseItem.legal_area || '-'}</td>
+                    <td className="border p-2">
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${getStatusColor(caseItem.status)}`}>
                         {STATUS_LABELS[caseItem.status] || caseItem.status}
                       </span>
                     </td>
-                    <td className="border p-3">
-                      <span className={`font-bold ${getPriorityColor(caseItem.priority)}`}>
+                    <td className="border p-2">
+                      <span className={`text-[11px] font-bold ${getPriorityColor(caseItem.priority)}`}>
                         {caseItem.priority}
                       </span>
                     </td>
@@ -1296,104 +1518,109 @@ export default function CasesPanel({ notice }) {
                         <span className="text-xs text-gray-400 italic">Sem prazo pendente</span>
                       )}
                     </td>
-                    <td className="border p-2.5">
-                      <div className="flex flex-col gap-1.5 min-w-[320px]">
-                        {/* Linha 1: Editar - Checklist - Documentos - Solicitar - Finalizar */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {canEdit && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); handleEditCase(caseItem); }}
-                              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold shadow-xs transition"
-                              title="Editar detalhes do caso"
-                            >
-                              Editar
-                            </button>
-                          )}
+                    <td className="border p-2">
+                      <div className="grid grid-cols-5 gap-1.5 min-w-[420px]">
+                        {/* Linha 1 */}
+                        {canEdit ? (
                           <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); setChecklistCase(caseItem); }}
-                            className="px-2.5 py-1 bg-teal-600 hover:bg-teal-700 text-white rounded text-xs font-semibold shadow-xs transition"
-                            title="Checklist de pendências"
+                            onClick={(e) => { e.stopPropagation(); handleEditCase(caseItem); }}
+                            className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-blue-600 hover:bg-blue-700 text-white transition"
+                            title="Editar detalhes do caso"
                           >
-                            Checklist
+                            Editar
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setDocsCase(caseItem); }}
-                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded text-xs font-semibold shadow-xs transition"
-                            title="Documentos anexados"
-                          >
-                            Documentos
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (!caseItem.conversation_id) {
-                                alert('Caso sem conversa vinculada. Vincule uma conversa antes de solicitar documentos.');
-                                return;
-                              }
-                              setRequestCase(caseItem);
-                            }}
-                            className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-xs font-semibold shadow-xs transition"
-                            title="Solicitar informações ao cliente"
-                          >
-                            Solicitar
-                          </button>
-                          {caseItem.status !== 'encerrado' && caseItem.status !== 'arquivado' ? (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); setFinalizeCase(caseItem); }}
-                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold shadow-xs inline-flex items-center gap-1 transition"
-                              title="Finalizar e encerrar processo judicial"
-                            >
-                              <span>🏁</span> Finalizar
-                            </button>
-                          ) : (
-                            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                              ✓ Encerrado
-                            </span>
-                          )}
-                        </div>
+                        ) : <div className="h-7" />}
 
-                        {/* Linha 2: Honorários - Processo - 🤖 IA Decisão - Deletar */}
-                        <div className="flex items-center gap-1.5 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setChecklistCase(caseItem); }}
+                          className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-teal-600 hover:bg-teal-700 text-white transition"
+                          title="Checklist de pendências"
+                        >
+                          Checklist
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setDocsCase(caseItem); }}
+                          className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-amber-500 hover:bg-amber-600 text-white transition"
+                          title="Documentos anexados"
+                        >
+                          Documentos
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!caseItem.conversation_id) {
+                              alert('Caso sem conversa vinculada. Vincule uma conversa antes de solicitar documentos.');
+                              return;
+                            }
+                            setRequestCase(caseItem);
+                          }}
+                          className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-cyan-600 hover:bg-cyan-700 text-white transition"
+                          title="Solicitar informações ao cliente"
+                        >
+                          Solicitar
+                        </button>
+
+                        {caseItem.status !== 'encerrado' && caseItem.status !== 'arquivado' ? (
                           <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); setFeeCase(caseItem); }}
-                            className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-semibold shadow-xs transition"
-                            title="Simulador e gestão de honorários"
+                            onClick={(e) => { e.stopPropagation(); setFinalizeCase(caseItem); }}
+                            className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white transition"
+                            title="Finalizar e encerrar processo judicial"
                           >
-                            Honorários
+                            🏁 Finalizar
                           </button>
+                        ) : (
+                          <span className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded border border-emerald-300 bg-emerald-50 text-emerald-800">
+                            ✓ Encerrado
+                          </span>
+                        )}
+
+                        {/* Linha 2 */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setFeeCase(caseItem); }}
+                          className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-emerald-700 hover:bg-emerald-800 text-white transition"
+                          title="Simulador e gestão de honorários"
+                        >
+                          Honorários
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setProcessCase(caseItem); }}
+                          className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-indigo-600 hover:bg-indigo-700 text-white transition"
+                          title="Monitoramento e movimentações processuais"
+                        >
+                          Processo
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setDecisionExtractorCase(caseItem); }}
+                          className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-purple-600 hover:bg-purple-700 text-white transition"
+                          title="Analisar despacho ou decisão com Inteligência Artificial"
+                        >
+                          🤖 IA Decisão
+                        </button>
+
+                        {canEdit ? (
                           <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); setProcessCase(caseItem); }}
-                            className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs font-semibold shadow-xs transition"
-                            title="Monitoramento e movimentações processuais"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteCase(caseItem.id); }}
+                            className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-red-600 hover:bg-red-700 text-white transition"
+                            title="Excluir caso"
                           >
-                            Processo
+                            Deletar
                           </button>
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setDecisionExtractorCase(caseItem); }}
-                            className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-bold shadow-xs inline-flex items-center gap-1 transition"
-                            title="Analisar despacho ou decisão com Inteligência Artificial"
-                          >
-                            <span>🤖</span> IA Decisão
-                          </button>
-                          {canEdit && (
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); handleDeleteCase(caseItem.id); }}
-                              className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-semibold shadow-xs transition"
-                              title="Excluir caso"
-                            >
-                              Deletar
-                            </button>
-                          )}
-                        </div>
+                        ) : <div className="h-7" />}
+
+                        <div className="h-7" />
                       </div>
                     </td>
                   </tr>

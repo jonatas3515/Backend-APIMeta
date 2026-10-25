@@ -31,8 +31,10 @@ export default function ClientsList({ onSelectClient }) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [letterFilter, setLetterFilter] = useState('');
-  const [editingId, setEditingId] = useState(null);
+  const [editingClient, setEditingClient] = useState(null);
   const [editingName, setEditingName] = useState('');
+  const [editingBirthDate, setEditingBirthDate] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
 
   // Modal Novo Cliente
@@ -146,19 +148,27 @@ export default function ClientsList({ onSelectClient }) {
     }
   };
 
-  const updateClientName = async (clientId, newName) => {
+  const handleSaveEditClient = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!editingClient || !editingName.trim() || savingEdit) return;
+    setSavingEdit(true);
     try {
       const { error } = await supabase
         .from('conversations')
-        .update({ client_name: newName })
-        .eq('id', clientId);
+        .update({
+          client_name: editingName.trim(),
+          birth_or_foundation_date: editingBirthDate || null
+        })
+        .eq('id', editingClient.id);
 
       if (error) throw error;
-      setEditingId(null);
-      fetchClients();
+      setEditingClient(null);
+      await fetchClients();
     } catch (error) {
-      console.error('Erro ao atualizar nome:', error);
-      alert('Erro ao atualizar nome do cliente');
+      console.error('Erro ao atualizar dados do cliente:', error);
+      alert('Erro ao atualizar dados do cliente: ' + (error.message || ''));
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -286,40 +296,24 @@ export default function ClientsList({ onSelectClient }) {
                 <div className="col-span-1 font-semibold text-gray-600">{index + 1}</div>
 
                 <div className="col-span-5 md:col-span-3">
-                  {editingId === client.id ? (
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="text"
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        onBlur={() => updateClientName(client.id, editingName)}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') updateClientName(client.id, editingName);
-                        }}
-                        autoFocus
-                        className="w-full px-2 py-1 border border-yellow-500 rounded text-sm"
-                      />
-                    </div>
-                  ) : (
+                  <span
+                    className="text-gray-900 cursor-pointer md:cursor-default"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedId(expandedId === client.id ? null : client.id);
+                    }}
+                  >
+                    {client.client_name || 'Sem nome'}
                     <span
-                      className="text-gray-900 cursor-pointer md:cursor-default"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedId(expandedId === client.id ? null : client.id);
-                      }}
+                      className={`ml-1.5 text-[10px] px-1 py-0.5 rounded font-medium align-middle ${
+                        client.person_type === 'juridica'
+                          ? 'bg-purple-100 text-purple-700 font-bold'
+                          : 'bg-blue-50 text-blue-600 font-bold'
+                      }`}
                     >
-                      {client.client_name || 'Sem nome'}
-                      <span
-                        className={`ml-1.5 text-[10px] px-1 py-0.5 rounded font-medium align-middle ${
-                          client.person_type === 'juridica'
-                            ? 'bg-purple-100 text-purple-700 font-bold'
-                            : 'bg-blue-50 text-blue-600 font-bold'
-                        }`}
-                      >
-                        {client.person_type === 'juridica' ? 'PJ' : 'PF'}
-                      </span>
+                      {client.person_type === 'juridica' ? 'PJ' : 'PF'}
                     </span>
-                  )}
+                  </span>
                 </div>
 
                 <div className="col-span-5 md:col-span-2 text-gray-600">
@@ -344,11 +338,12 @@ export default function ClientsList({ onSelectClient }) {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setEditingId(client.id);
+                      setEditingClient(client);
                       setEditingName(client.client_name || '');
+                      setEditingBirthDate(client.birth_or_foundation_date ? client.birth_or_foundation_date.slice(0, 10) : '');
                     }}
-                    className="text-yellow-600 hover:text-yellow-800 text-xs font-medium"
-                    title="Editar nome"
+                    className="text-yellow-600 hover:text-yellow-800 text-xs font-medium p-1 hover:bg-yellow-50 rounded"
+                    title="Editar nome e data de nascimento"
                   >
                     ✏️
                   </button>
@@ -492,6 +487,61 @@ export default function ClientsList({ onSelectClient }) {
                   className="w-full py-2.5 rounded-lg bg-nc-yellow text-nc-black font-bold text-sm hover:opacity-90 disabled:opacity-60 transition"
                 >
                   {savingNew ? 'Cadastrando...' : 'Cadastrar Cliente'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Cliente */}
+      {editingClient && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setEditingClient(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-200 animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 bg-gray-900 border-b border-gray-800 flex justify-between items-center text-white">
+              <h3 className="font-bold text-base text-yellow-400 flex items-center gap-2">
+                <span>✏️</span> Editar Dados do Cliente
+              </h3>
+              <button onClick={() => setEditingClient(null)} className="text-gray-400 hover:text-white text-lg">✕</button>
+            </div>
+            <form onSubmit={handleSaveEditClient} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Nome Completo *</label>
+                <input
+                  type="text"
+                  required
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:outline-none focus:border-yellow-500 font-medium"
+                  placeholder="Nome do cliente"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Data de Nascimento / Fundação</label>
+                <input
+                  type="date"
+                  value={editingBirthDate}
+                  onChange={(e) => setEditingBirthDate(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:outline-none focus:border-yellow-500"
+                />
+                <p className="text-[11px] text-gray-500 mt-1">Usada para calcular a idade e identificar aniversariantes.</p>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingClient(null)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit || !editingName.trim()}
+                  className="px-5 py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-950 font-bold rounded-lg text-xs shadow-sm transition disabled:opacity-50"
+                >
+                  {savingEdit ? 'Salvando...' : 'Salvar Alterações'}
                 </button>
               </div>
             </form>

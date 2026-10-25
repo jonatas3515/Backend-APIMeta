@@ -16,17 +16,33 @@ export default function RelatoriosPanel() {
 
   useEffect(() => {
     let mounted = true;
-    Promise.allSettled([
-      apiJson('/api/cases'),
-      apiJson('/api/cases/metrics'),
-      apiJson('/api/conversations')
-    ]).then(([casesR, metricsR, convsR]) => {
-      if (!mounted) return;
-      if (casesR.status === 'fulfilled' && Array.isArray(casesR.value)) setCases(casesR.value);
-      if (metricsR.status === 'fulfilled' && metricsR.value && typeof metricsR.value === 'object') setMetrics(metricsR.value);
-      if (convsR.status === 'fulfilled' && Array.isArray(convsR.value)) setConversations(convsR.value);
-      setLoading(false);
-    });
+    async function loadData() {
+      try {
+        const [casesR, metricsR, convsR] = await Promise.allSettled([
+          apiJson('/api/cases'),
+          apiJson('/api/cases/metrics'),
+          apiJson('/api/conversations')
+        ]);
+        if (!mounted) return;
+        let loadedCases = [];
+        if (casesR.status === 'fulfilled' && Array.isArray(casesR.value)) {
+          loadedCases = casesR.value;
+        }
+        // Fallback para buscar direto do supabase caso a rota retorne vazio
+        if (loadedCases.length === 0) {
+          const { data: dbCases } = await supabase.from('cases').select('*');
+          if (dbCases && dbCases.length > 0) loadedCases = dbCases;
+        }
+        setCases(loadedCases);
+        if (metricsR.status === 'fulfilled' && metricsR.value && typeof metricsR.value === 'object') setMetrics(metricsR.value);
+        if (convsR.status === 'fulfilled' && Array.isArray(convsR.value)) setConversations(convsR.value);
+      } catch (err) {
+        safeError('relatorios_load_error', err, { component: 'RelatoriosPanel' });
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    loadData();
     return () => { mounted = false; };
   }, []);
 
@@ -76,19 +92,29 @@ export default function RelatoriosPanel() {
       .filter((c) => c.status !== 'encerrado' && c.status !== 'arquivado')
       .reduce((acc, c) => {
         const fee = parseCaseFee(c);
-        const val = fee.fee_final_value != null ? fee.fee_final_value : (Number(c.case_value) || 0) * (fee.fee_percentage / 100);
+        if (fee.fee_paid) return acc;
+        let val = fee.fee_final_value != null ? fee.fee_final_value : (Number(c.case_value) || 0) * (fee.fee_percentage / 100);
+        if (fee.fee_has_entry && fee.fee_entry_paid && fee.fee_entry_value) {
+          val = Math.max(0, val - Number(fee.fee_entry_value));
+        }
         return acc + (Number(val) || 0);
       }, 0);
   }, [cases]);
 
   const totalHonorariosEncerrados = useMemo(() => {
-    return cases
-      .filter((c) => c.status === 'encerrado' || c.status === 'arquivado')
-      .reduce((acc, c) => {
-        const fee = parseCaseFee(c);
-        const val = fee.fee_final_value != null ? fee.fee_final_value : (Number(c.case_value) || 0) * (fee.fee_percentage / 100);
+    return cases.reduce((acc, c) => {
+      const fee = parseCaseFee(c);
+      const isClosed = c.status === 'encerrado' || c.status === 'arquivado';
+      const val = fee.fee_final_value != null ? fee.fee_final_value : (Number(c.case_value) || 0) * (fee.fee_percentage / 100);
+
+      if (isClosed || fee.fee_paid) {
         return acc + (Number(val) || 0);
-      }, 0);
+      }
+      if (fee.fee_has_entry && fee.fee_entry_paid && fee.fee_entry_value) {
+        return acc + (Number(fee.fee_entry_value) || 0);
+      }
+      return acc;
+    }, 0);
   }, [cases]);
 
   return (
