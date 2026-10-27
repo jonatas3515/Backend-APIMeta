@@ -63,4 +63,39 @@ describe('AI Extract Decision', () => {
     expect(parsed.valores.honorarios_base).toBe('condenacao');
     expect(parsed.tarefas_sugeridas).toHaveLength(2);
   });
+
+  it('calcula soma de dano material e dano moral para condenação total e honorários', () => {
+    const raw = `\`\`\`json
+{
+  "dados_processo": {
+    "numero_processo": "0000555-25.2026.8.05.0120",
+    "tribunal": "TJBA",
+    "comarca": "Itamaraju",
+    "vara": "Vara do Sistema dos Juizados",
+    "autor": "ROGERIO ARAUJO COSTA",
+    "reu": "TAM LINHAS AEREAS S A",
+    "cliente_provavel": "ROGERIO ARAUJO COSTA"
+  },
+  "tipo_ato": "Decisão Monocrática",
+  "valores": {
+    "tem_valores": true,
+    "valor_dano_material": 7154.68,
+    "valor_dano_moral": 4000.00,
+    "valor_condenacao": 11154.68,
+    "honorarios_percentual": 20,
+    "honorarios_base": "condenacao",
+    "honorarios_valor_estimado": 2230.94
+  }
+}
+\`\`\``;
+
+    const parsed = extractJson(raw);
+    expect(parsed).not.toBeNull();
+    expect(parsed.dados_processo.comarca).toBe('Itamaraju');
+    expect(parsed.dados_processo.vara).toBe('Vara do Sistema dos Juizados');
+    expect(parsed.valores.valor_dano_material).toBe(7154.68);
+    expect(parsed.valores.valor_dano_moral).toBe(4000.00);
+    expect(parsed.valores.valor_condenacao).toBe(11154.68);
+    expect(parsed.valores.honorarios_valor_estimado).toBe(2230.94);
+  });
 });

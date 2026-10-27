@@ -5,7 +5,15 @@ import { safeError } from '../lib/safeLogger';
 import ProcessAnalyticsPanel from './ProcessAnalyticsPanel';
 import { parseCaseFee } from '../lib/caseFeeHelper';
 
-const brl = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const brl = (v) => {
+  const num = Number(v) || 0;
+  return num.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
 
 export default function RelatoriosPanel() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -13,6 +21,8 @@ export default function RelatoriosPanel() {
   const [conversations, setConversations] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [financeiroSearch, setFinanceiroSearch] = useState('');
+  const [financeiroStatusFilter, setFinanceiroStatusFilter] = useState('todos'); // 'todos' | 'ativos' | 'encerrados'
 
   useEffect(() => {
     let mounted = true;
@@ -274,40 +284,140 @@ export default function RelatoriosPanel() {
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-              <h3 className="font-bold text-sm text-gray-900 mb-3">Extrato de Honorários e Valores da Causa</h3>
-              <div className="space-y-2">
-                {cases.filter((c) => Number(c.case_value) > 0 || parseCaseFee(c).fee_final_value > 0).map((c) => {
-                  const valorCausa = Number(c.case_value) || 0;
-                  const fee = parseCaseFee(c);
-                  const honorario = fee.fee_final_value != null ? fee.fee_final_value : (valorCausa * (fee.fee_percentage / 100));
-                  const isClosed = c.status === 'encerrado' || c.status === 'arquivado';
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-100">
+                <div>
+                  <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
+                    <span>📑</span> Extrato de Honorários e Valores da Causa
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Acompanhamento financeiro por processo (ativos no topo, processos encerrados ao final em tom cinza)
+                  </p>
+                </div>
+
+                {/* Filtros de Busca */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <input
+                    type="text"
+                    value={financeiroSearch}
+                    onChange={(e) => setFinanceiroSearch(e.target.value)}
+                    placeholder="Buscar por processo, cliente..."
+                    className="px-3 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow min-w-[200px]"
+                  />
+                  <select
+                    value={financeiroStatusFilter}
+                    onChange={(e) => setFinanceiroStatusFilter(e.target.value)}
+                    className="px-3 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
+                  >
+                    <option value="todos">Todos os Processos</option>
+                    <option value="ativos">⚡ Apenas Ativos (Em andamento)</option>
+                    <option value="encerrados">📁 Apenas Encerrados / Liquidados</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Lista Ordenada de Processos */}
+              {(() => {
+                const financeiroCases = cases
+                  .filter((c) => Number(c.case_value) > 0 || parseCaseFee(c).fee_final_value > 0 || parseCaseFee(c).awarded_value > 0)
+                  .filter((c) => {
+                    const isClosed = c.status === 'encerrado' || c.status === 'arquivado';
+                    if (financeiroStatusFilter === 'ativos' && isClosed) return false;
+                    if (financeiroStatusFilter === 'encerrados' && !isClosed) return false;
+
+                    if (financeiroSearch.trim()) {
+                      const q = financeiroSearch.toLowerCase();
+                      const matchTitle = (c.title || '').toLowerCase().includes(q);
+                      const matchClient = (c.client_name || '').toLowerCase().includes(q);
+                      const matchProc = (c.process_number || '').toLowerCase().includes(q);
+                      const matchCourt = (c.court || '').toLowerCase().includes(q);
+                      const matchDistrict = (c.judicial_district || '').toLowerCase().includes(q);
+                      if (!matchTitle && !matchClient && !matchProc && !matchCourt && !matchDistrict) return false;
+                    }
+
+                    return true;
+                  })
+                  .sort((a, b) => {
+                    const aClosed = a.status === 'encerrado' || a.status === 'arquivado';
+                    const bClosed = b.status === 'encerrado' || b.status === 'arquivado';
+                    // Processos ativos vêm PRIMEIRO; processos encerrados ficam POR ÚLTIMO
+                    if (aClosed && !bClosed) return 1;
+                    if (!aClosed && bClosed) return -1;
+                    return 0;
+                  });
+
+                if (financeiroCases.length === 0) {
                   return (
-                    <div key={c.id} className="p-3.5 rounded-lg bg-gray-50 border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{c.title}</p>
-                        <p className="text-xs text-gray-500">{c.client_name || 'Sem cliente'} • {c.court || 'Justiça'} {c.process_number ? `(${c.process_number})` : ''}</p>
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 mt-1">
-                          <span>Valor da Causa: <strong className="font-mono">{brl(valorCausa)}</strong></span>
-                          {fee.awarded_value != null && (
-                            <span className="text-emerald-700">Condenação/Acordo: <strong className="font-mono">{brl(fee.awarded_value)}</strong></span>
-                          )}
-                          <span className="text-[10px] bg-gray-200 px-1.5 py-0.5 rounded text-gray-700">
-                            Regra: {fee.fee_type === 'fixo' ? 'Valor Fixo' : `${fee.fee_percentage}% s/ ${fee.fee_basis === 'condenacao' ? 'condenação' : 'causa'}`}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-left sm:text-right">
-                        <p className="text-xs text-gray-500">Honorários {isClosed ? 'Apurados' : 'Estimados'}</p>
-                        <p className="text-base font-bold text-emerald-700">{brl(honorario)}</p>
-                        <span className={`inline-block text-[10px] px-2 py-0.5 rounded font-medium mt-1 ${isClosed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-                          {isClosed ? '✓ Encerrado / Liquidado' : '⚡ Ativo / Em andamento'}
-                        </span>
-                      </div>
+                    <div className="p-8 text-center bg-gray-50 border border-dashed border-gray-200 rounded-xl text-xs text-gray-500">
+                      Nenhum processo financeiro encontrado com os filtros atuais.
                     </div>
                   );
-                })}
-              </div>
+                }
+
+                return (
+                  <div className="space-y-2.5">
+                    {financeiroCases.map((c) => {
+                      const valorCausa = Number(c.case_value) || 0;
+                      const fee = parseCaseFee(c);
+                      const honorario = fee.fee_final_value != null ? fee.fee_final_value : (valorCausa * (fee.fee_percentage / 100));
+                      const isClosed = c.status === 'encerrado' || c.status === 'arquivado';
+
+                      return (
+                        <div
+                          key={c.id}
+                          className={`p-3.5 rounded-xl border transition-all ${
+                            isClosed
+                              ? 'bg-gray-100/90 border-gray-300 text-gray-500 opacity-80 hover:opacity-100'
+                              : 'bg-white border-gray-200 shadow-xs hover:border-amber-400'
+                          } flex flex-col sm:flex-row sm:items-center justify-between gap-3`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className={`text-sm font-semibold ${isClosed ? 'text-gray-600 line-through' : 'text-gray-900'}`}>
+                                {c.title}
+                              </p>
+                              {isClosed && (
+                                <span className="text-[10px] px-2 py-0.5 rounded bg-gray-200 text-gray-700 font-bold border border-gray-300">
+                                  📁 Encerrado
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              {c.client_name || 'Sem cliente'} • {c.court || 'Justiça'} {c.process_number ? `(${c.process_number})` : ''}
+                              {c.judicial_district ? ` • 📍 ${c.judicial_district}` : ''}
+                              {c.court_division ? ` • ⚖️ ${c.court_division}` : ''}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 mt-2">
+                              <span>Valor da Causa: <strong className="font-mono">{brl(valorCausa)}</strong></span>
+                              {fee.awarded_value != null && (
+                                <span className={isClosed ? 'text-gray-600 font-medium' : 'text-emerald-700 font-semibold'}>
+                                  Condenação/Execução: <strong className="font-mono">{brl(fee.awarded_value)}</strong>
+                                </span>
+                              )}
+                              <span className="text-[10px] bg-gray-200/80 px-2 py-0.5 rounded text-gray-700 font-medium">
+                                Regra: {fee.fee_type === 'fixo' ? 'Valor Fixo' : `${fee.fee_percentage}% s/ ${fee.fee_basis === 'condenacao' ? 'condenação' : 'causa'}`}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-left sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-200/60">
+                            <p className="text-[11px] text-gray-500">Honorários {isClosed ? 'Apurados / Liquidados' : 'Estimados'}</p>
+                            <p className={`text-base font-bold ${isClosed ? 'text-gray-700' : 'text-emerald-700'}`}>
+                              {brl(honorario)}
+                            </p>
+                            <span className={`inline-block text-[10px] px-2.5 py-0.5 rounded font-medium mt-1 ${
+                              isClosed
+                                ? 'bg-gray-200 text-gray-700 border border-gray-300'
+                                : 'bg-amber-50 text-amber-700 border border-amber-200'
+                            }`}>
+                              {isClosed ? '✓ Encerrado / Liquidado' : '⚡ Ativo / Em andamento'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}

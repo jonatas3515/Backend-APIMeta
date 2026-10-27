@@ -37,9 +37,20 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
   const [applyPhase, setApplyPhase] = useState(true);
   const [applyDeadline, setApplyDeadline] = useState(true);
   const [applyFees, setApplyFees] = useState(false);
+  const [applyCourtDetails, setApplyCourtDetails] = useState(true);
   const [saveMovement, setSaveMovement] = useState(true);
 
   const cleanDigits = (s) => String(s || '').replace(/\D/g, '');
+
+  const formatBRL = (val) => {
+    if (val === null || val === undefined || val === '' || isNaN(Number(val))) return 'R$ 0,00';
+    return Number(val).toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
 
   const handleAnalyze = async (e) => {
     e.preventDefault();
@@ -249,7 +260,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
         if (applyFees && (editableCondenacao || editableHonorariosPercentual)) {
           const valCond = Number(editableCondenacao) || null;
           const pct = Number(editableHonorariosPercentual) || 20;
-          const finalEst = valCond ? (valCond * pct) / 100 : null;
+          const finalEst = valCond ? Number(((valCond * pct) / 100).toFixed(2)) : null;
           const feeData = {
             fee_type: 'percentual',
             fee_percentage: pct,
@@ -258,6 +269,24 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
             fee_final_value: finalEst
           };
           updates.notes = serializeFeeIntoNotes(targetCase?.notes || '', feeData);
+          updates.awarded_value = valCond;
+          updates.fee_percentage = pct;
+          updates.fee_basis = 'condenacao';
+          updates.fee_final_value = finalEst;
+        }
+
+        // Completa comarca, vara e tribunal se identificados e em branco no caso existente
+        if (applyCourtDetails && analysis.dados_processo) {
+          const dp = analysis.dados_processo;
+          if (dp.comarca && (!targetCase?.judicial_district || targetCase?.judicial_district.trim() === '')) {
+            updates.judicial_district = dp.comarca;
+          }
+          if (dp.vara && (!targetCase?.court_division || targetCase?.court_division.trim() === '')) {
+            updates.court_division = dp.vara;
+          }
+          if (dp.tribunal && (!targetCase?.court || targetCase?.court === 'TJ')) {
+            updates.court = dp.tribunal;
+          }
         }
 
         if (Object.keys(updates).length > 0) {
@@ -510,21 +539,54 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                   )}
                 </div>
               ) : (
-                <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-emerald-700 text-white font-bold text-[11px]">
-                      ✓ Processo Existente Localizado
+                <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-xl space-y-2 text-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2 py-0.5 rounded bg-emerald-700 text-white font-bold text-[11px]">
+                        ✓ Processo Existente Localizado
+                      </span>
+                      <span className="font-bold text-emerald-950">
+                        {targetCase?.title || 'Caso do Sistema'}
+                      </span>
+                      {targetCase?.process_number && (
+                        <span className="text-gray-500 font-mono text-[11px]">({targetCase.process_number})</span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-emerald-800 font-semibold">
+                      Fase atual: {targetCase?.procedural_step || 'Em andamento'}
                     </span>
-                    <span className="font-bold text-emerald-950">
-                      {targetCase?.title || 'Caso do Sistema'}
-                    </span>
-                    {targetCase?.process_number && (
-                      <span className="text-gray-500 font-mono text-[11px]">({targetCase.process_number})</span>
-                    )}
                   </div>
-                  <span className="text-[11px] text-emerald-800 font-semibold">
-                    Fase atual: {targetCase?.procedural_step || 'Em andamento'}
-                  </span>
+
+                  {/* Informações Processuais Identificadas pela IA */}
+                  {(analysis.dados_processo?.comarca || analysis.dados_processo?.vara || analysis.dados_processo?.orgao_julgador || analysis.dados_processo?.relator) && (
+                    <div className="pt-2 border-t border-emerald-200 flex flex-wrap items-center gap-2 text-[11px] text-emerald-900">
+                      {analysis.dados_processo.comarca && (
+                        <span className="bg-emerald-100/80 px-2 py-0.5 rounded font-medium">
+                          📍 Comarca: <strong>{analysis.dados_processo.comarca}</strong>
+                        </span>
+                      )}
+                      {analysis.dados_processo.vara && (
+                        <span className="bg-emerald-100/80 px-2 py-0.5 rounded font-medium">
+                          ⚖️ Vara: <strong>{analysis.dados_processo.vara}</strong>
+                        </span>
+                      )}
+                      {analysis.dados_processo.tribunal && (
+                        <span className="bg-emerald-100/80 px-2 py-0.5 rounded font-medium">
+                          🏛️ Tribunal: <strong>{analysis.dados_processo.tribunal}</strong>
+                        </span>
+                      )}
+                      {analysis.dados_processo.orgao_julgador && (
+                        <span className="bg-emerald-100/80 px-2 py-0.5 rounded font-medium">
+                          📑 Órgão: <strong>{analysis.dados_processo.orgao_julgador}</strong>
+                        </span>
+                      )}
+                      {analysis.dados_processo.relator && (
+                        <span className="bg-emerald-100/80 px-2 py-0.5 rounded font-medium">
+                          👤 Relator(a): <strong>{analysis.dados_processo.relator}</strong>
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -605,35 +667,84 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                       <span className="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-500">Opcional</span>
                     )}
                   </div>
-                  <div className="space-y-2 text-gray-700 text-xs">
+
+                  <div className="space-y-2.5 text-gray-700 text-xs">
+                    {/* Discriminativo das Verbas Identificadas */}
+                    {(analysis.valores?.valor_dano_material || analysis.valores?.valor_dano_moral) && (
+                      <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 space-y-1.5">
+                        <span className="text-[11px] font-bold text-gray-800 block">Composição da Condenação identificada:</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
+                          {analysis.valores?.valor_dano_material != null && (
+                            <div className="flex justify-between items-center bg-white px-2 py-1 rounded border border-gray-100">
+                              <span className="text-gray-600">📦 Ressarcimento / Dano Material:</span>
+                              <strong className="text-gray-900 font-mono">{formatBRL(analysis.valores.valor_dano_material)}</strong>
+                            </div>
+                          )}
+                          {analysis.valores?.valor_dano_moral != null && (
+                            <div className="flex justify-between items-center bg-white px-2 py-1 rounded border border-gray-100">
+                              <span className="text-gray-600">⚖️ Danos Morais:</span>
+                              <strong className="text-gray-900 font-mono">{formatBRL(analysis.valores.valor_dano_moral)}</strong>
+                            </div>
+                          )}
+                          {analysis.valores?.outras_verbas != null && Number(analysis.valores.outras_verbas) > 0 && (
+                            <div className="flex justify-between items-center bg-white px-2 py-1 rounded border border-gray-100">
+                              <span className="text-gray-600">➕ Outras Verbas:</span>
+                              <strong className="text-gray-900 font-mono">{formatBRL(analysis.valores.outras_verbas)}</strong>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center bg-emerald-50 px-2 py-1 rounded border border-emerald-200 sm:col-span-2">
+                            <span className="text-emerald-900 font-semibold">∑ Soma Total Condenação:</span>
+                            <strong className="text-emerald-900 font-mono font-bold text-xs">
+                              {formatBRL(editableCondenacao || (Number(analysis.valores?.valor_dano_material || 0) + Number(analysis.valores?.valor_dano_moral || 0)))}
+                            </strong>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
                         <label className="block text-[11px] font-semibold text-gray-600 mb-0.5">
-                          Valor da Condenação / Execução (R$):
+                          Valor da Condenação / Execução (Total R$):
                         </label>
                         <input
                           type="number"
                           step="0.01"
                           value={editableCondenacao}
                           onChange={(e) => setEditableCondenacao(e.target.value)}
-                          className="w-full p-1.5 border border-gray-300 rounded text-xs font-semibold bg-gray-50 text-gray-900"
-                          placeholder="Ex: 7154.68"
+                          className="w-full p-1.5 border border-gray-300 rounded text-xs font-semibold bg-gray-50 text-gray-900 font-mono"
+                          placeholder="Ex: 11154.68"
                         />
+                        <span className="text-[10px] text-gray-500 mt-0.5 block">
+                          Formatado: <strong className="text-emerald-700">{formatBRL(editableCondenacao)}</strong>
+                        </span>
                       </div>
                       <div>
                         <label className="block text-[11px] font-semibold text-gray-600 mb-0.5">
-                          % Honorários:
+                          % Honorários Sucumbenciais:
                         </label>
                         <input
                           type="number"
                           step="1"
                           value={editableHonorariosPercentual}
                           onChange={(e) => setEditableHonorariosPercentual(e.target.value)}
-                          className="w-full p-1.5 border border-gray-300 rounded text-xs font-semibold bg-gray-50 text-gray-900"
+                          className="w-full p-1.5 border border-gray-300 rounded text-xs font-semibold bg-gray-50 text-gray-900 font-mono"
                           placeholder="Ex: 20"
                         />
+                        <span className="text-[10px] text-gray-500 mt-0.5 block">
+                          Honorários estimados: <strong className="text-emerald-700">
+                            {formatBRL(editableCondenacao ? (Number(editableCondenacao) * (Number(editableHonorariosPercentual) || 20)) / 100 : 0)}
+                          </strong>
+                        </span>
                       </div>
                     </div>
+
+                    {analysis.valores?.observacao_correcao_juros && (
+                      <p className="text-[11px] text-amber-800 bg-amber-50/80 p-1.5 rounded border border-amber-200">
+                        ℹ️ {analysis.valores.observacao_correcao_juros}
+                      </p>
+                    )}
+
                     {analysis.valores?.detalhes && (
                       <p className="text-[11px] text-gray-500 italic">{analysis.valores.detalhes}</p>
                     )}
@@ -694,6 +805,12 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                     <input type="checkbox" checked={applyFees} onChange={(e) => setApplyFees(e.target.checked)} className="rounded text-indigo-600" />
                     <span>Gravar Honorários / Condenação</span>
                   </label>
+                  {(analysis.dados_processo?.comarca || analysis.dados_processo?.vara) && (
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={applyCourtDetails} onChange={(e) => setApplyCourtDetails(e.target.checked)} className="rounded text-indigo-600" />
+                      <span>Completar Comarca ({analysis.dados_processo.comarca || 'Identificada'}) e Vara no cadastro</span>
+                    </label>
+                  )}
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={saveMovement} onChange={(e) => setSaveMovement(e.target.checked)} className="rounded text-indigo-600" />
                     <span>Salvar no Histórico de Movimentações</span>

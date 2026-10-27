@@ -1522,6 +1522,16 @@ export default function CasesPanel({ notice }) {
                               {caseItem.court}
                             </span>
                           )}
+                          {caseItem.judicial_district && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-medium" title="Comarca / Cidade">
+                              📍 {caseItem.judicial_district}
+                            </span>
+                          )}
+                          {caseItem.court_division && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-medium" title="Vara / Juizado">
+                              ⚖️ {caseItem.court_division}
+                            </span>
+                          )}
                           {caseItem.procedural_step && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">
                               {PROCEDURAL_STEP_LABELS[caseItem.procedural_step] || caseItem.procedural_step}

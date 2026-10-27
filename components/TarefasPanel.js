@@ -208,6 +208,25 @@ export default function TarefasPanel() {
           </div>
 
           <div className="flex items-center gap-2 self-end sm:self-center">
+            {st === 'concluida' ? (
+              <button
+                type="button"
+                onClick={() => setStatus(t, 'pendente')}
+                className="px-2.5 py-1.5 text-xs font-semibold rounded bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300 transition flex items-center gap-1"
+                title="Reabrir tarefa como pendente"
+              >
+                ↩ Reabrir
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setStatus(t, 'concluida')}
+                className="px-2.5 py-1.5 text-xs font-bold rounded bg-emerald-600 text-white hover:bg-emerald-700 shadow-xs transition flex items-center gap-1"
+                title="Marcar tarefa como cumprida / realizada"
+              >
+                <span>✓</span> Concluir
+              </button>
+            )}
             <select
               value={st}
               onChange={(e) => setStatus(t, e.target.value)}
