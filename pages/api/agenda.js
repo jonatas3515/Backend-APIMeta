@@ -134,6 +134,17 @@ async function handleGet(req, res) {
       startDate = today.toISOString().split('T')[0];
       const nextMonth = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
       endDate = nextMonth.toISOString().split('T')[0];
+    } else if (range === 'quarter' || range === '90days') {
+      const today = new Date();
+      startDate = today.toISOString().split('T')[0];
+      const nextQuarter = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000);
+      endDate = nextQuarter.toISOString().split('T')[0];
+    } else if (range === 'past' || range === 'passed' || range === 'overdue') {
+      const today = new Date();
+      const pastLimit = new Date(today.getTime() - 180 * 24 * 60 * 60 * 1000);
+      startDate = pastLimit.toISOString().split('T')[0];
+      const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+      endDate = yesterday.toISOString().split('T')[0];
     } else if (start_date && end_date) {
       startDate = start_date;
       endDate = end_date;
@@ -252,6 +263,17 @@ async function handlePost(req, res) {
         startDate = today.toISOString().split('T')[0];
         const nextMonth = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
         endDate = nextMonth.toISOString().split('T')[0];
+      } else if (range === 'quarter' || range === '90days') {
+        const today = new Date();
+        startDate = today.toISOString().split('T')[0];
+        const nextQuarter = new Date(today.getTime() + 90 * 24 * 60 * 60 * 1000);
+        endDate = nextQuarter.toISOString().split('T')[0];
+      } else if (range === 'past' || range === 'passed' || range === 'overdue') {
+        const today = new Date();
+        const pastLimit = new Date(today.getTime() - 180 * 24 * 60 * 60 * 1000);
+        startDate = pastLimit.toISOString().split('T')[0];
+        const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+        endDate = yesterday.toISOString().split('T')[0];
       } else if (start_date && end_date) {
         startDate = start_date;
         endDate = end_date;

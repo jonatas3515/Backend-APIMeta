@@ -82,4 +82,14 @@ describe('MonthlyCalendarPanel', () => {
     expect(screen.getByTestId('monthly-calendar-panel')).toHaveTextContent(`${monthNames[now.getMonth()]} ${now.getFullYear()}`);
     expect(screen.getByText(/Aniversariantes -/)).toBeInTheDocument();
   });
+
+  test('renderiza visão unificada com seletores de visualização', async () => {
+    render(<MonthlyCalendarPanel />);
+    await waitFor(() => expect(screen.getByTestId('calendar-today')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /Visão Unificada/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Grade Mensal/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Agenda & Prazos/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Já Passados/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Próximos 90 dias/i })).toBeInTheDocument();
+  });
 });

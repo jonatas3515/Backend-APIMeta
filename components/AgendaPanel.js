@@ -39,9 +39,11 @@ export default function AgendaPanel() {
   }, [selectedArea]);
 
   useKeyboardShortcuts([
+    { keys: ['p'], handler: () => setActiveTab('past') },
     { keys: ['h'], handler: () => setActiveTab('today') },
     { keys: ['7'], handler: () => setActiveTab('week') },
-    { keys: ['3', '0'], handler: () => setActiveTab('month') }
+    { keys: ['3', '0'], handler: () => setActiveTab('month') },
+    { keys: ['9', '0'], handler: () => setActiveTab('quarter') }
   ]);
 
   useEffect(() => {
@@ -302,34 +304,59 @@ export default function AgendaPanel() {
         <h2 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-4">📅 Agenda</h2>
         <div className="flex gap-2 flex-wrap mb-4">
           <button
-            onClick={() => setActiveTab('today')}
-            className={`px-4 py-2 rounded font-medium transition ${
-              activeTab === 'today'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            onClick={() => setActiveTab('past')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center gap-1.5 ${
+              activeTab === 'past'
+                ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
             }`}
+            title="Mostrar prazos e compromissos que já passaram ou estão vencidos (Atalho: P)"
           >
-            📆 Hoje
+            <span>⏪</span> Já Passados
+          </button>
+          <button
+            onClick={() => setActiveTab('today')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center gap-1.5 ${
+              activeTab === 'today'
+                ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-400'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+            }`}
+            title="Prazos e compromissos de hoje (Atalho: H)"
+          >
+            <span>📆</span> Hoje
           </button>
           <button
             onClick={() => setActiveTab('week')}
-            className={`px-4 py-2 rounded font-medium transition ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center gap-1.5 ${
               activeTab === 'week'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-400'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
             }`}
+            title="Prazos para os próximos 7 dias (Atalho: 7)"
           >
-            📊 Próximos 7 dias
+            <span>📊</span> Próximos 7 dias
           </button>
           <button
             onClick={() => setActiveTab('month')}
-            className={`px-4 py-2 rounded font-medium transition ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center gap-1.5 ${
               activeTab === 'month'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-400'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
             }`}
+            title="Prazos para os próximos 30 dias (Atalho: 3 0)"
           >
-            📈 Próximos 30 dias
+            <span>📈</span> Próximos 30 dias
+          </button>
+          <button
+            onClick={() => setActiveTab('quarter')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center gap-1.5 ${
+              activeTab === 'quarter'
+                ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-400'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+            }`}
+            title="Prazos para os próximos 90 dias (Atalho: 9 0)"
+          >
+            <span>🗓️</span> Próximos 90 dias
           </button>
         </div>
 

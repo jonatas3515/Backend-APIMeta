@@ -19,8 +19,14 @@ const FERIADOS = {
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const WEEK_DAYS = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
 
-export default function MonthlyCalendarPanel({ initialView = 'calendar' }) {
-  const [activeSubView, setActiveSubView] = useState(initialView);
+export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
+  // Modo de exibição: 'unificado' (ambos na mesma tela), 'calendar' (só grade), 'agenda' (só lista)
+  const [viewMode, setViewMode] = useState(() => {
+    if (initialView === 'agenda') return 'agenda';
+    if (initialView === 'calendar') return 'calendar';
+    return 'unificado';
+  });
+
   const [cursor, setCursor] = useState(() => new Date());
   const [cases, setCases] = useState([]);
   const [birthdays, setBirthdays] = useState([]);
@@ -136,43 +142,63 @@ export default function MonthlyCalendarPanel({ initialView = 'calendar' }) {
 
   return (
     <div className="p-4 md:p-6 bg-nc-surface text-gray-900 min-h-full" data-testid="monthly-calendar-panel">
-      <div className="max-w-7xl mx-auto space-y-4">
-        {/* Toggle Unificado Calendário & Agenda */}
-        <div className="flex gap-2 border-b border-gray-200 pb-3">
-          <button
-            onClick={() => setActiveSubView('calendar')}
-            className={`px-4 py-2 rounded-lg font-bold text-xs md:text-sm transition flex items-center gap-2 ${
-              activeSubView === 'calendar'
-                ? 'bg-nc-yellow text-nc-black shadow-sm'
-                : 'bg-white text-gray-700 hover:text-gray-900 hover:bg-gray-100 border border-gray-200'
-            }`}
-          >
-            <span>🗓️</span> Grade Mensal & Aniversariantes
-          </button>
-          <button
-            onClick={() => setActiveSubView('agenda')}
-            className={`px-4 py-2 rounded-lg font-bold text-xs md:text-sm transition flex items-center gap-2 ${
-              activeSubView === 'agenda'
-                ? 'bg-nc-yellow text-nc-black shadow-sm'
-                : 'bg-white text-gray-700 hover:text-gray-900 hover:bg-gray-100 border border-gray-200'
-            }`}
-          >
-            <span>📋</span> Agenda & Prazos
-          </button>
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header Unificado & Seletor de Modo */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-200">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold flex items-center gap-2 text-gray-900">
+              <span>🗓️</span> Calendário & Agenda de Prazos
+            </h1>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Visualização integrada da grade mensal, aniversariantes do escritório e prazos da agenda detalhada
+            </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-gray-100 p-1 rounded-xl border border-gray-200 text-xs">
+            <button
+              onClick={() => setViewMode('unificado')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
+                viewMode === 'unificado'
+                  ? 'bg-nc-yellow text-nc-black shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/60'
+              }`}
+              title="Exibe o calendário mensal em cima e a lista da agenda logo abaixo"
+            >
+              <span>🌟</span> Visão Unificada
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
+                viewMode === 'calendar'
+                  ? 'bg-nc-yellow text-nc-black shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/60'
+              }`}
+            >
+              <span>🗓️</span> Grade Mensal
+            </button>
+            <button
+              onClick={() => setViewMode('agenda')}
+              className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 ${
+                viewMode === 'agenda'
+                  ? 'bg-nc-yellow text-nc-black shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200/60'
+              }`}
+            >
+              <span>📋</span> Agenda & Prazos
+            </button>
+          </div>
         </div>
 
-        {activeSubView === 'agenda' ? (
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-2">
-            <AgendaPanel />
+        {/* FEEDBACK DE AÇÃO */}
+        {feedbackMsg && (
+          <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm font-medium animate-fadeIn">
+            ✓ {feedbackMsg}
           </div>
-        ) : (
-          <>
-            {feedbackMsg && (
-              <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-green-700 text-sm">
-                {feedbackMsg}
-              </div>
-            )}
+        )}
 
+        {/* 1. SEÇÃO DO CALENDÁRIO MENSAL (exibido no modo unificado ou no modo calendar) */}
+        {(viewMode === 'unificado' || viewMode === 'calendar') && (
+          <section id="grade-mensal" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* Grade mensal */}
               <div className="lg:col-span-3 bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
@@ -349,7 +375,25 @@ export default function MonthlyCalendarPanel({ initialView = 'calendar' }) {
                 </div>
               </div>
             </div>
-          </>
+          </section>
+        )}
+
+        {/* 2. SEÇÃO DA AGENDA & PRAZOS (exibido no modo unificado ou no modo agenda) */}
+        {(viewMode === 'unificado' || viewMode === 'agenda') && (
+          <section id="agenda-prazos" className="pt-2">
+            {viewMode === 'unificado' && (
+              <div className="flex items-center gap-3 mb-4 pt-2">
+                <div className="h-px bg-gray-200 flex-1" />
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>📋</span> Detalhamento da Agenda & Prazos
+                </span>
+                <div className="h-px bg-gray-200 flex-1" />
+              </div>
+            )}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-2 overflow-hidden">
+              <AgendaPanel />
+            </div>
+          </section>
         )}
       </div>
     </div>
