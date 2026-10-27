@@ -50,7 +50,20 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
       const chatBdays = (chatR.status === 'fulfilled' && !chatR.value.error)
         ? (chatR.value.data || []).map((c) => ({ ...c, client_name: c.client_name || c.name }))
         : [];
-      setBirthdays([...convBdays, ...chatBdays]);
+      // Deduplicar aniversariantes por telefone ou nome normalizado + data
+      const allBdays = [...convBdays, ...chatBdays];
+      const seen = new Set();
+      const uniqueBdays = [];
+      for (const b of allBdays) {
+        const normPhone = (b.phone || b.client_phone || '').replace(/\D/g, '');
+        const normName = (b.client_name || b.name || '').trim().toLowerCase();
+        const dateKey = (b.birth_or_foundation_date || '').slice(0, 10);
+        const uniqueKey = normPhone ? `${normPhone}_${dateKey}` : `${normName}_${dateKey}`;
+        if (!uniqueKey || seen.has(uniqueKey)) continue;
+        seen.add(uniqueKey);
+        uniqueBdays.push(b);
+      }
+      setBirthdays(uniqueBdays);
       if (officeR.status === 'fulfilled' && officeR.value?.data) {
         const tpl = officeR.value.data.birthday_message || officeR.value.data.birthday_message_template;
         if (tpl) setBirthdayTemplate(tpl);
@@ -63,6 +76,16 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
 
   const year = cursor.getFullYear();
   const month = cursor.getMonth();
+
+  // Função para interpretar datas sem perder o dia por causa do fuso horário UTC-3
+  const parseLocalDate = (dateStr) => {
+    if (!dateStr) return null;
+    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+      const [y, m, d] = dateStr.split('T')[0].split('-').map(Number);
+      return new Date(y, m - 1, d, 12, 0, 0);
+    }
+    return new Date(dateStr);
+  };
 
   const cells = useMemo(() => {
     const first = new Date(year, month, 1);
@@ -77,8 +100,9 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
   const deadlinesByDay = useMemo(() => {
     const map = {};
     cases.forEach((c) => {
-      if (!c.deadline_date || c.status === 'encerrado') return;
-      const d = new Date(c.deadline_date);
+      if (!c.deadline_date || c.status === 'encerrado' || c.status === 'arquivado') return;
+      const d = parseLocalDate(c.deadline_date);
+      if (!d || isNaN(d.getTime())) return;
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
       (map[key] = map[key] || []).push(c);
     });
@@ -130,11 +154,23 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
   }, [month]);
 
   const handleMarcarCumprido = async (caseItem) => {
-    setCases((prev) => prev.filter((c) => c.id !== caseItem.id));
-    setFeedbackMsg(`Prazo de "${caseItem.title}" marcado como cumprido!`);
-    setTimeout(() => setFeedbackMsg(null), 3000);
+    // 1. Limpa o prazo no estado local sem encerrar o caso!
+    setCases((prev) => prev.map((c) => (c.id === caseItem.id ? { ...c, deadline_date: null, deadline_type: null } : c)));
+    setFeedbackMsg(`✓ Audiência/prazo de "${caseItem.title}" marcado como cumprido! O processo permanece ativo.`);
+    setTimeout(() => setFeedbackMsg(null), 4000);
     try {
-      await supabase.from('cases').update({ status: 'encerrado', updated_at: new Date().toISOString() }).eq('id', caseItem.id);
+      // 2. No banco de dados, limpa apenas a data do prazo para que o processo permaneça em andamento
+      await supabase
+        .from('cases')
+        .update({ deadline_date: null, deadline_type: null, updated_at: new Date().toISOString() })
+        .eq('id', caseItem.id);
+
+      // 3. Sincroniza e marca como concluída qualquer tarefa pendente vinculada a este caso
+      await supabase
+        .from('tasks')
+        .update({ status: 'concluida', done: true, updated_at: new Date().toISOString() })
+        .eq('case_id', caseItem.id)
+        .eq('status', 'pendente');
     } catch (e) {
       safeError('calendar_cumprir_error', e, { component: 'MonthlyCalendarPanel' });
     }

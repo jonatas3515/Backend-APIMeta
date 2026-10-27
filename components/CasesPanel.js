@@ -212,6 +212,10 @@ export default function CasesPanel({ notice }) {
     }
   ]);
 
+  // Contadores para ativos e encerrados
+  const activeCount = useMemo(() => cases.filter(c => c.status !== 'encerrado' && c.status !== 'arquivado').length, [cases]);
+  const closedCount = useMemo(() => cases.filter(c => c.status === 'encerrado' || c.status === 'arquivado').length, [cases]);
+
   const fetchCases = async () => {
     setLoading(true);
     try {
@@ -226,11 +230,12 @@ export default function CasesPanel({ notice }) {
       const { data, error } = await query.order('deadline_date', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
-      const allCases = data || [];
+      const rawCases = data || [];
 
       // Filtrar por documentos pendentes
+      let filteredList = rawCases;
       if (filters.document_status && checklistMap) {
-        const filtered = allCases.filter(c => {
+        filteredList = rawCases.filter(c => {
           const checklist = checklistMap[c.id] || [];
           const hasAny = checklist.length > 0;
           const hasPending = checklist.some(i => i.status !== 'received' && i.status !== 'verified');
@@ -238,10 +243,33 @@ export default function CasesPanel({ notice }) {
           if (filters.document_status === 'complete') return hasAny && !hasPending;
           return true;
         });
-        setCases(filtered);
-      } else {
-        setCases(allCases);
       }
+
+      // Ordenar: Ativos primeiro (prazos mais próximos primeiro, depois sem prazo), Encerrados ao final da fila
+      const parseSafeDate = (d) => {
+        if (!d) return null;
+        if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d)) {
+          const [y, m, day] = d.split('T')[0].split('-').map(Number);
+          return new Date(y, m - 1, day, 12, 0, 0);
+        }
+        return new Date(d);
+      };
+
+      const activeCases = filteredList.filter(c => c.status !== 'encerrado' && c.status !== 'arquivado');
+      const closedCases = filteredList.filter(c => c.status === 'encerrado' || c.status === 'arquivado');
+
+      activeCases.sort((a, b) => {
+        const da = parseSafeDate(a.deadline_date);
+        const db = parseSafeDate(b.deadline_date);
+        if (da && db) return da - db;
+        if (da && !db) return -1;
+        if (!da && db) return 1;
+        return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      });
+
+      closedCases.sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+
+      setCases([...activeCases, ...closedCases]);
     } catch (error) {
       console.error('[CASES] Erro ao buscar casos:', error);
     } finally {
@@ -531,6 +559,15 @@ export default function CasesPanel({ notice }) {
         method: 'PATCH',
         body: JSON.stringify({ deadline_date: null, deadline_type: null })
       });
+      // Sincronizar e concluir tarefas pendentes vinculadas na tabela tasks
+      try {
+        await supabase
+          .from('tasks')
+          .update({ status: 'concluida', done: true, updated_at: new Date().toISOString() })
+          .eq('case_id', id)
+          .eq('status', 'pendente');
+      } catch (_) {}
+
       addToast('Prazo/audiência marcado como realizado e data limpa com sucesso!', 'success');
       fetchCases();
       if (selectedCase && selectedCase.id === id) {
@@ -576,17 +613,29 @@ export default function CasesPanel({ notice }) {
     return colors[priority] || 'text-gray-600';
   };
 
+  const parseLocalDate = (date) => {
+    if (!date) return null;
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+      const [y, m, d] = date.split('T')[0].split('-').map(Number);
+      return new Date(y, m - 1, d, 12, 0, 0);
+    }
+    return new Date(date);
+  };
+
   const formatDate = (date) => {
     if (!date) return '-';
-    return new Date(date).toLocaleDateString('pt-BR');
+    const parsed = parseLocalDate(date);
+    return parsed ? parsed.toLocaleDateString('pt-BR') : '-';
   };
 
   const daysUntilDeadline = (date) => {
     if (!date) return null;
     const today = new Date();
-    const deadline = new Date(date);
-    const diff = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
-    return diff;
+    today.setHours(0, 0, 0, 0);
+    const deadline = parseLocalDate(date);
+    if (!deadline) return null;
+    deadline.setHours(0, 0, 0, 0);
+    return Math.round((deadline - today) / (1000 * 60 * 60 * 24));
   };
 
   const handleLinkConversation = async (conversation) => {
@@ -782,7 +831,12 @@ export default function CasesPanel({ notice }) {
         </button>
       </div>
       <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold">Casos</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold">Casos</h2>
+          <span className="text-xs px-2.5 py-1 bg-gray-100 border border-gray-300 rounded-full text-gray-700 font-medium">
+            {cases.length} processos ({activeCount} ativos, {closedCount} encerrados)
+          </span>
+        </div>
         <div className="flex flex-wrap gap-2 items-center">
           <button
             onClick={() => setDecisionExtractorCase({ isGeneral: true })}
@@ -1404,6 +1458,7 @@ export default function CasesPanel({ notice }) {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gray-100 text-xs md:text-sm">
+                <th className="border p-2.5 text-center text-[11px] font-bold text-gray-700 w-12">#</th>
                 <th className="border p-3 text-left">Título</th>
                 <th className="border p-2.5 text-left text-[11px] font-bold text-gray-700">Área</th>
                 <th className="border p-2.5 text-left text-[11px] font-bold text-gray-700">Status</th>
@@ -1413,7 +1468,8 @@ export default function CasesPanel({ notice }) {
               </tr>
             </thead>
             <tbody>
-                {cases.map((caseItem) => {
+                {cases.map((caseItem, idx) => {
+                const isClosed = caseItem.status === 'encerrado' || caseItem.status === 'arquivado';
                 const daysLeft = daysUntilDeadline(caseItem.deadline_date);
                 const checklist = checklistMap[caseItem.id] || [];
                 const totalDocs = checklist.length;
@@ -1422,12 +1478,26 @@ export default function CasesPanel({ notice }) {
                 <tr
                   key={caseItem.id}
                   onClick={() => openCase(caseItem)}
-                  className={`border-b hover:bg-gray-50 text-xs md:text-sm cursor-pointer ${
-                    selectedCase?.id === caseItem.id ? 'bg-blue-50 ring-2 ring-inset ring-blue-200' : ''
+                  className={`border-b text-xs md:text-sm cursor-pointer transition ${
+                    isClosed
+                      ? 'bg-gray-100/80 text-gray-500 opacity-70 hover:bg-gray-200/60'
+                      : selectedCase?.id === caseItem.id
+                      ? 'bg-blue-50 ring-2 ring-inset ring-blue-200 hover:bg-blue-100/60'
+                      : 'hover:bg-gray-50'
                   }`}
                 >
+                    <td className="border p-2 text-center text-xs font-bold text-gray-400">
+                      {isClosed ? '📁 ' : ''}{idx + 1}
+                    </td>
                     <td className="border p-3">
-                      {caseItem.title}
+                      <span className={isClosed ? 'text-gray-500 line-through' : 'font-medium'}>
+                        {caseItem.title}
+                      </span>
+                      {isClosed && (
+                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-700 font-bold inline-flex items-center gap-1">
+                          📁 Encerrado
+                        </span>
+                      )}
                       {totalDocs > 0 && (
                         <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${pendingDocs > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                           {pendingDocs > 0 ? `${pendingDocs} de ${totalDocs} pendentes` : '✓ completo'}
@@ -1484,8 +1554,8 @@ export default function CasesPanel({ notice }) {
                           ) : (
                             <>
                               {daysLeft !== null && (
-                                <div className={`text-xs mt-0.5 ${daysLeft < 0 ? 'text-red-600 font-bold' : daysLeft < 7 ? 'text-orange-600 font-medium' : 'text-gray-600'}`}>
-                                  {daysLeft < 0 ? `${Math.abs(daysLeft)} dias atrasado` : `${daysLeft} dias restantes`}
+                                <div className={`text-xs mt-0.5 ${daysLeft < 0 ? 'text-red-600 font-bold' : daysLeft === 0 ? 'text-blue-600 font-bold' : daysLeft < 7 ? 'text-orange-600 font-medium' : 'text-gray-600'}`}>
+                                  {daysLeft < 0 ? `${Math.abs(daysLeft)} dias atrasado` : daysLeft === 0 ? '⏰ Hoje' : `${daysLeft} dias restantes`}
                                 </div>
                               )}
                               {canEdit && daysLeft !== null && daysLeft < 0 && (

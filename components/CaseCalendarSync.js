@@ -191,12 +191,13 @@ export default function CaseCalendarSync({
   };
 
   return (
-    <div className="inline-flex flex-col gap-1">
+    <div className="inline-flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
       {renderStatus()}
 
       {!connected ? (
         <button
-          onClick={handleConnect}
+          type="button"
+          onClick={(e) => { e.stopPropagation(); handleConnect(e); }}
           disabled={loading}
           className="text-left text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
           title="Conectar Google Calendar para sincronizar"
@@ -205,9 +206,10 @@ export default function CaseCalendarSync({
           Conectar Google Calendar
         </button>
       ) : status?.synced ? (
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-2 text-xs" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={handleSync}
+            type="button"
+            onClick={(e) => { e.stopPropagation(); handleSync(e); }}
             disabled={loading}
             className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
             title="Atualizar no Google Calendar"
@@ -217,7 +219,8 @@ export default function CaseCalendarSync({
           </button>
           <span className="text-gray-300">|</span>
           <button
-            onClick={handleDelete}
+            type="button"
+            onClick={(e) => { e.stopPropagation(); handleDelete(e); }}
             disabled={loading}
             className="text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
             data-testid="delete-button"
@@ -227,7 +230,8 @@ export default function CaseCalendarSync({
         </div>
       ) : (
         <button
-          onClick={handleSync}
+          type="button"
+          onClick={(e) => { e.stopPropagation(); handleSync(e); }}
           disabled={loading || !deadlineDate}
           className="text-left text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
           title={!deadlineDate ? 'Prazo sem data definida' : 'Sincronizar prazo com Google Calendar'}
