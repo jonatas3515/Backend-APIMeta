@@ -4,6 +4,7 @@ import CaseProcessMonitoring from './CaseProcessMonitoring';
 import GeneratedDocumentsPanel from './GeneratedDocumentsPanel';
 import { stripFeeFromNotes } from '../lib/caseFeeHelper';
 import { apiJson } from '../lib/apiClient';
+import { formatClientSalutation } from '../lib/genderFromName';
 
 const TABS = [
   { key: 'visao-geral', label: 'Visão Geral' },
@@ -298,12 +299,11 @@ export default function CaseDetailPanel({
                 {/* Disparo direto para o WhatsApp do Cliente sem restrição de 24h da Meta */}
                 {linkedConversation?.client_phone && (() => {
                   const rawName = (linkedConversation.client_name || '').trim();
-                  const firstName = rawName ? rawName.split(/\s+/)[0] : '';
-                  const greeting = firstName ? `Olá Sr(a). ${firstName}, tudo bem?` : 'Olá, tudo bem?';
+                  const salutation = formatClientSalutation(rawName);
                   const processDetail = caseItem.process_number
                     ? `trazer informações sobre o andamento do seu processo nº ${caseItem.process_number}.`
                     : 'trazer informações sobre o andamento do seu processo.';
-                  const text = `${greeting} Aqui é do escritório Neves & Costa Advocacia. Gostaria de ${processDetail}`;
+                  const text = `${salutation} Aqui é do escritório Neves & Costa Advocacia. Gostaria de ${processDetail}`;
 
                   return (
                     <a

@@ -3,6 +3,9 @@ import { useAuth } from '../lib/useAuth';
 import { useToast } from '../lib/useToast';
 import { apiJson } from '../lib/apiClient';
 import { getErrorMessage } from '../lib/errorMessage';
+import { formatClientSalutation } from '../lib/genderFromName';
+
+const cleanPhone = (p) => String(p || '').replace(/\D/g, '');
 
 const STATUS_LABELS = {
   pendente: 'Pendente',
@@ -36,7 +39,7 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
   const [message, setMessage] = useState(null);
 
   const conversationId = caseItem?.conversation_id || conversation?.id;
-  const clientPhone = conversation?.client_phone;
+  const clientPhone = conversation?.client_phone || caseItem?.client_phone || '';
   const hasConversation = Boolean(conversationId);
   const hasClientPhone = Boolean(clientPhone?.trim());
   const canRequestDocuments = hasConversation && hasClientPhone;
@@ -52,19 +55,17 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
 
   useEffect(() => {
     if (draft?.message) {
-      const rawName = (conversation?.client_name || '').trim();
-      const firstName = rawName ? rawName.split(/\s+/)[0] : '';
-      const greeting = firstName
-        ? `Olá Sr(a). ${firstName}, tudo bem? Aqui é do escritório Neves & Costa Advocacia.\n\n`
-        : 'Olá, tudo bem? Aqui é do escritório Neves & Costa Advocacia.\n\n';
+      const rawName = (conversation?.client_name || caseItem?.client_name || '').trim();
+      const salutation = formatClientSalutation(rawName);
+      const intro = `${salutation} Aqui é do escritório Neves & Costa Advocacia.\n\n`;
 
       if (!draft.message.startsWith('Olá')) {
-        setCustomMessage(greeting + draft.message);
+        setCustomMessage(intro + draft.message);
       } else {
         setCustomMessage(draft.message);
       }
     }
-  }, [draft, conversation]);
+  }, [draft, conversation, caseItem]);
 
   const fetchItems = async () => {
     try {
@@ -123,6 +124,12 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
     if (!draft || sending) return;
     setSending(true);
     setMessage(null);
+
+    const phoneDigits = cleanPhone(clientPhone);
+    const waUrl = phoneDigits
+      ? `https://wa.me/55${phoneDigits}?text=${encodeURIComponent(customMessage)}`
+      : null;
+
     try {
       await apiJson('/api/document-checklist-requests?action=send', {
         method: 'POST',
@@ -132,14 +139,25 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
           message: customMessage
         })
       });
-      setMessage({ type: 'success', text: 'Solicitação enviada com sucesso.' });
-      addToast('Solicitação enviada com sucesso.', 'success');
-      setTimeout(onClose, 1200);
+
+      if (waUrl && typeof window !== 'undefined') {
+        window.open(waUrl, '_blank');
+      }
+
+      setMessage({ type: 'success', text: 'Solicitação registrada e WhatsApp aberto com sucesso!' });
+      addToast('Solicitação registrada e WhatsApp aberto!', 'success');
+      setTimeout(onClose, 1500);
     } catch (error) {
-      console.error('[DOC_REQUEST_MODAL] Erro ao enviar');
-      const text = getErrorMessage(error, 'Erro ao enviar solicitação. Tente novamente.');
-      setMessage({ type: 'error', text });
-      addToast(text, 'error');
+      console.warn('[DOC_REQUEST_MODAL] Erro ao registrar na API, mas abrindo WhatsApp direto:', error);
+      if (waUrl && typeof window !== 'undefined') {
+        window.open(waUrl, '_blank');
+        addToast('WhatsApp aberto para envio da solicitação!', 'info');
+        setTimeout(onClose, 1500);
+      } else {
+        const text = getErrorMessage(error, 'Erro ao enviar solicitação.');
+        setMessage({ type: 'error', text });
+        addToast(text, 'error');
+      }
     } finally {
       setSending(false);
     }
@@ -240,18 +258,25 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
                 value={customMessage}
                 onChange={(e) => setCustomMessage(e.target.value)}
                 rows={9}
+                data-gramm="false"
+                data-gramm_editor="false"
+                data-enable-grammarly="false"
+                spellCheck="false"
+                autoComplete="off"
                 className="w-full border rounded-lg p-3 text-sm mb-4 font-sans text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
               />
 
               <div className="flex gap-2">
                 <button
+                  type="button"
                   onClick={handleSend}
                   disabled={sending}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 font-semibold text-sm shadow-xs transition"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 font-semibold text-sm shadow-xs transition flex items-center gap-1.5"
                 >
-                  {sending ? 'Enviando...' : 'Confirmar e enviar pelo WhatsApp'}
+                  <span>📲</span> {sending ? 'Abrindo WhatsApp...' : 'Confirmar e abrir no WhatsApp'}
                 </button>
                 <button
+                  type="button"
                   onClick={() => { setDraft(null); setSelected([]); }}
                   className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold text-sm transition"
                 >
