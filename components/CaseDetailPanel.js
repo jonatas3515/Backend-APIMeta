@@ -296,19 +296,27 @@ export default function CaseDetailPanel({
                 </button>
 
                 {/* Disparo direto para o WhatsApp do Cliente sem restrição de 24h da Meta */}
-                {linkedConversation?.client_phone && (
-                  <a
-                    href={`https://wa.me/55${cleanPhone(linkedConversation.client_phone)}?text=${encodeURIComponent(
-                      `Olá ${linkedConversation.client_name || ''}, aqui é do escritório de advocacia sobre o andamento do seu processo "${caseItem.title}" (${caseItem.process_number || ''}).`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5"
-                    title="Abrir WhatsApp para falar com o cliente com texto pronto (sem bloqueio de 24h)"
-                  >
-                    <span>📲</span> Avisar Cliente (WhatsApp)
-                  </a>
-                )}
+                {linkedConversation?.client_phone && (() => {
+                  const rawName = (linkedConversation.client_name || '').trim();
+                  const firstName = rawName ? rawName.split(/\s+/)[0] : '';
+                  const greeting = firstName ? `Olá Sr(a). ${firstName}, tudo bem?` : 'Olá, tudo bem?';
+                  const processDetail = caseItem.process_number
+                    ? `trazer informações sobre o andamento do seu processo nº ${caseItem.process_number}.`
+                    : 'trazer informações sobre o andamento do seu processo.';
+                  const text = `${greeting} Aqui é do escritório Neves & Costa Advocacia. Gostaria de ${processDetail}`;
+
+                  return (
+                    <a
+                      href={`https://wa.me/55${cleanPhone(linkedConversation.client_phone)}?text=${encodeURIComponent(text)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5"
+                      title="Abrir WhatsApp para falar com o cliente com texto pronto (sem bloqueio de 24h)"
+                    >
+                      <span>📲</span> Avisar Cliente (WhatsApp)
+                    </a>
+                  );
+                })()}
 
                 {userCanEdit && caseItem.status !== 'encerrado' && caseItem.status !== 'arquivado' && onFinalizeCase && (
                   <button

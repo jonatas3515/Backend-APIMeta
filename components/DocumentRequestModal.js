@@ -4,6 +4,26 @@ import { useToast } from '../lib/useToast';
 import { apiJson } from '../lib/apiClient';
 import { getErrorMessage } from '../lib/errorMessage';
 
+const STATUS_LABELS = {
+  pendente: 'Pendente',
+  solicitado: 'Já Solicitado',
+  recebido: 'Recebido',
+  recusado: 'Recusado',
+  em_revisao: 'Em Revisão',
+  revisado: 'Revisado',
+  dispensado: 'Dispensado'
+};
+
+const STATUS_BADGES = {
+  pendente: 'bg-amber-100 text-amber-800 border-amber-200',
+  solicitado: 'bg-blue-100 text-blue-800 border-blue-200',
+  recebido: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  recusado: 'bg-red-100 text-red-800 border-red-200',
+  em_revisao: 'bg-purple-100 text-purple-800 border-purple-200',
+  revisado: 'bg-green-100 text-green-800 border-green-200',
+  dispensado: 'bg-gray-100 text-gray-800 border-gray-200'
+};
+
 export default function DocumentRequestModal({ caseItem, conversation, onClose }) {
   const { profile } = useAuth();
   const { addToast } = useToast();
@@ -31,8 +51,20 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
   }, [caseItem.id]);
 
   useEffect(() => {
-    setCustomMessage(draft?.message || '');
-  }, [draft]);
+    if (draft?.message) {
+      const rawName = (conversation?.client_name || '').trim();
+      const firstName = rawName ? rawName.split(/\s+/)[0] : '';
+      const greeting = firstName
+        ? `Olá Sr(a). ${firstName}, tudo bem? Aqui é do escritório Neves & Costa Advocacia.\n\n`
+        : 'Olá, tudo bem? Aqui é do escritório Neves & Costa Advocacia.\n\n';
+
+      if (!draft.message.startsWith('Olá')) {
+        setCustomMessage(greeting + draft.message);
+      } else {
+        setCustomMessage(draft.message);
+      }
+    }
+  }, [draft, conversation]);
 
   const fetchItems = async () => {
     try {
@@ -44,15 +76,13 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
     }
   };
 
-  const pendingItems = items.filter(i =>
-    ['pendente', 'recusado'].includes(i.status) && !i.is_sensitive
-  );
+  const availableItems = items.filter(i => !i.is_sensitive && i.status !== 'dispensado');
 
   const toggleItem = (id) => {
     setSelected(prev => {
       if (prev.includes(id)) return prev.filter(x => x !== id);
-      if (prev.length >= 3) {
-        setMessage({ type: 'warning', text: 'Limite de 3 itens por solicitação.' });
+      if (prev.length >= 5) {
+        setMessage({ type: 'warning', text: 'Você pode selecionar até 5 documentos por envio.' });
         return prev;
       }
       return [...prev, id];
@@ -143,7 +173,7 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
           {!draft ? (
             <>
               <p className="text-sm text-gray-600 mb-3">
-                Selecione ate 3 documentos nao sensiveis para enviar ao cliente.
+                Selecione os documentos para solicitar ao cliente (você pode solicitar qualquer documento quantas vezes for necessário):
               </p>
 
               {requestDisabledReason && (
@@ -157,27 +187,32 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
                 </p>
               )}
 
-              {pendingItems.length === 0 ? (
-                <p className="text-center text-gray-500">Nenhum item elegivel para solicitacao.</p>
+              {availableItems.length === 0 ? (
+                <p className="text-center text-gray-500">Nenhum item elegível para solicitação.</p>
               ) : (
                 <div className="space-y-2 mb-4">
-                  {pendingItems.map(item => (
+                  {availableItems.map(item => (
                     <label
                       key={item.id}
-                      className={`flex items-center gap-3 p-3 border rounded cursor-pointer ${
-                        selected.includes(item.id) ? 'bg-blue-50 border-blue-300' : 'bg-white'
+                      className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition ${
+                        selected.includes(item.id) ? 'bg-blue-50 border-blue-400 shadow-xs' : 'bg-white hover:bg-gray-50'
                       }`}
                     >
                       <input
                         type="checkbox"
                         checked={selected.includes(item.id)}
                         onChange={() => toggleItem(item.id)}
-                        className="h-4 w-4"
+                        className="h-4 w-4 text-blue-600 rounded"
                       />
                       <div className="flex-1">
-                        <p className="text-sm font-medium">{item.title || item.document_name}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-gray-800">{item.title || item.document_name}</p>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${STATUS_BADGES[item.status] || 'bg-gray-100 text-gray-700'}`}>
+                            {STATUS_LABELS[item.status] || item.status}
+                          </span>
+                        </div>
                         {item.description && (
-                          <p className="text-xs text-gray-500">{item.description}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
                         )}
                       </div>
                     </label>
@@ -200,25 +235,25 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
             </>
           ) : (
             <>
-              <p className="text-sm font-medium mb-2">Mensagem a ser enviada (edite se desejar):</p>
+              <p className="text-sm font-medium mb-2">Mensagem a ser enviada pelo WhatsApp (você pode editar antes de disparar):</p>
               <textarea
                 value={customMessage}
                 onChange={(e) => setCustomMessage(e.target.value)}
-                rows={8}
-                className="w-full border rounded p-3 text-sm mb-4"
+                rows={9}
+                className="w-full border rounded-lg p-3 text-sm mb-4 font-sans text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
               />
 
               <div className="flex gap-2">
                 <button
                   onClick={handleSend}
                   disabled={sending}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 font-semibold text-sm shadow-xs transition"
                 >
-                  {sending ? 'Enviando...' : 'Confirmar e enviar'}
+                  {sending ? 'Enviando...' : 'Confirmar e enviar pelo WhatsApp'}
                 </button>
                 <button
                   onClick={() => { setDraft(null); setSelected([]); }}
-                  className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500"
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold text-sm transition"
                 >
                   Voltar
                 </button>

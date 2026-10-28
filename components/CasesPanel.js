@@ -694,287 +694,9 @@ export default function CasesPanel({ notice }) {
     }
   };
 
-  if (selectedCase && caseView !== 'list' && caseView !== 'insights') {
+  const renderFormModal = () => {
+    if (!showForm) return null;
     return (
-      <div className="p-4 md:p-6 h-full w-full flex flex-col">
-        {actionMessage && (
-          <div
-            className={`mb-4 p-3 rounded text-sm ${
-              actionMessage.type === 'error'
-                ? 'bg-red-100 text-red-700'
-                : actionMessage.type === 'success'
-                ? 'bg-green-100 text-green-700'
-                : 'bg-yellow-100 text-yellow-800'
-            }`}
-            role={actionMessage.type === 'error' ? 'alert' : 'status'}
-            aria-live="polite"
-          >
-            {actionMessage.text}
-          </div>
-        )}
-        <CaseDetailPanel
-          caseItem={selectedCase}
-          caseView={caseView}
-          onChangeView={updateCaseView}
-          onBack={() => {
-            setSelectedCase(null);
-            setCaseView('list');
-            const query = { ...router.query };
-            delete query.caseId;
-            delete query.caseView;
-            router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
-          }}
-          onEditCase={() => handleEditCase(selectedCase)}
-          onOpenChecklist={() => setChecklistCase(selectedCase)}
-          onOpenDocuments={() => setDocsCase(selectedCase)}
-          onOpenFee={() => setFeeCase(selectedCase)}
-          onOpenDecisionExtractor={() => setDecisionExtractorCase(selectedCase)}
-          onOpenRequest={() => {
-            if (!selectedCase.conversation_id) {
-              alert('Caso sem conversa vinculada. Vincule uma conversa antes de solicitar documentos.');
-              return;
-            }
-            setRequestCase(selectedCase);
-          }}
-          onFinalizeCase={() => setFinalizeCase(selectedCase)}
-          onDeleteCase={() => handleDeleteCase(selectedCase.id)}
-          userRole={profile?.role}
-          conversations={conversations}
-          onOpenConversationSelector={() => setShowConversationSelector(true)}
-          onUnlinkConversation={handleUnlinkConversation}
-          linking={linking}
-          unlinking={unlinking}
-          userCanEdit={canEdit}
-        />
-
-        {finalizeCase && (
-          <CaseFinalizeModal
-            caseItem={finalizeCase}
-            onClose={() => setFinalizeCase(null)}
-            onFinalized={(updated) => {
-              setCases((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-              setSelectedCase(updated);
-              setFinalizeCase(null);
-            }}
-          />
-        )}
-
-        {requestCase && (
-          <DocumentRequestModal
-            caseItem={requestCase}
-            conversation={conversations.find((c) => c.id === requestCase.conversation_id)}
-            onClose={() => setRequestCase(null)}
-          />
-        )}
-
-        {decisionExtractorCase && (
-          <CaseDecisionExtractorModal
-            caseItem={decisionExtractorCase?.isGeneral ? null : decisionExtractorCase}
-            allCases={cases}
-            onClose={() => setDecisionExtractorCase(null)}
-            onRefresh={() => fetchCases()}
-          />
-        )}
-
-        {feeCase && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-              <div className="p-4 border-b flex justify-between items-center">
-                <h3 className="font-bold text-lg">Simulador de Honorários</h3>
-                <button onClick={() => setFeeCase(null)} className="text-gray-500 hover:text-gray-700">✕</button>
-              </div>
-              <FeeSimulator caseId={feeCase.id} caseData={feeCase} userRole={profile?.role} />
-            </div>
-          </div>
-        )}
-
-        {checklistCase && (
-          <DocumentChecklist caseItem={checklistCase} onClose={() => setChecklistCase(null)} />
-        )}
-
-        {docsCase && (
-          <CaseDocumentsPanel
-            caseItem={docsCase}
-            onClose={() => setDocsCase(null)}
-          />
-        )}
-
-        {showConversationSelector && selectedCase && (
-          <ConversationSelectorModal
-            caseItem={selectedCase}
-            onSelect={handleLinkConversation}
-            onClose={() => setShowConversationSelector(false)}
-          />
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-4 md:p-6 bg-white rounded-lg shadow w-full h-full overflow-y-auto">
-      {actionMessage && (
-        <div
-          className={`mb-4 p-3 rounded text-sm ${
-            actionMessage.type === 'error'
-              ? 'bg-red-100 text-red-700'
-              : actionMessage.type === 'success'
-              ? 'bg-green-100 text-green-700'
-              : 'bg-yellow-100 text-yellow-800'
-          }`}
-          role={actionMessage.type === 'error' ? 'alert' : 'status'}
-          aria-live="polite"
-        >
-          {actionMessage.text}
-        </div>
-      )}
-      {notice && !dismissed && (
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 flex justify-between items-center">
-          <span>{notice}</span>
-          <button
-            onClick={() => setDismissed(true)}
-            className="text-yellow-600 hover:text-yellow-900 font-bold"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl sm:text-2xl font-bold">Casos</h2>
-          <span className="text-xs px-2.5 py-1 bg-gray-100 border border-gray-300 rounded-full text-gray-700 font-medium">
-            {cases.length} processos ({activeCount} ativos, {closedCount} encerrados)
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-2 items-center">
-          <button
-            onClick={() => setDecisionExtractorCase({ isGeneral: true })}
-            className="px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded font-bold text-xs shadow-sm inline-flex items-center gap-1.5 transition"
-            title="Extrair prazos, audiências, decisões e honorários usando IA"
-          >
-            <span>🤖</span> Analisar Decisão / Despacho (IA)
-          </button>
-          <ExportButtons
-            onExcel={() => exportCasesExcel(cases)}
-            disabled={loading || cases.length === 0}
-          />
-          {canEdit && (
-            <button
-              onClick={() => {
-                setShowForm(true);
-                setEditingCase(null);
-                setFormData({
-                  conversation_id: '',
-                  title: '',
-                  legal_area: '',
-                  case_type: '',
-                  municipality: '',
-                  agency: '',
-                  client_role: '',
-                  status: 'prospect',
-                  priority: 'media',
-                  deadline_date: '',
-                  deadline_type: '',
-                  notes: '',
-                  process_number: '',
-                  court: '',
-                  court_division: '',
-                  judicial_district: '',
-                  procedural_step: '',
-                  case_value: '',
-                  distribution_date: ''
-                });
-              }}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              + Novo Caso
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Filtros */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <select
-          value={filters.status}
-          onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-          className="px-3 py-2 border rounded"
-        >
-          <option value="">Todos os Status</option>
-          <option value="prospect">Prospect</option>
-          <option value="em_analise">Em Análise</option>
-          <option value="proposta_enviada">Proposta Enviada</option>
-          <option value="contrato_assinado">Contrato Assinado</option>
-          <option value="acao_protocolada">Ação Protocolada</option>
-          <option value="aguardando_decisao">Aguardando Decisão</option>
-          <option value="em_recurso">Fase de Recurso</option>
-          <option value="em_execucao">Fase de Execução</option>
-          <option value="encerrado">Encerrado</option>
-        </select>
-
-        <select
-          value={filters.priority}
-          onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-          className="px-3 py-2 border rounded"
-        >
-          <option value="">Todas as Prioridades</option>
-          <option value="baixa">Baixa</option>
-          <option value="media">Média</option>
-          <option value="alta">Alta</option>
-        </select>
-
-        <select
-          value={filters.document_status}
-          onChange={(e) => setFilters({ ...filters, document_status: e.target.value })}
-          className="px-3 py-2 border rounded"
-        >
-          <option value="">Todos os Documentos</option>
-          <option value="pending">Documentos Pendentes</option>
-          <option value="complete">Checklist Completo</option>
-        </select>
-
-        <select
-          value={filters.legal_area}
-          onChange={(e) => setSelectedArea(e.target.value)}
-          className="px-3 py-2 border rounded"
-        >
-          <option value="">Todas as áreas</option>
-          {LEGAL_AREAS.map((area) => (
-            <option key={area.value} value={area.value}>{area.label}</option>
-          ))}
-        </select>
-
-        <select
-          value={filters.court}
-          onChange={(e) => setFilters({ ...filters, court: e.target.value })}
-          className="px-3 py-2 border rounded"
-        >
-          <option value="">Todos os Tribunais</option>
-          <option value="TRT">TRT</option>
-          <option value="TRF">TRF</option>
-          <option value="TJ">TJ</option>
-          <option value="STJ">STJ</option>
-          <option value="STF">STF</option>
-          <option value="Outro">Outro</option>
-        </select>
-
-        <select
-          value={filters.procedural_step}
-          onChange={(e) => setFilters({ ...filters, procedural_step: e.target.value })}
-          className="px-3 py-2 border rounded"
-        >
-          <option value="">Todas as Fases</option>
-          <option value="conciliacao">Conciliação</option>
-          <option value="instrucao">Instrução</option>
-          <option value="sentenca">Sentença</option>
-          <option value="recurso">Recurso</option>
-          <option value="execucao">Execução</option>
-          <option value="acordo">Acordo</option>
-          <option value="outro">Outro</option>
-        </select>
-      </div>
-
-      {/* Formulário Modal Centralizado */}
-      {showForm && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto" onClick={() => { setShowForm(false); setEditingCase(null); }}>
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-4xl max-h-[90vh] overflow-y-auto p-5 md:p-6 text-gray-900 animate-fadeIn my-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between pb-3 border-b border-gray-200 mb-4">
@@ -1450,7 +1172,291 @@ export default function CasesPanel({ notice }) {
           </div>
         </div>
       </div>
+    );
+  };
+
+  if (selectedCase && caseView !== 'list' && caseView !== 'insights') {
+    return (
+      <div className="p-4 md:p-6 h-full w-full flex flex-col">
+        {actionMessage && (
+          <div
+            className={`mb-4 p-3 rounded text-sm ${
+              actionMessage.type === 'error'
+                ? 'bg-red-100 text-red-700'
+                : actionMessage.type === 'success'
+                ? 'bg-green-100 text-green-700'
+                : 'bg-yellow-100 text-yellow-800'
+            }`}
+            role={actionMessage.type === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
+          >
+            {actionMessage.text}
+          </div>
+        )}
+        <CaseDetailPanel
+          caseItem={selectedCase}
+          caseView={caseView}
+          onChangeView={updateCaseView}
+          onBack={() => {
+            setSelectedCase(null);
+            setCaseView('list');
+            const query = { ...router.query };
+            delete query.caseId;
+            delete query.caseView;
+            router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
+          }}
+          onEditCase={() => handleEditCase(selectedCase)}
+          onOpenChecklist={() => setChecklistCase(selectedCase)}
+          onOpenDocuments={() => setDocsCase(selectedCase)}
+          onOpenFee={() => setFeeCase(selectedCase)}
+          onOpenDecisionExtractor={() => setDecisionExtractorCase(selectedCase)}
+          onOpenRequest={() => {
+            if (!selectedCase.conversation_id) {
+              alert('Caso sem conversa vinculada. Vincule uma conversa antes de solicitar documentos.');
+              return;
+            }
+            setRequestCase(selectedCase);
+          }}
+          onFinalizeCase={() => setFinalizeCase(selectedCase)}
+          onDeleteCase={() => handleDeleteCase(selectedCase.id)}
+          userRole={profile?.role}
+          conversations={conversations}
+          onOpenConversationSelector={() => setShowConversationSelector(true)}
+          onUnlinkConversation={handleUnlinkConversation}
+          linking={linking}
+          unlinking={unlinking}
+          userCanEdit={canEdit}
+        />
+
+        {finalizeCase && (
+          <CaseFinalizeModal
+            caseItem={finalizeCase}
+            onClose={() => setFinalizeCase(null)}
+            onFinalized={(updated) => {
+              setCases((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+              setSelectedCase(updated);
+              setFinalizeCase(null);
+            }}
+          />
+        )}
+
+        {requestCase && (
+          <DocumentRequestModal
+            caseItem={requestCase}
+            conversation={conversations.find((c) => c.id === requestCase.conversation_id)}
+            onClose={() => setRequestCase(null)}
+          />
+        )}
+
+        {decisionExtractorCase && (
+          <CaseDecisionExtractorModal
+            caseItem={decisionExtractorCase?.isGeneral ? null : decisionExtractorCase}
+            allCases={cases}
+            onClose={() => setDecisionExtractorCase(null)}
+            onRefresh={() => fetchCases()}
+          />
+        )}
+
+        {feeCase && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+              <div className="p-4 border-b flex justify-between items-center">
+                <h3 className="font-bold text-lg">Simulador de Honorários</h3>
+                <button onClick={() => setFeeCase(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+              </div>
+              <FeeSimulator caseId={feeCase.id} caseData={feeCase} userRole={profile?.role} />
+            </div>
+          </div>
+        )}
+
+        {checklistCase && (
+          <DocumentChecklist caseItem={checklistCase} onClose={() => setChecklistCase(null)} />
+        )}
+
+        {docsCase && (
+          <CaseDocumentsPanel
+            caseItem={docsCase}
+            onClose={() => setDocsCase(null)}
+          />
+        )}
+
+        {showConversationSelector && selectedCase && (
+          <ConversationSelectorModal
+            caseItem={selectedCase}
+            onSelect={handleLinkConversation}
+            onClose={() => setShowConversationSelector(false)}
+          />
+        )}
+        {renderFormModal()}
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 md:p-6 bg-white rounded-lg shadow w-full h-full overflow-y-auto">
+      {actionMessage && (
+        <div
+          className={`mb-4 p-3 rounded text-sm ${
+            actionMessage.type === 'error'
+              ? 'bg-red-100 text-red-700'
+              : actionMessage.type === 'success'
+              ? 'bg-green-100 text-green-700'
+              : 'bg-yellow-100 text-yellow-800'
+          }`}
+          role={actionMessage.type === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+        >
+          {actionMessage.text}
+        </div>
       )}
+      {notice && !dismissed && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800 flex justify-between items-center">
+          <span>{notice}</span>
+          <button
+            onClick={() => setDismissed(true)}
+            className="text-yellow-600 hover:text-yellow-900 font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl sm:text-2xl font-bold">Casos</h2>
+          <span className="text-xs px-2.5 py-1 bg-gray-100 border border-gray-300 rounded-full text-gray-700 font-medium">
+            {cases.length} processos ({activeCount} ativos, {closedCount} encerrados)
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2 items-center">
+          <button
+            onClick={() => setDecisionExtractorCase({ isGeneral: true })}
+            className="px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded font-bold text-xs shadow-sm inline-flex items-center gap-1.5 transition"
+            title="Extrair prazos, audiências, decisões e honorários usando IA"
+          >
+            <span>🤖</span> Analisar Decisão / Despacho (IA)
+          </button>
+          <ExportButtons
+            onExcel={() => exportCasesExcel(cases)}
+            disabled={loading || cases.length === 0}
+          />
+          {canEdit && (
+            <button
+              onClick={() => {
+                setShowForm(true);
+                setEditingCase(null);
+                setFormData({
+                  conversation_id: '',
+                  title: '',
+                  legal_area: '',
+                  case_type: '',
+                  municipality: '',
+                  agency: '',
+                  client_role: '',
+                  status: 'prospect',
+                  priority: 'media',
+                  deadline_date: '',
+                  deadline_type: '',
+                  notes: '',
+                  process_number: '',
+                  court: '',
+                  court_division: '',
+                  judicial_district: '',
+                  procedural_step: '',
+                  case_value: '',
+                  distribution_date: ''
+                });
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              + Novo Caso
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <select
+          value={filters.status}
+          onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+          className="px-3 py-2 border rounded"
+        >
+          <option value="">Todos os Status</option>
+          <option value="prospect">Prospect</option>
+          <option value="em_analise">Em Análise</option>
+          <option value="proposta_enviada">Proposta Enviada</option>
+          <option value="contrato_assinado">Contrato Assinado</option>
+          <option value="acao_protocolada">Ação Protocolada</option>
+          <option value="aguardando_decisao">Aguardando Decisão</option>
+          <option value="em_recurso">Fase de Recurso</option>
+          <option value="em_execucao">Fase de Execução</option>
+          <option value="encerrado">Encerrado</option>
+        </select>
+
+        <select
+          value={filters.priority}
+          onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
+          className="px-3 py-2 border rounded"
+        >
+          <option value="">Todas as Prioridades</option>
+          <option value="baixa">Baixa</option>
+          <option value="media">Média</option>
+          <option value="alta">Alta</option>
+        </select>
+
+        <select
+          value={filters.document_status}
+          onChange={(e) => setFilters({ ...filters, document_status: e.target.value })}
+          className="px-3 py-2 border rounded"
+        >
+          <option value="">Todos os Documentos</option>
+          <option value="pending">Documentos Pendentes</option>
+          <option value="complete">Checklist Completo</option>
+        </select>
+
+        <select
+          value={filters.legal_area}
+          onChange={(e) => setSelectedArea(e.target.value)}
+          className="px-3 py-2 border rounded"
+        >
+          <option value="">Todas as áreas</option>
+          {LEGAL_AREAS.map((area) => (
+            <option key={area.value} value={area.value}>{area.label}</option>
+          ))}
+        </select>
+
+        <select
+          value={filters.court}
+          onChange={(e) => setFilters({ ...filters, court: e.target.value })}
+          className="px-3 py-2 border rounded"
+        >
+          <option value="">Todos os Tribunais</option>
+          <option value="TRT">TRT</option>
+          <option value="TRF">TRF</option>
+          <option value="TJ">TJ</option>
+          <option value="STJ">STJ</option>
+          <option value="STF">STF</option>
+          <option value="Outro">Outro</option>
+        </select>
+
+        <select
+          value={filters.procedural_step}
+          onChange={(e) => setFilters({ ...filters, procedural_step: e.target.value })}
+          className="px-3 py-2 border rounded"
+        >
+          <option value="">Todas as Fases</option>
+          <option value="conciliacao">Conciliação</option>
+          <option value="instrucao">Instrução</option>
+          <option value="sentenca">Sentença</option>
+          <option value="recurso">Recurso</option>
+          <option value="execucao">Execução</option>
+          <option value="acordo">Acordo</option>
+          <option value="outro">Outro</option>
+        </select>
+      </div>
+
+      {/* Formulário Modal Centralizado */}
+      {renderFormModal()}
 
       {loading ? (
         <div className="text-center p-8" role="status" aria-live="polite">

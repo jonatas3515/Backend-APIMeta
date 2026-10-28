@@ -94,16 +94,16 @@ async function handleCreateDraft(req, res, user) {
   const start = Date.now();
   const { case_id, conversation_id, items } = req.body;
 
-  logger('info', 'DOC_REQUEST_CREATE_DRAFT_START', { userId: user.id, caseId: case_id, conversationId });
+  logger('info', 'DOC_REQUEST_CREATE_DRAFT_START', { userId: user.id, caseId: case_id, conversationId: conversation_id });
 
   if (!case_id || !Array.isArray(items) || items.length === 0) {
     logger('warn', 'DOC_REQUEST_CREATE_DRAFT_VALIDATION', { userId: user.id, httpStatus: 400, errorCode: 'MISSING_FIELDS' });
     return res.status(400).json({ error: 'case_id e items sao obrigatorios' });
   }
 
-  if (items.length > 3) {
+  if (items.length > 5) {
     logger('warn', 'DOC_REQUEST_CREATE_DRAFT_VALIDATION', { userId: user.id, httpStatus: 400, errorCode: 'ITEM_LIMIT' });
-    return res.status(400).json({ error: 'Limite de 3 itens por solicitacao' });
+    return res.status(400).json({ error: 'Limite de até 5 itens por solicitação' });
   }
 
   const accessible = await canAccessCase(case_id, user);
@@ -242,7 +242,7 @@ async function handleSend(req, res, user, action) {
         .eq('id', itemId)
         .single();
 
-      if (current && current.status === 'pendente') {
+      if (current && current.status !== 'dispensado') {
         await supabase
           .from('case_document_checklists')
           .update({
