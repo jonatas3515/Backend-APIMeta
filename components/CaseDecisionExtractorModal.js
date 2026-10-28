@@ -171,6 +171,11 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
         } else if (analysis.prazo?.identificado && analysis.prazo.sugestao_data_limite) {
           deadlineDate = analysis.prazo.sugestao_data_limite;
           deadlineType = analysis.prazo.tipo || 'Prazo Judicial';
+        } else if (analysis.fase_sugerida === 'execucao') {
+          deadlineType = 'Cumprimento de Sentença';
+          const defaultDate = new Date();
+          defaultDate.setDate(defaultDate.getDate() + 15);
+          deadlineDate = defaultDate.toISOString().split('T')[0];
         }
       }
 
@@ -198,19 +203,28 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
           newNotes = serializeFeeIntoNotes(newNotes, feeData);
         }
 
+        const dp = analysis.dados_processo || {};
+        const isAuthor = !dp.cliente_provavel || dp.cliente_provavel === dp.autor || (dp.autor && dp.autor.toLowerCase().includes(dp.cliente_provavel?.toLowerCase()));
+        const clientRole = isAuthor ? 'autor' : 'reu';
+        const agencyName = (dp.orgao_julgador || dp.vara || '').trim() || null;
+        const municipalityName = (dp.comarca || dp.cidade || '').trim() || null;
+
         const newCasePayload = {
           title: newCaseData.title.trim(),
           process_number: newCaseData.process_number ? newCaseData.process_number.trim() : null,
-          court: newCaseData.court || 'TJ',
-          judicial_district: newCaseData.judicial_district ? newCaseData.judicial_district.trim() : null,
-          court_division: newCaseData.court_division ? newCaseData.court_division.trim() : null,
-          legal_area: newCaseData.legal_area || 'civel',
+          court: newCaseData.court || dp.tribunal || 'TJ',
+          judicial_district: newCaseData.judicial_district ? newCaseData.judicial_district.trim() : municipalityName,
+          court_division: newCaseData.court_division ? newCaseData.court_division.trim() : (dp.vara ? dp.vara.trim() : null),
+          legal_area: newCaseData.legal_area || dp.area_juridica || 'civel',
           status: newCaseData.status || (analysis.fase_sugerida === 'execucao' ? 'em_execucao' : 'em_andamento'),
           procedural_step: analysis.fase_sugerida || 'execucao',
           priority: 'alta',
           notes: newNotes,
           deadline_date: deadlineDate,
-          deadline_type: deadlineType
+          deadline_type: deadlineType,
+          agency: agencyName,
+          client_role: clientRole,
+          municipality: municipalityName
         };
 
         const { data: createdCase, error: createError } = await supabase
@@ -275,17 +289,27 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
           updates.fee_final_value = finalEst;
         }
 
-        // Completa comarca, vara e tribunal se identificados e em branco no caso existente
+        // Completa comarca, vara, tribunal, órgão e papel do cliente se identificados e em branco no caso existente
         if (applyCourtDetails && analysis.dados_processo) {
           const dp = analysis.dados_processo;
           if (dp.comarca && (!targetCase?.judicial_district || targetCase?.judicial_district.trim() === '')) {
-            updates.judicial_district = dp.comarca;
+            updates.judicial_district = dp.comarca.trim();
+          }
+          if ((dp.cidade || dp.comarca) && (!targetCase?.municipality || targetCase?.municipality.trim() === '')) {
+            updates.municipality = (dp.cidade || dp.comarca).trim();
           }
           if (dp.vara && (!targetCase?.court_division || targetCase?.court_division.trim() === '')) {
-            updates.court_division = dp.vara;
+            updates.court_division = dp.vara.trim();
           }
           if (dp.tribunal && (!targetCase?.court || targetCase?.court === 'TJ')) {
-            updates.court = dp.tribunal;
+            updates.court = dp.tribunal.trim();
+          }
+          if ((dp.orgao_julgador || dp.vara) && (!targetCase?.agency || targetCase?.agency.trim() === '')) {
+            updates.agency = (dp.orgao_julgador || dp.vara).trim();
+          }
+          if (!targetCase?.client_role) {
+            const isAuthor = !dp.cliente_provavel || dp.cliente_provavel === dp.autor || (dp.autor && dp.autor.toLowerCase().includes(dp.cliente_provavel?.toLowerCase()));
+            updates.client_role = isAuthor ? 'autor' : 'reu';
           }
         }
 

@@ -197,7 +197,20 @@ export default function Home() {
     };
   }, [authUser, profile, notifPrefs]);
 
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    try {
+      localStorage.setItem('jusjnc_active_tab', newTab);
+    } catch (e) {}
+    if (typeof window !== 'undefined') {
+      const newUrl = buildInternalUrl({ tab: newTab });
+      window.history.pushState(null, '', newUrl);
+    }
+  };
+
   const isTabAllowed = (tab, view) => {
+    if (authLoading || (authUser && !profile)) return true;
+    if (!tab) return true;
     if (tab === 'users' || tab === 'profile') {
       return view === 'profile' ? canAccess('estagiario') : canAccess('advogado');
     }
@@ -213,6 +226,9 @@ export default function Home() {
   // Processa tab/view e redirecionamentos legados de forma reativa
   useEffect(() => {
     if (!router.isReady) return;
+    // Se a autenticação ainda estiver carregando, aguarda antes de validar permissões ou redirecionar
+    if (authLoading || (authUser && !profile)) return;
+
     const asPath = router.asPath;
     if (asPath === lastProcessedAsPath.current) return;
 
@@ -227,6 +243,16 @@ export default function Home() {
       newConversation,
       movementId,
     } = resolved;
+
+    // Se a query não definiu tab (ex: acessou a raiz puro '/'), tenta restaurar a última aba válida salva
+    if (!tab && typeof window !== 'undefined') {
+      const savedTab = localStorage.getItem('jusjnc_active_tab');
+      if (savedTab && NAV_ITEMS.some((item) => item.key === savedTab)) {
+        tab = savedTab;
+      } else {
+        tab = 'dashboard';
+      }
+    }
 
     // Aplica redirecionamento legado sem loop
     if (redirectTo && redirectTo !== asPath && typeof window !== 'undefined') {
@@ -244,7 +270,12 @@ export default function Home() {
       }
     }
 
-    setActiveTab(tab);
+    if (tab) {
+      setActiveTab(tab);
+      try {
+        localStorage.setItem('jusjnc_active_tab', tab);
+      } catch (e) {}
+    }
     setCasesNotice(notice || null);
     setTriageMovementId(movementId || null);
 
@@ -276,7 +307,7 @@ export default function Home() {
     }
 
     lastProcessedAsPath.current = asPath;
-  }, [router.isReady, router.asPath, profile?.role]);
+  }, [router.isReady, router.asPath, profile?.role, authLoading, authUser]);
 
   // Seleciona conversa a partir da query string quando os dados estiverem carregados
   useEffect(() => {
@@ -490,7 +521,7 @@ export default function Home() {
       </Head>
       
       <div className="flex flex-col md:flex-row h-screen bg-nc-surface overflow-hidden">
-        <Sidebar activeTab={activeTab} onChangeTab={setActiveTab} />
+        <Sidebar activeTab={activeTab} onChangeTab={handleTabChange} />
 
         {/* Conteúdo principal */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -628,7 +659,7 @@ export default function Home() {
               )}
             </>
           ) : activeTab === 'dashboard' ? (
-            <ExecutiveDashboard onNavigateTab={(tab) => setActiveTab(tab)} />
+            <ExecutiveDashboard onNavigateTab={(tab) => handleTabChange(tab)} />
           ) : activeTab === 'priorities' ? (
             <PrioridadesPanel />
           ) : activeTab === 'tasks' ? (

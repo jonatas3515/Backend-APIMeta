@@ -8,7 +8,6 @@ import { apiJson } from '../lib/apiClient';
 const TABS = [
   { key: 'visao-geral', label: 'Visão Geral' },
   { key: 'processos', label: 'Andamentos Processuais' },
-  { key: 'documentos-checklist', label: 'Documentos e Checklist' },
   { key: 'colaboracao', label: 'Anotações da Equipe' }
 ];
 
@@ -99,6 +98,7 @@ export default function CaseDetailPanel({
 }) {
   const [sendingAlert, setSendingAlert] = useState(false);
   const [alertFeedback, setAlertFeedback] = useState(null);
+  const [showGenerateDocModal, setShowGenerateDocModal] = useState(false);
 
   const handleSendAdvogadoAlert = async () => {
     if (sendingAlert || !caseItem?.id) return;
@@ -239,15 +239,6 @@ export default function CaseDetailPanel({
 
                 <button
                   type="button"
-                  onClick={() => onChangeView('processos')}
-                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5"
-                  title="Ver andamentos e movimentações processuais"
-                >
-                  <span>⚖️</span> Andamentos Projudi/PJe
-                </button>
-
-                <button
-                  type="button"
                   onClick={onOpenChecklist}
                   className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5"
                   title="Gerenciar checklist de pendências"
@@ -262,6 +253,15 @@ export default function CaseDetailPanel({
                   title="Visualizar documentos anexados"
                 >
                   <span>📄</span> Documentos
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowGenerateDocModal(true)}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5"
+                  title="Gerar documento do processo a partir de modelos"
+                >
+                  <span>📑</span> Gerar Documento
                 </button>
 
                 <button
@@ -342,16 +342,30 @@ export default function CaseDetailPanel({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3 bg-gray-50 rounded border">
                 <p className="text-xs text-gray-500">Área jurídica</p>
-                <p className="text-sm font-medium">{caseItem.legal_area || '-'}</p>
+                <p className="text-sm font-medium">
+                  {caseItem.legal_area ? (
+                    <span className="capitalize">{caseItem.legal_area}</span>
+                  ) : (
+                    <button type="button" onClick={onEditCase} className="text-xs text-blue-600 hover:text-blue-800 font-medium">+ Definir</button>
+                  )}
+                </p>
               </div>
               <div className="p-3 bg-gray-50 rounded border">
                 <p className="text-xs text-gray-500">Tipo de caso</p>
-                <p className="text-sm font-medium">{caseItem.case_type || '-'}</p>
+                <p className="text-sm font-medium">
+                  {caseItem.case_type || (
+                    <button type="button" onClick={onEditCase} className="text-xs text-blue-600 hover:text-blue-800 font-medium">+ Definir</button>
+                  )}
+                </p>
               </div>
               <div className="p-3 bg-gray-50 rounded border">
                 <p className="text-xs text-gray-500">Prioridade</p>
                 <p className={`text-sm font-medium ${PRIORITY_COLORS[caseItem.priority] || 'text-gray-600'}`}>
-                  {caseItem.priority || '-'}
+                  {caseItem.priority ? (
+                    <span className="capitalize">{caseItem.priority}</span>
+                  ) : (
+                    <button type="button" onClick={onEditCase} className="text-xs text-blue-600 hover:text-blue-800 font-medium">+ Definir</button>
+                  )}
                 </p>
               </div>
               <div className="p-3 bg-gray-50 rounded border">
@@ -366,24 +380,46 @@ export default function CaseDetailPanel({
                         </span>
                       )}
                     </>
-                  ) : '-'}
+                  ) : (
+                    <button type="button" onClick={onEditCase} className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                      <span>+ Definir prazo</span>
+                    </button>
+                  )}
                 </p>
               </div>
               <div className="p-3 bg-gray-50 rounded border">
                 <p className="text-xs text-gray-500">Município</p>
-                <p className="text-sm font-medium">{caseItem.municipality || '-'}</p>
+                <p className="text-sm font-medium">
+                  {caseItem.municipality || (
+                    <button type="button" onClick={onEditCase} className="text-xs text-blue-600 hover:text-blue-800 font-medium">+ Preencher</button>
+                  )}
+                </p>
               </div>
               <div className="p-3 bg-gray-50 rounded border">
                 <p className="text-xs text-gray-500">Órgão</p>
-                <p className="text-sm font-medium">{caseItem.agency || '-'}</p>
+                <p className="text-sm font-medium">
+                  {caseItem.agency || (
+                    <button type="button" onClick={onEditCase} className="text-xs text-blue-600 hover:text-blue-800 font-medium">+ Definir órgão</button>
+                  )}
+                </p>
               </div>
               <div className="p-3 bg-gray-50 rounded border">
                 <p className="text-xs text-gray-500">Papel do cliente</p>
-                <p className="text-sm font-medium">{caseItem.client_role || '-'}</p>
+                <p className="text-sm font-medium">
+                  {caseItem.client_role ? (
+                    <span className="capitalize">{caseItem.client_role}</span>
+                  ) : (
+                    <button type="button" onClick={onEditCase} className="text-xs text-blue-600 hover:text-blue-800 font-medium">+ Definir papel</button>
+                  )}
+                </p>
               </div>
               <div className="p-3 bg-gray-50 rounded border">
                 <p className="text-xs text-gray-500">Tipo de prazo</p>
-                <p className="text-sm font-medium">{caseItem.deadline_type || '-'}</p>
+                <p className="text-sm font-medium">
+                  {caseItem.deadline_type || (
+                    <button type="button" onClick={onEditCase} className="text-xs text-blue-600 hover:text-blue-800 font-medium">+ Definir tipo</button>
+                  )}
+                </p>
               </div>
             </div>
 
@@ -501,43 +537,38 @@ export default function CaseDetailPanel({
           <CaseProcessMonitoring caseId={caseItem.id} userRole={userRole} />
         )}
 
-        {caseView === 'documentos-checklist' && (
-          <div className="space-y-6 max-w-3xl">
-            <div>
-              <h3 className="font-semibold text-lg mb-3">📋 Checklist e Documentos Recebidos</h3>
-              <p className="text-sm text-gray-600 mb-3">
-                Gerencie o checklist de documentos e arquivos recebidos do cliente.
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={onOpenChecklist}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  📎 Abrir Checklist
-                </button>
-                <button
-                  onClick={onOpenDocuments}
-                  className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
-                >
-                  📄 Abrir Documentos
-                </button>
-              </div>
-            </div>
-            
-            <div className="border-t pt-6">
-              <GeneratedDocumentsPanel 
-                caseId={caseItem.id} 
-                conversationId={caseItem.conversation_id}
-                userRole={userRole}
-              />
-            </div>
-          </div>
-        )}
-
         {caseView === 'colaboracao' && (
           <CollaborationPanel conversationId={caseItem.conversation_id} caseId={caseItem.id} />
         )}
       </div>
+
+      {/* Modal de Gerar Documento do Processo */}
+      {showGenerateDocModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+              <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
+                <span>📑</span> Gerar Documento do Processo
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowGenerateDocModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-lg font-bold p-1 rounded hover:bg-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              <GeneratedDocumentsPanel 
+                caseId={caseItem.id} 
+                conversationId={caseItem.conversation_id}
+                userRole={userRole}
+                onClose={() => setShowGenerateDocModal(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
