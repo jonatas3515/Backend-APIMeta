@@ -16,7 +16,6 @@ import DocumentChecklist from './DocumentChecklist';
 import CaseDocumentsPanel from './CaseDocumentsPanel';
 import DocumentRequestModal from './DocumentRequestModal';
 import CaseDetailPanel from './CaseDetailPanel';
-import CaseInsightsPanel from './CaseInsightsPanel';
 import ConversationSelectorModal from './ConversationSelectorModal';
 import CaseDecisionExtractorModal from './CaseDecisionExtractorModal';
 import CaseFinalizeModal from './CaseFinalizeModal';
@@ -725,9 +724,20 @@ export default function CasesPanel({ notice }) {
             delete query.caseView;
             router.replace({ pathname: router.pathname, query }, undefined, { shallow: true });
           }}
+          onEditCase={() => handleEditCase(selectedCase)}
           onOpenChecklist={() => setChecklistCase(selectedCase)}
           onOpenDocuments={() => setDocsCase(selectedCase)}
           onOpenFee={() => setFeeCase(selectedCase)}
+          onOpenDecisionExtractor={() => setDecisionExtractorCase(selectedCase)}
+          onOpenRequest={() => {
+            if (!selectedCase.conversation_id) {
+              alert('Caso sem conversa vinculada. Vincule uma conversa antes de solicitar documentos.');
+              return;
+            }
+            setRequestCase(selectedCase);
+          }}
+          onFinalizeCase={() => setFinalizeCase(selectedCase)}
+          onDeleteCase={() => handleDeleteCase(selectedCase.id)}
           userRole={profile?.role}
           conversations={conversations}
           onOpenConversationSelector={() => setShowConversationSelector(true)}
@@ -736,6 +746,35 @@ export default function CasesPanel({ notice }) {
           unlinking={unlinking}
           userCanEdit={canEdit}
         />
+
+        {finalizeCase && (
+          <CaseFinalizeModal
+            caseItem={finalizeCase}
+            onClose={() => setFinalizeCase(null)}
+            onFinalized={(updated) => {
+              setCases((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+              setSelectedCase(updated);
+              setFinalizeCase(null);
+            }}
+          />
+        )}
+
+        {requestCase && (
+          <DocumentRequestModal
+            caseItem={requestCase}
+            conversation={conversations.find((c) => c.id === requestCase.conversation_id)}
+            onClose={() => setRequestCase(null)}
+          />
+        )}
+
+        {decisionExtractorCase && (
+          <CaseDecisionExtractorModal
+            caseItem={decisionExtractorCase?.isGeneral ? null : decisionExtractorCase}
+            allCases={cases}
+            onClose={() => setDecisionExtractorCase(null)}
+            onRefresh={() => fetchCases()}
+          />
+        )}
 
         {feeCase && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -771,23 +810,6 @@ export default function CasesPanel({ notice }) {
     );
   }
 
-  if (caseView === 'insights') {
-    return (
-      <div className="p-4 md:p-6 bg-white rounded-lg shadow w-full h-full overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold">Insights gerais</h2>
-          <button
-            onClick={() => setCaseView('list')}
-            className="text-sm text-blue-600 hover:underline"
-          >
-            ← Voltar para Casos
-          </button>
-        </div>
-        <CaseInsightsPanel />
-      </div>
-    );
-  }
-
   return (
     <div className="p-4 md:p-6 bg-white rounded-lg shadow w-full h-full overflow-y-auto">
       {actionMessage && (
@@ -816,20 +838,6 @@ export default function CasesPanel({ notice }) {
           </button>
         </div>
       )}
-      <div className="flex items-center gap-2 mb-4">
-        <button
-          onClick={() => setCaseView('list')}
-          className={`px-3 py-1.5 rounded text-sm font-medium ${caseView === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-        >
-          Casos
-        </button>
-        <button
-          onClick={() => setCaseView('insights')}
-          className={`px-3 py-1.5 rounded text-sm font-medium ${caseView === 'insights' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
-        >
-          Insights gerais
-        </button>
-      </div>
       <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <div className="flex items-center gap-3">
           <h2 className="text-xl sm:text-2xl font-bold">Casos</h2>
@@ -1464,7 +1472,6 @@ export default function CasesPanel({ notice }) {
                 <th className="border p-2.5 text-left text-[11px] font-bold text-gray-700">Status</th>
                 <th className="border p-2.5 text-left text-[11px] font-bold text-gray-700">Prioridade</th>
                 <th className="border p-3 text-left">Prazo</th>
-                <th className="border p-3 text-left">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -1597,111 +1604,6 @@ export default function CasesPanel({ notice }) {
                       ) : (
                         <span className="text-xs text-gray-400 italic">Sem prazo pendente</span>
                       )}
-                    </td>
-                    <td className="border p-2">
-                      <div className="grid grid-cols-5 gap-1.5 min-w-[420px]">
-                        {/* Linha 1 */}
-                        {canEdit ? (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); handleEditCase(caseItem); }}
-                            className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-blue-600 hover:bg-blue-700 text-white transition"
-                            title="Editar detalhes do caso"
-                          >
-                            Editar
-                          </button>
-                        ) : <div className="h-7" />}
-
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setChecklistCase(caseItem); }}
-                          className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-teal-600 hover:bg-teal-700 text-white transition"
-                          title="Checklist de pendências"
-                        >
-                          Checklist
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setDocsCase(caseItem); }}
-                          className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-amber-500 hover:bg-amber-600 text-white transition"
-                          title="Documentos anexados"
-                        >
-                          Documentos
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!caseItem.conversation_id) {
-                              alert('Caso sem conversa vinculada. Vincule uma conversa antes de solicitar documentos.');
-                              return;
-                            }
-                            setRequestCase(caseItem);
-                          }}
-                          className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-cyan-600 hover:bg-cyan-700 text-white transition"
-                          title="Solicitar informações ao cliente"
-                        >
-                          Solicitar
-                        </button>
-
-                        {caseItem.status !== 'encerrado' && caseItem.status !== 'arquivado' ? (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setFinalizeCase(caseItem); }}
-                            className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white transition"
-                            title="Finalizar e encerrar processo judicial"
-                          >
-                            🏁 Finalizar
-                          </button>
-                        ) : (
-                          <span className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded border border-emerald-300 bg-emerald-50 text-emerald-800">
-                            ✓ Encerrado
-                          </span>
-                        )}
-
-                        {/* Linha 2 */}
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setFeeCase(caseItem); }}
-                          className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-emerald-700 hover:bg-emerald-800 text-white transition"
-                          title="Simulador e gestão de honorários"
-                        >
-                          Honorários
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setProcessCase(caseItem); }}
-                          className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-indigo-600 hover:bg-indigo-700 text-white transition"
-                          title="Monitoramento e movimentações processuais"
-                        >
-                          Processo
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setDecisionExtractorCase(caseItem); }}
-                          className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-purple-600 hover:bg-purple-700 text-white transition"
-                          title="Analisar despacho ou decisão com Inteligência Artificial"
-                        >
-                          🤖 IA Decisão
-                        </button>
-
-                        {canEdit ? (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); handleDeleteCase(caseItem.id); }}
-                            className="h-7 w-full flex items-center justify-center text-[11px] font-bold rounded shadow-xs bg-red-600 hover:bg-red-700 text-white transition"
-                            title="Excluir caso"
-                          >
-                            Deletar
-                          </button>
-                        ) : <div className="h-7" />}
-
-                        <div className="h-7" />
-                      </div>
                     </td>
                   </tr>
                 );

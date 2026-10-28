@@ -1,17 +1,15 @@
+import { useState } from 'react';
 import CollaborationPanel from './CollaborationPanel';
-import CaseInsightsPanel from './CaseInsightsPanel';
 import CaseProcessMonitoring from './CaseProcessMonitoring';
-import CaseRoutinesPanel from './CaseRoutinesPanel';
 import GeneratedDocumentsPanel from './GeneratedDocumentsPanel';
 import { stripFeeFromNotes } from '../lib/caseFeeHelper';
+import { apiJson } from '../lib/apiClient';
 
 const TABS = [
   { key: 'visao-geral', label: 'Visão Geral' },
-  { key: 'processos', label: 'Processos' },
+  { key: 'processos', label: 'Andamentos Processuais' },
   { key: 'documentos-checklist', label: 'Documentos e Checklist' },
-  { key: 'rotinas', label: 'Rotinas Aplicadas' },
-  { key: 'colaboracao', label: 'Colaboração' },
-  { key: 'insights', label: 'Insights' },
+  { key: 'colaboracao', label: 'Anotações da Equipe' }
 ];
 
 function formatDate(value) {
@@ -26,6 +24,8 @@ function daysUntilDeadline(date) {
   const diff = Math.ceil((deadline - today) / (1000 * 60 * 60 * 24));
   return diff;
 }
+
+const cleanPhone = (p) => String(p || '').replace(/\D/g, '');
 
 const STATUS_COLORS = {
   prospect: 'bg-gray-100 text-gray-800',
@@ -81,9 +81,14 @@ export default function CaseDetailPanel({
   caseView,
   onChangeView,
   onBack,
+  onEditCase,
   onOpenChecklist,
   onOpenDocuments,
   onOpenFee,
+  onOpenDecisionExtractor,
+  onOpenRequest,
+  onFinalizeCase,
+  onDeleteCase,
   userRole,
   conversations = [],
   onOpenConversationSelector,
@@ -92,6 +97,26 @@ export default function CaseDetailPanel({
   unlinking = false,
   userCanEdit = false
 }) {
+  const [sendingAlert, setSendingAlert] = useState(false);
+  const [alertFeedback, setAlertFeedback] = useState(null);
+
+  const handleSendAdvogadoAlert = async () => {
+    if (sendingAlert || !caseItem?.id) return;
+    setSendingAlert(true);
+    setAlertFeedback(null);
+    try {
+      const res = await apiJson('/api/cases/send-alert-whatsapp', {
+        method: 'POST',
+        body: JSON.stringify({ caseId: caseItem.id, target: 'advogado' })
+      });
+      setAlertFeedback({ type: 'success', text: res?.message || 'Alerta enviado com sucesso para seu WhatsApp!' });
+    } catch (err) {
+      setAlertFeedback({ type: 'error', text: err?.message || 'Erro ao enviar alerta pelo WhatsApp.' });
+    } finally {
+      setSendingAlert(false);
+      setTimeout(() => setAlertFeedback(null), 5000);
+    }
+  };
   if (!caseItem || typeof caseItem !== 'object') {
     return (
       <div className="flex-1 h-full flex items-center justify-center bg-white rounded-lg shadow p-6 text-center">
@@ -159,7 +184,161 @@ export default function CaseDetailPanel({
       {/* Conteúdo */}
       <div className="flex-1 overflow-y-auto p-4">
         {caseView === 'visao-geral' && (
-          <div className="space-y-4 max-w-3xl">
+          <div className="space-y-4 max-w-4xl">
+            {/* Feedback do Envio de Alerta WhatsApp */}
+            {alertFeedback && (
+              <div
+                className={`p-3 rounded-lg text-xs font-bold flex items-center justify-between border ${
+                  alertFeedback.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                    : 'bg-red-50 text-red-800 border-red-300'
+                }`}
+              >
+                <span>{alertFeedback.type === 'success' ? '✓' : '⚠️'} {alertFeedback.text}</span>
+                <button onClick={() => setAlertFeedback(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+              </div>
+            )}
+
+            {/* Painel Superior de Ações Rápidas do Processo */}
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3 shadow-xs">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                  <span>⚡</span> Ações do Processo:
+                </span>
+                <span className={`text-[11px] px-2 py-0.5 rounded font-bold ${
+                  caseItem.status === 'encerrado' || caseItem.status === 'arquivado'
+                    ? 'bg-gray-200 text-gray-700'
+                    : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {caseItem.status === 'encerrado' || caseItem.status === 'arquivado' ? '📁 Caso Encerrado' : '⚡ Caso Ativo'}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {userCanEdit && onEditCase && (
+                  <button
+                    type="button"
+                    onClick={onEditCase}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5"
+                    title="Editar informações cadastrais do caso"
+                  >
+                    <span>✏️</span> Editar Caso
+                  </button>
+                )}
+
+                {onOpenDecisionExtractor && (
+                  <button
+                    type="button"
+                    onClick={onOpenDecisionExtractor}
+                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5"
+                    title="Analisar ato ou acórdão com o Agente de IA"
+                  >
+                    <span>🤖</span> IA Decisão / Despacho
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => onChangeView('processos')}
+                  className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5"
+                  title="Ver andamentos e movimentações processuais"
+                >
+                  <span>⚖️</span> Andamentos Projudi/PJe
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onOpenChecklist}
+                  className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5"
+                  title="Gerenciar checklist de pendências"
+                >
+                  <span>📋</span> Checklist
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onOpenDocuments}
+                  className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5"
+                  title="Visualizar documentos anexados"
+                >
+                  <span>📄</span> Documentos
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onOpenFee}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5"
+                  title="Simulador e gestão de honorários"
+                >
+                  <span>💰</span> Honorários
+                </button>
+
+                {onOpenRequest && (
+                  <button
+                    type="button"
+                    onClick={onOpenRequest}
+                    className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5"
+                    title="Solicitar informações ou documentos ao cliente"
+                  >
+                    <span>💬</span> Solicitar
+                  </button>
+                )}
+
+                {/* Disparo do Escritório direto para o WhatsApp do Dr. Jônatas */}
+                <button
+                  type="button"
+                  onClick={handleSendAdvogadoAlert}
+                  disabled={sendingAlert}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-black text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5 disabled:opacity-50"
+                  title="Disparar resumo e alertas deste caso pelo WhatsApp do escritório para o seu WhatsApp pessoal (73 999348552)"
+                >
+                  <span>🔔</span> {sendingAlert ? 'Enviando Alerta...' : 'Alerta p/ Meu WhatsApp'}
+                </button>
+
+                {/* Disparo direto para o WhatsApp do Cliente sem restrição de 24h da Meta */}
+                {linkedConversation?.client_phone && (
+                  <a
+                    href={`https://wa.me/55${cleanPhone(linkedConversation.client_phone)}?text=${encodeURIComponent(
+                      `Olá ${linkedConversation.client_name || ''}, aqui é do escritório de advocacia sobre o andamento do seu processo "${caseItem.title}" (${caseItem.process_number || ''}).`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5"
+                    title="Abrir WhatsApp para falar com o cliente com texto pronto (sem bloqueio de 24h)"
+                  >
+                    <span>📲</span> Avisar Cliente (WhatsApp)
+                  </a>
+                )}
+
+                {userCanEdit && caseItem.status !== 'encerrado' && caseItem.status !== 'arquivado' && onFinalizeCase && (
+                  <button
+                    type="button"
+                    onClick={onFinalizeCase}
+                    className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5 ml-auto"
+                    title="Encerrar e finalizar caso"
+                  >
+                    <span>🏁</span> Finalizar Processo
+                  </button>
+                )}
+
+                {userCanEdit && onDeleteCase && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm(`Deseja realmente excluir o caso "${caseItem.title}"?`)) {
+                        onDeleteCase();
+                        onBack();
+                      }
+                    }}
+                    className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                    title="Excluir caso"
+                  >
+                    <span>🗑️</span> Excluir
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3 bg-gray-50 rounded border">
                 <p className="text-xs text-gray-500">Área jurídica</p>
@@ -182,7 +361,7 @@ export default function CaseDetailPanel({
                     <>
                       {formatDate(caseItem.deadline_date)}
                       {daysLeft !== null && (
-                        <span className={`ml-2 ${daysLeft < 0 ? 'text-red-600' : daysLeft < 7 ? 'text-orange-600' : 'text-gray-600'}`}>
+                        <span className={`ml-2 ${daysLeft < 0 ? 'text-red-600 font-bold' : daysLeft < 7 ? 'text-orange-600 font-medium' : 'text-gray-600'}`}>
                           ({daysLeft < 0 ? `${Math.abs(daysLeft)}d atrasado` : `${daysLeft}d restantes`})
                         </span>
                       )}
@@ -210,12 +389,12 @@ export default function CaseDetailPanel({
 
             {hasProcessData && (
               <div className="p-3 bg-gray-50 rounded border">
-                <p className="text-xs text-gray-500 mb-2">Dados processuais</p>
+                <p className="text-xs text-gray-500 mb-2 font-bold">Dados processuais</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {caseItem.process_number && (
                     <div>
                       <p className="text-xs text-gray-500">Número do processo</p>
-                      <p className="text-sm font-medium">{caseItem.process_number}</p>
+                      <p className="text-sm font-medium font-mono text-gray-900">{caseItem.process_number}</p>
                     </div>
                   )}
                   {caseItem.court && (
@@ -261,7 +440,7 @@ export default function CaseDetailPanel({
             )}
 
             <div className="p-3 bg-gray-50 rounded border">
-              <p className="text-xs text-gray-500 mb-1">Conversa vinculada</p>
+              <p className="text-xs text-gray-500 mb-1 font-bold">Conversa vinculada</p>
               {linkedConversation ? (
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                   <div>
@@ -292,7 +471,7 @@ export default function CaseDetailPanel({
                   <div>
                     <p className="text-sm text-gray-600">Nenhuma conversa vinculada.</p>
                     <p className="text-xs text-gray-500" aria-live="polite" role="status">
-                      Vincule uma conversa para solicitar documentos ou aplicar rotinas.
+                      Vincule uma conversa para solicitar documentos ou interagir com o cliente.
                     </p>
                   </div>
                   {userCanEdit && (
@@ -311,31 +490,10 @@ export default function CaseDetailPanel({
 
             {stripFeeFromNotes(caseItem.notes) && (
               <div className="p-3 bg-gray-50 rounded border">
-                <p className="text-xs text-gray-500">Notas</p>
-                <p className="text-sm whitespace-pre-wrap">{stripFeeFromNotes(caseItem.notes)}</p>
+                <p className="text-xs text-gray-500 font-bold mb-1">Notas e Observações</p>
+                <p className="text-sm whitespace-pre-wrap text-gray-800">{stripFeeFromNotes(caseItem.notes)}</p>
               </div>
             )}
-
-            <div className="flex flex-wrap gap-2 pt-2">
-              <button
-                onClick={onOpenFee}
-                className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700"
-              >
-                💰 Honorários
-              </button>
-              <button
-                onClick={onOpenChecklist}
-                className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-              >
-                📎 Checklist
-              </button>
-              <button
-                onClick={onOpenDocuments}
-                className="px-3 py-1.5 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-700"
-              >
-                📄 Documentos
-              </button>
-            </div>
           </div>
         )}
 
@@ -376,22 +534,8 @@ export default function CaseDetailPanel({
           </div>
         )}
 
-        {caseView === 'rotinas' && (
-          <div className="max-w-3xl">
-            <CaseRoutinesPanel 
-              caseId={caseItem.id} 
-              conversationId={caseItem.conversation_id}
-              userRole={userRole}
-            />
-          </div>
-        )}
-
         {caseView === 'colaboracao' && (
           <CollaborationPanel conversationId={caseItem.conversation_id} caseId={caseItem.id} />
-        )}
-
-        {caseView === 'insights' && (
-          <CaseInsightsPanel conversationId={caseItem.conversation_id} caseId={caseItem.id} initialTab="similar" />
         )}
       </div>
     </div>
