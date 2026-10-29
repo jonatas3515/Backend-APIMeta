@@ -63,6 +63,7 @@ jest.mock('@supabase/supabase-js', () => ({
         global.__testMessages.push(inserted);
         return inserted;
       }
+      if (context.table === 'consent_logs') return global.__testConsentLogs || [];
       return null;
     }
 
@@ -510,6 +511,50 @@ describe('Concorrência, idempotência, LGPD e identidade', () => {
       .map(([_, opts]) => JSON.parse(opts.body).text.body);
     expect(bodies[0]).toMatch(/retirada do consentimento foi registrado/i);
     expect(bodies[0]).not.toMatch(/formulário/i);
+  });
+
+  test('cliente com consentimento ativo no perfil/intake nunca recebe aviso LGPD novamente', async () => {
+    global.__testConversation = {
+      client_name: 'Rogerio Costa',
+      intake_data: { consent_request_status: 'granted', consent: true }
+    };
+    global.__testMessages = [];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Olá, gostaria de saber do meu processo', 'msg-proc-001')
+    });
+
+    await webhookHandler(req, res);
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = whatsappCalls.length ? JSON.parse(whatsappCalls[0][1].body) : { text: { body: '' } };
+    expect(body.text.body).not.toMatch(/politica-de-privacidade/);
+    expect(body.text.body).not.toMatch(/Em conformidade com a LGPD/);
+    expect(body.text.body.length).toBeGreaterThan(0);
+  });
+
+  test('cliente com consent_logs ativo no banco não recebe aviso LGPD mesmo se intake estiver pendente', async () => {
+    global.__testConversation = {
+      client_name: 'Rogerio Costa',
+      intake_data: { consent_request_status: 'pending' }
+    };
+    global.__testConsentLogs = [
+      { id: 'log-1', conversation_id: CONV_ID, consent_type: 'data_processing', value: true, created_at: new Date().toISOString() }
+    ];
+    global.__testMessages = [];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildPayload('Olá, bom dia', 'msg-active-log-001')
+    });
+
+    await webhookHandler(req, res);
+
+    const whatsappCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes('/messages'));
+    const body = whatsappCalls.length ? JSON.parse(whatsappCalls[0][1].body) : { text: { body: '' } };
+    expect(body.text.body).not.toMatch(/politica-de-privacidade/);
+    expect(body.text.body).not.toMatch(/Em conformidade com a LGPD/);
   });
 
 });

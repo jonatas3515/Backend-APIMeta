@@ -978,11 +978,32 @@ export default async function handler(req, res) {
       // Aviso LGPD controlado pelo código: exibido uma única vez, na primeira
       // interação (quando não consta no histórico nem foi registrado), junto com
       // a resposta ao assunto da mensagem. Se o próprio Gemini já incluiu o aviso,
-      // não duplica. Recusa registrada impede reenvio.
+      // não duplica. Recusa registrada impede reenvio. Se o consentimento já estiver
+      // ativo no perfil/sistema, JAMAIS reenvia o aviso.
+      const hasActiveConsent = await hasClientActiveLgpdConsent(conversation, from);
       const lgpdAlreadySent = !!conversation?.intake_data?.consent_request_sent_at ||
         (activeMessages || []).some(m => m.sender_type === 'ai' && typeof m.text === 'string' && m.text.includes('politica-de-privacidade'));
       const consentDeclined = conversation?.intake_data?.consent_request_status === 'declined';
-      if (conversation && !lgpdAlreadySent && !consentDeclined && !String(aiReply || '').includes('politica-de-privacidade')) {
+
+      if (hasActiveConsent) {
+        // Assegura que o intake_data local e no banco reflita que o consentimento está ativo
+        if (conversation && conversation.intake_data?.consent_request_status !== 'granted') {
+          const updatedIntake = {
+            ...(conversation.intake_data || {}),
+            consent_request_status: 'granted',
+            consent: true,
+            consent_request_sent_at: conversation.intake_data?.consent_request_sent_at || new Date().toISOString()
+          };
+          conversation.intake_data = updatedIntake;
+          if (supabase) {
+            await supabase
+              .from('conversations')
+              .update({ intake_data: updatedIntake })
+              .eq('id', conversation.id)
+              .catch(() => {});
+          }
+        }
+      } else if (conversation && !lgpdAlreadySent && !consentDeclined && !String(aiReply || '').includes('politica-de-privacidade')) {
         aiReply = `${LGPD_NOTICE}\n\n${aiReply}`;
         const lgpdIntakeData = { ...(conversation.intake_data || {}), consent_request_sent_at: new Date().toISOString() };
         const { error: lgpdError } = await supabase
@@ -1129,7 +1150,27 @@ async function getOrCreateConversation(phoneNumber, clientName) {
       const lastActivity = new Date(existing.updated_at || existing.created_at || 0).getTime();
       const isStale = Number.isFinite(lastActivity) && (Date.now() - lastActivity) > STALE_MS;
       if (isStale) {
-        const resetIntake = { consent_request_status: 'pending', consent_request_sent_at: null, reset_at: new Date().toISOString() };
+        const prevIntake = (existing.intake_data && typeof existing.intake_data === 'object') ? existing.intake_data : {};
+        const hasActiveConsent = await hasClientActiveLgpdConsent(existing, phoneNumber);
+
+        const resetIntake = {
+          reset_at: new Date().toISOString()
+        };
+
+        if (hasActiveConsent) {
+          resetIntake.consent_request_status = 'granted';
+          resetIntake.consent = true;
+          resetIntake.consent_request_sent_at = prevIntake.consent_request_sent_at || new Date().toISOString();
+          if (prevIntake.consent_log) resetIntake.consent_log = prevIntake.consent_log;
+        } else {
+          if (prevIntake.consent_request_status) resetIntake.consent_request_status = prevIntake.consent_request_status;
+          else resetIntake.consent_request_status = 'pending';
+
+          if (prevIntake.consent_request_sent_at) resetIntake.consent_request_sent_at = prevIntake.consent_request_sent_at;
+          if (prevIntake.consent !== undefined) resetIntake.consent = prevIntake.consent;
+          if (prevIntake.consent_log) resetIntake.consent_log = prevIntake.consent_log;
+        }
+
         const { data: reset, error: resetError } = await supabase
           .from('conversations')
           .update({
@@ -1151,6 +1192,29 @@ async function getOrCreateConversation(phoneNumber, clientName) {
     }
 
     // Cria nova conversa
+    // Verifica se titular do telefone já possui consentimento ativo em conversas anteriores
+    let initialConsentStatus = 'pending';
+    let initialConsentSentAt = null;
+    let initialConsentValue = undefined;
+
+    try {
+      const priorConsentActive = await hasClientActiveLgpdConsent(null, phoneNumber);
+      if (priorConsentActive) {
+        initialConsentStatus = 'granted';
+        initialConsentValue = true;
+        initialConsentSentAt = new Date().toISOString();
+      }
+    } catch (_) {}
+
+    const initialIntake = {
+      consent_request_status: initialConsentStatus,
+      consent_request_sent_at: initialConsentSentAt
+    };
+    if (initialConsentValue !== undefined) {
+      initialIntake.consent = initialConsentValue;
+      initialIntake.consent_inherited = true;
+    }
+
     const conversationInsert = {
       client_phone: phoneNumber,
       client_phone_normalized: normalizedPhone,
@@ -1158,7 +1222,7 @@ async function getOrCreateConversation(phoneNumber, clientName) {
       status: 'open',
       mode: 'bot',
       office_id: getDefaultOfficeId(),
-      intake_data: { consent_request_status: 'pending', consent_request_sent_at: null }
+      intake_data: initialIntake
     };
 
     let { data: newConv, error: createError } = await supabase
@@ -1460,6 +1524,73 @@ async function handlePrivacyRequest(conversation, textBody, from, req, extraData
   }
 
   return { handled: true, declined: true };
+}
+
+async function hasClientActiveLgpdConsent(conversation, phoneNumber) {
+  const intake = conversation?.intake_data || {};
+  if (intake.consent === true || intake.consent_request_status === 'granted') {
+    return true;
+  }
+  if (intake.consent_request_status === 'declined' || intake.consent === false) {
+    return false;
+  }
+
+  if (!supabase) return false;
+
+  try {
+    // 1. Checar consent_logs da conversa atual
+    if (conversation?.id) {
+      const { data: convLogs, error: convLogsErr } = await supabase
+        .from('consent_logs')
+        .select('value, created_at')
+        .eq('conversation_id', conversation.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (!convLogsErr && Array.isArray(convLogs) && convLogs.length > 0) {
+        if (convLogs[0].value === true) return true;
+        if (convLogs[0].value === false) return false;
+      }
+    }
+
+    // 2. Checar por telefone do cliente (outras conversas ou histórico do mesmo titular)
+    const phone = phoneNumber || conversation?.client_phone || conversation?.client_phone_normalized;
+    const normalized = phone ? normalizePhoneForMatch(phone) : null;
+    if (normalized) {
+      const { data: convs, error: convsErr } = await supabase
+        .from('conversations')
+        .select('id, intake_data')
+        .eq('client_phone_normalized', normalized)
+        .order('updated_at', { ascending: false })
+        .limit(10);
+
+      if (!convsErr && Array.isArray(convs) && convs.length > 0) {
+        for (const c of convs) {
+          if (c.intake_data?.consent === true || c.intake_data?.consent_request_status === 'granted') {
+            return true;
+          }
+        }
+
+        const ids = convs.map(c => c.id).filter(Boolean);
+        if (ids.length > 0) {
+          const { data: phoneLogs, error: phoneLogsErr } = await supabase
+            .from('consent_logs')
+            .select('value, created_at')
+            .in('conversation_id', ids)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (!phoneLogsErr && Array.isArray(phoneLogs) && phoneLogs.length > 0) {
+            if (phoneLogs[0].value === true) return true;
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[LGPD] Erro ao verificar consentimento ativo do cliente:', sanitizeError(err));
+  }
+
+  return false;
 }
 
 async function handleConsent(conversation, textBody, from, req, extraData = {}) {
@@ -2501,5 +2632,5 @@ async function processDeliveryStatuses(statuses) {
 }
 
 // Hooks de teste (não afetam a rota; Next usa apenas o default export)
-export const __test__ = { transcribeAudioAsync, processDeliveryStatuses };
+export const __test__ = { transcribeAudioAsync, processDeliveryStatuses, hasClientActiveLgpdConsent };
 
