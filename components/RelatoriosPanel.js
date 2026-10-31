@@ -22,7 +22,9 @@ export default function RelatoriosPanel() {
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [financeiroSearch, setFinanceiroSearch] = useState('');
-  const [financeiroStatusFilter, setFinanceiroStatusFilter] = useState('todos'); // 'todos' | 'ativos' | 'encerrados'
+  const [financeiroStatusFilter, setFinanceiroStatusFilter] = useState('todos'); // 'todos' | 'ativos' | 'vencidos' | 'prox7' | 'encerrados'
+  const [actionMsg, setActionMsg] = useState(null);
+  const [markingId, setMarkingId] = useState(null);
 
   useEffect(() => {
     let mounted = true;
@@ -126,6 +128,82 @@ export default function RelatoriosPanel() {
       return acc;
     }, 0);
   }, [cases]);
+
+  // Contadores de prazos e vencimentos trazidos da Central de Honorários
+  const urgencias = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today.getTime() + 86400000);
+    const next7 = new Date(today.getTime() + 7 * 86400000);
+
+    let vencidos = 0;
+    let vencidosTotal = 0;
+    let hoje = 0;
+    let hojeTotal = 0;
+    let prox7 = 0;
+    let prox7Total = 0;
+
+    cases.forEach((c) => {
+      const isClosed = c.status === 'encerrado' || c.status === 'arquivado';
+      if (isClosed) return;
+      const fee = parseCaseFee(c);
+      if (fee.fee_paid) return;
+      const valorCausa = Number(c.case_value) || 0;
+      const honorario = fee.fee_final_value != null
+        ? fee.fee_final_value
+        : (fee.awarded_value != null ? fee.awarded_value * (fee.fee_percentage / 100) : valorCausa * (fee.fee_percentage / 100));
+
+      if (honorario <= 0 || !c.deadline_date) return;
+      const dt = new Date(c.deadline_date);
+
+      if (dt < today) {
+        vencidos++;
+        vencidosTotal += honorario;
+      } else if (dt < tomorrow) {
+        hoje++;
+        hojeTotal += honorario;
+      } else if (dt <= next7) {
+        prox7++;
+        prox7Total += honorario;
+      }
+    });
+
+    return { vencidos, vencidosTotal, hoje, hojeTotal, prox7, prox7Total };
+  }, [cases]);
+
+  // Ação rápida: marcar honorários como recebidos e liquidar o processo
+  const handleMarcarRecebido = async (caseItem) => {
+    if (markingId) return;
+    setMarkingId(caseItem.id);
+    try {
+      const nowIso = new Date().toISOString();
+      const { error } = await supabase
+        .from('cases')
+        .update({ status: 'encerrado', updated_at: nowIso })
+        .eq('id', caseItem.id);
+
+      if (error) throw error;
+
+      setCases((prev) =>
+        prev.map((c) => (c.id === caseItem.id ? { ...c, status: 'encerrado', updated_at: nowIso } : c))
+      );
+
+      setActionMsg({
+        type: 'success',
+        text: `✓ Honorários do caso "${caseItem.title}" marcados como recebidos! Processo liquidado e movido para concluídos.`
+      });
+      setTimeout(() => setActionMsg(null), 4000);
+    } catch (err) {
+      safeError('marcar_recebido_error', err, { component: 'RelatoriosPanel' });
+      setActionMsg({
+        type: 'error',
+        text: 'Erro ao registrar recebimento de honorários. Tente novamente.'
+      });
+      setTimeout(() => setActionMsg(null), 4000);
+    } finally {
+      setMarkingId(null);
+    }
+  };
 
   return (
     <div className="w-full h-full overflow-y-auto bg-nc-surface text-gray-900 p-4 md:p-6" data-testid="relatorios-panel">
@@ -266,21 +344,82 @@ export default function RelatoriosPanel() {
         {/* 3. Sub-aba Financeiro */}
         {activeTab === 'financeiro' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <div className="bg-white border border-gray-200 rounded-xl p-5 text-center shadow-sm">
+            {/* Mensagem de Feedback de Ação */}
+            {actionMsg && (
+              <div
+                className={`p-3.5 rounded-xl text-sm font-medium border shadow-xs ${
+                  actionMsg.type === 'error'
+                    ? 'bg-red-50 border-red-200 text-red-700'
+                    : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                }`}
+              >
+                {actionMsg.text}
+              </div>
+            )}
+
+            {/* Métricas Principais Consolidadas */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white border border-gray-200 rounded-xl p-4 text-center shadow-xs">
                 <p className="text-xs text-gray-500 mb-1">Volume da Causa (Patrimônio Total)</p>
-                <p className="text-2xl font-bold text-gray-900">{brl(totalPatrimonio)}</p>
-                <p className="text-[10px] text-gray-400 mt-1">{cases.length} casos no acervo</p>
+                <p className="text-xl md:text-2xl font-bold text-gray-900">{brl(totalPatrimonio)}</p>
+                <p className="text-[10px] text-gray-400 mt-1">{cases.length} processos no acervo</p>
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-5 text-center shadow-sm">
+              <div className="bg-white border border-gray-200 rounded-xl p-4 text-center shadow-xs">
                 <p className="text-xs text-gray-500 mb-1">Honorários Estimados Ativos</p>
-                <p className="text-2xl font-bold text-amber-700">{brl(totalHonorariosAtivos)}</p>
-                <p className="text-[10px] text-gray-400 mt-1">Conforme % e base configurada por caso</p>
+                <p className="text-xl md:text-2xl font-bold text-amber-700">{brl(totalHonorariosAtivos)}</p>
+                <p className="text-[10px] text-gray-400 mt-1">Conforme % e base configurada</p>
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-5 text-center shadow-sm">
-                <p className="text-xs text-gray-500 mb-1">Honorários Concluídos / Liquidados</p>
-                <p className="text-2xl font-bold text-emerald-700">{brl(totalHonorariosEncerrados)}</p>
-                <p className="text-[10px] text-gray-400 mt-1">Processos encerrados e honorários apurados</p>
+              <div className="bg-white border border-gray-200 rounded-xl p-4 text-center shadow-xs">
+                <p className="text-xs text-gray-500 mb-1">Honorários Recebidos / Liquidados</p>
+                <p className="text-xl md:text-2xl font-bold text-emerald-700">{brl(totalHonorariosEncerrados)}</p>
+                <p className="text-[10px] text-gray-400 mt-1">Processos concluídos e liquidados</p>
+              </div>
+            </div>
+
+            {/* Painel de Alertas de Prazos e Previsão (Central de Honorários Unificada) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div
+                onClick={() => setFinanceiroStatusFilter(financeiroStatusFilter === 'vencidos' ? 'todos' : 'vencidos')}
+                className={`p-4 rounded-xl border cursor-pointer transition ${
+                  financeiroStatusFilter === 'vencidos'
+                    ? 'bg-red-50 border-red-300 ring-2 ring-red-400'
+                    : 'bg-white border-gray-200 hover:border-red-300 shadow-xs'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-red-700 flex items-center gap-1.5">
+                    <span>❗</span> Honorários c/ Prazos Vencidos
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-red-100 text-red-800">
+                    {urgencias.vencidos} pendência(s)
+                  </span>
+                </div>
+                <p className="text-xl font-bold text-red-700 mt-1">{brl(urgencias.vencidosTotal)}</p>
+                <p className="text-[10px] text-gray-500 mt-0.5">
+                  {financeiroStatusFilter === 'vencidos' ? '✓ Filtro ativo (clique para limpar)' : 'Clique para filtrar apenas processos com prazos vencidos'}
+                </p>
+              </div>
+
+              <div
+                onClick={() => setFinanceiroStatusFilter(financeiroStatusFilter === 'prox7' ? 'todos' : 'prox7')}
+                className={`p-4 rounded-xl border cursor-pointer transition ${
+                  financeiroStatusFilter === 'prox7'
+                    ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-400'
+                    : 'bg-white border-gray-200 hover:border-blue-300 shadow-xs'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-blue-700 flex items-center gap-1.5">
+                    <span>📅</span> Previsão / Vencendo nos Próximos 7 Dias
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-800">
+                    {urgencias.hoje + urgencias.prox7} processo(s)
+                  </span>
+                </div>
+                <p className="text-xl font-bold text-blue-700 mt-1">{brl(urgencias.hojeTotal + urgencias.prox7Total)}</p>
+                <p className="text-[10px] text-gray-500 mt-0.5">
+                  {financeiroStatusFilter === 'prox7' ? '✓ Filtro ativo (clique para limpar)' : 'Clique para filtrar processos com vencimento nos próximos 7 dias'}
+                </p>
               </div>
             </div>
 
@@ -295,7 +434,7 @@ export default function RelatoriosPanel() {
                   </p>
                 </div>
 
-                {/* Filtros de Busca */}
+                {/* Filtros de Busca e Status */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                   <input
                     type="text"
@@ -311,6 +450,8 @@ export default function RelatoriosPanel() {
                   >
                     <option value="todos">Todos os Processos</option>
                     <option value="ativos">⚡ Apenas Ativos (Em andamento)</option>
+                    <option value="vencidos">❗ Prazos Vencidos ({urgencias.vencidos})</option>
+                    <option value="prox7">📅 Próximos 7 Dias ({urgencias.hoje + urgencias.prox7})</option>
                     <option value="encerrados">📁 Apenas Encerrados / Liquidados</option>
                   </select>
                 </div>
@@ -318,12 +459,25 @@ export default function RelatoriosPanel() {
 
               {/* Lista Ordenada de Processos */}
               {(() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const next7 = new Date(today.getTime() + 7 * 86400000);
+
                 const financeiroCases = cases
                   .filter((c) => Number(c.case_value) > 0 || parseCaseFee(c).fee_final_value > 0 || parseCaseFee(c).awarded_value > 0)
                   .filter((c) => {
                     const isClosed = c.status === 'encerrado' || c.status === 'arquivado';
                     if (financeiroStatusFilter === 'ativos' && isClosed) return false;
                     if (financeiroStatusFilter === 'encerrados' && !isClosed) return false;
+                    if (financeiroStatusFilter === 'vencidos') {
+                      if (isClosed || !c.deadline_date) return false;
+                      if (new Date(c.deadline_date) >= today) return false;
+                    }
+                    if (financeiroStatusFilter === 'prox7') {
+                      if (isClosed || !c.deadline_date) return false;
+                      const dt = new Date(c.deadline_date);
+                      if (dt < today || dt > next7) return false;
+                    }
 
                     if (financeiroSearch.trim()) {
                       const q = financeiroSearch.toLowerCase();
@@ -361,6 +515,7 @@ export default function RelatoriosPanel() {
                       const fee = parseCaseFee(c);
                       const honorario = fee.fee_final_value != null ? fee.fee_final_value : (valorCausa * (fee.fee_percentage / 100));
                       const isClosed = c.status === 'encerrado' || c.status === 'arquivado';
+                      const isOverdue = c.deadline_date && !isClosed && new Date(c.deadline_date) < today;
 
                       return (
                         <div
@@ -381,6 +536,18 @@ export default function RelatoriosPanel() {
                                   📁 Encerrado
                                 </span>
                               )}
+                              {c.deadline_date && !isClosed && (
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded font-medium border ${
+                                    isOverdue
+                                      ? 'bg-red-50 text-red-700 border-red-200 font-bold'
+                                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                                  }`}
+                                >
+                                  {isOverdue ? '❗ Vencido em: ' : '📅 Vencimento: '}
+                                  {new Date(c.deadline_date).toLocaleDateString('pt-BR')}
+                                </span>
+                              )}
                             </div>
                             <p className="text-xs text-gray-500 mt-0.5">
                               {c.client_name || 'Sem cliente'} • {c.court || 'Justiça'} {c.process_number ? `(${c.process_number})` : ''}
@@ -399,18 +566,39 @@ export default function RelatoriosPanel() {
                               </span>
                             </div>
                           </div>
-                          <div className="text-left sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-200/60">
-                            <p className="text-[11px] text-gray-500">Honorários {isClosed ? 'Apurados / Liquidados' : 'Estimados'}</p>
-                            <p className={`text-base font-bold ${isClosed ? 'text-gray-700' : 'text-emerald-700'}`}>
-                              {brl(honorario)}
-                            </p>
-                            <span className={`inline-block text-[10px] px-2.5 py-0.5 rounded font-medium mt-1 ${
-                              isClosed
-                                ? 'bg-gray-200 text-gray-700 border border-gray-300'
-                                : 'bg-amber-50 text-amber-700 border border-amber-200'
-                            }`}>
-                              {isClosed ? '✓ Encerrado / Liquidado' : '⚡ Ativo / Em andamento'}
-                            </span>
+                          <div className="text-left sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-200/60 flex flex-col sm:items-end justify-between">
+                            <div>
+                              <p className="text-[11px] text-gray-500">Honorários {isClosed ? 'Apurados / Liquidados' : 'Estimados'}</p>
+                              <p className={`text-base font-bold ${isClosed ? 'text-gray-700' : 'text-emerald-700'}`}>
+                                {brl(honorario)}
+                              </p>
+                              <span className={`inline-block text-[10px] px-2.5 py-0.5 rounded font-medium mt-1 ${
+                                isClosed
+                                  ? 'bg-gray-200 text-gray-700 border border-gray-300'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+                              }`}>
+                                {isClosed ? '✓ Encerrado / Liquidado' : '⚡ Ativo / Em andamento'}
+                              </span>
+                            </div>
+
+                            {/* Botão de Ação Rápida trazido da Central de Honorários */}
+                            {!isClosed && (
+                              <button
+                                type="button"
+                                onClick={() => handleMarcarRecebido(c)}
+                                disabled={markingId === c.id}
+                                className="mt-2 px-3 py-1 text-xs font-bold rounded-md bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white transition shadow-xs flex items-center justify-center gap-1.5"
+                                title="Marcar honorários como recebidos e liquidar o processo"
+                              >
+                                {markingId === c.id ? (
+                                  <span>Salvando...</span>
+                                ) : (
+                                  <>
+                                    <span>✓</span> Marcar Recebido
+                                  </>
+                                )}
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
