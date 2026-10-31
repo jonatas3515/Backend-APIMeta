@@ -370,6 +370,12 @@ export default function CasesPanel({ notice }) {
       ]) {
         if (payload[field] === '' || payload[field] === undefined) payload[field] = null;
       }
+      if (!payload.agency && payload.court_division) {
+        payload.agency = payload.court_division;
+      }
+      if (!payload.court_division && payload.agency) {
+        payload.court_division = payload.agency;
+      }
       payload.case_value = payload.case_value === '' || payload.case_value === undefined || payload.case_value === null
         ? null
         : Number(payload.case_value);

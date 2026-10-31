@@ -98,4 +98,51 @@ describe('AI Extract Decision', () => {
     expect(parsed.valores.valor_condenacao).toBe(11154.68);
     expect(parsed.valores.honorarios_valor_estimado).toBe(2230.94);
   });
+
+  it('valida tarefas sugeridas sob a perspectiva do escritório do advogado e preenchimento de tipo_caso', () => {
+    const raw = `\`\`\`json
+{
+  "dados_processo": {
+    "numero_processo": "0005358-77.2026.8.05.0079",
+    "tribunal": "TJBA",
+    "comarca": "Eunápolis",
+    "vara": "1ª Vara do Sistema dos Juizados",
+    "orgao_julgador": "1ª Vara do Sistema dos Juizados",
+    "classe": "Procedimento do Juizado Especial Cível",
+    "tipo_caso": "Cobrança Indevida",
+    "autor": "CAIO RIBEIRO LISBOA",
+    "reu": "BANCO BRADESCO S/A",
+    "cliente_provavel": "CAIO RIBEIRO LISBOA"
+  },
+  "tipo_ato": "Despacho",
+  "resumo": "Designada Audiência de Instrução e Julgamento para depoimento pessoal da parte autora.",
+  "fase_sugerida": "instrucao",
+  "audiencia": {
+    "identificada": true,
+    "tipo": "Instrução e Julgamento",
+    "data": "2026-11-20",
+    "hora": "14:30",
+    "modalidade": "Telepresencial"
+  },
+  "prazo": {
+    "identificado": true,
+    "tipo": "Audiência de Instrução e Julgamento",
+    "sugestao_data_limite": "2026-11-20"
+  },
+  "tarefas_sugeridas": [
+    "Acompanhar AIJ designada para 20/11/2026 às 14:30 e orientar/preparar o cliente Caio Ribeiro Lisboa",
+    "Aguardar cumprimento voluntário pela parte ré ou protocolar Cumprimento de Sentença"
+  ]
+}
+\`\`\``;
+
+    const parsed = extractJson(raw);
+    expect(parsed).not.toBeNull();
+    expect(parsed.dados_processo.tipo_caso).toBe('Cobrança Indevida');
+    expect(parsed.fase_sugerida).toBe('instrucao');
+    expect(parsed.prazo.tipo).toBe('Audiência de Instrução e Julgamento');
+    expect(parsed.tarefas_sugeridas[0]).not.toMatch(/intimar/i);
+    expect(parsed.tarefas_sugeridas[0]).not.toMatch(/agendar aij/i);
+    expect(parsed.tarefas_sugeridas[0]).toMatch(/acompanhar aij/i);
+  });
 });

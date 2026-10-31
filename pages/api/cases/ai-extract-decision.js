@@ -38,8 +38,9 @@ Retorne ESTRITAMENTE um objeto JSON válido (sem markdown em volta, sem introdu�
   "dados_processo": {
     "numero_processo": "<Número CNJ completo se encontrado, ex: 0000555-25.2026.8.05.0120 ou null>",
     "tribunal": "<TJBA | TJ | TRT | TRF | STJ | STF ou null>",
-    "orgao_julgador": "<ex: 1ª Turma Recursal do Sistema dos Juizados ou null>",
-    "classe": "<ex: Recurso Inominado | Apelação | Cumprimento de Sentença ou null>",
+    "orgao_julgador": "<ex: 1ª Turma Recursal do Sistema dos Juizados | 1ª Vara do Sistema dos Juizados ou null>",
+    "classe": "<ex: Procedimento do Juizado Especial Cível | Recurso Inominado | Apelação | Cumprimento de Sentença ou null>",
+    "tipo_caso": "<assunto resumido do caso, ex: Cobrança Indevida | Negativação Indevida | Cancelamento de Voo | Telefonia | Rescisão Contratual | Danos Morais ou null>",
     "relator": "<Nome do magistrado(a) relator(a) se houver ou null>",
     "comarca": "<Nome da comarca ou município se identificado, ex: Itamaraju ou null>",
     "vara": "<Nome da vara ou juízo de origem se identificado, ex: Vara do Sistema dos Juizados ou null>",
@@ -103,7 +104,27 @@ Regras Cruciais:
    - Extraia o Tribunal (ex: .8.05 = TJBA), Órgão (ex: 1ª Turma Recursal) e Relator(a).
 4. FASE PROCESSUAL:
    - Se o recurso foi improvido/negado provimento e confirmada a condenação, a fase sugerida deve ser "execucao" (Cumprimento de Sentença).
-5. Seja estrito: não invente datas ou valores ausentes no texto.`;
+   - Se houver audiência de instrução ou despacho determinando provas/depoimentos, a fase sugerida deve ser "instrucao".
+5. REGRAS OBRIGATÓRIAS PARA 'tarefas_sugeridas' (PERSPECTIVA DO ESCRITÓRIO DO ADVOGADO):
+   - O sistema é utilizado pelo escritório de advocacia que representa o cliente (normalmente o Autor ou a parte assistida pelo escritório).
+   - As tarefas devem ser redigidas ESTRITAMENTE sob a ótica do que o ADVOGADO ou a EQUIPE DO ESCRITÓRIO deve fazer:
+   - NUNCA crie tarefas como "Intimar as partes...", "Agendar AIJ...", "Expedir mandado...", "Publicar decisão...". Quem intima, agenda audiência e expede atos é o Juiz/Cartório judicial, NUNCA o advogado!
+   - Se houver audiência designada ou pautada (AIJ, Conciliação, Una):
+     * Se ainda não tiver data confirmada: "Aguardando data da AIJ" ou "Aguardando designação de audiência".
+     * Se tiver data/hora: "Acompanhar AIJ designada para [data e hora] e preparar/orientar o cliente".
+   - Se a decisão fixar condenação em dinheiro ou obrigação contra a parte ré (favorável ao nosso cliente):
+     * O escritório NÃO cumpre a condenação; quem cumpre e paga é a parte ré!
+     * Use: "Aguardar cumprimento voluntário pela parte ré (R$ [valor total]) ou protocolar Cumprimento de Sentença".
+   - Apenas se nosso cliente for expressamente condenado ou intimado a praticar ato específico (ex: emendar a petição inicial, juntar comprovante de residência, recolher custas):
+     * Use: "Cumprir determinação judicial: [especificar o que nosso cliente deve juntar ou fazer]".
+   - Se houver prazo aberto para o escritório peticionar (ex: Réplica, Contrarrazões, Recurso, Manifestação):
+     * Use: "Apresentar [tipo da peça] até [data limite ou prazo]".
+   - Se houver prazo aberto para a parte contrária:
+     * Use: "Aguardar manifestação / prazo recursal da parte ré".
+6. REGRAS PARA 'tipo_de_prazo' E 'audiencia':
+   - Se o ato processual marcar ou mencionar Audiência de Instrução e Julgamento (AIJ) ou Conciliação, preencha 'prazo.tipo' com "Audiência de Instrução e Julgamento" (ou Conciliação), mesmo que a data exata ainda esteja pendente de pauta no cartório.
+   - Preencha 'fase_sugerida' como "instrucao" se houver AIJ em andamento.
+7. Seja estrito: não invente datas ou valores ausentes no texto.`;
 }
 
 async function handler(req, res) {

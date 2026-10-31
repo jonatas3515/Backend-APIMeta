@@ -406,7 +406,9 @@ export default function CaseDetailPanel({
               <div className="p-3 bg-gray-50 rounded border">
                 <p className="text-xs text-gray-500">Órgão</p>
                 <p className="text-sm font-medium">
-                  {caseItem.agency || (
+                  {(caseItem.agency || caseItem.court_division) ? (
+                    <span>{caseItem.agency || caseItem.court_division}</span>
+                  ) : (
                     <button type="button" onClick={onEditCase} className="text-xs text-blue-600 hover:text-blue-800 font-medium">+ Definir órgão</button>
                   )}
                 </p>

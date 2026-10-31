@@ -117,8 +117,10 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
               process_number: dp.numero_processo || '',
               court: dp.tribunal || 'TJ',
               judicial_district: dp.comarca || '',
-              court_division: dp.vara || '',
+              court_division: dp.vara || dp.orgao_julgador || '',
+              agency: dp.orgao_julgador || dp.vara || '',
               legal_area: dp.area_juridica || 'civel',
+              case_type: dp.tipo_caso || dp.classe || '',
               status: ana.fase_sugerida === 'execucao' ? 'em_execucao' : (ana.fase_sugerida === 'recurso' ? 'em_recurso' : 'em_andamento'),
               client_name: dp.cliente_provavel || dp.autor || '',
               opposing_party: dp.reu || ''
@@ -165,17 +167,19 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
       let deadlineDate = null;
       let deadlineType = null;
       if (applyDeadline) {
-        if (analysis.audiencia?.identificada && analysis.audiencia.data) {
-          deadlineDate = analysis.audiencia.data;
-          deadlineType = `Audiência ${analysis.audiencia.tipo || ''}`.trim();
-        } else if (analysis.prazo?.identificado && analysis.prazo.sugestao_data_limite) {
-          deadlineDate = analysis.prazo.sugestao_data_limite;
+        if (analysis.audiencia?.identificada) {
+          deadlineType = analysis.audiencia.tipo ? `Audiência de ${analysis.audiencia.tipo}` : 'Audiência de Instrução e Julgamento';
+          deadlineDate = analysis.audiencia.data || null;
+        } else if (analysis.prazo?.identificado) {
           deadlineType = analysis.prazo.tipo || 'Prazo Judicial';
+          deadlineDate = analysis.prazo.sugestao_data_limite || null;
         } else if (analysis.fase_sugerida === 'execucao') {
           deadlineType = 'Cumprimento de Sentença';
           const defaultDate = new Date();
           defaultDate.setDate(defaultDate.getDate() + 15);
           deadlineDate = defaultDate.toISOString().split('T')[0];
+        } else if (analysis.fase_sugerida === 'instrucao') {
+          deadlineType = 'Audiência de Instrução e Julgamento';
         }
       }
 
@@ -206,16 +210,19 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
         const dp = analysis.dados_processo || {};
         const isAuthor = !dp.cliente_provavel || dp.cliente_provavel === dp.autor || (dp.autor && dp.autor.toLowerCase().includes(dp.cliente_provavel?.toLowerCase()));
         const clientRole = isAuthor ? 'autor' : 'reu';
-        const agencyName = (dp.orgao_julgador || dp.vara || '').trim() || null;
-        const municipalityName = (dp.comarca || dp.cidade || '').trim() || null;
+        const courtDivisionName = (newCaseData.court_division || dp.vara || dp.orgao_julgador || '').trim() || null;
+        const agencyName = (newCaseData.agency || dp.orgao_julgador || courtDivisionName || '').trim() || null;
+        const municipalityName = (newCaseData.judicial_district || dp.comarca || dp.cidade || '').trim() || null;
+        const caseTypeName = (newCaseData.case_type || dp.tipo_caso || dp.classe || '').trim() || null;
 
         const newCasePayload = {
           title: newCaseData.title.trim(),
           process_number: newCaseData.process_number ? newCaseData.process_number.trim() : null,
           court: newCaseData.court || dp.tribunal || 'TJ',
           judicial_district: newCaseData.judicial_district ? newCaseData.judicial_district.trim() : municipalityName,
-          court_division: newCaseData.court_division ? newCaseData.court_division.trim() : (dp.vara ? dp.vara.trim() : null),
+          court_division: courtDivisionName,
           legal_area: newCaseData.legal_area || dp.area_juridica || 'civel',
+          case_type: caseTypeName,
           status: newCaseData.status || (analysis.fase_sugerida === 'execucao' ? 'em_execucao' : 'em_andamento'),
           procedural_step: analysis.fase_sugerida || 'execucao',
           priority: 'alta',
@@ -266,11 +273,25 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
           }
         }
         if (applyDeadline) {
-          if (deadlineDate) {
-            updates.deadline_date = deadlineDate;
+          if (deadlineType) {
             updates.deadline_type = deadlineType;
           }
+          if (deadlineDate) {
+            updates.deadline_date = deadlineDate;
+          }
         }
+
+        // Atualiza campo Notas com resumo sucinto da análise do ato judicial
+        let currentNotes = (targetCase?.notes || '').trim();
+        if (analysis.resumo) {
+          const todayFormatted = new Date().toLocaleDateString('pt-BR');
+          const atoLabel = analysis.tipo_ato || 'Decisão/Despacho';
+          const summaryNote = `[${todayFormatted} - IA ${atoLabel}]: ${analysis.resumo.trim()}`;
+          if (!currentNotes.includes(summaryNote)) {
+            currentNotes = currentNotes ? `${currentNotes}\n\n${summaryNote}` : summaryNote;
+          }
+        }
+
         if (applyFees && (editableCondenacao || editableHonorariosPercentual)) {
           const valCond = Number(editableCondenacao) || null;
           const pct = Number(editableHonorariosPercentual) || 20;
@@ -282,14 +303,18 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
             awarded_value: valCond,
             fee_final_value: finalEst
           };
-          updates.notes = serializeFeeIntoNotes(targetCase?.notes || '', feeData);
+          currentNotes = serializeFeeIntoNotes(currentNotes, feeData);
           updates.awarded_value = valCond;
           updates.fee_percentage = pct;
           updates.fee_basis = 'condenacao';
           updates.fee_final_value = finalEst;
         }
 
-        // Completa comarca, vara, tribunal, órgão e papel do cliente se identificados e em branco no caso existente
+        if (currentNotes !== (targetCase?.notes || '').trim()) {
+          updates.notes = currentNotes;
+        }
+
+        // Completa comarca, vara, tribunal, órgão, tipo de caso e papel do cliente se identificados e em branco no caso existente
         if (applyCourtDetails && analysis.dados_processo) {
           const dp = analysis.dados_processo;
           if (dp.comarca && (!targetCase?.judicial_district || targetCase?.judicial_district.trim() === '')) {
@@ -298,14 +323,20 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
           if ((dp.cidade || dp.comarca) && (!targetCase?.municipality || targetCase?.municipality.trim() === '')) {
             updates.municipality = (dp.cidade || dp.comarca).trim();
           }
-          if (dp.vara && (!targetCase?.court_division || targetCase?.court_division.trim() === '')) {
-            updates.court_division = dp.vara.trim();
+          const varaIdentificada = (dp.vara || dp.orgao_julgador || '').trim();
+          if (varaIdentificada && (!targetCase?.court_division || targetCase?.court_division.trim() === '')) {
+            updates.court_division = varaIdentificada;
           }
           if (dp.tribunal && (!targetCase?.court || targetCase?.court === 'TJ')) {
             updates.court = dp.tribunal.trim();
           }
-          if ((dp.orgao_julgador || dp.vara) && (!targetCase?.agency || targetCase?.agency.trim() === '')) {
-            updates.agency = (dp.orgao_julgador || dp.vara).trim();
+          const orgaoIdentificado = (dp.orgao_julgador || dp.vara || targetCase?.court_division || '').trim();
+          if (orgaoIdentificado && (!targetCase?.agency || targetCase?.agency.trim() === '')) {
+            updates.agency = orgaoIdentificado;
+          }
+          const tipoCasoIdentificado = (dp.tipo_caso || dp.classe || '').trim();
+          if (tipoCasoIdentificado && (!targetCase?.case_type || targetCase?.case_type.trim() === '')) {
+            updates.case_type = tipoCasoIdentificado;
           }
           if (!targetCase?.client_role) {
             const isAuthor = !dp.cliente_provavel || dp.cliente_provavel === dp.autor || (dp.autor && dp.autor.toLowerCase().includes(dp.cliente_provavel?.toLowerCase()));
