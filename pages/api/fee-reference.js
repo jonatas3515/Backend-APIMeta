@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { withAuth, requireRole } from '@/lib/auth';
+import { withAuth, requireRole, getTenantOfficeId } from '@/lib/auth';
 import { calculateRegionalSuggestion, normalizeText, normalizeLegalArea, rankServiceMatches } from '@/lib/feeSuggestion';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -119,11 +119,13 @@ async function handler(req, res) {
   try {
     const { method } = req;
     const { legal_area, case_type, service, factor } = req.query;
+    const officeId = getTenantOfficeId(req);
 
     if (method === 'GET') {
       const { data: tables, error } = await supabaseAdmin
         .from('fee_uploaded_tables')
         .select('*')
+        .eq('office_id', officeId)
         .eq('table_type', 'oab')
         .eq('is_active', true)
         .order('created_at', { ascending: false });

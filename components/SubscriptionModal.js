@@ -95,37 +95,74 @@ export default function SubscriptionModal({ open, onClose }) {
               {PLAN_ORDER.map((key) => {
                 const plan = PLANS[key];
                 const isCurrent = currentPlanKey === key;
+                const isEnterprise = key === 'enterprise';
+
+                let buttonText = 'Assinar Plano';
+                if (isCurrent) {
+                  buttonText = isEnterprise ? '👑 Plano Máximo Ativo' : 'Plano Atual';
+                } else if (isTrialing) {
+                  buttonText = `Contratar ${plan.name}`;
+                } else if (currentPlanKey === 'basico') {
+                  buttonText = `🚀 Solicitar Upgrade para ${plan.name}`;
+                } else if (currentPlanKey === 'profissional' && isEnterprise) {
+                  buttonText = `🚀 Solicitar Upgrade para ${plan.name}`;
+                }
+
                 return (
                   <div
                     key={key}
-                    className={`border rounded-lg p-4 flex flex-col ${
-                      isCurrent ? 'border-nc-yellow ring-2 ring-nc-yellow bg-yellow-50/40' : 'border-gray-200'
+                    className={`border rounded-xl p-4 flex flex-col justify-between transition ${
+                      isCurrent
+                        ? 'border-nc-yellow ring-2 ring-nc-yellow bg-yellow-50/40 shadow-md'
+                        : isEnterprise
+                        ? 'border-purple-300 bg-gradient-to-b from-purple-50/30 to-white shadow-sm'
+                        : 'border-gray-200 hover:border-gray-300'
                     }`}
                     data-testid={`plan-card-${key}`}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-bold text-sm">{plan.name}</h4>
-                      {isCurrent && (
-                        <span className="text-[10px] px-2 py-0.5 rounded bg-nc-yellow text-nc-black font-bold">
-                          PLANO ATUAL
-                        </span>
-                      )}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-bold text-base text-gray-900">{plan.name}</h4>
+                        {isCurrent && (
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-nc-yellow text-nc-black font-extrabold">
+                            PLANO ATUAL
+                          </span>
+                        )}
+                        {!isCurrent && isEnterprise && (
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-purple-100 text-purple-700 font-bold">
+                            MAIS COMPLETO
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-2xl font-black mb-1 text-gray-900">
+                        R$ {plan.price}
+                        <span className="text-xs font-normal text-gray-500">/{plan.interval}</span>
+                      </p>
+                      <p className="text-xs text-gray-600 mb-4">{plan.description}</p>
+
+                      <div className="border-t border-gray-100 pt-3 mb-4 space-y-1.5">
+                        <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-2">O que inclui:</p>
+                        {(plan.highlights || []).map((highlight, idx) => (
+                          <div key={idx} className="flex items-start gap-1.5 text-xs text-gray-600">
+                            <span className="text-green-500 font-bold shrink-0">✓</span>
+                            <span>{highlight}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <p className="text-2xl font-bold mb-1">
-                      R$ {plan.price}
-                      <span className="text-xs font-normal text-gray-500">/{plan.interval}</span>
-                    </p>
-                    <p className="text-xs text-gray-500 mb-4 flex-1">{plan.description}</p>
+
                     <button
                       onClick={() => handleCheckout(key)}
                       disabled={isCurrent || !!checkoutLoading}
-                      className={`w-full py-2 rounded text-sm font-medium ${
+                      className={`w-full py-2.5 rounded-lg text-xs font-bold transition shadow-sm ${
                         isCurrent
-                          ? 'bg-gray-200 text-gray-500 cursor-default'
-                          : 'bg-nc-black text-white hover:opacity-90 disabled:opacity-60'
+                          ? 'bg-gray-100 text-gray-400 cursor-default border border-gray-200'
+                          : isEnterprise
+                          ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 hover:shadow-md'
+                          : 'bg-nc-black text-white hover:bg-nc-gray-800'
                       }`}
                     >
-                      {isCurrent ? 'Plano atual' : checkoutLoading === key ? 'Abrindo checkout...' : 'Assinar'}
+                      {checkoutLoading === key ? 'Abrindo checkout...' : buttonText}
                     </button>
                   </div>
                 );

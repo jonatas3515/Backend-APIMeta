@@ -19,15 +19,9 @@ async function handler(req, res) {
     const officeId = getTenantOfficeId(req);
 
     if (method === 'GET') {
-      let query = supabaseAdmin.from('fee_uploaded_tables').select('*');
+      let query = supabaseAdmin.from('fee_uploaded_tables').select('*').eq('office_id', officeId);
       if (id) query = query.eq('id', id).single();
-      if (table_type === 'escritorio') {
-        query = query.eq('table_type', 'escritorio').eq('office_id', officeId);
-      } else if (table_type) {
-        query = query.eq('table_type', table_type);
-      } else {
-        query = query.or(`office_id.eq.${officeId},office_id.is.null,table_type.eq.oab`);
-      }
+      if (table_type) query = query.eq('table_type', table_type);
       if (active === 'true') query = query.eq('is_active', true);
 
       const { data, error } = await query.order('created_at', { ascending: false });

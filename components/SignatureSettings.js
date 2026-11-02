@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { apiJson } from '../lib/apiClient';
+import { useAuth } from '../lib/useAuth';
 
 export default function SignatureSettings() {
+  const { profile } = useAuth();
   const [integrations, setIntegrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(null);
   const [copied, setCopied] = useState(false);
 
   const webhookUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/api/signatures/webhook`
+    ? `${window.location.origin}/api/signatures/webhook${profile?.office_id ? `?office_id=${profile.office_id}` : ''}`
     : '';
 
   const copyWebhookUrl = async () => {
@@ -46,7 +48,12 @@ export default function SignatureSettings() {
     try {
       setLoading(true);
       const data = await apiJson('/api/signatures/config');
-      setIntegrations((data && Array.isArray(data.integrations)) ? data.integrations : []);
+      const list = (data && Array.isArray(data.integrations)) ? data.integrations : [];
+      setIntegrations(list);
+      // Se não houver integrações cadastradas, já abre o formulário de conexão
+      if (list.length === 0) {
+        setShowForm(true);
+      }
       setError(null);
     } catch (err) {
       console.error('Erro ao buscar integrações:', err);
@@ -68,12 +75,12 @@ export default function SignatureSettings() {
         body: JSON.stringify(formData)
       });
       
-      setSuccess('Configuração salva com sucesso');
+      setSuccess('Configuração da plataforma salva com sucesso! Agora você pode testar a conexão.');
       setFormData({ platform: 'zapsign', api_key: '', api_secret: '' });
       setShowForm(false);
       fetchIntegrations();
       
-      setTimeout(() => setSuccess(null), 3000);
+      setTimeout(() => setSuccess(null), 4000);
     } catch (err) {
       console.error('Erro ao salvar:', err);
       setError(err.response?.data?.error || 'Erro ao salvar configuração');
@@ -100,7 +107,7 @@ export default function SignatureSettings() {
       }
       fetchIntegrations();
 
-      setTimeout(() => { setSuccess(null); setError(null); }, 3000);
+      setTimeout(() => { setSuccess(null); setError(null); }, 4000);
     } catch (err) {
       console.error('Erro ao testar:', err);
       setError(err.response?.data?.error || 'Erro ao testar conexão');
@@ -120,164 +127,192 @@ export default function SignatureSettings() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-nc-text">🔐 Assinatura Eletrônica</h2>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-nc-yellow text-nc-text font-medium rounded hover:bg-nc-yellow-700 transition"
-        >
-          {showForm ? '✕ Cancelar' : '+ Adicionar Integração'}
-        </button>
+        <div>
+          <h2 className="text-2xl font-bold text-nc-text">🔐 Assinatura Eletrônica</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Conecte a conta do seu próprio escritório na ZapSign, ClickSign ou DocuSign.
+          </p>
+        </div>
+        {integrations.length > 0 && (
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="px-4 py-2 bg-nc-yellow text-nc-black font-semibold rounded hover:bg-nc-yellow-700 transition"
+          >
+            {showForm ? '✕ Cancelar' : '+ Adicionar Outra Plataforma'}
+          </button>
+        )}
       </div>
 
       {error && (
-        <div className="p-4 bg-red-100 border border-red-300 rounded text-red-800">
+        <div className="p-4 bg-red-900/40 border border-red-500/40 rounded text-red-200 text-sm">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="p-4 bg-green-100 border border-green-300 rounded text-green-800">
+        <div className="p-4 bg-green-900/40 border border-green-500/40 rounded text-green-200 text-sm">
           {success}
         </div>
       )}
 
       {showForm && (
-        <form onSubmit={handleSave} className="p-6 bg-nc-surface border border-nc-gray-300 rounded-lg space-y-4">
+        <form onSubmit={handleSave} className="p-6 bg-nc-surface border border-nc-gray-800 rounded-xl space-y-4 shadow-md">
+          <div className="border-b border-gray-800 pb-3">
+            <h3 className="font-bold text-white text-base">🔑 Conectar Conta de Assinatura</h3>
+            <p className="text-xs text-gray-400">
+              Cada escritório utiliza suas próprias credenciais. Os contratos e procurações serão emitidos diretamente pela sua conta.
+            </p>
+          </div>
+
           <div>
-            <label className="block text-sm font-medium text-nc-text mb-2">
-              Plataforma
+            <label className="block text-sm font-medium text-nc-text mb-1">
+              Plataforma de Assinatura
             </label>
             <select
               value={formData.platform}
               onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
-              className="w-full px-3 py-2 border border-nc-gray-300 rounded focus:outline-none focus:border-nc-yellow"
+              className="w-full px-3 py-2 bg-nc-black border border-nc-gray-700 rounded text-white focus:outline-none focus:border-nc-yellow"
             >
-              <option value="zapsign">Zapsign</option>
+              <option value="zapsign">ZapSign</option>
               <option value="clicksign">ClickSign</option>
               <option value="docusign">DocuSign</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-nc-text mb-2">
-              API Key
+            <label className="block text-sm font-medium text-nc-text mb-1">
+              Chave de API (API Key da sua conta)
             </label>
             <input
               type="password"
               value={formData.api_key}
               onChange={(e) => setFormData({ ...formData, api_key: e.target.value })}
-              placeholder="Cole sua API Key aqui"
+              placeholder="Cole o token ou API Key gerado no painel da sua plataforma"
               required
-              className="w-full px-3 py-2 border border-nc-gray-300 rounded focus:outline-none focus:border-nc-yellow"
+              className="w-full px-3 py-2 bg-nc-black border border-nc-gray-700 rounded text-white focus:outline-none focus:border-nc-yellow"
             />
+            <p className="text-[11px] text-gray-400 mt-1">
+              No painel da ZapSign, acesse Configurações → Integrações / API e gere seu token de API.
+            </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-nc-text mb-2">
+            <label className="block text-sm font-medium text-nc-text mb-1">
               API Secret (opcional)
             </label>
             <input
               type="password"
               value={formData.api_secret}
               onChange={(e) => setFormData({ ...formData, api_secret: e.target.value })}
-              placeholder="Cole seu API Secret aqui (se aplicável)"
-              className="w-full px-3 py-2 border border-nc-gray-300 rounded focus:outline-none focus:border-nc-yellow"
+              placeholder="Cole o API Secret se exigido pela sua plataforma"
+              className="w-full px-3 py-2 bg-nc-black border border-nc-gray-700 rounded text-white focus:outline-none focus:border-nc-yellow"
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full px-4 py-2 bg-nc-yellow text-nc-text font-medium rounded hover:bg-nc-yellow-700 transition disabled:opacity-50"
-          >
-            {loading ? 'Salvando...' : 'Salvar Configuração'}
-          </button>
+          <div className="flex gap-2 pt-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-6 py-2.5 bg-nc-yellow text-nc-black font-bold rounded hover:bg-nc-yellow-700 transition disabled:opacity-50 text-sm"
+            >
+              {loading ? 'Salvando...' : '💾 Salvar e Ativar Integração'}
+            </button>
+            {integrations.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowForm(false)}
+                className="px-4 py-2.5 bg-gray-800 text-gray-300 rounded hover:bg-gray-700 text-sm"
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
         </form>
       )}
 
-      <div className="space-y-4">
-        {integrations.length === 0 ? (
-          <div className="p-6 bg-nc-surface border border-nc-gray-300 rounded-lg text-center">
-            <p className="text-nc-text-muted">Nenhuma integração configurada</p>
-          </div>
-        ) : (
-          integrations.map((integration) => (
+      {integrations.length > 0 && (
+        <div className="space-y-4">
+          {integrations.map((integration) => (
             <div
               key={integration.id}
-              className="p-6 bg-nc-surface border border-nc-gray-300 rounded-lg space-y-4"
+              className="p-5 bg-nc-surface border border-nc-gray-800 rounded-xl space-y-3"
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold text-nc-text capitalize">
+                  <h3 className="text-base font-bold text-white capitalize flex items-center gap-2">
                     {integration.platform}
+                    <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                      integration.is_active ? 'bg-green-900/60 text-green-300' : 'bg-red-900/60 text-red-300'
+                    }`}>
+                      {integration.is_active ? 'Ativo' : 'Inativo'}
+                    </span>
                   </h3>
-                  <p className="text-sm text-nc-text-muted">
-                    Status: {integration.is_active ? '✅ Ativo' : '❌ Inativo'}
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Integração vinculada ao seu escritório
                   </p>
                 </div>
                 <button
                   onClick={() => handleTest(integration.id)}
                   disabled={testing === integration.id}
-                  className="px-4 py-2 bg-blue-600 text-white font-medium rounded hover:bg-blue-700 transition disabled:opacity-50"
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-xs transition disabled:opacity-50"
                 >
                   {testing === integration.id ? 'Testando...' : '🔗 Testar Conexão'}
                 </button>
               </div>
 
               {integration.tested_at && (
-                <div className="text-sm text-nc-text-muted">
+                <div className="text-xs text-gray-400">
                   Último teste: {new Date(integration.tested_at).toLocaleString('pt-BR')}
                 </div>
               )}
 
               {integration.test_status === 'success' && (
-                <div className="p-3 bg-green-100 border border-green-300 rounded text-green-800 text-sm">
-                  ✅ Conexão estabelecida com sucesso
+                <div className="p-2.5 bg-green-900/40 border border-green-500/40 rounded text-green-300 text-xs">
+                  ✅ Conexão validada com sucesso! Você já pode enviar contratos para assinatura.
                 </div>
               )}
 
               {integration.test_status === 'failed' && (
-                <div className="p-3 bg-red-100 border border-red-300 rounded text-red-800 text-sm">
+                <div className="p-2.5 bg-red-900/40 border border-red-500/40 rounded text-red-300 text-xs">
                   ❌ Falha na conexão: {integration.test_error}
                 </div>
               )}
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
-      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg" data-testid="webhook-url-card">
-        <p className="font-semibold text-amber-900 mb-1">🔔 Webhook da ZapSign</p>
-        <p className="text-sm text-amber-800 mb-2">
-          Cadastre esta URL no painel da ZapSign para que o sistema receba os eventos de
-          assinatura e avance automaticamente a etapa do funil quando um contrato for concluído.
+      <div className="p-4 bg-amber-950/30 border border-amber-600/30 rounded-xl" data-testid="webhook-url-card">
+        <p className="font-bold text-amber-300 mb-1 flex items-center gap-2">
+          <span>🔔</span> URL Única de Webhook do seu Escritório
+        </p>
+        <p className="text-xs text-amber-200/80 mb-2 leading-relaxed">
+          Cadastre esta URL nas configurações de Webhook da sua conta na plataforma (ZapSign / ClickSign).
+          Quando um cliente assinar um documento, nossa plataforma atualizará o caso e avançará o funil de atendimento automaticamente.
         </p>
         <div className="flex items-center gap-2">
-          <code className="flex-1 text-xs bg-white border border-amber-200 rounded px-3 py-2 break-all" data-testid="webhook-url">
+          <code className="flex-1 text-xs bg-black/60 border border-amber-500/30 text-amber-100 rounded px-3 py-2 break-all" data-testid="webhook-url">
             {webhookUrl}
           </code>
           <button
             onClick={copyWebhookUrl}
-            className="px-3 py-2 text-xs font-medium bg-amber-600 text-white rounded hover:bg-amber-700 transition whitespace-nowrap"
+            className="px-3 py-2 text-xs font-semibold bg-amber-500 text-black rounded hover:bg-amber-600 transition whitespace-nowrap shadow"
             data-testid="btn-copy-webhook"
           >
-            {copied ? '✅ Copiado!' : '📋 Copiar URL do Webhook'}
+            {copied ? '✅ Copiado!' : '📋 Copiar URL'}
           </button>
         </div>
       </div>
 
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
-        <p className="font-semibold mb-2">💡 Como usar:</p>
-        <ul className="list-disc list-inside space-y-1">
-          <li>Configure sua API Key da plataforma de assinatura</li>
-          <li>Clique em "Testar Conexão" para validar as credenciais</li>
-          <li>Após validar, você poderá enviar documentos para assinatura nos casos</li>
-          <li>O status de assinatura será atualizado em tempo real</li>
-        </ul>
+      <div className="p-4 bg-blue-950/20 border border-blue-500/20 rounded-xl text-xs text-blue-200/90">
+        <p className="font-bold text-blue-300 mb-1">💡 Como configurar:</p>
+        <ol className="list-decimal list-inside space-y-1 text-blue-200/80">
+          <li>Insira a sua <strong>API Key</strong> no formulário acima e clique em <em>Salvar e Ativar Integração</em>;</li>
+          <li>Clique no botão <strong>Testar Conexão</strong> para validar suas credenciais;</li>
+          <li>Copie a <strong>URL do Webhook</strong> acima e cole no painel da sua plataforma de assinatura;</li>
+          <li>Pronto! Você poderá enviar procurações e contratos diretamente de dentro de cada caso.</li>
+        </ol>
       </div>
     </div>
   );
 }
-
-
-

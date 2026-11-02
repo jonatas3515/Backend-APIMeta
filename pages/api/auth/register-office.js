@@ -2,7 +2,7 @@ import { supabaseAdmin } from '@/lib/auth';
 import logger from '@/lib/logger';
 import { PLANS } from '@/lib/plans';
 
-const TRIAL_DAYS = 14;
+const TRIAL_DAYS = 30;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function handler(req, res) {
