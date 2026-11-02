@@ -2,8 +2,20 @@ import React, { useState } from 'react';
 import { apiJson } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import { serializeFeeIntoNotes } from '../lib/caseFeeHelper';
+import { useAuth } from '../lib/useAuth';
+import { canAccessFeature, isTrialActive, calculateTrialDaysRemaining } from '../lib/plans';
+import { TrialBanner } from './FeatureGate';
+import SubscriptionModal from './SubscriptionModal';
 
 export default function CaseDecisionExtractorModal({ caseItem, allCases = [], onClose, onRefresh }) {
+  const { profile, isMaster } = useAuth();
+  const [showSubscription, setShowSubscription] = useState(false);
+  const office = profile?.office;
+  const isMasterOrMatriz = isMaster?.() || profile?.is_master || office?.id === '00000000-0000-0000-0000-000000000001';
+  const inTrial = isTrialActive(office);
+  const daysLeft = calculateTrialDaysRemaining(office?.trial_ends_at);
+  const hasAiAccess = isMasterOrMatriz || canAccessFeature(office?.plan, 'ai_extract_decision', office);
+
   const [text, setText] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -446,17 +458,48 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
         </div>
 
         <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs font-medium">
-              ⚠️ {error}
+          {inTrial && !isMasterOrMatriz && (
+            <div className="-mx-2 mb-2">
+              <TrialBanner
+                requiredPlan="Enterprise"
+                daysLeft={daysLeft}
+                onUpgrade={() => setShowSubscription(true)}
+              />
             </div>
           )}
 
-          {successMsg && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-xs font-bold flex items-center gap-2">
-              <span>✓</span> {successMsg}
+          {!hasAiAccess ? (
+            <div className="p-8 bg-slate-900 border-2 border-amber-500/70 rounded-2xl text-center space-y-4 shadow-xl">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-3xl">
+                👑
+              </div>
+              <h4 className="text-white font-black text-lg">Agente de IA Exclusivo do Plano Enterprise</h4>
+              <p className="text-slate-300 text-xs sm:text-sm max-w-md mx-auto leading-relaxed">
+                A extração inteligente de decisões, audiências e sentenças com IA faz parte do <strong>Plano Enterprise</strong>. Solicite o upgrade para liberar o poder total da inteligência artificial jurídica.
+              </p>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowSubscription(true)}
+                  className="px-6 py-2.5 bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black rounded-xl text-xs sm:text-sm shadow-lg shadow-amber-500/30 transition transform hover:scale-105 active:scale-95"
+                >
+                  🚀 Solicitar Upgrade para Enterprise
+                </button>
+              </div>
             </div>
-          )}
+          ) : (
+            <>
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs font-medium">
+                  ⚠️ {error}
+                </div>
+              )}
+
+              {successMsg && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-xs font-bold flex items-center gap-2">
+                  <span>✓</span> {successMsg}
+                </div>
+              )}
 
           {/* Form de entrada */}
           {!analysis && (
@@ -908,8 +951,15 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
               </div>
             </div>
           )}
+            </>
+          )}
         </div>
       </div>
+
+      <SubscriptionModal
+        open={showSubscription}
+        onClose={() => setShowSubscription(false)}
+      />
     </div>
   );
 }

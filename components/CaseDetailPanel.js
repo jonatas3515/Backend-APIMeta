@@ -86,6 +86,7 @@ export default function CaseDetailPanel({
   onOpenDocuments,
   onOpenFee,
   onOpenDecisionExtractor,
+  hasAiAccess = true,
   onOpenRequest,
   onFinalizeCase,
   onDeleteCase,
@@ -231,10 +232,23 @@ export default function CaseDetailPanel({
                   <button
                     type="button"
                     onClick={onOpenDecisionExtractor}
-                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5"
-                    title="Analisar ato ou acórdão com o Agente de IA"
+                    className={`px-3 py-1.5 ${
+                      hasAiAccess
+                        ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                        : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-amber-500/50'
+                    } rounded-lg text-xs font-bold shadow-xs transition flex items-center gap-1.5`}
+                    title={
+                      hasAiAccess
+                        ? 'Analisar ato ou acórdão com o Agente de IA'
+                        : 'Recurso exclusivo do Plano Enterprise. Clique para solicitar upgrade.'
+                    }
                   >
                     <span>🤖</span> IA Decisão / Despacho
+                    {!hasAiAccess && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] bg-amber-400 text-slate-950 font-black uppercase">
+                        👑 Enterprise
+                      </span>
+                    )}
                   </button>
                 )}
 

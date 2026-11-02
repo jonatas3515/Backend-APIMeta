@@ -1,6 +1,7 @@
 import { withAuth } from '@/lib/auth';
 import { askGeminiJson } from '@/lib/ai';
 import { safeError } from '@/lib/safeLogger';
+import { canAccessFeature } from '@/lib/plans';
 
 function extractJson(text) {
   if (!text) return null;
@@ -130,6 +131,19 @@ Regras Cruciais:
 async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Método não permitido' });
+  }
+
+  const profile = req.user;
+  const office = profile?.office;
+  const isMasterOrMatriz = profile?.is_master || office?.id === '00000000-0000-0000-0000-000000000001';
+  const hasAccess = isMasterOrMatriz || canAccessFeature(office?.plan, 'ai_extract_decision', office);
+
+  if (!hasAccess) {
+    return res.status(403).json({
+      error: 'O Agente de IA para análise de atos judiciais é exclusivo do Plano Enterprise.',
+      upgradeRequired: true,
+      requiredPlan: 'Enterprise'
+    });
   }
 
   const { text, caseContext } = req.body || {};

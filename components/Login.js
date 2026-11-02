@@ -141,7 +141,7 @@ export default function Login({ onLogin }) {
             href="/landing#planos"
             className="block text-xs text-nc-text-secondary hover:text-red-500 transition"
           >
-            Criar conta para meu escritório (14 dias grátis)
+            Criar conta para meu escritório (30 dias grátis)
           </a>
         </div>
       </div>

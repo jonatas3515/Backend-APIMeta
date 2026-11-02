@@ -34,7 +34,11 @@ export default function SubscriptionModal({ open, onClose }) {
   if (!open) return null;
 
   const currentPlanKey = PLAN_MATCHES[data?.plan] || null;
-  const isTrialing = data?.trial?.active && data?.trial?.days_remaining > 0;
+  const isTrialing =
+    (data?.trial?.active && data?.trial?.days_remaining > 0) ||
+    data?.subscription?.status === 'trialing' ||
+    data?.plan === 'trial' ||
+    data?.office?.status === 'trial';
 
   const handleCheckout = async (planKey) => {
     if (checkoutLoading) return;
@@ -170,11 +174,31 @@ export default function SubscriptionModal({ open, onClose }) {
             </div>
           )}
 
-          {data?.subscription && (
-            <div className="mt-4 text-xs text-gray-500 border-t pt-3">
-              Assinatura atual: <strong>{data.subscription.plan}</strong> • Status: {data.subscription.status}
-              {data.subscription.current_period_end &&
-                ` • Renovação: ${new Date(data.subscription.current_period_end).toLocaleDateString('pt-BR')}`}
+          {(data?.subscription || isTrialing) && (
+            <div className="mt-4 text-xs text-gray-400 border-t border-gray-800 pt-3 flex flex-wrap items-center justify-between gap-2">
+              {isTrialing ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    ⏳ TESTE GRÁTIS
+                  </span>
+                  <span>
+                    Plano atual: <strong className="text-amber-300 font-bold">Trial Completo (30 dias)</strong> • Fim do período de teste:{' '}
+                    <strong className="text-white font-semibold">
+                      {new Date(data?.trial?.ends_at || data?.office?.trial_ends_at || data?.subscription?.current_period_end).toLocaleDateString('pt-BR')}
+                    </strong>
+                    {data?.trial?.days_remaining > 0 && (
+                      <span className="ml-1 text-amber-400 font-bold">({data.trial.days_remaining} dias restantes)</span>
+                    )}
+                  </span>
+                </div>
+              ) : (
+                <span>
+                  Assinatura atual: <strong className="text-white capitalize font-semibold">{data?.subscription?.plan || data?.plan}</strong> • Status:{' '}
+                  <span className="text-emerald-400 font-semibold">{data?.subscription?.status || 'Ativo'}</span>
+                  {data?.subscription?.current_period_end &&
+                    ` • Próxima Renovação: ${new Date(data.subscription.current_period_end).toLocaleDateString('pt-BR')}`}
+                </span>
+              )}
             </div>
           )}
         </div>

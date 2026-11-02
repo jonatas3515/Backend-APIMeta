@@ -1,4 +1,4 @@
-import { withAuth, supabaseAdmin } from '@/lib/auth';
+import { withAuth, supabaseAdmin, getTenantOfficeId } from '@/lib/auth';
 import { getDefaultOfficeId } from '@/lib/officeContext';
 import { getPlanDetails, calculateTrialDaysRemaining } from '@/lib/plans';
 import logger from '@/lib/logger';
@@ -14,7 +14,7 @@ async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido' });
   }
 
-  const officeId = req.query.office_id || req.user?.office_id || getDefaultOfficeId();
+  const officeId = (req.user?.is_master && req.query.office_id) || getTenantOfficeId(req) || getDefaultOfficeId();
 
   try {
     const { data: office, error: officeError } = await supabaseAdmin
@@ -39,6 +39,10 @@ async function handler(req, res) {
 
     if (subError) throw subError;
 
+    if (subscription && (subscription.status === 'trialing' || office.status === 'trial') && office.trial_ends_at) {
+      subscription.current_period_end = office.trial_ends_at;
+    }
+
     const effectivePlan = subscription?.plan || office.plan || 'trial';
     const trialDaysRemaining = calculateTrialDaysRemaining(office.trial_ends_at);
 
@@ -55,7 +59,7 @@ async function handler(req, res) {
       plan: effectivePlan,
       plan_details: getPlanDetails(effectivePlan),
       trial: {
-        active: office.status === 'trialing' || (subscription?.status === 'trialing'),
+        active: office.status === 'trial' || office.status === 'trialing' || (subscription?.status === 'trialing'),
         days_remaining: trialDaysRemaining,
         ends_at: office.trial_ends_at
       }

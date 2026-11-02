@@ -19,6 +19,8 @@ import CaseDetailPanel from './CaseDetailPanel';
 import ConversationSelectorModal from './ConversationSelectorModal';
 import CaseDecisionExtractorModal from './CaseDecisionExtractorModal';
 import CaseFinalizeModal from './CaseFinalizeModal';
+import SubscriptionModal from './SubscriptionModal';
+import { canAccessFeature } from '../lib/plans';
 import { parseCaseFee, calculateFeeAmount, serializeFeeIntoNotes, stripFeeFromNotes } from '../lib/caseFeeHelper';
 
 const PROCEDURAL_STEP_LABELS = {
@@ -49,6 +51,21 @@ export default function CasesPanel({ notice }) {
   const { profile } = useAuth();
   const { addToast } = useToast();
   const canEdit = profile?.role === 'admin' || profile?.role === 'advogado';
+
+  // Verificação de permissão do Plano Enterprise para Agentes de IA
+  const office = profile?.office;
+  const isMasterOrMatriz = profile?.is_master || office?.id === '00000000-0000-0000-0000-000000000001';
+  const hasAiAccess = isMasterOrMatriz || canAccessFeature(office?.plan, 'ai_extract_decision', office);
+  const [showSubscription, setShowSubscription] = useState(false);
+
+  const handleOpenDecisionExtractor = (target = { isGeneral: true }) => {
+    if (!hasAiAccess) {
+      addToast('O Agente de IA para análise de despachos e sentenças é exclusivo do Plano Enterprise.', 'error');
+      setShowSubscription(true);
+      return;
+    }
+    setDecisionExtractorCase(target);
+  };
   const { selectedArea, setSelectedArea } = useAreaFilter();
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1215,7 +1232,8 @@ export default function CasesPanel({ notice }) {
           onOpenChecklist={() => setChecklistCase(selectedCase)}
           onOpenDocuments={() => setDocsCase(selectedCase)}
           onOpenFee={() => setFeeCase(selectedCase)}
-          onOpenDecisionExtractor={() => setDecisionExtractorCase(selectedCase)}
+          onOpenDecisionExtractor={() => handleOpenDecisionExtractor(selectedCase)}
+          hasAiAccess={hasAiAccess}
           onOpenRequest={() => {
             if (!selectedCase.conversation_id) {
               alert('Caso sem conversa vinculada. Vincule uma conversa antes de solicitar documentos.');
@@ -1335,11 +1353,24 @@ export default function CasesPanel({ notice }) {
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           <button
-            onClick={() => setDecisionExtractorCase({ isGeneral: true })}
-            className="px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded font-bold text-xs shadow-sm inline-flex items-center gap-1.5 transition"
-            title="Extrair prazos, audiências, decisões e honorários usando IA"
+            onClick={() => handleOpenDecisionExtractor({ isGeneral: true })}
+            className={`px-3 py-2 ${
+              hasAiAccess
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-amber-500/50'
+            } rounded font-bold text-xs shadow-sm inline-flex items-center gap-1.5 transition`}
+            title={
+              hasAiAccess
+                ? 'Extrair prazos, audiências, decisões e honorários usando IA'
+                : 'Recurso exclusivo do Plano Enterprise. Clique para solicitar upgrade.'
+            }
           >
             <span>🤖</span> Analisar Decisão / Despacho (IA)
+            {!hasAiAccess && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-400 text-slate-950 font-black uppercase tracking-wider shadow-xs">
+                👑 Enterprise
+              </span>
+            )}
           </button>
           <ExportButtons
             onExcel={() => exportCasesExcel(cases)}
@@ -1692,6 +1723,11 @@ export default function CasesPanel({ notice }) {
           onRefresh={fetchCases}
         />
       )}
+
+      <SubscriptionModal
+        open={showSubscription}
+        onClose={() => setShowSubscription(false)}
+      />
     </div>
   );
 }

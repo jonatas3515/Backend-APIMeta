@@ -40,6 +40,7 @@ jest.mock('../lib/auth', () => ({
     req.user = req.__testUser || { role: 'advogado', id: 'user-1' };
     return fn(req, res);
   },
+  getTenantOfficeId: (req) => req?.user?.office_id || '00000000-0000-0000-0000-000000000001',
   hasMinimumRole: () => true,
   supabaseAdmin: Object.assign(supabaseBuilder(), {
     auth: {
@@ -132,7 +133,7 @@ describe('POST /api/auth/register-office', () => {
     expect(res._getStatusCode()).toBe(201);
     const body = res._getJSONData();
     expect(body.success).toBe(true);
-    expect(body.trial_days).toBe(14);
+    expect(body.trial_days).toBe(30);
 
     const [officeInsert, subInsert, userInsert] = global.__supabaseInserts;
     expect(officeInsert.status).toBe('trial');
