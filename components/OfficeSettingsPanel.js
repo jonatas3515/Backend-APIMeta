@@ -86,30 +86,43 @@ export default function OfficeSettingsPanel() {
 
   const handleUpload = async (file) => {
     if (!file) return;
-    const formData = new FormData();
-    formData.append('file', file);
+    setSaving('logo');
+    setMsg(null);
     try {
-      const res = await fetch('/api/upload-file', { method: 'POST', body: formData });
-      const data = await res.json().catch(() => ({}));
-      const url = data.url || data.publicUrl || data.file_url;
-      if (url) {
-        setForm((f) => ({ ...f, logo_url: url }));
-        await save({ logo_url: url }, 'logo');
-      } else {
-        const reader = new FileReader();
-        reader.onload = async () => {
-          setForm((f) => ({ ...f, logo_url: reader.result }));
-          await save({ logo_url: reader.result }, 'logo');
-        };
-        reader.readAsDataURL(file);
-      }
-    } catch {
       const reader = new FileReader();
       reader.onload = async () => {
-        setForm((f) => ({ ...f, logo_url: reader.result }));
-        await save({ logo_url: reader.result }, 'logo');
+        try {
+          const base64Data = reader.result;
+          const res = await apiJson('/api/office/upload-logo', {
+            method: 'POST',
+            body: JSON.stringify({
+              image: base64Data,
+              fileName: file.name,
+              contentType: file.type
+            })
+          });
+
+          if (res?.logo_url) {
+            setForm((f) => ({ ...f, logo_url: res.logo_url }));
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('nc:office-updated', { detail: { logo_url: res.logo_url } }));
+            }
+            setMsg({ type: 'success', text: 'Logomarca atualizada com sucesso!' });
+          } else {
+            setMsg({ type: 'error', text: 'Não foi possível salvar a imagem.' });
+          }
+        } catch (uploadErr) {
+          safeError('office_logo_upload_error', uploadErr, { component: 'OfficeSettingsPanel' });
+          setMsg({ type: 'error', text: uploadErr?.message || 'Erro ao enviar logomarca.' });
+        } finally {
+          setSaving(null);
+        }
       };
       reader.readAsDataURL(file);
+    } catch (err) {
+      safeError('office_logo_read_error', err, { component: 'OfficeSettingsPanel' });
+      setMsg({ type: 'error', text: 'Erro ao ler arquivo do dispositivo.' });
+      setSaving(null);
     }
   };
 

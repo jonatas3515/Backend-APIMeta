@@ -56,6 +56,7 @@ export default function FeatureGate({
   const { profile, isMaster } = useAuth();
   const [showSubscription, setShowSubscription] = useState(false);
 
+  const isEstagiario = profile?.role === 'estagiario';
   const office = profile?.office;
   const planKey = (office?.plan || 'trial').toLowerCase();
   const inTrial = isTrialActive(office);
@@ -70,7 +71,7 @@ export default function FeatureGate({
   if (hasAccess) {
     return (
       <>
-        {inTrial && !isMasterOrMatriz && (
+        {inTrial && !isMasterOrMatriz && !isEstagiario && (
           <TrialBanner
             requiredPlan={requiredPlan}
             daysLeft={daysLeft}
@@ -95,18 +96,24 @@ export default function FeatureGate({
         {title} — Exclusivo do Plano {requiredPlan}
       </h3>
       <p className="text-slate-300 max-w-md text-sm mb-6 leading-relaxed">
-        Este recurso avançado está disponível para assinantes do <strong className="text-amber-400 font-bold">Plano {requiredPlan}</strong>. Faça upgrade para desbloquear essa e outras ferramentas de alta performance jurídica.
+        Este recurso avançado está disponível para assinantes do <strong className="text-amber-400 font-bold">Plano {requiredPlan}</strong>.
       </p>
 
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        <button
-          type="button"
-          onClick={() => setShowSubscription(true)}
-          className="bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black px-6 py-2.5 rounded-xl shadow-lg shadow-amber-500/30 transition transform hover:scale-105 active:scale-95 text-sm flex items-center gap-2"
-        >
-          🚀 Solicitar Upgrade para {requiredPlan}
-        </button>
-      </div>
+      {isEstagiario ? (
+        <div className="p-3 bg-slate-800/80 border border-slate-700 text-slate-300 rounded-xl text-xs max-w-md">
+          🎓 Você está acessando como <strong>Estagiário</strong>. Solicite ao administrador ou advogado do seu escritório para liberar este recurso através do upgrade de plano.
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowSubscription(true)}
+            className="bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black px-6 py-2.5 rounded-xl shadow-lg shadow-amber-500/30 transition transform hover:scale-105 active:scale-95 text-sm flex items-center gap-2"
+          >
+            🚀 Solicitar Upgrade para {requiredPlan}
+          </button>
+        </div>
+      )}
 
       <SubscriptionModal
         open={showSubscription}

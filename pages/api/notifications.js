@@ -31,7 +31,7 @@ async function handler(req, res) {
 
   const userId = req.user?.id;
   const userRole = req.user?.role;
-  const officeId = getTenantOfficeId(req);
+  const officeId = typeof getTenantOfficeId === 'function' ? getTenantOfficeId(req) : (req.user?.office_id || req.user?.office?.id || '00000000-0000-0000-0000-000000000001');
 
   if (!userId || !userRole) {
     return res.status(401).json({ error: 'Unauthorized' });

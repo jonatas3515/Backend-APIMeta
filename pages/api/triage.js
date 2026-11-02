@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
-import { withAuth } from '@/lib/auth';
+import { withAuth, getTenantOfficeId } from '@/lib/auth';
+import { canAccessFeature } from '@/lib/plans';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -11,6 +12,19 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
 async function handler(req, res) {
   if (!supabase) {
     return res.status(500).json({ error: 'Supabase não configurado' });
+  }
+
+  const profile = req.user;
+  const office = profile?.office;
+  const isMasterOrMatriz = profile?.is_master || office?.id === '00000000-0000-0000-0000-000000000001';
+  const hasAccess = isMasterOrMatriz || canAccessFeature(office?.plan, 'triage_ai', office);
+
+  if (!hasAccess) {
+    return res.status(403).json({
+      error: 'A Central de Triagem com IA é exclusiva do Plano Enterprise.',
+      upgradeRequired: true,
+      requiredPlan: 'Enterprise'
+    });
   }
 
   const { method } = req;
@@ -50,7 +64,7 @@ async function handleGet(req, res) {
 }
 
 // ----------------------------------------------------------------------------
-// Listar movimentações com filtros
+// Listar movimentações com filtros isoladas por escritório
 // ----------------------------------------------------------------------------
 async function listMovements(req, res) {
   const {
@@ -66,6 +80,7 @@ async function listMovements(req, res) {
     limit = 20
   } = req.query;
 
+  const officeId = getTenantOfficeId(req);
   const mine = req.query.mine === 'true';
   const targetAssignedUserId = mine ? req.user.id : assigned_user_id;
 
@@ -80,14 +95,23 @@ async function listMovements(req, res) {
           process_number,
           court_code,
           court_name,
+          office_id,
           case:cases!inner(
             id,
             title,
             legal_area,
-            assigned_user_id
+            assigned_user_id,
+            office_id
           )
         )
       `, { count: 'exact' });
+
+    // Isolamento multi-tenancy estrito por escritório
+    if (!req.user?.is_master) {
+      query = query.eq('office_id', officeId);
+    } else if (req.query.office_id) {
+      query = query.eq('office_id', req.query.office_id);
+    }
 
     // Filtros
     if (triage_status) {
@@ -127,22 +151,26 @@ async function listMovements(req, res) {
     }
 
     // Ordenação e paginação
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     query = query
       .order('movement_date', { ascending: false })
-      .order('detected_at', { ascending: false })
-      .range(offset, offset + parseInt(limit) - 1);
+      .range(offset, offset + parseInt(limit, 10) - 1);
 
-    const { data, error, count } = await query;
+    const { data: movements, error, count } = await query;
 
-    if (error) throw error;
+    if (error) {
+      console.error('[TRIAGE] Erro ao listar movimentações:', error);
+      return res.status(500).json({ error: 'Erro ao listar movimentações' });
+    }
 
     return res.status(200).json({
-      movements: data || [],
-      total: count || 0,
-      page: parseInt(page),
-      limit: parseInt(limit),
-      totalPages: Math.ceil((count || 0) / parseInt(limit))
+      movements: movements || [],
+      pagination: {
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / parseInt(limit, 10))
+      }
     });
   } catch (error) {
     console.error('[TRIAGE] Erro ao listar movimentações:', error);
@@ -151,42 +179,45 @@ async function listMovements(req, res) {
 }
 
 // ----------------------------------------------------------------------------
-// Estatísticas da fila
+// Estatísticas da fila isoladas por escritório
 // ----------------------------------------------------------------------------
 async function getStats(req, res) {
+  const officeId = getTenantOfficeId(req);
+
   try {
-    const { data: stats, error } = await supabase.rpc('get_triage_stats');
+    let query = supabase
+      .from('process_movements')
+      .select('triage_status, priority, legal_classification, assigned_user_id', { count: 'exact' });
 
-    if (error) {
-      // Se a função não existir, calcular manualmente
-      const { data: movements, error: countError } = await supabase
-        .from('process_movements')
-        .select('triage_status, priority, legal_classification, assigned_user_id', { count: 'exact' });
-
-      if (countError) throw countError;
-
-      const myId = req.user.id;
-      const activeStatuses = ['novo', 'em_analise'];
-
-      const statsManual = {
-        total: movements.length,
-        by_status: {},
-        by_priority: {},
-        by_classification: {},
-        my_pendencies: 0
-      };
-
-      movements.forEach(m => {
-        statsManual.by_status[m.triage_status] = (statsManual.by_status[m.triage_status] || 0) + 1;
-        statsManual.by_priority[m.priority] = (statsManual.by_priority[m.priority] || 0) + 1;
-        statsManual.by_classification[m.legal_classification] = (statsManual.by_classification[m.legal_classification] || 0) + 1;
-        if (activeStatuses.includes(m.triage_status) && m.assigned_user_id === myId) {
-          statsManual.my_pendencies += 1;
-        }
-      });
-
-      return res.status(200).json(statsManual);
+    if (!req.user?.is_master) {
+      query = query.eq('office_id', officeId);
+    } else if (req.query.office_id) {
+      query = query.eq('office_id', req.query.office_id);
     }
+
+    const { data: movements, error: countError } = await query;
+
+    if (countError) throw countError;
+
+    const myId = req.user.id;
+    const activeStatuses = ['novo', 'em_analise'];
+
+    const stats = {
+      total: movements?.length || 0,
+      by_status: {},
+      by_priority: {},
+      by_classification: {},
+      my_pendencies: 0
+    };
+
+    (movements || []).forEach(m => {
+      stats.by_status[m.triage_status] = (stats.by_status[m.triage_status] || 0) + 1;
+      stats.by_priority[m.priority] = (stats.by_priority[m.priority] || 0) + 1;
+      stats.by_classification[m.legal_classification] = (stats.by_classification[m.legal_classification] || 0) + 1;
+      if (activeStatuses.includes(m.triage_status) && m.assigned_user_id === myId) {
+        stats.my_pendencies += 1;
+      }
+    });
 
     return res.status(200).json(stats);
   } catch (error) {
@@ -199,8 +230,10 @@ async function getStats(req, res) {
 // Detalhes de movimentação com histórico
 // ----------------------------------------------------------------------------
 async function getMovementDetails(req, res, id) {
+  const officeId = getTenantOfficeId(req);
+
   try {
-    const { data: movement, error } = await supabase
+    let query = supabase
       .from('process_movements')
       .select(`
         *,
@@ -210,24 +243,32 @@ async function getMovementDetails(req, res, id) {
           process_number,
           court_code,
           court_name,
+          office_id,
           case:cases(
             id,
             title,
             legal_area,
             municipality,
             agency,
-            assigned_user_id
+            assigned_user_id,
+            office_id
           )
         ),
         note:internal_notes(id, text, created_at),
         reminder:chat_reminders(id, title, scheduled_for, status),
         event:case_events(id, event_type, event_date, description)
       `)
-      .eq('id', id)
-      .single();
+      .eq('id', id);
 
-    if (error) throw error;
-    if (!movement) return res.status(404).json({ error: 'Movimentação não encontrada' });
+    if (!req.user?.is_master) {
+      query = query.eq('office_id', officeId);
+    }
+
+    const { data: movement, error } = await query.single();
+
+    if (error || !movement) {
+      return res.status(404).json({ error: 'Movimentação não encontrada' });
+    }
 
     // Buscar histórico de triagem
     const { data: history, error: historyError } = await supabase
@@ -253,6 +294,7 @@ async function getMovementDetails(req, res, id) {
 // ============================================================================
 async function handlePatch(req, res) {
   const { id } = req.query;
+  const officeId = getTenantOfficeId(req);
   const {
     triage_status,
     legal_classification,
@@ -266,17 +308,21 @@ async function handlePatch(req, res) {
   }
 
   try {
-    // Buscar movimentação atual
-    const { data: current, error: fetchError } = await supabase
+    let fetchQuery = supabase
       .from('process_movements')
       .select('*')
-      .eq('id', id)
-      .single();
+      .eq('id', id);
 
-    if (fetchError) throw fetchError;
-    if (!current) return res.status(404).json({ error: 'Movimentação não encontrada' });
+    if (!req.user?.is_master) {
+      fetchQuery = fetchQuery.eq('office_id', officeId);
+    }
 
-    // Preparar atualização
+    const { data: current, error: fetchError } = await fetchQuery.single();
+
+    if (fetchError || !current) {
+      return res.status(404).json({ error: 'Movimentação não encontrada' });
+    }
+
     const updates = {
       updated_at: new Date().toISOString()
     };
@@ -287,19 +333,16 @@ async function handlePatch(req, res) {
     if (assigned_user_id !== undefined) updates.assigned_user_id = assigned_user_id;
     if (triage_notes !== undefined) updates.triage_notes = triage_notes;
 
-    // Se está sendo marcado como revisado/convertido, registrar quem e quando
     if (triage_status && triage_status !== 'novo' && triage_status !== 'em_analise' && !current.triaged_at) {
       updates.triaged_by = req.user.id;
       updates.triaged_at = new Date().toISOString();
     }
 
-    // Sincroniza reviewed_at com triage finalizado, pois o notificador o utiliza
     if (triage_status && triage_status !== 'novo' && triage_status !== 'em_analise' && !current.reviewed_at) {
       updates.reviewed_by = req.user.id;
       updates.reviewed_at = new Date().toISOString();
     }
 
-    // Atualizar movimentação
     const { data: updated, error: updateError } = await supabase
       .from('process_movements')
       .update(updates)
@@ -309,10 +352,10 @@ async function handlePatch(req, res) {
 
     if (updateError) throw updateError;
 
-    // Registrar no histórico
     const historyEntry = {
       movement_id: id,
       user_id: req.user.id,
+      office_id: officeId,
       action: 'update_triage',
       old_status: current.triage_status,
       new_status: updates.triage_status || current.triage_status,
@@ -323,11 +366,7 @@ async function handlePatch(req, res) {
       notes: triage_notes
     };
 
-    const { error: historyError } = await supabase
-      .from('triage_history')
-      .insert(historyEntry);
-
-    if (historyError) console.error('[TRIAGE] Erro ao registrar histórico:', historyError);
+    await supabase.from('triage_history').insert(historyEntry);
 
     return res.status(200).json(updated);
   } catch (error) {
@@ -361,26 +400,27 @@ async function handlePost(req, res) {
   return res.status(400).json({ error: 'Ação não especificada' });
 }
 
-// ----------------------------------------------------------------------------
-// Criar nota interna
-// ----------------------------------------------------------------------------
 async function createNote(req, res) {
   const { movement_id, text, is_visible_to_client = false } = req.body;
+  const officeId = getTenantOfficeId(req);
 
   if (!movement_id || !text) {
     return res.status(400).json({ error: 'movement_id e text são obrigatórios' });
   }
 
   try {
-    // Buscar movimentação e caso
-    const { data: movement, error: fetchError } = await supabase
+    let query = supabase
       .from('process_movements')
       .select('*, case_process:case_processes(case_id, conversation_id:cases(conversation_id))')
-      .eq('id', movement_id)
-      .single();
+      .eq('id', movement_id);
 
-    if (fetchError) throw fetchError;
-    if (!movement) return res.status(404).json({ error: 'Movimentação não encontrada' });
+    if (!req.user?.is_master) {
+      query = query.eq('office_id', officeId);
+    }
+
+    const { data: movement, error: fetchError } = await query.single();
+
+    if (fetchError || !movement) return res.status(404).json({ error: 'Movimentação não encontrada' });
 
     const case_id = movement.case_process?.case_id;
     const conversation_id = movement.case_process?.conversation_id?.conversation_id;
@@ -389,13 +429,13 @@ async function createNote(req, res) {
       return res.status(400).json({ error: 'Caso ou conversa não encontrados' });
     }
 
-    // Criar nota
     const { data: note, error: noteError } = await supabase
       .from('internal_notes')
       .insert({
         conversation_id,
         case_id,
         user_id: req.user.id,
+        office_id: officeId,
         text,
         is_visible_to_client
       })
@@ -404,209 +444,174 @@ async function createNote(req, res) {
 
     if (noteError) throw noteError;
 
-    // Atualizar movimentação
-    const { error: updateError } = await supabase
+    await supabase
       .from('process_movements')
-      .update({
-        note_id: note.id,
-        triage_status: 'convertido_em_nota',
-        triaged_by: req.user.id,
-        triaged_at: new Date().toISOString()
-      })
+      .update({ note_id: note.id, updated_at: new Date().toISOString() })
       .eq('id', movement_id);
 
-    if (updateError) throw updateError;
-
-    // Registrar no histórico
-    await supabase.from('triage_history').insert({
-      movement_id,
-      user_id: req.user.id,
-      action: 'create_note',
-      new_status: 'convertido_em_nota',
-      notes: `Nota criada: ${note.id}`
-    });
-
-    return res.status(201).json(note);
+    return res.status(200).json(note);
   } catch (error) {
     console.error('[TRIAGE] Erro ao criar nota:', error);
     return res.status(500).json({ error: 'Erro ao criar nota' });
   }
 }
 
-// ----------------------------------------------------------------------------
-// Criar lembrete
-// ----------------------------------------------------------------------------
 async function createReminder(req, res) {
-  const { movement_id, title, message, scheduled_for, reminder_type = 'prazo_judicial', priority = 'media' } = req.body;
+  const { movement_id, title, scheduled_for, priority = 'media' } = req.body;
+  const officeId = getTenantOfficeId(req);
 
   if (!movement_id || !title || !scheduled_for) {
     return res.status(400).json({ error: 'movement_id, title e scheduled_for são obrigatórios' });
   }
 
   try {
-    // Buscar movimentação e caso
-    const { data: movement, error: fetchError } = await supabase
+    let query = supabase
       .from('process_movements')
-      .select('*, case_process:case_processes(case_id, conversation_id:cases(conversation_id, client_phone))')
-      .eq('id', movement_id)
-      .single();
+      .select('*, case_process:case_processes(case_id, conversation_id:cases(conversation_id))')
+      .eq('id', movement_id);
 
-    if (fetchError) throw fetchError;
-    if (!movement) return res.status(404).json({ error: 'Movimentação não encontrada' });
+    if (!req.user?.is_master) {
+      query = query.eq('office_id', officeId);
+    }
+
+    const { data: movement, error: fetchError } = await query.single();
+
+    if (fetchError || !movement) return res.status(404).json({ error: 'Movimentação não encontrada' });
 
     const case_id = movement.case_process?.case_id;
     const conversation_id = movement.case_process?.conversation_id?.conversation_id;
-    const client_phone = movement.case_process?.conversation_id?.client_phone;
 
-    if (!conversation_id) {
-      return res.status(400).json({ error: 'Conversa não encontrada' });
+    if (!case_id || !conversation_id) {
+      return res.status(400).json({ error: 'Caso ou conversa não encontrados' });
     }
 
-    // Criar lembrete
     const { data: reminder, error: reminderError } = await supabase
       .from('chat_reminders')
       .insert({
         conversation_id,
         case_id,
-        client_phone,
-        type: reminder_type,
+        office_id: officeId,
         title,
-        message,
         scheduled_for,
         priority,
-        reminder_type,
-        status: 'pending',
-        created_by: req.user.name || req.user.email
+        status: 'pendente'
       })
       .select()
       .single();
 
     if (reminderError) throw reminderError;
 
-    // Atualizar movimentação
-    const { error: updateError } = await supabase
+    await supabase
       .from('process_movements')
-      .update({
-        reminder_id: reminder.id,
-        triage_status: 'convertido_em_lembrete',
-        triaged_by: req.user.id,
-        triaged_at: new Date().toISOString()
-      })
+      .update({ reminder_id: reminder.id, updated_at: new Date().toISOString() })
       .eq('id', movement_id);
 
-    if (updateError) throw updateError;
-
-    // Registrar no histórico
-    await supabase.from('triage_history').insert({
-      movement_id,
-      user_id: req.user.id,
-      action: 'create_reminder',
-      new_status: 'convertido_em_lembrete',
-      notes: `Lembrete criado: ${reminder.id}`
-    });
-
-    return res.status(201).json(reminder);
+    return res.status(200).json(reminder);
   } catch (error) {
     console.error('[TRIAGE] Erro ao criar lembrete:', error);
     return res.status(500).json({ error: 'Erro ao criar lembrete' });
   }
 }
 
-// ----------------------------------------------------------------------------
-// Criar evento de agenda
-// ----------------------------------------------------------------------------
 async function createEvent(req, res) {
-  const { movement_id, event_date, event_time, event_type, description, priority = 'media', location } = req.body;
+  const { movement_id, event_type, event_date, description } = req.body;
+  const officeId = getTenantOfficeId(req);
 
-  if (!movement_id || !event_date || !event_type) {
-    return res.status(400).json({ error: 'movement_id, event_date e event_type são obrigatórios' });
+  if (!movement_id || !event_type || !event_date) {
+    return res.status(400).json({ error: 'movement_id, event_type e event_date são obrigatórios' });
   }
 
   try {
-    // Buscar movimentação e caso
-    const { data: movement, error: fetchError } = await supabase
+    let query = supabase
       .from('process_movements')
       .select('*, case_process:case_processes(case_id)')
-      .eq('id', movement_id)
-      .single();
+      .eq('id', movement_id);
 
-    if (fetchError) throw fetchError;
-    if (!movement) return res.status(404).json({ error: 'Movimentação não encontrada' });
+    if (!req.user?.is_master) {
+      query = query.eq('office_id', officeId);
+    }
+
+    const { data: movement, error: fetchError } = await query.single();
+
+    if (fetchError || !movement) return res.status(404).json({ error: 'Movimentação não encontrada' });
 
     const case_id = movement.case_process?.case_id;
-
     if (!case_id) {
       return res.status(400).json({ error: 'Caso não encontrado' });
     }
 
-    // Criar evento
     const { data: event, error: eventError } = await supabase
       .from('case_events')
       .insert({
         case_id,
-        event_date,
-        event_time,
+        office_id: officeId,
         event_type,
-        description,
-        priority,
-        location,
-        created_by_user_id: req.user.id
+        event_date,
+        description
       })
       .select()
       .single();
 
     if (eventError) throw eventError;
 
-    // Atualizar movimentação
-    const { error: updateError } = await supabase
+    await supabase
       .from('process_movements')
-      .update({
-        agenda_event_id: event.id,
-        triage_status: 'convertido_em_agenda',
-        triaged_by: req.user.id,
-        triaged_at: new Date().toISOString()
-      })
+      .update({ agenda_event_id: event.id, updated_at: new Date().toISOString() })
       .eq('id', movement_id);
 
-    if (updateError) throw updateError;
-
-    // Registrar no histórico
-    await supabase.from('triage_history').insert({
-      movement_id,
-      user_id: req.user.id,
-      action: 'create_event',
-      new_status: 'convertido_em_agenda',
-      notes: `Evento criado: ${event.id}`
-    });
-
-    return res.status(201).json(event);
+    return res.status(200).json(event);
   } catch (error) {
     console.error('[TRIAGE] Erro ao criar evento:', error);
     return res.status(500).json({ error: 'Erro ao criar evento' });
   }
 }
 
-// ----------------------------------------------------------------------------
-// Obter sugestão automática (NÃO definitiva)
-// ----------------------------------------------------------------------------
 async function getSuggestion(req, res) {
-  const { movement_text } = req.body;
+  const { movement_id } = req.body;
+  const officeId = getTenantOfficeId(req);
 
-  if (!movement_text) {
-    return res.status(400).json({ error: 'movement_text é obrigatório' });
+  if (!movement_id) {
+    return res.status(400).json({ error: 'movement_id é obrigatório' });
   }
 
   try {
-    const { data, error } = await supabase.rpc('suggest_movement_classification', {
-      movement_text
-    });
+    let query = supabase
+      .from('process_movements')
+      .select('*')
+      .eq('id', movement_id);
 
-    if (error) throw error;
+    if (!req.user?.is_master) {
+      query = query.eq('office_id', officeId);
+    }
+
+    const { data: movement, error: fetchError } = await query.single();
+
+    if (fetchError || !movement) return res.status(404).json({ error: 'Movimentação não encontrada' });
+
+    const text = movement.movement_text || '';
+    let classification = 'despacho';
+    let priority = 'media';
+
+    if (/audiência|audiencia|sessão|sessao/i.test(text)) {
+      classification = 'audiencia';
+      priority = 'alta';
+    } else if (/sentença|sentenca|julgo|julga-se/i.test(text)) {
+      classification = 'sentenca';
+      priority = 'alta';
+    } else if (/acórdão|acordao|turma recursal/i.test(text)) {
+      classification = 'acordao';
+      priority = 'alta';
+    } else if (/penhora|bloqueio|sisbajud|renajud|execução/i.test(text)) {
+      classification = 'despacho';
+      priority = 'alta';
+    } else if (/certidão|juntada|conclusos/i.test(text)) {
+      classification = 'certidao';
+      priority = 'baixa';
+    }
 
     return res.status(200).json({
-      suggested_classification: data[0]?.classification || 'outro',
-      suggested_priority: data[0]?.priority || 'media',
-      disclaimer: 'Sugestão automática — confirme antes de utilizar.'
+      suggested_classification: classification,
+      suggested_priority: priority
     });
   } catch (error) {
     console.error('[TRIAGE] Erro ao obter sugestão:', error);

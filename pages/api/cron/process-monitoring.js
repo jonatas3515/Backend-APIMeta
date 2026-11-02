@@ -89,6 +89,7 @@ export default async function handler(req, res) {
         if (newMovements.length > 0) {
           const rows = newMovements.map((m) => ({
             case_process_id: proc.id,
+            office_id: proc.office_id,
             external_movement_id: m.external_id,
             movement_date: m.date ? new Date(m.date).toISOString() : null,
             movement_text: m.text,

@@ -25,10 +25,13 @@ export default function UserManagement() {
   const [passwordLoading, setPasswordLoading] = useState(false);
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (profile?.role && profile.role !== 'estagiario') {
+      fetchUsers();
+    }
+  }, [profile?.role]);
 
   const fetchUsers = async () => {
+    if (profile?.role === 'estagiario') return;
     setLoading(true);
     try {
       const data = await apiJson('/api/auth/users', { method: 'GET' });
@@ -130,15 +133,17 @@ export default function UserManagement() {
     }
   };
 
-  const canCreateAdmin = profile?.role === 'admin';
   const isAdmin = profile?.role === 'admin';
+  const isAdvogado = profile?.role === 'advogado';
+  const isEstagiario = profile?.role === 'estagiario';
+  const canCreateUsers = isAdmin || isAdvogado;
 
   return (
     <div className="flex-1 flex flex-col bg-white overflow-y-auto">
       <div className="flex-1 p-6 overflow-y-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">
-          {isAdmin ? '⚙️ Gestão de Usuários' : '🎓 Configurações'}
+          {isAdmin ? '⚙️ Gestão de Usuários' : isAdvogado ? '👥 Gestão de Equipe' : '🎓 Meu Perfil'}
         </h2>
         <div className="flex gap-2">
           <button
@@ -152,17 +157,22 @@ export default function UserManagement() {
           >
             {showPasswordForm ? 'Cancelar' : '🔐 Alterar Senha'}
           </button>
-          {isAdmin && (
+          {canCreateUsers && (
             <button
               onClick={() => {
                 setShowForm(!showForm);
                 setShowPasswordForm(false);
                 setMessage('');
                 setError('');
+                // Define papel inicial válido conforme nível de permissão
+                setFormData(prev => ({
+                  ...prev,
+                  role: isAdvogado ? 'estagiario' : (prev.role === 'admin' && !profile?.is_master ? 'advogado' : prev.role)
+                }));
               }}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
             >
-              {showForm ? 'Cancelar' : '+ Novo Usuário'}
+              {showForm ? 'Cancelar' : isAdvogado ? '+ Novo Estagiário' : '+ Novo Usuário'}
             </button>
           )}
         </div>
@@ -258,9 +268,9 @@ export default function UserManagement() {
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
               >
-                {canCreateAdmin && <option value="admin">Admin</option>}
-                {canCreateAdmin && <option value="advogado">Advogado</option>}
-                <option value="estagiario">Estagiário</option>
+                {profile?.is_master && <option value="admin">👑 Admin</option>}
+                {isAdmin && <option value="advogado">⚖️ Advogado</option>}
+                <option value="estagiario">🎓 Estagiário</option>
               </select>
             </div>
             <div>
@@ -283,7 +293,11 @@ export default function UserManagement() {
         </form>
       )}
 
-      {loading ? (
+      {isEstagiario ? (
+        <div className="p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg text-sm">
+          🎓 Seu acesso como <strong>Estagiário</strong> permite visualizar e atuar nos casos atribuídos a você. Apenas administradores e advogados têm permissão para cadastrar e gerenciar membros da equipe.
+        </div>
+      ) : loading ? (
         <p className="text-gray-500">Carregando...</p>
       ) : (
         <table className="w-full text-sm">
@@ -319,7 +333,7 @@ export default function UserManagement() {
                     </span>
                   </td>
                   <td className="p-3">
-                    {isAdmin && (
+                    {(isAdmin || (isAdvogado && user.role === 'estagiario')) && user.id !== profile?.id && (
                       <button
                         onClick={() => toggleActive(user.id, user.is_active)}
                         className={`text-xs px-3 py-1 rounded ${user.is_active ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}

@@ -458,7 +458,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
         </div>
 
         <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto">
-          {inTrial && !isMasterOrMatriz && (
+          {inTrial && !isMasterOrMatriz && profile?.role !== 'estagiario' && (
             <div className="-mx-2 mb-2">
               <TrialBanner
                 requiredPlan="Enterprise"
@@ -475,17 +475,23 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
               </div>
               <h4 className="text-white font-black text-lg">Agente de IA Exclusivo do Plano Enterprise</h4>
               <p className="text-slate-300 text-xs sm:text-sm max-w-md mx-auto leading-relaxed">
-                A extração inteligente de decisões, audiências e sentenças com IA faz parte do <strong>Plano Enterprise</strong>. Solicite o upgrade para liberar o poder total da inteligência artificial jurídica.
+                A extração inteligente de decisões, audiências e sentenças com IA faz parte do <strong>Plano Enterprise</strong>.
               </p>
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSubscription(true)}
-                  className="px-6 py-2.5 bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black rounded-xl text-xs sm:text-sm shadow-lg shadow-amber-500/30 transition transform hover:scale-105 active:scale-95"
-                >
-                  🚀 Solicitar Upgrade para Enterprise
-                </button>
-              </div>
+              {profile?.role === 'estagiario' ? (
+                <p className="text-xs text-slate-400">
+                  Entre em contato com o administrador ou advogado do escritório para solicitar a liberação deste recurso.
+                </p>
+              ) : (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSubscription(true)}
+                    className="px-6 py-2.5 bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black rounded-xl text-xs sm:text-sm shadow-lg shadow-amber-500/30 transition transform hover:scale-105 active:scale-95"
+                  >
+                    🚀 Solicitar Upgrade para Enterprise
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <>

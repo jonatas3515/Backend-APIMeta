@@ -51,7 +51,20 @@ export default function ExecutiveDashboard({ onNavigateTab }) {
         .forEach((r) => safeError('dashboard_load_error', r.reason, { component: 'ExecutiveDashboard' }));
       setLoading(false);
     });
-    return () => { mounted = false; };
+
+    const handleOfficeUpdate = (e) => {
+      if (e?.detail) setOffice((prev) => ({ ...prev, ...e.detail }));
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('nc:office-updated', handleOfficeUpdate);
+    }
+
+    return () => {
+      mounted = false;
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('nc:office-updated', handleOfficeUpdate);
+      }
+    };
   }, []);
 
   const newThisMonth = useMemo(
@@ -123,7 +136,7 @@ export default function ExecutiveDashboard({ onNavigateTab }) {
             ) : (
               <img src="/JNC.png" alt="JNC" className="h-9 w-9 object-contain" />
             )}
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900" data-testid="dashboard-greeting">{greeting}</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white" data-testid="dashboard-greeting">{greeting}</h1>
           </div>
           <p className="text-sm text-gray-500">
             {office?.name || 'Neves & Costa Advogados'}

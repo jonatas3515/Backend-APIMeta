@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../lib/useAuth';
 import { apiJson } from '../lib/apiClient';
 import { safeError } from '../lib/safeLogger';
 import { isTrialActive, calculateTrialDaysRemaining } from '../lib/plans';
@@ -16,8 +17,10 @@ const PLAN_LABELS = {
 };
 
 export default function OfficeBadge() {
+  const { profile } = useAuth();
   const [office, setOffice] = useState(null);
   const [showPlans, setShowPlans] = useState(false);
+  const canUpgrade = profile?.role !== 'estagiario';
 
   useEffect(() => {
     let mounted = true;
@@ -54,13 +57,15 @@ export default function OfficeBadge() {
             >
               🕒 {trialDays} dias restantes
             </span>
-            <button
-              type="button"
-              onClick={() => setShowPlans(true)}
-              className="w-full text-[9px] py-1 px-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-extrabold rounded shadow-sm transition hover:scale-[1.02]"
-            >
-              Fazer Upgrade
-            </button>
+            {canUpgrade && (
+              <button
+                type="button"
+                onClick={() => setShowPlans(true)}
+                className="w-full text-[9px] py-1 px-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black font-extrabold rounded shadow-sm transition hover:scale-[1.02]"
+              >
+                Fazer Upgrade
+              </button>
+            )}
           </div>
         ) : (
           <div className="w-full flex flex-col items-center gap-1">
@@ -76,7 +81,7 @@ export default function OfficeBadge() {
             >
               {isEnterprise ? '👑 ENTERPRISE' : planLabel}
             </span>
-            {!isEnterprise && (
+            {!isEnterprise && canUpgrade && (
               <button
                 type="button"
                 onClick={() => setShowPlans(true)}

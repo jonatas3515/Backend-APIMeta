@@ -67,11 +67,15 @@ async function handlePost(req, res, profile) {
 
   // Valida permissões de criação
   if (profile.role === 'estagiario') {
-    return res.status(403).json({ error: 'Acesso negado' });
+    return res.status(403).json({ error: 'Acesso negado: estagiários não podem cadastrar membros.' });
   }
 
   if (profile.role === 'advogado' && role !== 'estagiario') {
-    return res.status(403).json({ error: 'Advogado só pode criar estagiários' });
+    return res.status(403).json({ error: 'Advogados só podem cadastrar estagiários.' });
+  }
+
+  if (profile.role === 'admin' && !profile.is_master && !['advogado', 'estagiario'].includes(role)) {
+    return res.status(403).json({ error: 'Administradores podem cadastrar apenas advogados e estagiários.' });
   }
 
   if (!['admin', 'advogado', 'estagiario'].includes(role)) {
