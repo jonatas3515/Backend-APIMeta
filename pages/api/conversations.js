@@ -1,9 +1,10 @@
-import { withAuth, supabaseAdmin } from '@/lib/auth';
+import { withAuth, supabaseAdmin, getTenantOfficeId } from '@/lib/auth';
 import logger from '@/lib/logger';
 
 async function handler(req, res) {
   const start = Date.now();
   const userId = req.user?.id;
+  const officeId = getTenantOfficeId(req);
 
   if (!supabaseAdmin) {
     logger('error', 'CONVERSATIONS_LIST_ERROR', { userId, httpStatus: 500, errorCode: 'SUPABASE_NOT_CONFIGURED' });
@@ -16,11 +17,12 @@ async function handler(req, res) {
       return res.status(405).json({ error: 'Metodo nao permitido' });
     }
 
-    logger('info', 'CONVERSATIONS_LIST_START', { userId });
+    logger('info', 'CONVERSATIONS_LIST_START', { userId, officeId });
 
     const { data, error } = await supabaseAdmin
       .from('conversations')
       .select('id, client_name, client_phone, client_status, legal_area, updated_at')
+      .eq('office_id', officeId)
       .order('updated_at', { ascending: false });
 
     if (error) throw error;

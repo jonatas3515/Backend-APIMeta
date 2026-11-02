@@ -83,8 +83,8 @@ async function handler(req, res) {
       });
     }
 
-    // 4. Vincula na tabela users (office_id se a coluna existir)
-    let { error: userError } = await supabaseAdmin
+    // 4. Vincula na tabela users como admin do escritorio criado (sem privilégios master)
+    const { error: userError } = await supabaseAdmin
       .from('users')
       .insert({
         name: String(admin_name).trim(),
@@ -92,21 +92,9 @@ async function handler(req, res) {
         role: 'admin',
         is_active: true,
         auth_user_id: authData.user.id,
-        office_id: office.id
+        office_id: office.id,
+        is_master: false
       });
-
-    if (userError && /office_id/i.test(userError.message || '')) {
-      const { error: retryError } = await supabaseAdmin
-        .from('users')
-        .insert({
-          name: String(admin_name).trim(),
-          email: cleanEmail,
-          role: 'admin',
-          is_active: true,
-          auth_user_id: authData.user.id
-        });
-      userError = retryError;
-    }
 
     if (userError) {
       logger('error', 'REGISTER_USER_ERROR', { officeId: office.id, httpStatus: 500 });

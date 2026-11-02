@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { withAuth } from '@/lib/auth';
+import { withAuth, getTenantOfficeId } from '@/lib/auth';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -20,6 +20,7 @@ async function handler(req, res) {
   try {
     const userId = req.user?.id;
     const userRole = req.user?.role;
+    const officeId = getTenantOfficeId(req);
     const isAdmin = userRole === 'admin';
 
     if (!userId) {
@@ -41,6 +42,7 @@ async function handler(req, res) {
       const { data: caseDeadlines, error: caseError } = await supabase
         .from('cases')
         .select('id, title, legal_area, priority, deadline_date, status, conversation_id')
+        .eq('office_id', officeId)
         .gte('deadline_date', today)
         .lte('deadline_date', threeDaysLater)
         .not('status', 'in', '("encerrado","cancelado")')
@@ -93,6 +95,7 @@ async function handler(req, res) {
       const { data: unreadConvs, error: unreadError } = await supabase
         .from('conversations')
         .select('id, client_name, client_phone, unread, updated_at, status, mode, legal_area')
+        .eq('office_id', officeId)
         .eq('unread', true)
         .order('updated_at', { ascending: false })
         .limit(5);
@@ -133,6 +136,7 @@ async function handler(req, res) {
       const { count, error: countError } = await supabase
         .from('conversations')
         .select('*', { count: 'exact', head: true })
+        .eq('office_id', officeId)
         .eq('unread', true);
 
       if (countError) throw countError;
@@ -148,6 +152,7 @@ async function handler(req, res) {
       const { data: propostaCases, error: propostaError } = await supabase
         .from('cases')
         .select('id, title, legal_area, status, created_at, updated_at, conversation_id, conversations(client_name)')
+        .eq('office_id', officeId)
         .eq('status', 'proposta_enviada')
         .lte('updated_at', fiveDaysAgo)
         .order('updated_at', { ascending: true })
@@ -221,6 +226,7 @@ async function handler(req, res) {
       let leadsTodayQuery = supabase
         .from('conversations')
         .select('*', { count: 'exact', head: true })
+        .eq('office_id', officeId)
         .gte('created_at', todayStart)
         .lte('created_at', todayEnd);
       if (legalArea) leadsTodayQuery = leadsTodayQuery.eq('legal_area', legalArea);
@@ -232,6 +238,7 @@ async function handler(req, res) {
       let leadsYesterdayQuery = supabase
         .from('conversations')
         .select('*', { count: 'exact', head: true })
+        .eq('office_id', officeId)
         .gte('created_at', yesterdayStart)
         .lte('created_at', yesterdayEnd);
       if (legalArea) leadsYesterdayQuery = leadsYesterdayQuery.eq('legal_area', legalArea);
@@ -243,6 +250,7 @@ async function handler(req, res) {
       let contractsTodayQuery = supabase
         .from('cases')
         .select('*', { count: 'exact', head: true })
+        .eq('office_id', officeId)
         .eq('status', 'contrato_assinado')
         .gte('updated_at', todayStart)
         .lte('updated_at', todayEnd);
@@ -255,6 +263,7 @@ async function handler(req, res) {
       let contractsYesterdayQuery = supabase
         .from('cases')
         .select('*', { count: 'exact', head: true })
+        .eq('office_id', officeId)
         .eq('status', 'contrato_assinado')
         .gte('updated_at', yesterdayStart)
         .lte('updated_at', yesterdayEnd);
@@ -267,6 +276,7 @@ async function handler(req, res) {
       let activeCasesQuery = supabase
         .from('cases')
         .select('*', { count: 'exact', head: true })
+        .eq('office_id', officeId)
         .not('status', 'in', '("encerrado","cancelado")');
       if (legalArea) activeCasesQuery = activeCasesQuery.eq('legal_area', legalArea);
       const { count: activeCases, error: activeError } = await activeCasesQuery;
@@ -277,6 +287,7 @@ async function handler(req, res) {
       let dueTodayQuery = supabase
         .from('cases')
         .select('*', { count: 'exact', head: true })
+        .eq('office_id', officeId)
         .eq('deadline_date', today)
         .not('status', 'in', '("encerrado","cancelado")');
       if (legalArea) dueTodayQuery = dueTodayQuery.eq('legal_area', legalArea);

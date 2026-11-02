@@ -6,7 +6,7 @@
 import { createClient } from '@supabase/supabase-js';
 import notificationCache from '../../../lib/notificationCache';
 import { aggregateNotifications } from '../../../lib/notificationAggregator';
-import { withAuth } from '../../../lib/auth';
+import { withAuth, getTenantOfficeId } from '../../../lib/auth';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -108,6 +108,7 @@ async function handler(req, res) {
 
   const userId = req.user?.id;
   const userRole = req.user?.role;
+  const officeId = getTenantOfficeId(req);
 
   if (!userId || !userRole) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -136,7 +137,7 @@ async function handler(req, res) {
   }
 
   try {
-    const result = await aggregateNotifications({ userId, userRole });
+    const result = await aggregateNotifications({ userId, userRole, officeId });
 
     const response = {
       unreadCount: result.notifications.length,

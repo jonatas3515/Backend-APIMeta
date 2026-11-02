@@ -47,6 +47,7 @@ jest.mock('../lib/auth', () => ({
     req.user = req.__testUser || { role: 'advogado', id: 'user-1' };
     return fn(req, res);
   },
+  getTenantOfficeId: (req) => req?.body?.office_id || req?.query?.office_id || req?.user?.office_id || '00000000-0000-0000-0000-000000000001',
   hasMinimumRole: () => true,
   supabaseAdmin: supabaseBuilder()
 }));

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { withAuth } from '@/lib/auth';
+import { withAuth, getTenantOfficeId } from '@/lib/auth';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -44,6 +44,7 @@ export default withAuth(handler, { minRole: 'estagiario' });
 
 async function handleGet(req, res) {
   const { action, conversation_id } = req.query;
+  const officeId = getTenantOfficeId(req);
 
   try {
     if (action === 'stages') {
@@ -51,6 +52,7 @@ async function handleGet(req, res) {
       const { data, error } = await supabase
         .from('conversations')
         .select('funnel_stage, id')
+        .eq('office_id', officeId)
         .in('funnel_stage', FUNNEL_STAGES);
 
       if (error) throw error;
@@ -76,6 +78,7 @@ async function handleGet(req, res) {
       const { data, error } = await supabase
         .from('conversations')
         .select('id, client_name, client_phone, funnel_stage, legal_area, case_type, status, mode, created_at, updated_at, has_case')
+        .eq('office_id', officeId)
         .eq('funnel_stage', stage)
         .order('updated_at', { ascending: false });
 

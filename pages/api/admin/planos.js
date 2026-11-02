@@ -78,4 +78,4 @@ async function handler(req, res) {
   }
 }
 
-export default withAuth(handler, { minRole: 'admin' });
+export default withAuth(handler, { requireMaster: true });

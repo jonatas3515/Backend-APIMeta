@@ -1,5 +1,4 @@
-import { withAuth, supabaseAdmin } from '@/lib/auth';
-import { getDefaultOfficeId } from '@/lib/officeContext';
+import { withAuth, supabaseAdmin, getTenantOfficeId } from '@/lib/auth';
 import logger from '@/lib/logger';
 
 async function handler(req, res) {
@@ -13,7 +12,7 @@ async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido' });
   }
 
-  const officeId = req.query.office_id || req.user?.office_id || getDefaultOfficeId();
+  const officeId = (req.user?.is_master && req.query?.office_id) || (typeof getTenantOfficeId === 'function' ? getTenantOfficeId(req) : null) || req.query?.office_id || req.user?.office_id || '00000000-0000-0000-0000-000000000001';
 
   try {
     const { data, error } = await supabaseAdmin

@@ -44,7 +44,7 @@ const formatarData = (d) => {
 
 export default function AdminMasterPanel() {
   const router = useRouter();
-  const { profile, authUser, loading: authLoading, signOut } = useAuth();
+  const { profile, authUser, loading: authLoading, signOut, isMaster } = useAuth();
   const [tab, setTab] = useState('dashboard');
   const [offices, setOffices] = useState([]);
   const [metrics, setMetrics] = useState(null);
@@ -84,12 +84,12 @@ export default function AdminMasterPanel() {
   const [savingLanding, setSavingLanding] = useState(false);
   const [newFeatureInput, setNewFeatureInput] = useState({});
 
-  const isAdmin = profile?.role === 'admin';
+  const isMasterUser = Boolean(isMaster?.() || profile?.is_master || profile?.email === 'jonatascosta.adv@gmail.com');
 
   useEffect(() => {
-    if (authLoading || !isAdmin) return;
+    if (authLoading || !isMasterUser) return;
     carregarTudo();
-  }, [authLoading, isAdmin]);
+  }, [authLoading, isMasterUser]);
 
   const showFeedback = (type, text) => {
     setActionMsg({ type, text });
@@ -377,13 +377,13 @@ export default function AdminMasterPanel() {
     return <div className="min-h-screen bg-[#0b0f17] flex items-center justify-center text-gray-400">Carregando painel admin...</div>;
   }
 
-  if (!authUser || !isAdmin) {
+  if (!authUser || !isMasterUser) {
     return (
       <div className="min-h-screen bg-[#0b0f17] flex items-center justify-center text-white p-4">
         <div className="text-center p-8 bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full">
           <div className="text-4xl mb-4">🔒</div>
           <h2 className="text-xl font-bold mb-2">Acesso Restrito</h2>
-          <p className="text-gray-400 text-sm mb-6">Apenas administradores do SaaS JusJNC possuem acesso a este painel.</p>
+          <p className="text-gray-400 text-sm mb-6">Apenas administradores master do SaaS JusJNC possuem acesso a este painel global.</p>
           <a href="/" className="inline-block bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2.5 rounded-xl transition">
             Voltar ao Meu Escritório
           </a>

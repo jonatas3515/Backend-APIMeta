@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { withAuth } from '@/lib/auth';
+import { withAuth, getTenantOfficeId } from '@/lib/auth';
 import { getDefaultOfficeId } from '@/lib/officeContext';
 import logger from '@/lib/logger';
 import { incrementMetric } from '@/lib/metrics';
@@ -152,6 +152,7 @@ function buildFiltersHash(filters) {
 async function handleGet(req, res) {
   const { id, conversation_id, status, priority, legal_area, municipality, process_number, court, procedural_step } = req.query;
   const user = req.user;
+  const officeId = (req.user?.is_master && req.query?.office_id) || (typeof getTenantOfficeId === 'function' ? getTenantOfficeId(req) : null) || req.user?.office_id || req.query?.office_id || getDefaultOfficeId();
 
   try {
     if (id) {
@@ -169,6 +170,7 @@ async function handleGet(req, res) {
         .from('cases')
         .select(selectClause)
         .eq('id', id)
+        .eq('office_id', officeId)
         .maybeSingle();
 
       if (error || !data) {
@@ -213,7 +215,8 @@ async function handleGet(req, res) {
 
     let query = supabase
       .from('cases')
-      .select(selectClause);
+      .select(selectClause)
+      .eq('office_id', officeId);
 
     if (user.role !== 'admin') {
       query = query.eq('conversations.assigned_user_id', user.id);
@@ -322,7 +325,7 @@ async function handlePost(req, res) {
       deadline_date: deadline_date || null,
       deadline_type: deadline_type || null,
       notes: notes || null,
-      office_id: office_id || getDefaultOfficeId(),
+      office_id: req.body?.office_id || (typeof getTenantOfficeId === 'function' ? getTenantOfficeId(req) : null) || req.user?.office_id || getDefaultOfficeId(),
       ...processData
     };
 
@@ -435,6 +438,7 @@ async function handlePatch(req, res) {
       .from('cases')
       .update(sanitizedUpdates)
       .eq('id', id)
+      .eq('office_id', getTenantOfficeId(req))
       .select()
       .single();
 

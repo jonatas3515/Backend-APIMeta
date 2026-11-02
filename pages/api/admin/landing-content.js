@@ -52,5 +52,5 @@ export default async function route(req, res) {
   if (req.method === 'GET') {
     return handler(req, res);
   }
-  return withAuth(handler, { minRole: 'admin' })(req, res);
+  return withAuth(handler, { requireMaster: true })(req, res);
 }

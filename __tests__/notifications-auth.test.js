@@ -7,14 +7,15 @@ const { createMocks } = require('node-mocks-http');
 
 // Mock auth para não chamar Supabase
 jest.mock('../lib/auth', () => ({
+  getTenantOfficeId: (req) => req?.user?.office_id || '00000000-0000-0000-0000-000000000001',
   withAuth: (handler) => async (req, res) => {
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) return res.status(401).json({ error: 'Token não fornecido' });
 
     let user;
-    if (token === 'admin-token') user = { id: 'user-admin-synthetic', role: 'admin' };
-    else if (token === 'advogado-token') user = { id: 'user-advogado-synthetic', role: 'advogado' };
-    else if (token === 'estagiario-token') user = { id: 'user-estagiario-synthetic', role: 'estagiario' };
+    if (token === 'admin-token') user = { id: 'user-admin-synthetic', role: 'admin', office_id: '00000000-0000-0000-0000-000000000001' };
+    else if (token === 'advogado-token') user = { id: 'user-advogado-synthetic', role: 'advogado', office_id: '00000000-0000-0000-0000-000000000001' };
+    else if (token === 'estagiario-token') user = { id: 'user-estagiario-synthetic', role: 'estagiario', office_id: '00000000-0000-0000-0000-000000000001' };
     else return res.status(401).json({ error: 'Token inválido' });
 
     req.user = user;
@@ -89,10 +90,10 @@ describe('Notificações - Autenticação', () => {
 
     const data = JSON.parse(res._getData());
     expect(data.notifications[0].id).toBe('notif-user-advogado-synthetic');
-    expect(aggregateNotifications).toHaveBeenCalledWith({
+    expect(aggregateNotifications).toHaveBeenCalledWith(expect.objectContaining({
       userId: 'user-advogado-synthetic',
       userRole: 'advogado'
-    });
+    }));
   });
 
   test('Token de admin não é escolhido por header externo', async () => {

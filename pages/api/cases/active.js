@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { withAuth } from '@/lib/auth';
+import { withAuth, getTenantOfficeId } from '@/lib/auth';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -29,10 +29,12 @@ async function handler(req, res) {
   }
 
   try {
+    const officeId = getTenantOfficeId(req);
     const { data, error } = await supabase
       .from('cases')
       .select('*')
       .eq('conversation_id', conversation_id)
+      .eq('office_id', officeId)
       .neq('status', 'encerrado')
       .order('created_at', { ascending: false })
       .limit(1)

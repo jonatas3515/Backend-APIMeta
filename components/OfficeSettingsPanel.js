@@ -3,12 +3,14 @@ import { apiJson } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import { getDefaultOfficeId } from '../lib/officeContext';
 import { safeError } from '../lib/safeLogger';
+import { useAuth } from '../lib/useAuth';
 
 const BIRTHDAY_DEFAULT = 'Feliz aniversário, {nome}! 🎂 Que seu dia seja repleto de alegria. Equipe {escritorio}.';
 const BIRTHDAY_WEEKLY_DEFAULT = 'Olá {nome}! Seu aniversário está chegando! 🎉 Desejamos uma semana maravilhosa. Equipe {escritorio}.';
 
 export default function OfficeSettingsPanel() {
-  const officeId = getDefaultOfficeId();
+  const { profile } = useAuth();
+  const officeId = profile?.office_id || getDefaultOfficeId();
   const [form, setForm] = useState({
     logo_url: '',
     birthday_message: '',

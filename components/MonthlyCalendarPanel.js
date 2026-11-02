@@ -40,7 +40,7 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
       apiJson('/api/cases'),
       supabase.from('conversations').select('id, client_name, client_phone, birth_or_foundation_date').not('birth_or_foundation_date', 'is', null).then((r) => r).catch(() => ({ data: [] })),
       supabase.from('chat_clients').select('id, name, phone, birth_or_foundation_date').not('birth_or_foundation_date', 'is', null).then((r) => r).catch(() => ({ data: [] })),
-      supabase.from('offices').select('*').limit(1).maybeSingle().then((r) => r).catch(() => ({ data: null }))
+      apiJson('/api/office/current').then((r) => ({ data: r })).catch(() => ({ data: null }))
     ]).then(([casesR, bdaysR, chatR, officeR]) => {
       if (!mounted) return;
       if (casesR.status === 'fulfilled') setCases(casesR.value || []);

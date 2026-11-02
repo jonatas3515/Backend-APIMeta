@@ -33,6 +33,7 @@ import Sidebar from '../components/Sidebar';
 import AreaFilterSelector from '../components/AreaFilterSelector';
 import ActiveFilterBanner from '../components/ActiveFilterBanner';
 import NotificationPermissionPrompt from '../components/NotificationPermissionPrompt';
+import FeatureGate from '../components/FeatureGate';
 import NotificationBell from '../components/NotificationBell';
 import NotificationPanel from '../components/NotificationPanel';
 import { NotificationProvider } from '../components/NotificationProvider';
@@ -62,7 +63,7 @@ export default function Home() {
   const [casesNotice, setCasesNotice] = useState(null);
   const lastProcessedAsPath = useRef('');
   const lastConversationQuery = useRef(null);
-  const { authUser, profile, loading: authLoading, signOut, canAccess } = useAuth();
+  const { authUser, profile, loading: authLoading, signOut, canAccess, isMaster } = useAuth();
   const { selectedArea, setSelectedArea } = useAreaFilter();
   const [showNewConvModal, setShowNewConvModal] = useState(false);
   const [newPhone, setNewPhone] = useState('');
@@ -553,7 +554,7 @@ export default function Home() {
             )}
             <div className="flex-1" />
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-              {profile?.role === 'admin' && (
+              {isMaster?.() && (
                 <button
                   onClick={() => router.push('/admin')}
                   className="bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs md:text-sm transition"
@@ -667,7 +668,9 @@ export default function Home() {
           ) : activeTab === 'monthly-calendar' || activeTab === 'agenda' ? (
             <MonthlyCalendarPanel initialView={activeTab === 'agenda' ? 'agenda' : 'calendar'} />
           ) : activeTab === 'reports' ? (
-            <RelatoriosPanel />
+            <FeatureGate feature="fee_reports" title="Relatórios Financeiros e Honorários" requiredPlan="Profissional">
+              <RelatoriosPanel />
+            </FeatureGate>
           ) : activeTab === 'funnel' ? (
             <FunnelKanban
               conversations={conversations}
@@ -677,17 +680,27 @@ export default function Home() {
               }}
             />
           ) : activeTab === 'triage' ? (
-            <ProcessTriagePanel movementId={triageMovementId} profile={profile} />
+            <FeatureGate feature="triage_ai" title="Triagem Automática por IA" requiredPlan="Enterprise">
+              <ProcessTriagePanel movementId={triageMovementId} profile={profile} />
+            </FeatureGate>
           ) : activeTab === 'cases' ? (
             <CasesPanel notice={casesNotice} />
           ) : activeTab === 'models-routines' ? (
-            <ModelsAndRoutinesPanel userRole={profile?.role} />
+            <FeatureGate feature="document_generator" title="Modelos e Rotinas Jurídicas" requiredPlan="Profissional">
+              <ModelsAndRoutinesPanel userRole={profile?.role} />
+            </FeatureGate>
           ) : activeTab === 'ai_assistant' ? (
-            <OfficeAIAssistant />
+            <FeatureGate feature="rag_custom" title="Assistente Jurídico com IA" requiredPlan="Enterprise">
+              <OfficeAIAssistant />
+            </FeatureGate>
           ) : activeTab === 'knowledge' ? (
-            <KnowledgeBaseManager />
+            <FeatureGate feature="rag_custom" title="Base de Conhecimento RAG" requiredPlan="Enterprise">
+              <KnowledgeBaseManager />
+            </FeatureGate>
           ) : activeTab === 'fee-services' ? (
-            <FeeAdminPanel initialView={feeView} />
+            <FeatureGate feature="fee_reports" title="Tabelas e Catálogo de Honorários" requiredPlan="Profissional">
+              <FeeAdminPanel initialView={feeView} />
+            </FeatureGate>
           ) : activeTab === 'users' ? (
             <SettingsPanel initialView={configView} />
           ) : null}

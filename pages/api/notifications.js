@@ -1,10 +1,10 @@
-﻿/**
+/**
  * API: Notificacoes
  * Agrega notificacoes de multiplas fontes para o usuario autenticado
  * SEGURANCA: Filtra por user_id, sem PII em titulos
  */
 
-import { withAuth } from '../../lib/auth';
+import { withAuth, getTenantOfficeId } from '../../lib/auth';
 import notificationCache from '../../lib/notificationCache';
 import { aggregateNotifications } from '../../lib/notificationAggregator';
 
@@ -31,6 +31,7 @@ async function handler(req, res) {
 
   const userId = req.user?.id;
   const userRole = req.user?.role;
+  const officeId = getTenantOfficeId(req);
 
   if (!userId || !userRole) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -61,7 +62,7 @@ async function handler(req, res) {
       return res.status(200).json(cached);
     }
 
-    const result = await aggregateNotifications({ userId, userRole });
+    const result = await aggregateNotifications({ userId, userRole, officeId });
 
     const response = {
       notifications: result.notifications,
