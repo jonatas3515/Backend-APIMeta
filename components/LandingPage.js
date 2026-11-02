@@ -70,6 +70,7 @@ export default function LandingPage({ onOpenLogin }) {
     card_exp: '',
     card_cvc: ''
   });
+  const [modalBillingCycle, setModalBillingCycle] = useState('monthly');
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [landingContent, setLandingContent] = useState(DEFAULT_LANDING_CONTENT);
@@ -132,6 +133,7 @@ export default function LandingPage({ onOpenLogin }) {
       if (planKey) {
         setForm((prev) => ({ ...prev, plan: planKey }));
       }
+      setModalBillingCycle(isAnual ? 'yearly' : 'monthly');
       setFeedback(null);
       setSignupOpen(true);
     }
@@ -213,7 +215,7 @@ export default function LandingPage({ onOpenLogin }) {
       const response = await fetch('/api/auth/register-office', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form)
+        body: JSON.stringify({ ...form, billing_cycle: modalBillingCycle })
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Erro ao criar conta');
@@ -708,17 +710,47 @@ export default function LandingPage({ onOpenLogin }) {
                 </div>
               )}
 
-              {/* Seletor de Planos */}
-              <div>
-                <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
-                  Escolha o Plano:
-                </label>
+              {/* Seletor de Planos e Periodicidade (Mensal / Anual) */}
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 bg-[#141516] p-2.5 rounded-xl border border-gray-800">
+                  <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">
+                    Periodicidade:
+                  </span>
+                  <div className="inline-flex items-center gap-1.5 bg-[#1F2224] p-1 rounded-lg border border-gray-700/60">
+                    <button
+                      type="button"
+                      onClick={() => setModalBillingCycle('monthly')}
+                      className={`px-3 py-1 rounded-md text-xs font-bold transition ${
+                        modalBillingCycle === 'monthly'
+                          ? 'bg-neutral-800 text-white shadow-sm ring-1 ring-gray-600'
+                          : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      Mensal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModalBillingCycle('yearly')}
+                      className={`px-3 py-1 rounded-md text-xs font-bold transition flex items-center gap-1.5 ${
+                        modalBillingCycle === 'yearly'
+                          ? 'bg-emerald-600 text-white shadow-sm font-extrabold ring-1 ring-emerald-400'
+                          : 'text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      <span>Anual</span>
+                      <span className="text-[10px] px-1.5 py-0.2 bg-emerald-950 text-emerald-200 border border-emerald-400/40 rounded font-black">
+                        2 meses grátis (-17%)
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
-                    { key: 'trial', name: 'Trial Grátis', price: 'R$ 0', period: '30 dias', badge: 'Sem cartão' },
-                    { key: 'basico', name: 'Básico', price: 'R$ 49', period: '/mês', badge: 'Autônomo' },
-                    { key: 'profissional', name: 'Profissional', price: 'R$ 99', period: '/mês', badge: 'Popular' },
-                    { key: 'enterprise', name: 'Enterprise', price: 'R$ 199', period: '/mês', badge: 'IA Completa' }
+                    { key: 'trial', name: 'Trial Grátis', price: 'R$ 0', period: '30 dias', badge: 'Sem cartão', sub: '30 dias grátis' },
+                    { key: 'basico', name: 'Básico', price: modalBillingCycle === 'yearly' ? 'R$ 490' : 'R$ 49', period: modalBillingCycle === 'yearly' ? '/ano' : '/mês', badge: modalBillingCycle === 'yearly' ? '2 meses off' : 'Autônomo', sub: modalBillingCycle === 'yearly' ? 'equiv. R$ 40,83/mês' : null },
+                    { key: 'profissional', name: 'Profissional', price: modalBillingCycle === 'yearly' ? 'R$ 990' : 'R$ 99', period: modalBillingCycle === 'yearly' ? '/ano' : '/mês', badge: modalBillingCycle === 'yearly' ? '2 meses off' : 'Popular', sub: modalBillingCycle === 'yearly' ? 'equiv. R$ 82,50/mês' : null },
+                    { key: 'enterprise', name: 'Enterprise', price: modalBillingCycle === 'yearly' ? 'R$ 1.990' : 'R$ 199', period: modalBillingCycle === 'yearly' ? '/ano' : '/mês', badge: modalBillingCycle === 'yearly' ? '2 meses off' : 'IA Completa', sub: modalBillingCycle === 'yearly' ? 'equiv. R$ 165,83/mês' : null }
                   ].map((p) => {
                     const isSelected = form.plan === p.key;
                     return (
@@ -744,9 +776,14 @@ export default function LandingPage({ onOpenLogin }) {
                             {p.badge}
                           </span>
                         </div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-sm font-black text-white">{p.price}</span>
-                          <span className="text-[10px] text-gray-400">{p.period}</span>
+                        <div>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-sm font-black text-white">{p.price}</span>
+                            <span className="text-[10px] text-gray-400">{p.period}</span>
+                          </div>
+                          {p.sub && (
+                            <p className="text-[9px] text-emerald-400 font-medium">{p.sub}</p>
+                          )}
                         </div>
                       </button>
                     );
@@ -943,7 +980,26 @@ export default function LandingPage({ onOpenLogin }) {
                         <span>3. Dados de Faturamento e Cartão de Crédito</span>
                       </p>
                       <p className="text-[11px] text-gray-400">
-                        Total: <strong className="text-white">R$ {form.plan === 'basico' ? '49' : form.plan === 'profissional' ? '99' : '199'}/mês</strong> • Faturamento mensal seguro
+                        Total:{' '}
+                        <strong className="text-white">
+                          {modalBillingCycle === 'yearly'
+                            ? form.plan === 'basico'
+                              ? 'R$ 490/ano'
+                              : form.plan === 'profissional'
+                              ? 'R$ 990/ano'
+                              : 'R$ 1.990/ano'
+                            : form.plan === 'basico'
+                            ? 'R$ 49/mês'
+                            : form.plan === 'profissional'
+                            ? 'R$ 99/mês'
+                            : 'R$ 199/mês'}
+                        </strong>{' '}
+                        •{' '}
+                        {modalBillingCycle === 'yearly' ? (
+                          <span className="text-emerald-400 font-bold">2 meses grátis aplicados (17% off)</span>
+                        ) : (
+                          'Faturamento mensal seguro'
+                        )}
                       </p>
                     </div>
                     <span className="text-xs px-2.5 py-1 rounded bg-purple-500/20 text-purple-200 border border-purple-500/40 font-bold">
@@ -1048,7 +1104,21 @@ export default function LandingPage({ onOpenLogin }) {
                     ? 'Processando...'
                     : form.plan === 'trial'
                     ? '✨ Criar minha conta grátis (30 dias)'
-                    : `💳 Confirmar Assinatura do Plano ${form.plan === 'basico' ? 'Básico (R$ 49/mês)' : form.plan === 'profissional' ? 'Profissional (R$ 99/mês)' : 'Enterprise (R$ 199/mês)'}`}
+                    : `💳 Confirmar Assinatura do Plano ${
+                        form.plan === 'basico' ? 'Básico' : form.plan === 'profissional' ? 'Profissional' : 'Enterprise'
+                      } (${
+                        modalBillingCycle === 'yearly'
+                          ? form.plan === 'basico'
+                            ? 'R$ 490/ano'
+                            : form.plan === 'profissional'
+                            ? 'R$ 990/ano'
+                            : 'R$ 1.990/ano'
+                          : form.plan === 'basico'
+                          ? 'R$ 49/mês'
+                          : form.plan === 'profissional'
+                          ? 'R$ 99/mês'
+                          : 'R$ 199/mês'
+                      })`}
                 </button>
 
                 {feedback?.type === 'success' && (

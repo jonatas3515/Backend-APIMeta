@@ -13,13 +13,15 @@ ALTER TABLE public.offices
   ADD COLUMN IF NOT EXISTS billing_cpf_cnpj VARCHAR(25),
   ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50),
   ADD COLUMN IF NOT EXISTS last4_card VARCHAR(4),
-  ADD COLUMN IF NOT EXISTS card_brand VARCHAR(50);
+  ADD COLUMN IF NOT EXISTS card_brand VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS billing_cycle VARCHAR(20) DEFAULT 'monthly';
 
 ALTER TABLE public.subscriptions
   ADD COLUMN IF NOT EXISTS billing_cpf_cnpj VARCHAR(25),
   ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50),
   ADD COLUMN IF NOT EXISTS last4_card VARCHAR(4),
-  ADD COLUMN IF NOT EXISTS card_brand VARCHAR(50);
+  ADD COLUMN IF NOT EXISTS card_brand VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS billing_cycle VARCHAR(20) DEFAULT 'monthly';
 
 COMMENT ON COLUMN public.offices.address_street IS 'Logradouro do escritorio';
 COMMENT ON COLUMN public.offices.address_zip IS 'CEP do escritorio';

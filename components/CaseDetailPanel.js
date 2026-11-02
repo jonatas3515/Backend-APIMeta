@@ -362,7 +362,7 @@ export default function CaseDetailPanel({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-3 bg-[#1E2022] rounded border">
+              <div className="p-3 bg-[#1E2022] rounded-lg border border-gray-800">
                 <p className="text-xs text-gray-500">Área jurídica</p>
                 <p className="text-sm font-medium">
                   {caseItem.legal_area ? (
@@ -372,7 +372,7 @@ export default function CaseDetailPanel({
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-[#1E2022] rounded border">
+              <div className="p-3 bg-[#1E2022] rounded-lg border border-gray-800">
                 <p className="text-xs text-gray-500">Tipo de caso</p>
                 <p className="text-sm font-medium">
                   {caseItem.case_type || (
@@ -380,7 +380,7 @@ export default function CaseDetailPanel({
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-[#1E2022] rounded border">
+              <div className="p-3 bg-[#1E2022] rounded-lg border border-gray-800">
                 <p className="text-xs text-gray-500">Prioridade</p>
                 <p className={`text-sm font-medium ${PRIORITY_COLORS[caseItem.priority] || 'text-gray-400'}`}>
                   {caseItem.priority ? (
@@ -390,7 +390,7 @@ export default function CaseDetailPanel({
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-[#1E2022] rounded border">
+              <div className="p-3 bg-[#1E2022] rounded-lg border border-gray-800">
                 <p className="text-xs text-gray-500">Prazo</p>
                 <p className="text-sm font-medium">
                   {caseItem.deadline_date ? (
@@ -409,7 +409,7 @@ export default function CaseDetailPanel({
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-[#1E2022] rounded border">
+              <div className="p-3 bg-[#1E2022] rounded-lg border border-gray-800">
                 <p className="text-xs text-gray-500">Município</p>
                 <p className="text-sm font-medium">
                   {caseItem.municipality || (
@@ -417,7 +417,7 @@ export default function CaseDetailPanel({
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-[#1E2022] rounded border">
+              <div className="p-3 bg-[#1E2022] rounded-lg border border-gray-800">
                 <p className="text-xs text-gray-500">Órgão</p>
                 <p className="text-sm font-medium">
                   {(caseItem.agency || caseItem.court_division) ? (
@@ -427,7 +427,7 @@ export default function CaseDetailPanel({
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-[#1E2022] rounded border">
+              <div className="p-3 bg-[#1E2022] rounded-lg border border-gray-800">
                 <p className="text-xs text-gray-500">Papel do cliente</p>
                 <p className="text-sm font-medium">
                   {caseItem.client_role ? (
@@ -437,7 +437,7 @@ export default function CaseDetailPanel({
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-[#1E2022] rounded border">
+              <div className="p-3 bg-[#1E2022] rounded-lg border border-gray-800">
                 <p className="text-xs text-gray-500">Tipo de prazo</p>
                 <p className="text-sm font-medium">
                   {caseItem.deadline_type || (
@@ -448,7 +448,7 @@ export default function CaseDetailPanel({
             </div>
 
             {hasProcessData && (
-              <div className="p-3 bg-[#1E2022] rounded border">
+              <div className="p-3 bg-[#1E2022] rounded-lg border border-gray-800">
                 <p className="text-xs text-gray-500 mb-2 font-bold">Dados processuais</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {caseItem.process_number && (
@@ -499,7 +499,7 @@ export default function CaseDetailPanel({
               </div>
             )}
 
-            <div className="p-3 bg-[#1E2022] rounded border">
+            <div className="p-3 bg-[#1E2022] rounded-lg border border-gray-800">
               <p className="text-xs text-gray-500 mb-1 font-bold">Conversa vinculada</p>
               {linkedConversation ? (
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -549,7 +549,7 @@ export default function CaseDetailPanel({
             </div>
 
             {stripFeeFromNotes(caseItem.notes) && (
-              <div className="p-3 bg-[#1E2022] rounded border">
+              <div className="p-3 bg-[#1E2022] rounded-lg border border-gray-800">
                 <p className="text-xs text-gray-500 font-bold mb-1">Notas e Observações</p>
                 <p className="text-sm whitespace-pre-wrap text-gray-100">{stripFeeFromNotes(caseItem.notes)}</p>
               </div>

@@ -174,13 +174,13 @@ export default function KnowledgeBaseManager() {
             placeholder="Buscar documento..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full sm:w-64 px-3 py-2 border rounded text-sm bg-[#1B1D1E] text-white"
+            className="w-full sm:w-64 px-3 py-2 border border-gray-800 rounded-lg text-sm bg-[#1B1D1E] text-white focus:border-nc-yellow focus:outline-none"
           />
           <div className="flex gap-2 w-full sm:w-auto">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="flex-1 sm:flex-none px-3 py-2 border rounded text-sm bg-[#1B1D1E] text-white"
+              className="flex-1 sm:flex-none px-3 py-2 border border-gray-800 rounded-lg text-sm bg-[#1B1D1E] text-white focus:border-nc-yellow focus:outline-none"
             >
               <option value="all">Todos</option>
               <option value="rascunho">Rascunho</option>
@@ -198,7 +198,7 @@ export default function KnowledgeBaseManager() {
       </div>
 
       {showForm && (
-        <div className="mb-6 p-4 border rounded bg-[#1B1D1E] text-white shadow-sm">
+        <div className="mb-6 p-4 border border-gray-800 rounded-xl bg-[#1B1D1E] text-white shadow-sm">
           <h3 className="text-lg font-bold mb-4">
             {editing ? 'Revisar versão anonimizada' : 'Novo Documento (será salvo como rascunho)'}
           </h3>
@@ -282,7 +282,7 @@ export default function KnowledgeBaseManager() {
       ) : (
         <div className="space-y-4">
           {filteredDocs.map(doc => (
-            <div key={doc.id} className="p-4 border rounded-lg bg-[#1B1D1E] text-white shadow-sm">
+            <div key={doc.id} className="p-4 border border-gray-800 rounded-xl bg-[#1B1D1E] text-white shadow-sm">
               <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2 mb-2">
                 <div>
                   <h4 className="font-bold text-base sm:text-lg text-gray-100 break-words">{doc.title}</h4>

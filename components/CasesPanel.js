@@ -1509,12 +1509,12 @@ export default function CasesPanel({ notice }) {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gray-900/90 text-xs md:text-sm text-gray-400 border-b border-gray-800">
-                <th className="border p-2.5 text-center text-[11px] font-bold text-gray-400 w-12">#</th>
-                <th className="border p-3 text-left">Título</th>
-                <th className="border p-2.5 text-left text-[11px] font-bold text-gray-400">Área</th>
-                <th className="border p-2.5 text-left text-[11px] font-bold text-gray-400">Status</th>
-                <th className="border p-2.5 text-left text-[11px] font-bold text-gray-400">Prioridade</th>
-                <th className="border p-3 text-left">Prazo</th>
+                <th className="border border-gray-800 p-2.5 text-center text-[11px] font-bold text-gray-400 w-12">#</th>
+                <th className="border border-gray-800 p-3 text-left">Título</th>
+                <th className="border border-gray-800 p-2.5 text-left text-[11px] font-bold text-gray-400">Área</th>
+                <th className="border border-gray-800 p-2.5 text-left text-[11px] font-bold text-gray-400">Status</th>
+                <th className="border border-gray-800 p-2.5 text-left text-[11px] font-bold text-gray-400">Prioridade</th>
+                <th className="border border-gray-800 p-3 text-left">Prazo</th>
               </tr>
             </thead>
             <tbody>
@@ -1528,7 +1528,7 @@ export default function CasesPanel({ notice }) {
                 <tr
                   key={caseItem.id}
                   onClick={() => openCase(caseItem)}
-                  className={`border-b text-xs md:text-sm cursor-pointer transition ${
+                  className={`border-b border-gray-800 text-xs md:text-sm cursor-pointer transition ${
                     isClosed
                       ? 'bg-[#181A1B] text-gray-500 opacity-70 hover:bg-[#1E2022]'
                       : selectedCase?.id === caseItem.id
@@ -1536,10 +1536,10 @@ export default function CasesPanel({ notice }) {
                       : 'hover:bg-gray-800/40 text-gray-200'
                   }`}
                 >
-                    <td className="border p-2 text-center text-xs font-bold text-gray-400">
+                    <td className="border border-gray-800 p-2 text-center text-xs font-bold text-gray-400">
                       {isClosed ? '📁 ' : ''}{idx + 1}
                     </td>
-                    <td className="border p-3">
+                    <td className="border border-gray-800 p-3">
                       <span className={isClosed ? 'text-gray-500 line-through' : 'font-semibold text-white'}>
                         {caseItem.title}
                       </span>
@@ -1591,17 +1591,17 @@ export default function CasesPanel({ notice }) {
                       )}
                     </td>
                     <td className="border border-gray-800 p-2 text-xs text-gray-300">{caseItem.legal_area || '-'}</td>
-                    <td className="border p-2">
+                    <td className="border border-gray-800 p-2">
                       <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${getStatusColor(caseItem.status)}`}>
                         {STATUS_LABELS[caseItem.status] || caseItem.status}
                       </span>
                     </td>
-                    <td className="border p-2">
+                    <td className="border border-gray-800 p-2">
                       <span className={`text-[11px] font-bold ${getPriorityColor(caseItem.priority)}`}>
                         {caseItem.priority}
                       </span>
                     </td>
-                    <td className="border p-3">
+                    <td className="border border-gray-800 p-3">
                       {caseItem.deadline_date ? (
                         <div>
                           <div className={caseItem.status === 'encerrado' || caseItem.status === 'arquivado' ? 'text-gray-500 line-through text-xs' : 'font-semibold text-gray-100 text-sm'}>

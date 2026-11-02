@@ -64,7 +64,7 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
         const tpl = officeR.value.data.birthday_message || officeR.value.data.birthday_message_template;
         if (tpl) setBirthdayTemplate(tpl);
       }
-      [casesR, bdaysR, chatR, officeR].filter((r) => r.status === 'rejected')
+      [casesR, convsR, officeR].filter((r) => r.status === 'rejected')
         .forEach((r) => safeError('calendar_load_error', r.reason, { component: 'MonthlyCalendarPanel' }));
     });
     return () => { mounted = false; };

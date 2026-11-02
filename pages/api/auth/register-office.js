@@ -32,6 +32,7 @@ async function handler(req, res) {
     phone,
     password,
     plan = 'trial',
+    billing_cycle = 'monthly',
     // Endereço
     address_street,
     address_number,
@@ -85,7 +86,8 @@ async function handler(req, res) {
 
   const cleanEmail = String(email).trim().toLowerCase();
   const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const isYearly = billing_cycle === 'yearly';
+  const periodEnd = new Date(Date.now() + (isYearly ? 365 : 30) * 24 * 60 * 60 * 1000).toISOString();
 
   const last4 = isPaid && card_number ? String(card_number).replace(/\D/g, '').slice(-4) : null;
   const brand = isPaid ? detectCardBrand(card_number) : null;
@@ -110,7 +112,8 @@ async function handler(req, res) {
       billing_cpf_cnpj: billing_cpf_cnpj ? String(billing_cpf_cnpj).trim() : null,
       payment_method: isPaid ? 'credit_card' : null,
       last4_card: last4,
-      card_brand: brand
+      card_brand: brand,
+      billing_cycle: isPaid ? (isYearly ? 'yearly' : 'monthly') : 'monthly'
     };
 
     const { data: office, error: officeError } = await supabaseAdmin
@@ -134,7 +137,8 @@ async function handler(req, res) {
       billing_cpf_cnpj: billing_cpf_cnpj ? String(billing_cpf_cnpj).trim() : null,
       payment_method: isPaid ? 'credit_card' : null,
       last4_card: last4,
-      card_brand: brand
+      card_brand: brand,
+      billing_cycle: isPaid ? (isYearly ? 'yearly' : 'monthly') : 'monthly'
     };
 
     const { error: subError } = await supabaseAdmin

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiJson } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
 import { safeError } from '../lib/safeLogger';
+import { useAuth } from '../lib/useAuth';
 
 const startOfToday = () => {
   const d = new Date();
@@ -10,15 +11,22 @@ const startOfToday = () => {
 };
 
 export default function PrioridadesPanel() {
+  const { profile } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [feedbackMsg, setFeedbackMsg] = useState(null);
 
   useEffect(() => {
     let mounted = true;
+    const officeId = profile?.office_id || profile?.office?.id;
+    let taskQuery = supabase.from('tasks').select('*').eq('done', false);
+    if (officeId) {
+      taskQuery = taskQuery.eq('office_id', officeId);
+    }
+
     Promise.allSettled([
       apiJson('/api/cases'),
-      supabase.from('tasks').select('*').eq('done', false)
+      taskQuery
     ]).then(([casesR, tasksR]) => {
       if (!mounted) return;
       const caseItems = (casesR.status === 'fulfilled' ? casesR.value : []) || [];
@@ -201,7 +209,22 @@ export default function PrioridadesPanel() {
         )}
 
         {loading ? (
-          <p className="text-sm text-gray-500 py-6 text-center">Carregando prioridades...</p>
+          <div className="space-y-6 animate-pulse">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-[#1B1D1E] border border-gray-800 rounded-xl p-5 h-24"></div>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-[#1B1D1E] border border-gray-800 rounded-xl p-4 h-64 space-y-3">
+                  <div className="h-4 bg-gray-800 rounded w-1/3"></div>
+                  <div className="h-20 bg-[#141516] border border-gray-800/80 rounded-lg"></div>
+                  <div className="h-20 bg-[#141516] border border-gray-800/80 rounded-lg"></div>
+                </div>
+              ))}
+            </div>
+          </div>
         ) : (
           <>
             {/* Cards de resumo */}

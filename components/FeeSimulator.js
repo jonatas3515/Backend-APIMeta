@@ -338,7 +338,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   const selected = services.find((s) => s.id === selectedService);
 
   return (
-    <div className="p-4 bg-[#1B1D1E] rounded-lg border shadow-sm space-y-4 max-h-[80vh] overflow-y-auto">
+    <div className="p-4 bg-[#1B1D1E] rounded-lg border border-gray-800 shadow-sm space-y-4 max-h-[80vh] overflow-y-auto">
       <h3 className="font-bold text-base sm:text-lg flex items-center gap-2">💰 Simular Honorários</h3>
 
       {services.length === 0 && (
@@ -375,7 +375,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
             <select
               value={selectedCaseId}
               onChange={(e) => setSelectedCaseId(e.target.value)}
-              className="w-full mt-1 border rounded p-2 text-sm"
+              className="w-full mt-1 border border-gray-800 rounded-lg p-2 text-sm bg-[#111213] text-white focus:border-nc-yellow focus:outline-none"
               data-testid="select-case"
             >
               <option value="">Selecione um caso ativo...</option>
@@ -394,7 +394,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           <select
             value={selectedService}
             onChange={(e) => setSelectedService(e.target.value)}
-            className="w-full mt-1 border rounded p-2 text-sm"
+            className="w-full mt-1 border border-gray-800 rounded-lg p-2 text-sm bg-[#111213] text-white focus:border-nc-yellow focus:outline-none"
           >
             <option value="">Selecione...</option>
             {services.map((s) => (
@@ -488,7 +488,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
             <label className="block text-sm font-medium text-gray-300">Complexidade</label>
-            <select value={form.complexity} onChange={(e) => setForm({ ...form, complexity: e.target.value })} className="w-full mt-1 border rounded p-2 text-sm">
+            <select value={form.complexity} onChange={(e) => setForm({ ...form, complexity: e.target.value })} className="w-full mt-1 border border-gray-800 rounded-lg p-2 text-sm bg-[#111213] text-white focus:border-nc-yellow focus:outline-none">
               <option value="baixa">Baixa</option>
               <option value="media">Média</option>
               <option value="alta">Alta</option>
@@ -496,7 +496,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300">Urgência</label>
-            <select value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })} className="w-full mt-1 border rounded p-2 text-sm">
+            <select value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })} className="w-full mt-1 border border-gray-800 rounded-lg p-2 text-sm bg-[#111213] text-white focus:border-nc-yellow focus:outline-none">
               <option value="normal">Normal</option>
               <option value="prazo_curto">Prazo curto</option>
               <option value="urgente">Urgente</option>
@@ -504,7 +504,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300">Etapa</label>
-            <select value={form.service_stage} onChange={(e) => setForm({ ...form, service_stage: e.target.value })} className="w-full mt-1 border rounded p-2 text-sm">
+            <select value={form.service_stage} onChange={(e) => setForm({ ...form, service_stage: e.target.value })} className="w-full mt-1 border border-gray-800 rounded-lg p-2 text-sm bg-[#111213] text-white focus:border-nc-yellow focus:outline-none">
               <option value="consulta">Consulta</option>
               <option value="extrajudicial">Extrajudicial</option>
               <option value="administrativo">Administrativo</option>
@@ -518,7 +518,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300">Volume documental</label>
-            <select value={form.document_volume} onChange={(e) => setForm({ ...form, document_volume: e.target.value })} className="w-full mt-1 border rounded p-2 text-sm">
+            <select value={form.document_volume} onChange={(e) => setForm({ ...form, document_volume: e.target.value })} className="w-full mt-1 border border-gray-800 rounded-lg p-2 text-sm bg-[#111213] text-white focus:border-nc-yellow focus:outline-none">
               <option value="reduzido">Reduzido</option>
               <option value="padrao">Padrão</option>
               <option value="elevado">Elevado</option>
@@ -532,7 +532,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
             type="number"
             value={form.estimated_economic_value}
             onChange={(e) => setForm({ ...form, estimated_economic_value: e.target.value })}
-            className="w-full mt-1 border rounded p-2 text-sm"
+            className="w-full mt-1 border border-gray-800 rounded-lg p-2 text-sm bg-[#111213] text-white focus:border-nc-yellow focus:outline-none"
             placeholder="Ex: 10000"
           />
         </div>
@@ -542,7 +542,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           <textarea
             value={form.internal_notes}
             onChange={(e) => setForm({ ...form, internal_notes: e.target.value })}
-            className="w-full mt-1 border rounded p-2 text-sm"
+            className="w-full mt-1 border border-gray-800 rounded-lg p-2 text-sm bg-[#111213] text-white focus:border-nc-yellow focus:outline-none"
             rows={2}
           />
         </div>
@@ -619,7 +619,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
               type="number"
               value={form.final_amount}
               onChange={(e) => setForm({ ...form, final_amount: e.target.value })}
-              className="w-full mt-1 border rounded p-2 text-sm"
+              className="w-full mt-1 border border-gray-800 rounded-lg p-2 text-sm bg-[#111213] text-white focus:border-nc-yellow focus:outline-none"
               placeholder={oabReference ? 'Sugestão regional preenchida' : 'Valor sugerido preenchido'}
             />
           </div>
@@ -630,7 +630,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
               <textarea
                 value={form.out_of_range_justification}
                 onChange={(e) => setForm({ ...form, out_of_range_justification: e.target.value })}
-                className="w-full mt-1 border rounded p-2 text-sm"
+                className="w-full mt-1 border border-gray-800 rounded-lg p-2 text-sm bg-[#111213] text-white focus:border-nc-yellow focus:outline-none"
                 rows={2}
                 placeholder="Explique a divergência..."
               />
@@ -643,7 +643,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
               type="date"
               value={form.proposal_valid_until}
               onChange={(e) => setForm({ ...form, proposal_valid_until: e.target.value })}
-              className="w-full mt-1 border rounded p-2 text-sm"
+              className="w-full mt-1 border border-gray-800 rounded-lg p-2 text-sm bg-[#111213] text-white focus:border-nc-yellow focus:outline-none"
             />
           </div>
 
@@ -698,7 +698,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           )}
         </div>
         {simulations.length === 0 ? (
-          <div className="p-4 bg-[#181A1B] border rounded text-center space-y-2">
+          <div className="p-4 bg-[#181A1B] border border-gray-800 rounded-lg text-center space-y-2">
             <p className="text-sm text-gray-400">Nenhuma simulação encontrada.</p>
             {isAdminOrLawyerFinal && (
               <button
@@ -716,7 +716,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         ) : (
           <div className="space-y-2">
             {simulations.map((sim) => (
-              <div key={sim.id} className="p-3 border rounded text-sm">
+              <div key={sim.id} className="p-3 border border-gray-800 rounded-lg text-sm bg-[#181A1B]">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
                   <div>
                     <p className="font-medium">{sim.fee_service_catalog?.name || 'Serviço'}</p>

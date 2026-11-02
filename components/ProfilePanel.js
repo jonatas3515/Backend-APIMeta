@@ -65,7 +65,7 @@ export default function ProfilePanel() {
 
   return (
     <div className="flex-1 overflow-auto bg-nc-surface p-4 md:p-8">
-      <div className="max-w-2xl mx-auto bg-[#1B1D1E] rounded-nc shadow-card border border-[#2A2D2F] p-6 md:p-8">
+      <div className="max-w-2xl mx-auto bg-[#1B1D1E] rounded-nc shadow-card border border-gray-800 p-6 md:p-8">
         <h1 className="text-2xl font-bold text-white mb-2">👤 Perfil</h1>
         <p className="text-sm text-gray-400 mb-6">
           Gerencie suas preferências de notificação e dados pessoais.
@@ -106,12 +106,12 @@ export default function ProfilePanel() {
           </div>
 
           {passwordMessage && (
-            <div className="mb-3 p-3 bg-green-50 border border-green-200 text-green-800 rounded text-sm" data-testid="password-success">
+            <div className="mb-3 p-3 bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 rounded-lg text-sm" data-testid="password-success">
               {passwordMessage}
             </div>
           )}
           {passwordError && (
-            <div className="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded text-sm" data-testid="password-error">
+            <div className="mb-3 p-3 bg-red-950/40 border border-red-800/60 text-red-300 rounded-lg text-sm" data-testid="password-error">
               {passwordError}
             </div>
           )}

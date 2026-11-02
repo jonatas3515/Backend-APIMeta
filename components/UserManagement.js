@@ -191,7 +191,7 @@ export default function UserManagement() {
       )}
 
       {showPasswordForm && (
-        <form onSubmit={handlePasswordSubmit} className="mb-6 p-4 border rounded-lg bg-[#181A1B]">
+        <form onSubmit={handlePasswordSubmit} className="mb-6 p-4 border border-gray-800 rounded-xl bg-[#181A1B]">
           <h3 className="font-semibold mb-3">🔐 Alterar minha senha</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
@@ -238,7 +238,7 @@ export default function UserManagement() {
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mb-6 p-4 border rounded-lg bg-[#181A1B]">
+        <form onSubmit={handleSubmit} className="mb-6 p-4 border border-gray-800 rounded-xl bg-[#181A1B]">
           <h3 className="font-semibold mb-3">Criar novo usuário</h3>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
@@ -302,12 +302,12 @@ export default function UserManagement() {
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-[#181A1B]">
-              <th className="text-left p-3 font-semibold">Nome</th>
-              <th className="text-left p-3 font-semibold">Email</th>
-              <th className="text-left p-3 font-semibold">Papel</th>
-              <th className="text-left p-3 font-semibold">Status</th>
-              <th className="text-left p-3 font-semibold">Ações</th>
+            <tr className="border-b border-gray-800 bg-[#181A1B]">
+              <th className="text-left p-3 font-semibold text-gray-400">Nome</th>
+              <th className="text-left p-3 font-semibold text-gray-400">Email</th>
+              <th className="text-left p-3 font-semibold text-gray-400">Papel</th>
+              <th className="text-left p-3 font-semibold text-gray-400">Status</th>
+              <th className="text-left p-3 font-semibold text-gray-400">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -319,7 +319,7 @@ export default function UserManagement() {
               </tr>
             ) : (
               users.map(user => (
-                <tr key={user.id} className="border-b hover:bg-[#181A1B]">
+                <tr key={user.id} className="border-b border-gray-800 hover:bg-[#1E2022] transition">
                   <td className="p-3">{user.name}</td>
                   <td className="p-3 text-gray-400">{user.email}</td>
                   <td className="p-3">

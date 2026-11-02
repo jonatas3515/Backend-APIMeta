@@ -50,7 +50,7 @@ export default function Home() {
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [supabaseReady, setSupabaseReady] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('chat');
   const [showLogin, setShowLogin] = useState(false);
 
   // ?login=1 abre a tela de login direto (usado pelo botao Entrar da /landing)
@@ -248,14 +248,9 @@ export default function Home() {
       movementId,
     } = resolved;
 
-    // Se a query não definiu tab (ex: acessou a raiz puro '/'), tenta restaurar a última aba válida salva
-    if (!tab && typeof window !== 'undefined') {
-      const savedTab = localStorage.getItem('jusjnc_active_tab');
-      if (savedTab && NAV_ITEMS.some((item) => item.key === savedTab)) {
-        tab = savedTab;
-      } else {
-        tab = 'dashboard';
-      }
+    // Sempre que entrar sem tab especificada (ex: raiz puro '/'), abre a aba Chat como boas-vindas para todos os membros
+    if (!tab) {
+      tab = 'chat';
     }
 
     // Aplica redirecionamento legado sem loop
@@ -276,9 +271,6 @@ export default function Home() {
 
     if (tab) {
       setActiveTab(tab);
-      try {
-        localStorage.setItem('jusjnc_active_tab', tab);
-      } catch (e) {}
     }
     setCasesNotice(notice || null);
     setTriageMovementId(movementId || null);
