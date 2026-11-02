@@ -15,18 +15,21 @@ const db = {
     {
       id: 'case-1',
       conversation_id: 'conv-1',
+      office_id: '00000000-0000-0000-0000-000000000001',
       status: 'em_analise',
       conversations: { assigned_user_id: 'user-advogado-synthetic' }
     },
     {
       id: 'case-2',
       conversation_id: 'conv-2',
+      office_id: '00000000-0000-0000-0000-000000000001',
       status: 'encerrado',
       conversations: { assigned_user_id: 'user-admin-synthetic' }
     },
     {
       id: 'case-3',
       conversation_id: 'conv-3',
+      office_id: '00000000-0000-0000-0000-000000000001',
       status: 'em_analise',
       conversations: { assigned_user_id: 'user-advogado-2' }
     }

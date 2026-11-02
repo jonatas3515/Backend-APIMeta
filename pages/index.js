@@ -40,6 +40,9 @@ import { NotificationProvider } from '../components/NotificationProvider';
 import { maybeNotify, getPermission, isSupported } from '../lib/notifications';
 import { getAuthHeaders } from '../lib/api';
 import { normalizePhoneForMatch } from '../lib/formatters';
+import { isTrialExpired } from '../lib/plans';
+import TrialExpiredBlocker from '../components/TrialExpiredBlocker';
+import UserRoleBadge from '../components/UserRoleBadge';
 
 export default function Home() {
   const router = useRouter();
@@ -514,6 +517,11 @@ export default function Home() {
     return <Setup />;
   }
 
+  // Bloqueio automático caso o período de teste grátis tenha expirado
+  if (!isMaster?.() && isTrialExpired(profile?.office)) {
+    return <TrialExpiredBlocker office={profile?.office} profile={profile} onSignOut={signOut} />;
+  }
+
   return (
     <>
       <Head>
@@ -558,6 +566,7 @@ export default function Home() {
             )}
             <div className="flex-1" />
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+              <UserRoleBadge role={profile?.role} isMaster={isMaster?.()} className="hidden sm:inline-flex" />
               {isMaster?.() && (
                 <button
                   onClick={() => router.push('/admin')}

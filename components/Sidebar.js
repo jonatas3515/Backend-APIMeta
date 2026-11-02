@@ -3,11 +3,12 @@ import { useAuth } from '../lib/useAuth';
 import { apiJson } from '../lib/apiClient';
 import { NAV_ITEMS } from '../lib/tabResolver';
 import OfficeBadge from './OfficeBadge';
+import UserRoleBadge from './UserRoleBadge';
 
 const MOBILE_PRIMARY_KEYS = ['dashboard', 'chat', 'cases', 'monthly-calendar'];
 
 export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' }) {
-  const { canAccess, signOut } = useAuth();
+  const { canAccess, signOut, profile } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
   const [officeLogo, setOfficeLogo] = useState(null);
   const [officeName, setOfficeName] = useState('JusJNC');
@@ -98,7 +99,10 @@ export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' })
           ))}
         </nav>
 
-        <div className="w-full px-2 pb-2 mt-2 border-t border-nc-gray-800 pt-2">
+        <div className="w-full px-2 pb-2 mt-2 border-t border-nc-gray-800 pt-2 flex flex-col items-center">
+          <div className="mb-1">
+            <UserRoleBadge role={profile?.role} isMaster={profile?.is_master} className="text-[9px] px-1.5 py-0.5" />
+          </div>
           <OfficeBadge />
           <button
             onClick={handleSignOut}

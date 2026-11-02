@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { apiJson } from '../lib/apiClient';
 import { useAuth } from '../lib/useAuth';
 import { safeError } from '../lib/safeLogger';
+import { calculateTrialDaysRemaining } from '../lib/plans';
 
 const TABS = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -61,6 +62,12 @@ export default function AdminMasterPanel() {
   const [editingOffice, setEditingOffice] = useState(null);
   const [officeFormData, setOfficeFormData] = useState({ name: '', phone: '', cnpj: '', plan: 'trial' });
 
+  // Detalhes do Escritório Selecionado (Página individual)
+  const [selectedOfficeDetail, setSelectedOfficeDetail] = useState(null);
+  const [officeUsers, setOfficeUsers] = useState([]);
+  const [officeUsersLoading, setOfficeUsersLoading] = useState(false);
+  const [officeDetailTab, setOfficeDetailTab] = useState('equipe');
+
   // Modal de Período Grátis
   const [modalPeriodoGratis, setModalPeriodoGratis] = useState({ show: false, office: null, dias: 30 });
 
@@ -90,6 +97,27 @@ export default function AdminMasterPanel() {
     if (authLoading || !isMasterUser) return;
     carregarTudo();
   }, [authLoading, isMasterUser]);
+
+  // Carrega integrantes do escritório quando a página de detalhes for aberta
+  useEffect(() => {
+    if (!selectedOfficeDetail?.id) {
+      setOfficeUsers([]);
+      return;
+    }
+    let mounted = true;
+    setOfficeUsersLoading(true);
+    apiJson(`/api/auth/users?office_id=${selectedOfficeDetail.id}`)
+      .then((users) => {
+        if (mounted) setOfficeUsers(Array.isArray(users) ? users : []);
+      })
+      .catch((err) => {
+        safeError('admin_office_users_load_error', err, { officeId: selectedOfficeDetail.id });
+      })
+      .finally(() => {
+        if (mounted) setOfficeUsersLoading(false);
+      });
+    return () => { mounted = false; };
+  }, [selectedOfficeDetail?.id]);
 
   const showFeedback = (type, text) => {
     setActionMsg({ type, text });
@@ -537,141 +565,522 @@ export default function AdminMasterPanel() {
           </div>
         )}
 
-        {/* 2. ABA ESCRITÓRIOS (Fiel à Imagem 5) */}
+        {/* 2. ABA ESCRITÓRIOS */}
         {tab === 'escritorios' && (
-          <div className="bg-gray-800/40 border border-gray-700/60 rounded-2xl overflow-hidden shadow-xl">
-            <div className="p-6 border-b border-gray-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-white">Gestão de Escritórios</h2>
-                <p className="text-gray-400 text-xs md:text-sm mt-1">Aprove, bloqueie ou exclua escritórios cadastrados</p>
-              </div>
-              <button
-                onClick={() => {
-                  setEditingOffice(null);
-                  setOfficeFormData({ name: '', phone: '', cnpj: '', plan: 'trial' });
-                  setModalOfficeForm(true);
-                }}
-                className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-xl text-xs md:text-sm flex items-center gap-2 transition shadow-md shadow-green-600/20 self-start sm:self-auto"
-              >
-                <span>+</span> Novo Escritório
-              </button>
-            </div>
+          selectedOfficeDetail ? (
+            /* VISÃO DETALHADA DO ESCRITÓRIO */
+            <div className="bg-gray-800/40 border border-gray-700/60 rounded-2xl overflow-hidden shadow-xl" data-testid="office-details-view">
+              <div className="p-6 border-b border-gray-700/60">
+                <button
+                  onClick={() => setSelectedOfficeDetail(null)}
+                  className="flex items-center gap-2 text-xs md:text-sm text-gray-400 hover:text-white transition mb-4 group font-medium"
+                >
+                  <span className="px-2 py-0.5 rounded bg-gray-800 group-hover:bg-gray-700 transition">←</span>
+                  <span>Voltar para Gestão de Escritórios</span>
+                </button>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs md:text-sm">
-                <thead className="bg-gray-900/60 text-gray-400 uppercase text-[11px] font-semibold tracking-wider">
-                  <tr>
-                    <th className="px-6 py-3.5">Nome</th>
-                    <th className="px-6 py-3.5">Celular</th>
-                    <th className="px-6 py-3.5">CNPJ</th>
-                    <th className="px-6 py-3.5">Status</th>
-                    <th className="px-6 py-3.5">Plano</th>
-                    <th className="px-6 py-3.5">Cadastro</th>
-                    <th className="px-6 py-3.5 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-700/50">
-                  {offices.map((o) => {
-                    const isMatriz = o.name?.includes('Neves & Costa');
-                    return (
-                      <tr key={o.id} className="hover:bg-gray-800/30 transition">
-                        <td className="px-6 py-4 font-semibold text-white whitespace-nowrap">{o.name}</td>
-                        <td className="px-6 py-4 text-gray-400 whitespace-nowrap">{o.phone || '-'}</td>
-                        <td className="px-6 py-4 text-gray-400 whitespace-nowrap">{o.cnpj || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
-                            o.status === 'active' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                            o.status === 'trial' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                            'bg-red-500/20 text-red-400 border border-red-500/30'
-                          }`}>
-                            {o.status === 'active' ? 'Ativo' : o.status === 'trial' ? 'Trial' : 'Suspenso'}
+                {/* Banner de informações do escritório */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gradient-to-r from-gray-900 via-gray-850 to-gray-900 border border-gray-700/80 rounded-2xl p-6 shadow-inner">
+                  <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 rounded-2xl bg-gray-800 border border-gray-700 flex items-center justify-center text-3xl overflow-hidden flex-shrink-0">
+                      {selectedOfficeDetail.logo_url ? (
+                        <img src={selectedOfficeDetail.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                      ) : (
+                        <span>🏛️</span>
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-xl md:text-2xl font-bold text-white">{selectedOfficeDetail.name}</h2>
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                          selectedOfficeDetail.status === 'active' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                          selectedOfficeDetail.status === 'trial' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                          'bg-red-500/20 text-red-400 border border-red-500/30'
+                        }`}>
+                          {selectedOfficeDetail.status === 'active' ? 'Ativo' : selectedOfficeDetail.status === 'trial' ? 'Trial' : 'Suspenso'}
+                        </span>
+                        {selectedOfficeDetail.name?.includes('Neves & Costa') ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                            👑 Enterprise (Matriz)
                           </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {isMatriz ? (
-                            <span className="text-green-400 font-bold">Gratuito</span>
-                          ) : o.plan === 'trial' || (!o.plan && o.status === 'trial') ? (
-                            <span className="text-red-400 font-medium">Trial (expirado)</span>
-                          ) : (
-                            <span className="text-yellow-400 font-bold capitalize">{o.plan || 'Básico'}</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-gray-400 whitespace-nowrap">{formatarData(o.created_at)}</td>
-                        <td className="px-6 py-4 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => {
-                                setEditingOffice(o);
-                                setOfficeFormData({ name: o.name, phone: o.phone || '', cnpj: o.cnpj || '', plan: o.plan || 'trial' });
-                                setModalOfficeForm(true);
-                              }}
-                              className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg text-xs font-semibold transition"
-                            >
-                              Editar
-                            </button>
-                            {o.status === 'active' ? (
-                              <button
-                                onClick={() => handleOfficeAction(o.id, 'suspend')}
-                                className="px-2.5 py-1 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg text-xs font-semibold transition"
-                              >
-                                Suspender
-                              </button>
+                        ) : selectedOfficeDetail.plan === 'trial' || (!selectedOfficeDetail.plan && selectedOfficeDetail.status === 'trial') ? (
+                          (() => {
+                            const days = calculateTrialDaysRemaining(selectedOfficeDetail.trial_ends_at);
+                            return days > 0 ? (
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                                ⏳ Trial ({days} dias restantes)
+                              </span>
                             ) : (
-                              <button
-                                onClick={() => handleOfficeAction(o.id, 'activate')}
-                                className="px-2.5 py-1 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg text-xs font-semibold transition"
-                              >
-                                Ativar
-                              </button>
-                            )}
+                              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30">
+                                ❌ Trial (expirado)
+                              </span>
+                            );
+                          })()
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 capitalize">
+                            Plano {selectedOfficeDetail.plan}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                        <span><strong>CNPJ:</strong> {selectedOfficeDetail.cnpj || 'Não informado'}</span>
+                        <span><strong>Celular / WhatsApp:</strong> {selectedOfficeDetail.phone || 'Não informado'}</span>
+                        <span><strong>Cadastrado em:</strong> {formatarData(selectedOfficeDetail.created_at)}</span>
+                      </p>
+                    </div>
+                  </div>
 
-                            {!isMatriz && (
-                              <>
-                                <button
-                                  onClick={() => setModalPeriodoGratis({ show: true, office: o, dias: 30 })}
-                                  className="p-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg transition"
-                                  title="🎁 Liberar período grátis"
-                                >
-                                  🎁
-                                </button>
-                                <button
-                                  onClick={() => setModalPagamento({ show: true, office: o, metodo: 'pix', valor: 99, meses: 1 })}
-                                  className="p-1.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition"
-                                  title="💳 Registrar pagamento manual"
-                                >
-                                  💳
-                                </button>
-                                <button
-                                  onClick={() => handleOfficeAction(o.id, o.status === 'blocked' ? 'unblock' : 'block')}
-                                  className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition"
-                                  title={o.status === 'blocked' ? 'Desbloquear' : 'Bloquear'}
-                                >
-                                  {o.status === 'blocked' ? '🔓' : '🔒'}
-                                </button>
-                              </>
-                            )}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={() => {
+                        setEditingOffice(selectedOfficeDetail);
+                        setOfficeFormData({
+                          name: selectedOfficeDetail.name,
+                          phone: selectedOfficeDetail.phone || '',
+                          cnpj: selectedOfficeDetail.cnpj || '',
+                          plan: selectedOfficeDetail.plan || 'trial'
+                        });
+                        setModalOfficeForm(true);
+                      }}
+                      className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg text-xs font-semibold transition"
+                    >
+                      ✏️ Editar
+                    </button>
+                    {!selectedOfficeDetail.name?.includes('Neves & Costa') && (
+                      <>
+                        <button
+                          onClick={() => setModalPeriodoGratis({ show: true, office: selectedOfficeDetail, dias: 30 })}
+                          className="px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg text-xs font-semibold transition"
+                          title="Liberar +30 dias de trial"
+                        >
+                          🎁 +30 Dias Trial
+                        </button>
+                        <button
+                          onClick={() => setModalPagamento({ show: true, office: selectedOfficeDetail, metodo: 'pix', valor: 99, meses: 1 })}
+                          className="px-3 py-1.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg text-xs font-semibold transition"
+                        >
+                          💳 Registrar Pagamento
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
 
-                            <button
-                              onClick={() => handleDeleteOffice(o.id, o.name)}
-                              className="p-1.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition"
-                              title="Excluir escritório"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {offices.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="text-center py-8 text-gray-500">Nenhum escritório cadastrado.</td>
-                    </tr>
+                {/* Sub-abas da página individual */}
+                <div className="flex border-b border-gray-700/60 mt-6 gap-2 overflow-x-auto">
+                  <button
+                    onClick={() => setOfficeDetailTab('equipe')}
+                    className={`px-4 py-2.5 text-xs md:text-sm font-semibold border-b-2 transition whitespace-nowrap ${
+                      officeDetailTab === 'equipe'
+                        ? 'border-yellow-500 text-yellow-400'
+                        : 'border-transparent text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    👥 Integrantes da Equipe ({officeUsers.length})
+                  </button>
+                  <button
+                    onClick={() => setOfficeDetailTab('assinatura')}
+                    className={`px-4 py-2.5 text-xs md:text-sm font-semibold border-b-2 transition whitespace-nowrap ${
+                      officeDetailTab === 'assinatura'
+                        ? 'border-yellow-500 text-yellow-400'
+                        : 'border-transparent text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    📜 Histórico & Assinatura
+                  </button>
+                  <button
+                    onClick={() => setOfficeDetailTab('pagamentos')}
+                    className={`px-4 py-2.5 text-xs md:text-sm font-semibold border-b-2 transition whitespace-nowrap ${
+                      officeDetailTab === 'pagamentos'
+                        ? 'border-yellow-500 text-yellow-400'
+                        : 'border-transparent text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    💳 Pagamentos & Faturas
+                  </button>
+                  <button
+                    onClick={() => setOfficeDetailTab('metricas')}
+                    className={`px-4 py-2.5 text-xs md:text-sm font-semibold border-b-2 transition whitespace-nowrap ${
+                      officeDetailTab === 'metricas'
+                        ? 'border-yellow-500 text-yellow-400'
+                        : 'border-transparent text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    📊 Relatórios & Utilização
+                  </button>
+                </div>
+              </div>
+
+              {/* Sub-aba 1: Integrantes da Equipe */}
+              {officeDetailTab === 'equipe' && (
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-base font-bold text-white">Integrantes Cadastrados</h3>
+                      <p className="text-xs text-gray-400">Usuários pertencentes estritamente a este escritório</p>
+                    </div>
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-300 border border-gray-700">
+                      Total: {officeUsers.length} membro(s)
+                    </span>
+                  </div>
+
+                  {officeUsersLoading ? (
+                    <div className="py-12 text-center text-gray-400 text-sm">Carregando integrantes...</div>
+                  ) : officeUsers.length === 0 ? (
+                    <div className="py-12 text-center text-gray-500 text-sm bg-gray-900/40 rounded-xl border border-gray-800">
+                      Nenhum integrante cadastrado neste escritório até o momento.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-gray-700/60">
+                      <table className="w-full text-left text-xs md:text-sm">
+                        <thead className="bg-gray-900/80 text-gray-400 uppercase text-[11px] font-semibold">
+                          <tr>
+                            <th className="px-5 py-3">Nome</th>
+                            <th className="px-5 py-3">E-mail</th>
+                            <th className="px-5 py-3">Papel</th>
+                            <th className="px-5 py-3">Status</th>
+                            <th className="px-5 py-3">Cadastro</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-800">
+                          {officeUsers.map((u) => (
+                            <tr key={u.id} className="hover:bg-gray-800/40 transition">
+                              <td className="px-5 py-3.5 font-medium text-white">{u.name}</td>
+                              <td className="px-5 py-3.5 text-gray-400">{u.email}</td>
+                              <td className="px-5 py-3.5">
+                                <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                                  u.role === 'admin' ? 'bg-amber-500/20 text-amber-300' :
+                                  u.role === 'estagiario' ? 'bg-emerald-500/20 text-emerald-300' :
+                                  'bg-blue-500/20 text-blue-300'
+                                }`}>
+                                  {u.role === 'admin' ? '👑 Admin' : u.role === 'estagiario' ? '🎓 Estagiário' : '⚖️ Advogado'}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3.5">
+                                <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${
+                                  u.is_active !== false ? 'text-green-400' : 'text-red-400'
+                                }`}>
+                                  {u.is_active !== false ? '● Ativo' : '● Inativo'}
+                                </span>
+                              </td>
+                              <td className="px-5 py-3.5 text-gray-400">{formatarData(u.created_at)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
-                </tbody>
-              </table>
+                </div>
+              )}
+
+              {/* Sub-aba 2: Histórico & Assinatura */}
+              {officeDetailTab === 'assinatura' && (
+                <div className="p-6 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 rounded-xl bg-gray-900/60 border border-gray-700/80">
+                      <span className="text-xs text-gray-400 block mb-1">Tempo de Uso do Sistema</span>
+                      <div className="text-xl font-bold text-white">
+                        {Math.max(1, Math.ceil((Date.now() - new Date(selectedOfficeDetail.created_at).getTime()) / (1000 * 60 * 60 * 24)))} dias
+                      </div>
+                      <span className="text-[11px] text-gray-500">Desde {formatarData(selectedOfficeDetail.created_at)}</span>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gray-900/60 border border-gray-700/80">
+                      <span className="text-xs text-gray-400 block mb-1">Plano Atual</span>
+                      <div className="text-xl font-bold text-yellow-400 capitalize">
+                        {selectedOfficeDetail.name?.includes('Neves & Costa') ? 'Enterprise (Matriz)' : selectedOfficeDetail.plan || 'Trial'}
+                      </div>
+                      <span className="text-[11px] text-gray-500">Status atual: {selectedOfficeDetail.status}</span>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gray-900/60 border border-gray-700/80">
+                      <span className="text-xs text-gray-400 block mb-1">Término de Teste / Renovação</span>
+                      <div className="text-xl font-bold text-blue-400">
+                        {selectedOfficeDetail.trial_ends_at ? formatarData(selectedOfficeDetail.trial_ends_at) : 'Sem expiração'}
+                      </div>
+                      <span className="text-[11px] text-gray-500">
+                        {calculateTrialDaysRemaining(selectedOfficeDetail.trial_ends_at)} dias restantes
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-900/60 border border-gray-700/80 rounded-xl p-5">
+                    <h4 className="text-sm font-bold text-white mb-3">Histórico de Planos e Mudanças</h4>
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3 text-xs">
+                        <div className="w-2.5 h-2.5 rounded-full bg-green-500 mt-1 flex-shrink-0" />
+                        <div>
+                          <p className="font-semibold text-white">Cadastro inicial e ativação do Trial (30 dias)</p>
+                          <p className="text-gray-400">Registrado em {formatarData(selectedOfficeDetail.created_at)} • Acesso completo liberado</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 text-xs opacity-60">
+                        <div className="w-2.5 h-2.5 rounded-full bg-gray-600 mt-1 flex-shrink-0" />
+                        <div>
+                          <p className="font-semibold text-gray-300">Estrutura preparada para histórico de assinaturas</p>
+                          <p className="text-gray-500">Transições de plano, upgrades via checkout e renovações serão gravadas cronologicamente aqui.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-aba 3: Pagamentos & Faturas */}
+              {officeDetailTab === 'pagamentos' && (
+                <div className="p-6 space-y-6">
+                  {(() => {
+                    const officePayments = pagamentos.filter((p) => p.office_id === selectedOfficeDetail.id);
+                    const totalPaid = officePayments.reduce((acc, p) => acc + (Number(p.valor) || 0), 0);
+                    return (
+                      <>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div>
+                            <h3 className="text-base font-bold text-white">Faturas & Pagamentos</h3>
+                            <p className="text-xs text-gray-400">Total pago: <strong className="text-green-400">{brl(totalPaid)}</strong> em {officePayments.length} lançamento(s)</p>
+                          </div>
+                          {!selectedOfficeDetail.name?.includes('Neves & Costa') && (
+                            <button
+                              onClick={() => setModalPagamento({ show: true, office: selectedOfficeDetail, metodo: 'pix', valor: 99, meses: 1 })}
+                              className="px-3.5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-md shadow-green-600/20 self-start sm:self-auto transition"
+                            >
+                              <span>+</span> Registrar Pagamento
+                            </button>
+                          )}
+                        </div>
+
+                        {officePayments.length === 0 ? (
+                          <div className="py-12 text-center text-gray-500 text-sm bg-gray-900/40 rounded-xl border border-gray-800">
+                            Nenhum pagamento registrado para este escritório até o momento.
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto rounded-xl border border-gray-700/60">
+                            <table className="w-full text-left text-xs md:text-sm">
+                              <thead className="bg-gray-900/80 text-gray-400 uppercase text-[11px] font-semibold">
+                                <tr>
+                                  <th className="px-5 py-3">Data</th>
+                                  <th className="px-5 py-3">Valor</th>
+                                  <th className="px-5 py-3">Método</th>
+                                  <th className="px-5 py-3">Período</th>
+                                  <th className="px-5 py-3">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-800">
+                                {officePayments.map((p) => (
+                                  <tr key={p.id} className="hover:bg-gray-800/40 transition">
+                                    <td className="px-5 py-3.5 text-gray-300">{formatarData(p.created_at)}</td>
+                                    <td className="px-5 py-3.5 font-bold text-green-400">{brl(p.valor)}</td>
+                                    <td className="px-5 py-3.5 text-gray-300 uppercase">{p.metodo || 'PIX'}</td>
+                                    <td className="px-5 py-3.5 text-gray-400">{p.meses || 1} mês(es)</td>
+                                    <td className="px-5 py-3.5">
+                                      <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-green-500/20 text-green-400">
+                                        Confirmado
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Sub-aba 4: Relatórios & Utilização */}
+              {officeDetailTab === 'metricas' && (
+                <div className="p-6 space-y-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="p-4 rounded-xl bg-gray-900/60 border border-gray-700/80 text-center">
+                      <span className="text-2xl font-bold text-blue-400 block mb-1">--</span>
+                      <span className="text-xs text-gray-400">Processos Cadastrados</span>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gray-900/60 border border-gray-700/80 text-center">
+                      <span className="text-2xl font-bold text-green-400 block mb-1">--</span>
+                      <span className="text-xs text-gray-400">Contatos WhatsApp</span>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gray-900/60 border border-gray-700/80 text-center">
+                      <span className="text-2xl font-bold text-yellow-400 block mb-1">--</span>
+                      <span className="text-xs text-gray-400">Prazos e Audiências</span>
+                    </div>
+                    <div className="p-4 rounded-xl bg-gray-900/60 border border-gray-700/80 text-center">
+                      <span className="text-2xl font-bold text-purple-400 block mb-1">--</span>
+                      <span className="text-xs text-gray-400">Contratos Assinados</span>
+                    </div>
+                  </div>
+
+                  <div className="p-5 rounded-xl bg-blue-900/10 border border-blue-500/30 text-xs text-blue-300">
+                    <h5 className="font-bold mb-1 flex items-center gap-1.5 text-sm text-blue-200">
+                      <span>ℹ️</span> Estrutura de Relatórios Individuais Preparada
+                    </h5>
+                    <p className="text-blue-300/80 leading-relaxed">
+                      Esta página está preparada para receber relatórios analíticos aprofundados sobre quanto tempo o escritório utiliza o sistema, pagamentos históricos efetuados, planos contratados e métricas de desempenho individuais.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            /* TABELA GERAL DE ESCRITÓRIOS */
+            <div className="bg-gray-800/40 border border-gray-700/60 rounded-2xl overflow-hidden shadow-xl">
+              <div className="p-6 border-b border-gray-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white">Gestão de Escritórios</h2>
+                  <p className="text-gray-400 text-xs md:text-sm mt-1">Aprove, bloqueie ou exclua escritórios cadastrados</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setEditingOffice(null);
+                    setOfficeFormData({ name: '', phone: '', cnpj: '', plan: 'trial' });
+                    setModalOfficeForm(true);
+                  }}
+                  className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-xl text-xs md:text-sm flex items-center gap-2 transition shadow-md shadow-green-600/20 self-start sm:self-auto"
+                >
+                  <span>+</span> Novo Escritório
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs md:text-sm">
+                  <thead className="bg-gray-900/60 text-gray-400 uppercase text-[11px] font-semibold tracking-wider">
+                    <tr>
+                      <th className="px-6 py-3.5">Nome</th>
+                      <th className="px-6 py-3.5">Celular</th>
+                      <th className="px-6 py-3.5">CNPJ</th>
+                      <th className="px-6 py-3.5">Status</th>
+                      <th className="px-6 py-3.5">Plano</th>
+                      <th className="px-6 py-3.5">Cadastro</th>
+                      <th className="px-6 py-3.5 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-700/50">
+                    {offices.map((o) => {
+                      const isMatriz = o.name?.includes('Neves & Costa');
+                      return (
+                        <tr key={o.id} className="hover:bg-gray-800/30 transition">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <button
+                              onClick={() => setSelectedOfficeDetail(o)}
+                              className="font-semibold text-white hover:text-yellow-400 text-left transition flex items-center gap-1.5 group"
+                              title="Clique para ver equipe e histórico deste escritório"
+                            >
+                              <span>{o.name}</span>
+                              <span className="text-[10px] text-gray-500 group-hover:text-yellow-400 transition">↗</span>
+                            </button>
+                          </td>
+                          <td className="px-6 py-4 text-gray-400 whitespace-nowrap">{o.phone || '-'}</td>
+                          <td className="px-6 py-4 text-gray-400 whitespace-nowrap">{o.cnpj || '-'}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                              o.status === 'active' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                              o.status === 'trial' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                              'bg-red-500/20 text-red-400 border border-red-500/30'
+                            }`}>
+                              {o.status === 'active' ? 'Ativo' : o.status === 'trial' ? 'Trial' : 'Suspenso'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {isMatriz ? (
+                              <span className="text-purple-400 font-bold flex items-center gap-1">👑 Enterprise (Matriz)</span>
+                            ) : o.plan === 'trial' || (!o.plan && o.status === 'trial') ? (
+                              (() => {
+                                const days = calculateTrialDaysRemaining(o.trial_ends_at);
+                                return days > 0 ? (
+                                  <span className="text-blue-400 font-semibold flex items-center gap-1">
+                                    ⏳ Trial ({days}d restantes)
+                                  </span>
+                                ) : (
+                                  <span className="text-red-400 font-medium">Trial (expirado)</span>
+                                );
+                              })()
+                            ) : (
+                              <span className="text-yellow-400 font-bold capitalize">{o.plan || 'Básico'}</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-gray-400 whitespace-nowrap">{formatarData(o.created_at)}</td>
+                          <td className="px-6 py-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setSelectedOfficeDetail(o)}
+                                className="px-2.5 py-1 bg-gray-750 hover:bg-gray-700 text-gray-200 rounded-lg text-xs font-semibold transition"
+                                title="Abrir página deste escritório"
+                              >
+                                Ver Detalhes
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setEditingOffice(o);
+                                  setOfficeFormData({ name: o.name, phone: o.phone || '', cnpj: o.cnpj || '', plan: o.plan || 'trial' });
+                                  setModalOfficeForm(true);
+                                }}
+                                className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg text-xs font-semibold transition"
+                              >
+                                Editar
+                              </button>
+                              {o.status === 'active' ? (
+                                <button
+                                  onClick={() => handleOfficeAction(o.id, 'suspend')}
+                                  className="px-2.5 py-1 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 rounded-lg text-xs font-semibold transition"
+                                >
+                                  Suspender
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleOfficeAction(o.id, 'activate')}
+                                  className="px-2.5 py-1 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg text-xs font-semibold transition"
+                                >
+                                  Ativar
+                                </button>
+                              )}
+
+                              {!isMatriz && (
+                                <>
+                                  <button
+                                    onClick={() => setModalPeriodoGratis({ show: true, office: o, dias: 30 })}
+                                    className="p-1.5 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg transition"
+                                    title="🎁 Liberar período grátis"
+                                  >
+                                    🎁
+                                  </button>
+                                  <button
+                                    onClick={() => setModalPagamento({ show: true, office: o, metodo: 'pix', valor: 99, meses: 1 })}
+                                    className="p-1.5 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition"
+                                    title="💳 Registrar pagamento manual"
+                                  >
+                                    💳
+                                  </button>
+                                  <button
+                                    onClick={() => handleOfficeAction(o.id, o.status === 'blocked' ? 'unblock' : 'block')}
+                                    className="p-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition"
+                                    title={o.status === 'blocked' ? 'Desbloquear' : 'Bloquear'}
+                                  >
+                                    {o.status === 'blocked' ? '🔓' : '🔒'}
+                                  </button>
+                                </>
+                              )}
+
+                              <button
+                                onClick={() => handleDeleteOffice(o.id, o.name)}
+                                className="p-1.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition"
+                                title="Excluir escritório"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {offices.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="text-center py-8 text-gray-500">Nenhum escritório cadastrado.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
         )}
 
         {/* 3. ABA PLANOS (Fiel à Imagem 3) */}

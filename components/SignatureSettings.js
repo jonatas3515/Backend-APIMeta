@@ -130,7 +130,7 @@ export default function SignatureSettings() {
         <div>
           <h2 className="text-2xl font-bold text-nc-text">🔐 Assinatura Eletrônica</h2>
           <p className="text-xs text-gray-400 mt-0.5">
-            Conecte a conta do seu próprio escritório na ZapSign, ClickSign ou DocuSign.
+            Conecte a conta do seu escritório na ZapSign, ClickSign ou DocuSign.
           </p>
         </div>
         {integrations.length > 0 && (
@@ -160,7 +160,7 @@ export default function SignatureSettings() {
           <div className="border-b border-gray-800 pb-3">
             <h3 className="font-bold text-white text-base">🔑 Conectar Conta de Assinatura</h3>
             <p className="text-xs text-gray-400">
-              Cada escritório utiliza suas próprias credenciais. Os contratos e procurações serão emitidos diretamente pela sua conta.
+              Utilize suas credenciais. Os contratos e procurações serão emitidos diretamente pela sua conta.
             </p>
           </div>
 
