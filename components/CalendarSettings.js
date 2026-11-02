@@ -271,7 +271,7 @@ export default function CalendarSettings() {
               </button>
               <button
                 onClick={handleRegenerateIcal}
-                className="px-3 py-1.5 text-sm bg-gray-100 text-gray-300 rounded border border-[#2A2D2F] hover:bg-gray-200"
+                className="px-3 py-1.5 text-sm bg-[#1E2022] hover:bg-[#2A2D2F] text-gray-200 rounded border border-[#2A2D2F] transition"
               >
                 Gerar novo link
               </button>

@@ -187,7 +187,7 @@ export default function LegalRoutinesManager() {
               reminders_to_create: []
             });
           }}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="px-4 py-2 bg-nc-yellow text-nc-black font-bold rounded hover:bg-yellow-400 transition"
         >
           + Nova Rotina
         </button>
@@ -260,7 +260,7 @@ export default function LegalRoutinesManager() {
                   />
                   <button
                     onClick={() => removeStep(idx)}
-                    className="px-3 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                    className="px-3 py-2 bg-red-950/40 text-red-300 border border-red-800/60 rounded hover:bg-red-900/60 transition"
                   >
                     Remover
                   </button>
@@ -269,7 +269,7 @@ export default function LegalRoutinesManager() {
             </div>
             <button
               onClick={addStep}
-              className="px-3 py-1 bg-gray-400 text-white rounded text-sm hover:bg-gray-500"
+              className="px-3 py-1.5 bg-[#1E2022] text-gray-200 border border-[#2A2D2F] rounded text-sm hover:bg-[#2A2D2F] transition"
             >
               + Adicionar Passo
             </button>
@@ -315,7 +315,7 @@ export default function LegalRoutinesManager() {
                 setShowForm(false);
                 setEditingRoutine(null);
               }}
-              className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500"
+              className="px-4 py-2 bg-[#1E2022] text-gray-300 border border-[#2A2D2F] rounded hover:bg-[#2A2D2F] transition"
             >
               Cancelar
             </button>
@@ -340,13 +340,13 @@ export default function LegalRoutinesManager() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleEditRoutine(routine)}
-                    className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                    className="px-3 py-1 bg-blue-950/60 text-blue-300 border border-blue-800/60 rounded text-sm hover:bg-blue-900/60 transition"
                   >
                     Editar
                   </button>
                   <button
                     onClick={() => handleDeleteRoutine(routine.id)}
-                    className="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+                    className="px-3 py-1 bg-red-950/40 text-red-300 border border-red-800/60 rounded text-sm hover:bg-red-900/60 transition"
                   >
                     Deletar
                   </button>
@@ -355,12 +355,12 @@ export default function LegalRoutinesManager() {
 
               <div className="flex gap-3 mb-3">
                 {routine.legal_area && (
-                  <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                  <span className="text-xs px-2 py-1 bg-blue-950/60 text-blue-300 border border-blue-800/50 rounded">
                     {routine.legal_area}
                   </span>
                 )}
                 {routine.case_type && (
-                  <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">
+                  <span className="text-xs px-2 py-1 bg-emerald-950/60 text-emerald-300 border border-emerald-800/50 rounded">
                     {routine.case_type}
                   </span>
                 )}

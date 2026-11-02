@@ -213,7 +213,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
   if (!isOpen) return null;
 
   const customer = data?.customer || {};
-  const statusBadge = STATUS_BADGES[customer.client_status] || STATUS_BADGES[customer.status] || { text: 'Conversa', class: 'bg-gray-100 text-gray-100 border-gray-800' };
+  const statusBadge = STATUS_BADGES[customer.client_status] || STATUS_BADGES[customer.status] || { text: 'Conversa', class: 'bg-[#181A1B] text-gray-300 border border-gray-700' };
 
   return (
     <>
@@ -254,7 +254,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
           )}
 
           {data?.anonymized && (
-            <div className="bg-gray-100 border border-[#2A2D2F] rounded p-3 text-sm text-gray-300">
+            <div className="bg-[#181A1B] border border-[#2A2D2F] rounded p-3 text-sm text-gray-300">
               Cliente anonimizado. Dados pessoais não estão disponíveis.
             </div>
           )}

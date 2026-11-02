@@ -234,7 +234,7 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
 
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-bold">⚖️ Monitoramento Processual</h3>
-        <button onClick={() => setShowForm(!showForm)} className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
+        <button onClick={() => setShowForm(!showForm)} className="px-3.5 py-1.5 bg-nc-yellow text-nc-black hover:bg-yellow-400 font-bold rounded-lg text-xs transition">
           {showForm ? 'Cancelar' : '+ Adicionar processo'}
         </button>
       </div>
@@ -324,11 +324,11 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
                 <div
                   key={p.id}
                   onClick={() => setSelectedProcess(p)}
-                  className={`p-3 border rounded cursor-pointer hover:bg-[#181A1B] ${selectedProcess?.id === p.id ? 'bg-blue-50 border-blue-300' : 'bg-[#1B1D1E]'}`}
+                  className={`p-3 border rounded-xl cursor-pointer transition ${selectedProcess?.id === p.id ? 'bg-[#1E2022] border-yellow-500/60 ring-1 ring-yellow-500/40 text-white' : 'bg-[#181A1B] border-gray-800 hover:border-gray-700'}`}
                 >
                   <div className="flex justify-between">
                     <span className="font-mono font-medium">{formatCNJ(p.process_number)}</span>
-                    <span className="text-xs px-2 py-0.5 rounded bg-gray-200">{p.monitoring_status}</span>
+                    <span className="text-xs px-2 py-0.5 rounded bg-[#2A2D2F] text-gray-300 border border-gray-700">{p.monitoring_status}</span>
                   </div>
                   <div className="text-sm text-gray-400">{p.court_name || p.court_code?.toUpperCase()} {p.is_primary && '• Principal'}</div>
                   <div className="text-xs text-gray-500">Última consulta: {p.last_checked_at ? new Date(p.last_checked_at).toLocaleString('pt-BR') : '—'}</div>
@@ -336,14 +336,14 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
                     <button
                       onClick={(e) => { e.stopPropagation(); handleQuery(p); }}
                       disabled={querying}
-                      className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                      className="text-xs px-2.5 py-1 bg-blue-950/60 text-blue-300 border border-blue-800/60 rounded-md hover:bg-blue-900/60 transition"
                     >
                       {querying ? 'Consultando...' : '🔄 Consultar agora'}
                     </button>
                     {isLawyer && (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
-                        className="text-xs px-2 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
+                        className="text-xs px-2.5 py-1 bg-red-950/40 text-red-300 border border-red-800/60 rounded-md hover:bg-red-900/60 transition"
                       >
                         Remover
                       </button>
@@ -365,7 +365,7 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
                     <button
                       type="button"
                       onClick={() => setShowExtractorModal(true)}
-                      className="px-2.5 py-1 text-xs bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-100 rounded font-semibold transition inline-flex items-center gap-1"
+                      className="px-2.5 py-1 text-xs bg-purple-950/60 border border-purple-800/60 text-purple-300 hover:bg-purple-900/60 rounded font-semibold transition inline-flex items-center gap-1"
                       title="Analisar despacho ou decisão do processo com IA"
                     >
                       <span>🤖</span> Analisar com IA
@@ -373,7 +373,7 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
                     <button
                       type="button"
                       onClick={() => setShowManualMovementModal(!showManualMovementModal)}
-                      className="px-2.5 py-1 text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 rounded font-semibold transition"
+                      className="px-2.5 py-1 text-xs bg-[#1E2022] border border-[#2A2D2F] text-gray-200 hover:bg-[#2A2D2F] rounded font-semibold transition"
                     >
                       {showManualMovementModal ? '✕ Cancelar' : '+ Andamento Manual (Projudi / PJe)'}
                     </button>
@@ -382,9 +382,9 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
               </div>
 
               {showManualMovementModal && (
-                <form onSubmit={handleSaveManualMovement} className="mb-4 p-3.5 bg-blue-50/60 border border-blue-200 rounded-lg space-y-2.5">
+                <form onSubmit={handleSaveManualMovement} className="mb-4 p-3.5 bg-[#181A1B] border border-gray-800 rounded-lg space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-blue-900">Registrar Andamento Recente</span>
+                    <span className="text-xs font-bold text-yellow-400">Registrar Andamento Recente</span>
                     <span className="text-[11px] text-gray-500">Ideal quando o DataJud atrasa ou está em timeout</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

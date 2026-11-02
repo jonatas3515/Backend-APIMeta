@@ -529,7 +529,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-100"
+                  className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-[#2A2D2F]"
                 >
                   Cancelar
                 </button>
@@ -720,7 +720,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                     {analysis.audiencia?.identificada ? (
                       <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Identificada</span>
                     ) : (
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-500">Sem audiência</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-[#181A1B] text-gray-400 border border-gray-700">Sem audiência</span>
                     )}
                   </div>
                   {analysis.audiencia?.identificada ? (
@@ -743,7 +743,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                     {analysis.prazo?.identificado ? (
                       <span className="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">Prazo Ativo</span>
                     ) : (
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-500">Sem prazo fixado</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-[#181A1B] text-gray-400 border border-gray-700">Sem prazo fixado</span>
                     )}
                   </div>
                   {analysis.prazo?.identificado ? (
@@ -768,7 +768,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                     {analysis.valores?.tem_valores || analysis.valores?.honorarios_percentual ? (
                       <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Fixados / Editáveis</span>
                     ) : (
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-500">Opcional</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-[#181A1B] text-gray-400 border border-gray-700">Opcional</span>
                     )}
                   </div>
 
@@ -935,7 +935,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-100"
+                    className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-[#2A2D2F]"
                   >
                     Fechar
                   </button>

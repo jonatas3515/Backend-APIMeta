@@ -253,7 +253,7 @@ export default function LegalClassification({ conversation, onUpdate }) {
         {!conversation.archived && (
           <button
             onClick={handleArchive}
-            className="w-full mt-2 px-3 py-2 bg-gray-100 text-gray-300 rounded-lg text-sm hover:bg-gray-200 transition"
+            className="w-full mt-2 px-3 py-2 bg-red-950/40 text-red-300 border border-red-800/60 rounded-lg text-sm hover:bg-red-900/60 font-semibold transition"
           >
             📦 Arquivar Caso
           </button>
@@ -478,7 +478,7 @@ export default function LegalClassification({ conversation, onUpdate }) {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 disabled:bg-gray-300 transition"
+          className="w-full px-4 py-2 bg-nc-yellow text-nc-black rounded-lg font-bold hover:bg-yellow-400 disabled:opacity-50 transition"
         >
           {saving ? 'Salvando...' : '💾 Salvar Classificação'}
         </button>

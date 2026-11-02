@@ -612,18 +612,18 @@ export default function CasesPanel({ notice }) {
 
   const getStatusColor = (status) => {
     const colors = {
-      prospect: 'bg-gray-100 text-gray-100 border border-gray-800',
-      em_analise: 'bg-blue-100 text-blue-800 border border-blue-200',
-      proposta_enviada: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
-      contrato_assinado: 'bg-purple-100 text-purple-800 border border-purple-200',
-      acao_protocolada: 'bg-orange-100 text-orange-800 border border-orange-200',
-      aguardando_decisao: 'bg-rose-100 text-rose-800 border border-rose-200',
-      em_recurso: 'bg-indigo-100 text-indigo-800 border border-indigo-200',
-      em_execucao: 'bg-amber-100 text-amber-800 border border-amber-200',
-      encerrado: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
-      arquivado: 'bg-gray-100 text-gray-400 border border-gray-800'
+      prospect: 'bg-[#1E2022] text-gray-300 border border-gray-700',
+      em_analise: 'bg-blue-950/60 text-blue-300 border border-blue-800/60',
+      proposta_enviada: 'bg-yellow-950/60 text-yellow-300 border border-yellow-800/60',
+      contrato_assinado: 'bg-purple-950/60 text-purple-300 border border-purple-800/60',
+      acao_protocolada: 'bg-orange-950/60 text-orange-300 border border-orange-800/60',
+      aguardando_decisao: 'bg-rose-950/60 text-rose-300 border border-rose-800/60',
+      em_recurso: 'bg-indigo-950/60 text-indigo-300 border border-indigo-800/60',
+      em_execucao: 'bg-amber-950/60 text-amber-300 border border-amber-800/60',
+      encerrado: 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60',
+      arquivado: 'bg-[#1E2022] text-gray-400 border border-gray-700'
     };
-    return colors[status] || 'bg-gray-100 text-gray-100';
+    return colors[status] || 'bg-[#1E2022] text-gray-300 border border-gray-700';
   };
 
   const getPriorityColor = (priority) => {
@@ -730,7 +730,7 @@ export default function CasesPanel({ notice }) {
               <button
                 type="button"
                 onClick={() => { setShowForm(false); setEditingCase(null); }}
-                className="text-gray-400 hover:text-gray-300 text-xl p-1 rounded-lg hover:bg-gray-100 transition"
+                className="text-gray-400 hover:text-gray-300 text-xl p-1 rounded-lg hover:bg-[#2A2D2F] transition"
               >
                 ✕
               </button>
@@ -826,14 +826,14 @@ export default function CasesPanel({ notice }) {
                 placeholder="Ex: Audiência de Conciliação, Recurso, etc."
                 value={formData.deadline_type || ''}
                 onChange={(e) => setFormData({ ...formData, deadline_type: e.target.value })}
-                className="px-3 py-2 border rounded text-sm"
+                className="px-3 py-2 bg-[#1B1D1E] border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
               />
             </div>
             <textarea
               placeholder="Notas"
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="px-3 py-2 border rounded col-span-2"
+              className="px-3 py-2 bg-[#1B1D1E] border border-gray-700 rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow col-span-2"
               rows="3"
             />
 
@@ -1178,7 +1178,7 @@ export default function CasesPanel({ notice }) {
                 setEditingCase(null);
               }}
               disabled={saving}
-              className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-100 transition disabled:opacity-60"
+              className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-[#2A2D2F] transition disabled:opacity-60"
             >
               Cancelar
             </button>
@@ -1530,7 +1530,7 @@ export default function CasesPanel({ notice }) {
                   onClick={() => openCase(caseItem)}
                   className={`border-b text-xs md:text-sm cursor-pointer transition ${
                     isClosed
-                      ? 'bg-gray-100/80 text-gray-500 opacity-70 hover:bg-gray-200/60'
+                      ? 'bg-[#181A1B] text-gray-500 opacity-70 hover:bg-[#1E2022]'
                       : selectedCase?.id === caseItem.id
                       ? 'bg-yellow-500/10 ring-2 ring-inset ring-yellow-500/30 text-yellow-300 hover:bg-yellow-500/15'
                       : 'hover:bg-gray-800/40 text-gray-200'
@@ -1544,12 +1544,12 @@ export default function CasesPanel({ notice }) {
                         {caseItem.title}
                       </span>
                       {isClosed && (
-                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-300 font-bold inline-flex items-center gap-1">
+                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-[#2A2D2F] text-gray-400 font-bold inline-flex items-center gap-1">
                           📁 Encerrado
                         </span>
                       )}
                       {totalDocs > 0 && (
-                        <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${pendingDocs > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                        <span className={`ml-2 text-[10px] px-1.5 py-0.5 rounded ${pendingDocs > 0 ? 'bg-red-950/60 text-red-300 border border-red-800/50' : 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/50'}`}>
                           {pendingDocs > 0 ? `${pendingDocs} de ${totalDocs} pendentes` : '✓ completo'}
                         </span>
                       )}

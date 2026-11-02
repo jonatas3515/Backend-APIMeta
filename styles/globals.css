@@ -21,6 +21,24 @@ body {
   background-color: #181A1B;
 }
 
+@layer base {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="color"]):not([type="range"]):not([type="file"]),
+  textarea,
+  select {
+    background-color: #1E2022;
+    color: #F3F4F6;
+    border-color: #2A2D2F;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: #6B7280;
+  }
+  select option {
+    background-color: #1E2022;
+    color: #F3F4F6;
+  }
+}
+
 /* Scrollbars discretas */
 ::-webkit-scrollbar {
   width: 6px;

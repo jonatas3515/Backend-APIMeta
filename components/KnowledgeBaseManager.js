@@ -148,9 +148,9 @@ export default function KnowledgeBaseManager() {
 
   const statusBadge = (status) => {
     const colors = {
-      rascunho: 'bg-gray-100 text-gray-100',
-      revisado: 'bg-yellow-100 text-yellow-800',
-      aprovado: 'bg-green-100 text-green-800'
+      rascunho: 'bg-[#1E2022] text-gray-300 border border-gray-700',
+      revisado: 'bg-yellow-950/60 text-yellow-300 border border-yellow-800/50',
+      aprovado: 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/50'
     };
     return (
       <span className={`text-xs px-2 py-1 rounded ${colors[status] || colors.rascunho}`}>
@@ -189,7 +189,7 @@ export default function KnowledgeBaseManager() {
             </select>
             <button
               onClick={openCreate}
-              className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm whitespace-nowrap"
+              className="flex-1 sm:flex-none px-4 py-2 bg-nc-yellow text-nc-black font-bold rounded hover:bg-yellow-400 text-sm whitespace-nowrap transition"
             >
               + Novo
             </button>
@@ -208,12 +208,12 @@ export default function KnowledgeBaseManager() {
               placeholder="Título"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="w-full max-w-full min-w-0 px-3 py-2 border rounded text-black"
+              className="w-full max-w-full min-w-0 px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
             />
             <select
               value={form.type}
               onChange={(e) => setForm({ ...form, type: e.target.value })}
-              className="w-full max-w-full min-w-0 px-3 py-2 border rounded text-black"
+              className="w-full max-w-full min-w-0 px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
             >
               {DOC_TYPES.map(t => (
                 <option key={t} value={t}>{t}</option>
@@ -224,35 +224,35 @@ export default function KnowledgeBaseManager() {
               placeholder="Área (opcional)"
               value={form.area}
               onChange={(e) => setForm({ ...form, area: e.target.value })}
-              className="w-full max-w-full min-w-0 px-3 py-2 border rounded text-black"
+              className="w-full max-w-full min-w-0 px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
             />
             <input
               type="text"
               placeholder="Tribunal (opcional)"
               value={form.tribunal}
               onChange={(e) => setForm({ ...form, tribunal: e.target.value })}
-              className="w-full max-w-full min-w-0 px-3 py-2 border rounded text-black"
+              className="w-full max-w-full min-w-0 px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
             />
             <input
               type="text"
               placeholder="Tags (separadas por vírgula)"
               value={form.tags}
               onChange={(e) => setForm({ ...form, tags: e.target.value })}
-              className="w-full max-w-full min-w-0 px-3 py-2 border rounded text-black"
+              className="w-full max-w-full min-w-0 px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
             />
             <input
               type="text"
               placeholder="Versão"
               value={form.version}
               onChange={(e) => setForm({ ...form, version: e.target.value })}
-              className="w-full max-w-full min-w-0 px-3 py-2 border rounded text-black"
+              className="w-full max-w-full min-w-0 px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
             />
           </div>
           <div className="mb-4">
             <textarea
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
-              className="w-full max-w-full min-w-0 px-3 py-2 border rounded text-black font-mono text-sm"
+              className="w-full max-w-full min-w-0 px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded text-gray-100 placeholder-gray-500 font-mono text-sm focus:outline-none focus:border-nc-yellow"
               rows="12"
               placeholder="Conteúdo do documento (será anonimizado e dividido em chunks automaticamente)"
             />
@@ -267,7 +267,7 @@ export default function KnowledgeBaseManager() {
             </button>
             <button
               onClick={closeForm}
-              className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500"
+              className="px-4 py-2 bg-[#1E2022] text-gray-300 border border-[#2A2D2F] rounded hover:bg-[#2A2D2F] transition"
             >
               Cancelar
             </button>
@@ -323,7 +323,7 @@ export default function KnowledgeBaseManager() {
               <div className="flex flex-wrap gap-1 max-w-full overflow-hidden mb-2">
                 {statusBadge(doc.status)}
                 {Array.isArray(doc.tags) && doc.tags.map(tag => (
-                  <span key={tag} className="text-xs px-2 py-1 bg-gray-200 text-gray-300 rounded">
+                  <span key={tag} className="text-xs px-2 py-1 bg-[#1E2022] text-gray-300 border border-gray-700 rounded">
                     {tag}
                   </span>
                 ))}

@@ -25,8 +25,8 @@ export default function ModelsAndRoutinesPanel({ userRole }) {
           onClick={() => setActiveView('templates')}
           className={`px-4 py-2 rounded font-medium ${
             activeView === 'templates'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-300 hover:bg-gray-300'
+              ? 'bg-nc-yellow text-nc-black font-bold shadow-xs'
+              : 'bg-[#1E2022] text-gray-300 border border-[#2A2D2F] hover:bg-[#2A2D2F]'
           }`}
         >
           📄 Modelos de Documento
@@ -35,8 +35,8 @@ export default function ModelsAndRoutinesPanel({ userRole }) {
           onClick={() => setActiveView('routines')}
           className={`px-4 py-2 rounded font-medium ${
             activeView === 'routines'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-300 hover:bg-gray-300'
+              ? 'bg-nc-yellow text-nc-black font-bold shadow-xs'
+              : 'bg-[#1E2022] text-gray-300 border border-[#2A2D2F] hover:bg-[#2A2D2F]'
           }`}
         >
           🔄 Rotinas Jurídicas

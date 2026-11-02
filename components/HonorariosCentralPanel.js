@@ -87,8 +87,8 @@ export default function HonorariosCentralPanel() {
       key: 'hoje',
       titulo: 'Hoje',
       icon: '📅',
-      accent: 'text-emerald-700',
-      badge: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+      accent: 'text-emerald-400',
+      badge: 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60',
       itens: grupos.hoje,
       vazio: 'Nenhum honorário para receber hoje.'
     },
@@ -96,8 +96,8 @@ export default function HonorariosCentralPanel() {
       key: 'prox7',
       titulo: 'Próximos 7 Dias',
       icon: '📅',
-      accent: 'text-blue-700',
-      badge: 'bg-blue-50 text-blue-700 border border-blue-200',
+      accent: 'text-blue-400',
+      badge: 'bg-blue-950/60 text-blue-300 border border-blue-800/60',
       itens: grupos.prox7,
       vazio: 'Nenhum honorário nos próximos 7 dias.'
     },
@@ -105,8 +105,8 @@ export default function HonorariosCentralPanel() {
       key: 'vencidos',
       titulo: 'Vencidos',
       icon: '❗',
-      accent: 'text-red-700',
-      badge: 'bg-red-50 text-red-700 border border-red-200',
+      accent: 'text-red-400',
+      badge: 'bg-red-950/60 text-red-300 border border-red-800/60',
       itens: grupos.vencidos,
       vazio: 'Nenhum honorário vencido.'
     }
@@ -126,7 +126,7 @@ export default function HonorariosCentralPanel() {
         </div>
 
         {msg && (
-          <div className={`p-3 rounded-lg text-sm border ${msg.type === 'error' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
+          <div className={`p-3 rounded-lg text-sm border ${msg.type === 'error' ? 'bg-red-950/60 border-red-800/60 text-red-300' : 'bg-emerald-950/60 border-emerald-800/60 text-emerald-300'}`}>
             {msg.text}
           </div>
         )}
@@ -178,7 +178,7 @@ export default function HonorariosCentralPanel() {
                           <p className="text-[10px] text-gray-500 font-medium">
                             Honorários ({item.feeType === 'fixo' ? 'Fixo' : `${item.feePercentage}%`})
                           </p>
-                          <p className="text-sm font-bold text-emerald-700">{brl(item.honorarioEstimado)}</p>
+                          <p className="text-sm font-bold text-emerald-400">{brl(item.honorarioEstimado)}</p>
                           <p className="text-[10px] text-gray-400">
                             {item.awardedValue ? `Conden.: ${brl(item.awardedValue)}` : `Causa: ${brl(item.valorCausa)}`}
                           </p>
@@ -211,17 +211,17 @@ export default function HonorariosCentralPanel() {
             </div>
             <div className="p-3 bg-[#181A1B] rounded-lg border border-gray-800">
               <p className="text-xs text-gray-500 mb-1">Vencidos</p>
-              <p className="text-xl font-bold text-red-700">{brl(total(grupos.vencidos))}</p>
+              <p className="text-xl font-bold text-red-400">{brl(total(grupos.vencidos))}</p>
               <p className="text-[10px] text-gray-400 mt-0.5">{grupos.vencidos.length} pendência(s)</p>
             </div>
             <div className="p-3 bg-[#181A1B] rounded-lg border border-gray-800">
               <p className="text-xs text-gray-500 mb-1">A Receber Hoje</p>
-              <p className="text-xl font-bold text-emerald-700">{brl(total(grupos.hoje))}</p>
+              <p className="text-xl font-bold text-emerald-400">{brl(total(grupos.hoje))}</p>
               <p className="text-[10px] text-gray-400 mt-0.5">{grupos.hoje.length} pendência(s)</p>
             </div>
             <div className="p-3 bg-[#181A1B] rounded-lg border border-gray-800">
               <p className="text-xs text-gray-500 mb-1">Próximos 7 Dias</p>
-              <p className="text-xl font-bold text-blue-700">{brl(total(grupos.prox7))}</p>
+              <p className="text-xl font-bold text-blue-400">{brl(total(grupos.prox7))}</p>
               <p className="text-[10px] text-gray-400 mt-0.5">{grupos.prox7.length} pendência(s)</p>
             </div>
           </div>

@@ -212,7 +212,7 @@ export default function TarefasPanel() {
               <button
                 type="button"
                 onClick={() => setStatus(t, 'pendente')}
-                className="px-2.5 py-1.5 text-xs font-semibold rounded bg-gray-100 text-gray-300 hover:bg-gray-200 border border-[#2A2D2F] transition flex items-center gap-1"
+                className="px-2.5 py-1.5 text-xs font-semibold rounded bg-[#1E2022] text-gray-300 hover:bg-[#2A2D2F] border border-[#2A2D2F] transition flex items-center gap-1"
                 title="Reabrir tarefa como pendente"
               >
                 ↩ Reabrir
@@ -239,7 +239,7 @@ export default function TarefasPanel() {
             </select>
             <button
               onClick={() => openEdit(t)}
-              className="text-gray-400 hover:text-yellow-600 p-1.5 text-xs rounded hover:bg-gray-100 transition-colors"
+              className="text-gray-400 hover:text-nc-yellow p-1.5 text-xs rounded hover:bg-[#2A2D2F] transition-colors"
               title="Editar tarefa"
             >
               ✏️

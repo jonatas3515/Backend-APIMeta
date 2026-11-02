@@ -131,7 +131,7 @@ export default function CaseSidebar({ conversationId, userRole }) {
 
   const getStatusColor = (status) => {
     const colors = {
-      prospect: 'bg-gray-100 text-gray-100',
+      prospect: 'bg-[#181A1B] text-gray-300 border border-gray-700',
       em_analise: 'bg-blue-100 text-blue-800',
       proposta_enviada: 'bg-yellow-100 text-yellow-800',
       contrato_assinado: 'bg-purple-100 text-purple-800',
@@ -139,7 +139,7 @@ export default function CaseSidebar({ conversationId, userRole }) {
       aguardando_decisao: 'bg-red-100 text-red-800',
       encerrado: 'bg-green-100 text-green-800'
     };
-    return colors[status] || 'bg-gray-100 text-gray-100';
+    return colors[status] || 'bg-[#181A1B] text-gray-300 border border-gray-700';
   };
 
   const formatDate = (date) => {
@@ -313,7 +313,7 @@ export default function CaseSidebar({ conversationId, userRole }) {
                       value={caseItem.status}
                       onChange={(e) => handleUpdateCase(caseItem.id, { status: e.target.value })}
                       disabled={!canEdit}
-                      className="w-full px-2 py-1 border rounded text-xs mt-2 disabled:bg-gray-100"
+                      className="w-full px-2 py-1 border rounded text-xs mt-2 disabled:bg-[#181A1B] text-gray-100 bg-[#1E2022] border-[#2A2D2F]"
                     >
                       <option value="prospect">Prospect</option>
                       <option value="em_analise">Em Análise</option>

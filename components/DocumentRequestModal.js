@@ -24,7 +24,7 @@ const STATUS_BADGES = {
   recusado: 'bg-red-100 text-red-800 border-red-200',
   em_revisao: 'bg-purple-100 text-purple-800 border-purple-200',
   revisado: 'bg-green-100 text-green-800 border-green-200',
-  dispensado: 'bg-gray-100 text-gray-100 border-gray-800'
+  dispensado: 'bg-[#181A1B] text-gray-400 border border-gray-700'
 };
 
 export default function DocumentRequestModal({ caseItem, conversation, onClose }) {
@@ -225,7 +225,7 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
                       <div className="flex-1">
                         <div className="flex items-center justify-between gap-2">
                           <p className="text-sm font-semibold text-gray-100">{item.title || item.document_name}</p>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${STATUS_BADGES[item.status] || 'bg-gray-100 text-gray-300'}`}>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${STATUS_BADGES[item.status] || 'bg-[#181A1B] text-gray-300 border border-gray-700'}`}>
                             {STATUS_LABELS[item.status] || item.status}
                           </span>
                         </div>
@@ -278,7 +278,7 @@ export default function DocumentRequestModal({ caseItem, conversation, onClose }
                 <button
                   type="button"
                   onClick={() => { setDraft(null); setSelected([]); }}
-                  className="px-4 py-2 bg-gray-200 text-gray-300 rounded-lg hover:bg-gray-300 font-semibold text-sm transition"
+                  className="px-4 py-2 bg-[#1E2022] text-gray-300 border border-[#2A2D2F] rounded-lg hover:bg-[#2A2D2F] font-semibold text-sm transition"
                 >
                   Voltar
                 </button>

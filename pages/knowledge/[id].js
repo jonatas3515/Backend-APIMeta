@@ -36,7 +36,7 @@ export default function KnowledgeDetailPage() {
       <button
         type="button"
         onClick={() => router.push('/knowledge')}
-        className="mb-4 rounded bg-gray-200 px-4 py-2"
+        className="mb-4 rounded bg-[#1E2022] text-gray-200 border border-[#2A2D2F] px-4 py-2 hover:bg-[#2A2D2F] transition"
         aria-label="Voltar para lista"
       >
         Voltar
@@ -44,7 +44,7 @@ export default function KnowledgeDetailPage() {
       <h1 className="text-2xl font-bold mb-2">{document.title}</h1>
       <p className="text-sm text-gray-600 mb-4">{document.type} {document.tags?.length ? `• ${document.tags.join(', ')}` : ''}</p>
       {document.summary && <p className="mb-4 italic">{document.summary}</p>}
-      <pre className="whitespace-pre-wrap rounded border p-4 bg-gray-50">{document.content}</pre>
+      <pre className="whitespace-pre-wrap rounded border border-gray-800 p-4 bg-[#1B1D1E] text-gray-200">{document.content}</pre>
     </div>
   );
 }

@@ -395,19 +395,19 @@ export default function RelatoriosPanel() {
                 onClick={() => setFinanceiroStatusFilter(financeiroStatusFilter === 'vencidos' ? 'todos' : 'vencidos')}
                 className={`p-4 rounded-xl border cursor-pointer transition ${
                   financeiroStatusFilter === 'vencidos'
-                    ? 'bg-red-50 border-red-300 ring-2 ring-red-400'
+                    ? 'bg-red-950/50 border-red-500/80 ring-2 ring-red-500/40'
                     : 'bg-[#1B1D1E] border-gray-800 hover:border-red-300 shadow-xs'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-red-700 flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-red-400 flex items-center gap-1.5">
                     <span>❗</span> Honorários c/ Prazos Vencidos
                   </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-red-100 text-red-800">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-red-950/60 text-red-300 border border-red-800/60">
                     {urgencias.vencidos} pendência(s)
                   </span>
                 </div>
-                <p className="text-xl font-bold text-red-700 mt-1">{brl(urgencias.vencidosTotal)}</p>
+                <p className="text-xl font-bold text-red-400 mt-1">{brl(urgencias.vencidosTotal)}</p>
                 <p className="text-[10px] text-gray-500 mt-0.5">
                   {financeiroStatusFilter === 'vencidos' ? '✓ Filtro ativo (clique para limpar)' : 'Clique para filtrar apenas processos com prazos vencidos'}
                 </p>
@@ -417,19 +417,19 @@ export default function RelatoriosPanel() {
                 onClick={() => setFinanceiroStatusFilter(financeiroStatusFilter === 'prox7' ? 'todos' : 'prox7')}
                 className={`p-4 rounded-xl border cursor-pointer transition ${
                   financeiroStatusFilter === 'prox7'
-                    ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-400'
+                    ? 'bg-blue-950/50 border-blue-500/80 ring-2 ring-blue-500/40'
                     : 'bg-[#1B1D1E] border-gray-800 hover:border-blue-300 shadow-xs'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-blue-700 flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-blue-400 flex items-center gap-1.5">
                     <span>📅</span> Previsão / Vencendo nos Próximos 7 Dias
                   </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-100 text-blue-800">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-950/60 text-blue-300 border border-blue-800/60">
                     {urgencias.hoje + urgencias.prox7} processo(s)
                   </span>
                 </div>
-                <p className="text-xl font-bold text-blue-700 mt-1">{brl(urgencias.hojeTotal + urgencias.prox7Total)}</p>
+                <p className="text-xl font-bold text-blue-400 mt-1">{brl(urgencias.hojeTotal + urgencias.prox7Total)}</p>
                 <p className="text-[10px] text-gray-500 mt-0.5">
                   {financeiroStatusFilter === 'prox7' ? '✓ Filtro ativo (clique para limpar)' : 'Clique para filtrar processos com vencimento nos próximos 7 dias'}
                 </p>
@@ -437,7 +437,7 @@ export default function RelatoriosPanel() {
             </div>
 
             <div className="bg-[#1B1D1E] border border-gray-800 rounded-2xl p-5 shadow-lg space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-100">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-800">
                 <div>
                   <h3 className="font-bold text-sm text-white flex items-center gap-2">
                     <span>📑</span> Extrato de Honorários e Valores da Causa
@@ -535,7 +535,7 @@ export default function RelatoriosPanel() {
                           key={c.id}
                           className={`p-3.5 rounded-xl border transition-all ${
                             isClosed
-                              ? 'bg-gray-100/90 border-[#2A2D2F] text-gray-500 opacity-80 hover:opacity-100'
+                              ? 'bg-[#181A1B] border-[#2A2D2F] text-gray-500 opacity-80 hover:opacity-100'
                               : 'bg-[#1B1D1E] border-gray-800 shadow-xs hover:border-amber-400'
                           } flex flex-col sm:flex-row sm:items-center justify-between gap-3`}
                         >
@@ -545,7 +545,7 @@ export default function RelatoriosPanel() {
                                 {c.title}
                               </p>
                               {isClosed && (
-                                <span className="text-[10px] px-2 py-0.5 rounded bg-gray-200 text-gray-200 font-bold border border-[#2A2D2F]">
+                                <span className="text-[10px] px-2 py-0.5 rounded bg-[#2A2D2F] text-gray-300 font-bold border border-[#2A2D2F]">
                                   📁 Encerrado
                                 </span>
                               )}
@@ -553,8 +553,8 @@ export default function RelatoriosPanel() {
                                 <span
                                   className={`text-[10px] px-2 py-0.5 rounded font-medium border ${
                                     isOverdue
-                                      ? 'bg-red-50 text-red-700 border-red-200 font-bold'
-                                      : 'bg-blue-50 text-blue-700 border-blue-200'
+                                      ? 'bg-red-950/60 text-red-300 border-red-800/60 font-bold'
+                                      : 'bg-blue-950/60 text-blue-300 border-blue-800/60'
                                   }`}
                                 >
                                   {isOverdue ? '❗ Vencido em: ' : '📅 Vencimento: '}
@@ -574,7 +574,7 @@ export default function RelatoriosPanel() {
                                   Condenação/Execução: <strong className="font-mono">{brl(fee.awarded_value)}</strong>
                                 </span>
                               )}
-                              <span className="text-[10px] bg-gray-200/80 px-2 py-0.5 rounded text-gray-200 font-medium">
+                              <span className="text-[10px] bg-[#181A1B] border border-gray-700 px-2 py-0.5 rounded text-gray-300 font-medium">
                                 Regra: {fee.fee_type === 'fixo' ? 'Valor Fixo' : `${fee.fee_percentage}% s/ ${fee.fee_basis === 'condenacao' ? 'condenação' : 'causa'}`}
                               </span>
                             </div>
@@ -587,8 +587,8 @@ export default function RelatoriosPanel() {
                               </p>
                               <span className={`inline-block text-[10px] px-2.5 py-0.5 rounded font-medium mt-1 ${
                                 isClosed
-                                  ? 'bg-gray-200 text-gray-200 border border-[#2A2D2F]'
-                                  : 'bg-amber-50 text-yellow-400 font-bold border border-amber-200'
+                                  ? 'bg-[#2A2D2F] text-gray-400 border border-gray-700'
+                                  : 'bg-yellow-950/60 text-yellow-300 font-bold border border-yellow-800/60'
                               }`}>
                                 {isClosed ? '✓ Encerrado / Liquidado' : '⚡ Ativo / Em andamento'}
                               </span>

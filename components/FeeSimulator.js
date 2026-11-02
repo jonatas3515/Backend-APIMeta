@@ -356,9 +356,9 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       {message && (
         <div
           className={`p-3 rounded text-sm ${
-            message.type === 'error' ? 'bg-red-100 text-red-700' :
-            message.type === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-            'bg-green-100 text-green-700'
+            message.type === 'error' ? 'bg-red-950/60 text-red-300 border border-red-800/60' :
+            message.type === 'warning' ? 'bg-yellow-950/60 text-yellow-300 border border-yellow-800/60' :
+            'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60'
           }`}
           role={message.type === 'error' ? 'alert' : 'status'}
           aria-live="polite"
@@ -560,17 +560,17 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       )}
 
       {!hideForm && result && (
-        <div className={`p-4 border rounded space-y-3 ${useOabBase ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'}`}>
+        <div className={`p-4 border rounded space-y-3 ${useOabBase ? 'bg-emerald-950/40 border-emerald-800/60' : 'bg-blue-950/40 border-blue-800/60'}`}>
           <div className="flex items-center justify-between">
-            <p className={`text-xs font-semibold uppercase flex items-center gap-1 ${useOabBase ? 'text-green-700' : 'text-blue-700'}`}>
+            <p className={`text-xs font-semibold uppercase flex items-center gap-1 ${useOabBase ? 'text-emerald-400' : 'text-blue-400'}`}>
               <span className={`inline-block w-2 h-2 rounded-full ${useOabBase ? 'bg-green-500' : 'bg-blue-500'}`} />
               {useOabBase ? 'Cálculo baseado na tabela OAB' : 'Cálculo baseado no catálogo interno'}
             </p>
             {useOabBase && oabReference && (
-              <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">OAB</span>
+              <span className="text-xs bg-emerald-950/60 text-emerald-300 border border-emerald-800/50 px-2 py-0.5 rounded">OAB</span>
             )}
             {!useOabBase && (
-              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Catálogo</span>
+              <span className="text-xs bg-blue-950/60 text-blue-300 border border-blue-800/50 px-2 py-0.5 rounded">Catálogo</span>
             )}
           </div>
           <div className="text-sm space-y-1">
@@ -594,20 +594,20 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           </div>
 
           {useOabBase && oabReference && (
-            <div className="p-3 bg-[#1B1D1E] border border-green-200 rounded space-y-1">
-              <p className="text-xs font-semibold text-green-700 uppercase">Valores OAB</p>
+            <div className="p-3 bg-[#1B1D1E] border border-emerald-800/60 rounded space-y-1">
+              <p className="text-xs font-semibold text-emerald-400 uppercase">Valores OAB</p>
               <p className="text-sm text-gray-300">
                 <span className="font-medium text-green-800">Mínimo (OAB):</span> R$ {Number(oabReference.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}&nbsp;|&nbsp;
                 <span className="font-medium text-green-800">Sugerido (OAB):</span> R$ {Number(oabReference.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}&nbsp;|&nbsp;
                 <span className="font-medium text-green-800">Máximo (OAB):</span> R$ {Number(oabReference.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
-              <p className="text-sm font-semibold text-green-700">
+              <p className="text-sm font-semibold text-emerald-400">
                 Sugestão regional (70-80% OAB): R$ {Number(oabReference.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
             </div>
           )}
 
-          <div className="p-2 bg-yellow-100 text-yellow-800 rounded text-xs">
+          <div className="p-2.5 bg-yellow-950/60 text-yellow-300 border border-yellow-800/60 rounded text-xs">
             {useOabBase
               ? 'Sugestão baseada na tabela OAB com desconto regional. O valor final depende de revisão e aprovação.'
               : 'Sugestão interna. O valor final depende de revisão e aprovação de advogado ou administrador.'}
@@ -652,7 +652,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
               onClick={() => handleSave('rascunho')}
               disabled={saving}
               title={saving ? 'Salvando...' : 'Salvar rascunho da simulação'}
-              className="flex-1 px-4 py-2 bg-gray-200 text-gray-100 rounded hover:bg-gray-300 disabled:opacity-50 text-sm"
+              className="flex-1 px-4 py-2 bg-[#1E2022] text-gray-200 border border-[#2A2D2F] rounded hover:bg-[#2A2D2F] disabled:opacity-50 text-sm transition"
             >
               {saving ? 'Salvando...' : 'Salvar rascunho'}
             </button>
@@ -746,7 +746,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
                     </div>
                   )}
                   {sim.status === 'aprovada' && (
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Aprovada</span>
+                    <span className="text-xs bg-emerald-950/60 text-emerald-300 border border-emerald-800/50 px-2 py-1 rounded">Aprovada</span>
                   )}
                 </div>
               </div>

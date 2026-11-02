@@ -160,10 +160,10 @@ export default function SubscriptionModal({ open, onClose }) {
                       disabled={isCurrent || !!checkoutLoading}
                       className={`w-full py-2.5 rounded-lg text-xs font-bold transition shadow-sm ${
                         isCurrent
-                          ? 'bg-gray-100 text-gray-400 cursor-default border border-gray-800'
+                          ? 'bg-[#181A1B] text-gray-500 cursor-default border border-gray-700'
                           : isEnterprise
                           ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 hover:shadow-md'
-                          : 'bg-nc-black text-white hover:bg-nc-gray-800'
+                          : 'bg-nc-yellow text-nc-black hover:bg-yellow-400 font-bold'
                       }`}
                     >
                       {checkoutLoading === key ? 'Abrindo checkout...' : buttonText}

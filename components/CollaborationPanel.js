@@ -115,7 +115,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
             className={`px-3 py-1 rounded text-sm font-medium transition ${
               activeTab === 'notes'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-300 hover:bg-gray-300'
+                : 'bg-[#1E2022] text-gray-300 border border-[#2A2D2F] hover:bg-[#2A2D2F]'
             }`}
           >
             📝 Notas
@@ -125,7 +125,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
             className={`px-3 py-1 rounded text-sm font-medium transition ${
               activeTab === 'audit'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-300 hover:bg-gray-300'
+                : 'bg-[#1E2022] text-gray-300 border border-[#2A2D2F] hover:bg-[#2A2D2F]'
             }`}
           >
             📋 Auditoria
@@ -135,7 +135,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
             className={`px-3 py-1 rounded text-sm font-medium transition ${
               activeTab === 'assign'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-300 hover:bg-gray-300'
+                : 'bg-[#1E2022] text-gray-300 border border-[#2A2D2F] hover:bg-[#2A2D2F]'
             }`}
           >
             👤 Atribuir
@@ -155,7 +155,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 placeholder="Adicionar nota interna..."
-                className="w-full px-2 py-2 border rounded text-sm mb-2"
+                className="w-full px-2 py-2 bg-[#1E2022] border border-[#2A2D2F] text-gray-100 placeholder-gray-500 rounded text-sm mb-2 focus:outline-none focus:border-nc-yellow"
                 rows="3"
               />
               <label className="flex items-center gap-2 mb-2 text-sm">
@@ -251,7 +251,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
                   onClick={() => handleAssignUser(user.id)}
                   className={`w-full p-3 rounded-lg border-2 text-left transition ${
                     assignedUser === user.id
-                      ? 'border-blue-600 bg-blue-50'
+                      ? 'border-blue-500 bg-[#1E2022] text-white'
                       : 'border-gray-800 bg-[#1B1D1E] hover:border-blue-400'
                   }`}
                 >

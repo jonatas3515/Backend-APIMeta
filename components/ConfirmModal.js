@@ -53,7 +53,7 @@ export default function ConfirmModal({
           <button
             onClick={() => onCancel?.()}
             disabled={loading || disabled}
-            className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-gray-300 bg-[#1E2022] hover:bg-[#2A2D2F] border border-[#2A2D2F] rounded disabled:opacity-50 transition"
             data-testid="confirm-modal-cancel"
           >
             {cancelText}

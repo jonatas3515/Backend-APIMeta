@@ -434,12 +434,12 @@ export default function AgendaPanel() {
         </div>
 
         {showIcal && (
-          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded">
+          <div className="mt-4 p-3 bg-[#1E2022] border border-[#2A2D2F] rounded">
             <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
-              <div className="text-sm text-green-900">
+              <div className="text-sm text-gray-200">
                 <strong>Assinatura iCal</strong>
                 {icalUrl && (
-                  <p className="break-all text-xs text-green-800 mt-1">{icalUrl}</p>
+                  <p className="break-all text-xs text-gray-400 mt-1">{icalUrl}</p>
                 )}
               </div>
               <div className="flex gap-2 flex-wrap">
@@ -452,7 +452,7 @@ export default function AgendaPanel() {
                 </button>
                 <button
                   onClick={handleRegenerateIcal}
-                  className="px-3 py-1.5 text-sm bg-green-100 text-green-800 rounded border border-green-300 hover:bg-green-200"
+                  className="px-3 py-1.5 text-sm bg-[#181A1B] hover:bg-[#2A2D2F] text-gray-200 rounded border border-[#2A2D2F] transition"
                 >
                   Novo link
                 </button>

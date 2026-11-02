@@ -160,7 +160,7 @@ export default function FeeServiceAdmin({ viewMode = null }) {
       <h2 className="font-bold text-base sm:text-lg">💰 Tabela de Honorários</h2>
 
       {message && (
-        <div className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+        <div className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-950/60 text-red-300 border border-red-800/60' : 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60'}`}>
           {message.text}
         </div>
       )}
@@ -176,7 +176,7 @@ export default function FeeServiceAdmin({ viewMode = null }) {
               <div
                 key={s.id}
                 onClick={() => handleSelect(s)}
-                className={`p-2 rounded cursor-pointer text-sm ${selected?.id === s.id ? 'bg-blue-100 border border-blue-300' : 'bg-[#1B1D1E] border hover:bg-gray-100'}`}
+                className={`p-2 rounded cursor-pointer text-sm transition ${selected?.id === s.id ? 'bg-[#1E2022] border border-yellow-500/60 ring-1 ring-yellow-500/40 text-white' : 'bg-[#181A1B] border border-gray-800 hover:border-gray-700'}`}
               >
                 <p className="font-medium">{s.name}</p>
                 <p className="text-xs text-gray-400">{s.legal_area} {s.case_type ? `— ${s.case_type}` : ''}</p>

@@ -129,7 +129,7 @@ export default function UserManagement() {
       case 'admin': return 'text-red-600 bg-red-100';
       case 'advogado': return 'text-blue-600 bg-blue-100';
       case 'estagiario': return 'text-green-600 bg-green-100';
-      default: return 'text-gray-400 bg-gray-100';
+      default: return 'text-gray-300 bg-[#2A2D2F] border border-gray-700';
     }
   };
 
@@ -153,7 +153,7 @@ export default function UserManagement() {
               setMessage('');
               setError('');
             }}
-            className="px-4 py-2 bg-gray-100 text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200"
+            className="px-4 py-2 bg-[#1E2022] text-gray-200 border border-[#2A2D2F] rounded-lg text-sm font-medium hover:border-nc-yellow hover:text-nc-yellow transition"
           >
             {showPasswordForm ? 'Cancelar' : '🔐 Alterar Senha'}
           </button>
@@ -336,7 +336,7 @@ export default function UserManagement() {
                     {(isAdmin || (isAdvogado && user.role === 'estagiario')) && user.id !== profile?.id && (
                       <button
                         onClick={() => toggleActive(user.id, user.is_active)}
-                        className={`text-xs px-3 py-1 rounded ${user.is_active ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
+                        className={`text-xs px-3 py-1 rounded transition ${user.is_active ? 'bg-red-950/60 text-red-300 border border-red-800/60 hover:bg-red-900/60' : 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60 hover:bg-emerald-900/60'}`}
                       >
                         {user.is_active ? 'Desativar' : 'Ativar'}
                       </button>

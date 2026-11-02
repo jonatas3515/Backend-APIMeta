@@ -92,7 +92,7 @@ export default function KnowledgePage() {
           <button
             type="button"
             onClick={() => setShowForm(false)}
-            className="mt-2 rounded bg-gray-200 px-4 py-2"
+            className="mt-2 rounded bg-[#1E2022] text-gray-200 border border-[#2A2D2F] px-4 py-2 hover:bg-[#2A2D2F] transition"
             aria-label="Cancelar cadastro"
           >
             Cancelar

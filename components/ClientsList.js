@@ -512,7 +512,7 @@ export default function ClientsList({ onSelectClient }) {
                   required
                   value={editingName}
                   onChange={(e) => setEditingName(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm text-white focus:outline-none focus:border-yellow-500 font-medium"
+                  className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow font-medium"
                   placeholder="Nome do cliente"
                 />
               </div>
@@ -523,7 +523,7 @@ export default function ClientsList({ onSelectClient }) {
                   type="date"
                   value={editingBirthDate}
                   onChange={(e) => setEditingBirthDate(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm text-white focus:outline-none focus:border-yellow-500"
+                  className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-sm text-gray-100 focus:outline-none focus:border-nc-yellow"
                 />
                 <p className="text-[11px] text-gray-500 mt-1">Usada para calcular a idade e identificar aniversariantes.</p>
               </div>
@@ -532,14 +532,14 @@ export default function ClientsList({ onSelectClient }) {
                 <button
                   type="button"
                   onClick={() => setEditingClient(null)}
-                  className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-100"
+                  className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-[#2A2D2F]"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={savingEdit || !editingName.trim()}
-                  className="px-5 py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-950 font-bold rounded-lg text-xs shadow-sm transition disabled:opacity-50"
+                  className="px-5 py-2 bg-nc-yellow hover:bg-yellow-400 text-nc-black font-bold rounded-lg text-xs shadow-sm transition disabled:opacity-50"
                 >
                   {savingEdit ? 'Salvando...' : 'Salvar Alterações'}
                 </button>

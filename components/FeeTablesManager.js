@@ -259,7 +259,7 @@ export default function FeeTablesManager({ viewMode = null }) {
       </p>
 
       {message && (
-        <div className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+        <div className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-950/60 text-red-300 border border-red-800/60' : 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60'}`}>
           {message.text}
         </div>
       )}
@@ -319,8 +319,8 @@ export default function FeeTablesManager({ viewMode = null }) {
                           onClick={() => setSelectedArea(area)}
                           className={`flex-shrink-0 text-xs px-2.5 py-1 rounded border ${
                             selectedArea === area
-                              ? 'bg-blue-600 text-white border-blue-600'
-                              : 'bg-gray-100 text-gray-300 border-[#2A2D2F] hover:bg-gray-200'
+                              ? 'bg-nc-yellow text-nc-black border-nc-yellow font-bold'
+                              : 'bg-[#1E2022] text-gray-300 border-[#2A2D2F] hover:bg-[#2A2D2F]'
                           }`}
                         >
                           {area}
@@ -329,14 +329,14 @@ export default function FeeTablesManager({ viewMode = null }) {
                       {selectedArea && (
                         <button
                           onClick={() => setSelectedArea('')}
-                          className="flex-shrink-0 text-xs px-2.5 py-1 rounded border bg-gray-100 text-gray-300 border-[#2A2D2F] hover:bg-gray-200"
+                          className="flex-shrink-0 text-xs px-2.5 py-1 rounded border bg-[#1E2022] text-gray-300 border-[#2A2D2F] hover:bg-[#2A2D2F]"
                         >
                           Todas
                         </button>
                       )}
                     </div>
                     <table className="min-w-full text-sm">
-                      <thead className="bg-gray-100 whitespace-nowrap">
+                      <thead className="bg-[#1E2022] text-gray-200 border-b border-gray-700 whitespace-nowrap">
                         <tr>
                           <th className="p-2 text-left">Área</th>
                           <th className="p-2 text-left">Tipo</th>
@@ -414,7 +414,7 @@ export default function FeeTablesManager({ viewMode = null }) {
             <div className="border rounded bg-[#1B1D1E] p-2 text-xs space-y-2">
               <div className="flex gap-2 flex-wrap">
                 <span className="font-semibold">Linhas: {previewValidation.rowCount}</span>
-                <span className={`px-2 rounded ${previewValidation.valid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                <span className={`px-2 py-0.5 rounded text-xs ${previewValidation.valid ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/50' : 'bg-red-950/60 text-red-300 border border-red-800/50'}`}>
                   {previewValidation.valid ? 'Colunas válidas' : 'Colunas inválidas'}
                 </span>
               </div>
@@ -431,7 +431,7 @@ export default function FeeTablesManager({ viewMode = null }) {
               <div className="overflow-x-auto">
                 <table className="min-w-full">
                   <thead>
-                    <tr className="bg-gray-100">
+                    <tr className="bg-[#1E2022] text-gray-200">
                       {(Array.isArray(preview[0]) ? preview[0] : Object.keys(preview[0])).map((k, idx) => (
                         <th key={idx} className="p-1 border text-left">{String(k)}</th>
                       ))}

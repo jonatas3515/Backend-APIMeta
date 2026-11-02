@@ -139,7 +139,7 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-medium text-gray-400 mb-1">Valor da Causa Original</label>
-              <div className="px-3 py-2 bg-gray-100 border border-gray-800 rounded-lg font-mono text-gray-300">
+              <div className="px-3 py-2 bg-[#181A1B] border border-gray-800 rounded-lg font-mono text-gray-300">
                 R$ {Number(caseItem.case_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </div>
             </div>
@@ -296,7 +296,7 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-100"
+              className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-[#2A2D2F]"
             >
               Cancelar
             </button>
