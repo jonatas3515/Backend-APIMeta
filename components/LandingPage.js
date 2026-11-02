@@ -47,11 +47,69 @@ export default function LandingPage({ onOpenLogin }) {
   const [planosLoading, setPlanosLoading] = useState(true);
   const [showJusJNCPopup, setShowJusJNCPopup] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
-  const [form, setForm] = useState({ office_name: '', admin_name: '', email: '', phone: '', password: '', plan: 'trial' });
+  const [form, setForm] = useState({
+    office_name: '',
+    cnpj: '',
+    admin_name: '',
+    email: '',
+    phone: '',
+    password: '',
+    plan: 'trial',
+    // Endereço do escritório (obrigatório)
+    address_zip: '',
+    address_street: '',
+    address_number: '',
+    address_complement: '',
+    address_neighborhood: '',
+    address_city: '',
+    address_state: '',
+    // Dados de faturamento / pagamento (se pago)
+    billing_cpf_cnpj: '',
+    card_number: '',
+    card_name: '',
+    card_exp: '',
+    card_cvc: ''
+  });
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [landingContent, setLandingContent] = useState(DEFAULT_LANDING_CONTENT);
   const [legalModal, setLegalModal] = useState(null);
+
+  const handleCepLookup = async (cepValue) => {
+    const clean = String(cepValue || '').replace(/\D/g, '');
+    if (clean.length === 8) {
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
+        const data = await res.json();
+        if (data && !data.erro) {
+          setForm((prev) => ({
+            ...prev,
+            address_street: data.logradouro || prev.address_street,
+            address_neighborhood: data.bairro || prev.address_neighborhood,
+            address_city: data.localidade || prev.address_city,
+            address_state: data.uf || prev.address_state
+          }));
+        }
+      } catch {}
+    }
+  };
+
+  const formatCardNumber = (value) => {
+    const v = String(value || '').replace(/\D/g, '').slice(0, 16);
+    const parts = [];
+    for (let i = 0; i < v.length; i += 4) {
+      parts.push(v.substring(i, i + 4));
+    }
+    return parts.join(' ');
+  };
+
+  const formatCardExp = (value) => {
+    const clean = String(value || '').replace(/\D/g, '').slice(0, 4);
+    if (clean.length >= 3) {
+      return `${clean.slice(0, 2)}/${clean.slice(2, 4)}`;
+    }
+    return clean;
+  };
 
   useEffect(() => {
     fetch('/api/admin/landing-content')
@@ -63,7 +121,7 @@ export default function LandingPage({ onOpenLogin }) {
       .finally(() => setPlanosLoading(false));
   }, []);
 
-  const onNavigate = (page) => {
+  const onNavigate = (page, planKey = null) => {
     if (page === 'login') {
       if (onOpenLogin) {
         onOpenLogin();
@@ -71,6 +129,10 @@ export default function LandingPage({ onOpenLogin }) {
         window.location.href = '/?login=1';
       }
     } else {
+      if (planKey) {
+        setForm((prev) => ({ ...prev, plan: planKey }));
+      }
+      setFeedback(null);
       setSignupOpen(true);
     }
   };
@@ -86,6 +148,65 @@ export default function LandingPage({ onOpenLogin }) {
   const handleSignup = async (e) => {
     e.preventDefault();
     if (submitting) return;
+
+    if (!form.office_name.trim()) {
+      setFeedback({ type: 'error', text: 'Informe o nome do escritório.' });
+      return;
+    }
+    if (!form.admin_name.trim()) {
+      setFeedback({ type: 'error', text: 'Informe seu nome completo.' });
+      return;
+    }
+    if (!form.email.trim()) {
+      setFeedback({ type: 'error', text: 'Informe seu e-mail profissional.' });
+      return;
+    }
+    if (!form.phone.trim()) {
+      setFeedback({ type: 'error', text: 'Informe o telefone / WhatsApp do escritório.' });
+      return;
+    }
+    if (!form.password || form.password.length < 8) {
+      setFeedback({ type: 'error', text: 'A senha deve conter ao menos 8 caracteres.' });
+      return;
+    }
+    if (
+      !form.address_zip.trim() ||
+      !form.address_street.trim() ||
+      !form.address_number.trim() ||
+      !form.address_neighborhood.trim() ||
+      !form.address_city.trim() ||
+      !form.address_state.trim()
+    ) {
+      setFeedback({
+        type: 'error',
+        text: 'Preencha o endereço completo do escritório (CEP, Rua, Número, Bairro, Cidade e UF).'
+      });
+      return;
+    }
+    if (form.plan !== 'trial') {
+      if (!form.billing_cpf_cnpj.trim()) {
+        setFeedback({ type: 'error', text: 'Informe o CPF ou CNPJ para faturamento do plano contratado.' });
+        return;
+      }
+      const cleanCard = form.card_number.replace(/\D/g, '');
+      if (cleanCard.length < 13 || cleanCard.length > 19) {
+        setFeedback({ type: 'error', text: 'Informe um número de cartão de crédito válido.' });
+        return;
+      }
+      if (!form.card_name.trim()) {
+        setFeedback({ type: 'error', text: 'Informe o nome impresso no cartão.' });
+        return;
+      }
+      if (!form.card_exp.trim() || form.card_exp.length < 5) {
+        setFeedback({ type: 'error', text: 'Informe a validade do cartão (MM/AA).' });
+        return;
+      }
+      if (!form.card_cvc.trim() || form.card_cvc.length < 3) {
+        setFeedback({ type: 'error', text: 'Informe o código de segurança do cartão (CVC).' });
+        return;
+      }
+    }
+
     setSubmitting(true);
     setFeedback(null);
     try {
@@ -96,7 +217,13 @@ export default function LandingPage({ onOpenLogin }) {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.error || 'Erro ao criar conta');
-      setFeedback({ type: 'success', text: 'Escritório criado! Você já pode entrar no sistema.' });
+      setFeedback({
+        type: 'success',
+        text:
+          form.plan === 'trial'
+            ? 'Escritório criado com sucesso! Período de 30 dias de teste grátis ativado. Você já pode entrar no sistema.'
+            : `Escritório criado com sucesso e assinatura ativada! Você já pode entrar no sistema.`
+      });
     } catch (err) {
       safeError('landing_signup_error', err, { component: 'LandingPage' });
       setFeedback({ type: 'error', text: err.message || 'Erro ao criar conta' });
@@ -374,7 +501,7 @@ export default function LandingPage({ onOpenLogin }) {
 
                     {/* Botão CTA */}
                     <button
-                      onClick={() => onNavigate('signup')}
+                      onClick={() => onNavigate('signup', plano.tipo || 'trial')}
                       className={`w-full py-3 rounded-xl font-medium transition-colors ${isDestaque
                         ? 'bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white font-bold'
                         : 'bg-neutral-800 hover:bg-neutral-700 text-white'
@@ -542,55 +669,398 @@ export default function LandingPage({ onOpenLogin }) {
 
       {/* Modal de cadastro de escritorio (onboarding SaaS) */}
       {signupOpen && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={() => setSignupOpen(false)}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4" onClick={() => setSignupOpen(false)}>
           <div
-            className="bg-neutral-900 border border-neutral-800 rounded-2xl shadow-xl shadow-red-500/10 w-full max-w-md"
+            className="bg-[#181A1B] border border-gray-800 rounded-2xl shadow-2xl shadow-black/80 w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-fadeIn"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+            {/* Header */}
+            <div className="p-4 sm:p-5 border-b border-gray-800 flex justify-between items-center bg-[#151718]">
               <div>
-                <h3 className="font-bold text-lg text-white">Criar escritório</h3>
-                <p className="text-xs text-neutral-400">{diasTeste} dias grátis, sem cartão</p>
+                <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                  <span>🏢</span>
+                  <span>Criar Escritório</span>
+                </h3>
+                <p className="text-xs text-gray-400">
+                  {form.plan === 'trial'
+                    ? `${diasTeste} dias de teste grátis com acesso total • Sem cartão de crédito`
+                    : `Contratação: Plano ${form.plan === 'basico' ? 'Básico (R$ 49/mês)' : form.plan === 'profissional' ? 'Profissional (R$ 99/mês)' : 'Enterprise (R$ 199/mês)'}`}
+                </p>
               </div>
-              <button onClick={() => setSignupOpen(false)} className="text-neutral-400 hover:text-white">✕</button>
+              <button
+                type="button"
+                onClick={() => setSignupOpen(false)}
+                className="w-8 h-8 rounded-lg bg-gray-800/80 hover:bg-gray-700 text-gray-400 hover:text-white flex items-center justify-center transition"
+              >
+                ✕
+              </button>
             </div>
-            <form onSubmit={handleSignup} className="p-4 space-y-3">
+
+            {/* Form Body */}
+            <form onSubmit={handleSignup} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               {feedback && (
-                <div className={`p-3 rounded text-sm ${feedback.type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'bg-green-500/10 text-green-400 border border-green-500/30'}`}>
+                <div className={`p-3.5 rounded-xl text-sm border font-medium ${
+                  feedback.type === 'error'
+                    ? 'bg-red-950/40 text-red-300 border-red-500/40'
+                    : 'bg-emerald-950/40 text-emerald-300 border-emerald-500/40'
+                }`}>
                   {feedback.text}
                 </div>
               )}
-              <input required type="text" placeholder="Nome do escritório" value={form.office_name}
-                onChange={(e) => setForm({ ...form, office_name: e.target.value })}
-                className="w-full px-3 py-2 rounded bg-black border border-neutral-800 text-sm text-white focus:border-red-500 focus:outline-none" />
-              <input required type="text" placeholder="Seu nome completo" value={form.admin_name}
-                onChange={(e) => setForm({ ...form, admin_name: e.target.value })}
-                className="w-full px-3 py-2 rounded bg-black border border-neutral-800 text-sm text-white focus:border-red-500 focus:outline-none" />
-              <input required type="email" placeholder="E-mail" value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-3 py-2 rounded bg-black border border-neutral-800 text-sm text-white focus:border-red-500 focus:outline-none" />
-              <input type="tel" placeholder="Telefone / WhatsApp" value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="w-full px-3 py-2 rounded bg-black border border-neutral-800 text-sm text-white focus:border-red-500 focus:outline-none" />
-              <input required type="password" placeholder="Senha (mín. 8 caracteres)" minLength={8} value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className="w-full px-3 py-2 rounded bg-black border border-neutral-800 text-sm text-white focus:border-red-500 focus:outline-none" />
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full py-2.5 rounded-lg font-bold text-white bg-red-600 hover:bg-red-700 shadow-lg shadow-red-500/25 transition disabled:opacity-60"
-              >
-                {submitting ? 'Criando...' : 'Criar minha conta grátis'}
-              </button>
-              {feedback?.type === 'success' && (
-                <button
-                  type="button"
-                  onClick={() => onNavigate('login')}
-                  className="block w-full text-center text-sm text-red-500 hover:text-red-400 font-medium"
-                >
-                  Entrar no sistema →
-                </button>
+
+              {/* Seletor de Planos */}
+              <div>
+                <label className="block text-xs font-bold text-gray-300 uppercase tracking-wider mb-2">
+                  Escolha o Plano:
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { key: 'trial', name: 'Trial Grátis', price: 'R$ 0', period: '30 dias', badge: 'Sem cartão' },
+                    { key: 'basico', name: 'Básico', price: 'R$ 49', period: '/mês', badge: 'Autônomo' },
+                    { key: 'profissional', name: 'Profissional', price: 'R$ 99', period: '/mês', badge: 'Popular' },
+                    { key: 'enterprise', name: 'Enterprise', price: 'R$ 199', period: '/mês', badge: 'IA Completa' }
+                  ].map((p) => {
+                    const isSelected = form.plan === p.key;
+                    return (
+                      <button
+                        key={p.key}
+                        type="button"
+                        onClick={() => setForm({ ...form, plan: p.key })}
+                        className={`p-2.5 rounded-xl border text-left transition flex flex-col justify-between ${
+                          isSelected
+                            ? p.key === 'enterprise'
+                              ? 'border-purple-500 bg-purple-950/40 ring-2 ring-purple-500/50 shadow-md'
+                              : p.key === 'trial'
+                              ? 'border-nc-yellow bg-amber-950/40 ring-2 ring-nc-yellow/60 shadow-md'
+                              : 'border-blue-500 bg-blue-950/40 ring-2 ring-blue-500/50 shadow-md'
+                            : 'border-gray-800 bg-[#1F2224] hover:border-gray-700 hover:bg-[#25282B]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="font-bold text-xs text-white truncate">{p.name}</span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-extrabold ${
+                            isSelected ? 'bg-white text-black' : 'bg-gray-800 text-gray-400'
+                          }`}>
+                            {p.badge}
+                          </span>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-sm font-black text-white">{p.price}</span>
+                          <span className="text-[10px] text-gray-400">{p.period}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Dados do Escritório e Admin */}
+              <div className="space-y-3 pt-1">
+                <p className="text-xs font-bold text-gray-300 uppercase tracking-wider">
+                  1. Dados do Escritório & Contato
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Nome do Escritório <span className="text-red-400">*</span></label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="Ex: Neves & Costa Advogados"
+                      value={form.office_name}
+                      onChange={(e) => setForm({ ...form, office_name: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-gray-800 text-sm text-white focus:border-nc-yellow focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">CNPJ do Escritório <span className="text-gray-500">(Opcional)</span></label>
+                    <input
+                      type="text"
+                      placeholder="00.000.000/0000-00"
+                      value={form.cnpj}
+                      onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-gray-800 text-sm text-white focus:border-nc-yellow focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Seu Nome Completo (Admin) <span className="text-red-400">*</span></label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="Dr(a). Nome Sobrenome"
+                      value={form.admin_name}
+                      onChange={(e) => setForm({ ...form, admin_name: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-gray-800 text-sm text-white focus:border-nc-yellow focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Telefone / WhatsApp <span className="text-red-400">*</span></label>
+                    <input
+                      required
+                      type="tel"
+                      placeholder="(00) 00000-0000"
+                      value={form.phone}
+                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-gray-800 text-sm text-white focus:border-nc-yellow focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">E-mail Profissional <span className="text-red-400">*</span></label>
+                    <input
+                      required
+                      type="email"
+                      placeholder="contato@seuescritorio.com.br"
+                      value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-gray-800 text-sm text-white focus:border-nc-yellow focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Senha de Acesso <span className="text-red-400">*</span></label>
+                    <input
+                      required
+                      type="password"
+                      placeholder="Mínimo 8 caracteres"
+                      minLength={8}
+                      value={form.password}
+                      onChange={(e) => setForm({ ...form, password: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-gray-800 text-sm text-white focus:border-nc-yellow focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Endereço do Escritório */}
+              <div className="space-y-3 pt-2 border-t border-gray-800">
+                <p className="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center justify-between">
+                  <span>2. Endereço do Escritório <span className="text-red-400">*</span></span>
+                  <span className="text-[10px] text-gray-500 font-normal">Digite o CEP para auto-completar</span>
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">CEP <span className="text-red-400">*</span></label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="00000-000"
+                      maxLength={9}
+                      value={form.address_zip}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm({ ...form, address_zip: val });
+                        handleCepLookup(val);
+                      }}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-gray-800 text-sm text-white focus:border-nc-yellow focus:outline-none"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs text-gray-400 mb-1">Logradouro / Rua <span className="text-red-400">*</span></label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="Av. / Rua / Praça"
+                      value={form.address_street}
+                      onChange={(e) => setForm({ ...form, address_street: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-gray-800 text-sm text-white focus:border-nc-yellow focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Número <span className="text-red-400">*</span></label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="123"
+                      value={form.address_number}
+                      onChange={(e) => setForm({ ...form, address_number: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-gray-800 text-sm text-white focus:border-nc-yellow focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Complemento / Sala</label>
+                    <input
+                      type="text"
+                      placeholder="Sala 402"
+                      value={form.address_complement}
+                      onChange={(e) => setForm({ ...form, address_complement: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-gray-800 text-sm text-white focus:border-nc-yellow focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Bairro <span className="text-red-400">*</span></label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="Centro"
+                      value={form.address_neighborhood}
+                      onChange={(e) => setForm({ ...form, address_neighborhood: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-gray-800 text-sm text-white focus:border-nc-yellow focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-400 mb-1">Cidade <span className="text-red-400">*</span></label>
+                      <input
+                        required
+                        type="text"
+                        placeholder="Cidade"
+                        value={form.address_city}
+                        onChange={(e) => setForm({ ...form, address_city: e.target.value })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-gray-800 text-sm text-white focus:border-nc-yellow focus:outline-none"
+                      />
+                    </div>
+                    <div className="w-16">
+                      <label className="block text-xs text-gray-400 mb-1">UF <span className="text-red-400">*</span></label>
+                      <input
+                        required
+                        type="text"
+                        maxLength={2}
+                        placeholder="UF"
+                        value={form.address_state}
+                        onChange={(e) => setForm({ ...form, address_state: e.target.value.toUpperCase() })}
+                        className="w-full px-2 py-2 text-center uppercase rounded-lg bg-[#111213] border border-gray-800 text-sm text-white focus:border-nc-yellow focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Seção Inline de Pagamento (somente visível se plano pago) */}
+              {form.plan !== 'trial' && (
+                <div className="space-y-3 pt-3 border-t border-purple-500/40 bg-purple-950/20 p-4 rounded-xl border animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-black text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>💳</span>
+                        <span>3. Dados de Faturamento e Cartão de Crédito</span>
+                      </p>
+                      <p className="text-[11px] text-gray-400">
+                        Total: <strong className="text-white">R$ {form.plan === 'basico' ? '49' : form.plan === 'profissional' ? '99' : '199'}/mês</strong> • Faturamento mensal seguro
+                      </p>
+                    </div>
+                    <span className="text-xs px-2.5 py-1 rounded bg-purple-500/20 text-purple-200 border border-purple-500/40 font-bold">
+                      Pagamento Seguro
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-gray-300 mb-1">
+                      CPF ou CNPJ para Nota Fiscal / Faturamento <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                      value={form.billing_cpf_cnpj}
+                      onChange={(e) => setForm({ ...form, billing_cpf_cnpj: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-purple-500/50 text-sm text-white focus:border-purple-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-300 mb-1">
+                        Número do Cartão de Crédito <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        required
+                        type="text"
+                        placeholder="0000 0000 0000 0000"
+                        maxLength={19}
+                        value={form.card_number}
+                        onChange={(e) => setForm({ ...form, card_number: formatCardNumber(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-purple-500/50 text-sm text-white focus:border-purple-400 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-300 mb-1">
+                        Nome Impresso no Cartão <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        required
+                        type="text"
+                        placeholder="Como impresso no cartão"
+                        value={form.card_name}
+                        onChange={(e) => setForm({ ...form, card_name: e.target.value.toUpperCase() })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-purple-500/50 text-sm text-white uppercase focus:border-purple-400 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-300 mb-1">
+                        Validade (MM/AA) <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        required
+                        type="text"
+                        placeholder="MM/AA"
+                        maxLength={5}
+                        value={form.card_exp}
+                        onChange={(e) => setForm({ ...form, card_exp: formatCardExp(e.target.value) })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-purple-500/50 text-sm text-white text-center focus:border-purple-400 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-300 mb-1">
+                        CVC / CVV <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        required
+                        type="text"
+                        placeholder="123"
+                        maxLength={4}
+                        value={form.card_cvc}
+                        onChange={(e) => setForm({ ...form, card_cvc: e.target.value.replace(/\D/g, '') })}
+                        className="w-full px-3 py-2 rounded-lg bg-[#111213] border border-purple-500/50 text-sm text-white text-center focus:border-purple-400 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1 text-[11px] text-gray-400">
+                    <span>🔒</span>
+                    <span>Ambiente criptografado. Seus dados de pagamento são protegidos com segurança PCI-DSS.</span>
+                  </div>
+                </div>
               )}
+
+              {/* Botão de Submit */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className={`w-full py-3 rounded-xl font-black text-sm transition shadow-lg flex items-center justify-center gap-2 disabled:opacity-60 ${
+                    form.plan === 'trial'
+                      ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-500/25'
+                      : 'bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-500/30'
+                  }`}
+                >
+                  {submitting
+                    ? 'Processando...'
+                    : form.plan === 'trial'
+                    ? '✨ Criar minha conta grátis (30 dias)'
+                    : `💳 Confirmar Assinatura do Plano ${form.plan === 'basico' ? 'Básico (R$ 49/mês)' : form.plan === 'profissional' ? 'Profissional (R$ 99/mês)' : 'Enterprise (R$ 199/mês)'}`}
+                </button>
+
+                {feedback?.type === 'success' && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('login')}
+                    className="mt-3 block w-full text-center text-sm text-nc-yellow hover:underline font-bold"
+                  >
+                    Entrar no sistema agora →
+                  </button>
+                )}
+              </div>
             </form>
           </div>
         </div>

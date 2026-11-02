@@ -38,12 +38,18 @@ async function handleGet(req, res) {
 
   try {
     if (action === 'users') {
-      // Lista usuários ativos
-      const { data, error } = await supabase
+      // Lista usuários ativos estritamente do escritório do usuário
+      const officeId = req.user?.office_id || req.user?.office?.id;
+      let query = supabase
         .from('users')
         .select('id, name, email, role')
-        .eq('is_active', true)
-        .order('name');
+        .eq('is_active', true);
+
+      if (officeId) {
+        query = query.eq('office_id', officeId);
+      }
+
+      const { data, error } = await query.order('name');
 
       if (error) throw error;
       return res.status(200).json(data || []);

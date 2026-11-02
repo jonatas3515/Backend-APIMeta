@@ -4,6 +4,7 @@ import UserManagement from './UserManagement';
 import SignatureSettings from './SignatureSettings';
 import ProfilePanel from './ProfilePanel';
 import OfficeSettingsPanel from './OfficeSettingsPanel';
+import FeatureGate from './FeatureGate';
 
 export default function SettingsPanel({ initialView = 'users' }) {
   const { profile } = useAuth();
@@ -61,7 +62,9 @@ export default function SettingsPanel({ initialView = 'users' }) {
           <UserManagement />
         )}
         {activeView === 'signatures' && canAccessSignatures && (
-          <SignatureSettings />
+          <FeatureGate feature="signatures" title="Assinatura Eletrônica" requiredPlan="Profissional">
+            <SignatureSettings />
+          </FeatureGate>
         )}
         {activeView === 'office' && canAccessUsers && (
           <OfficeSettingsPanel />

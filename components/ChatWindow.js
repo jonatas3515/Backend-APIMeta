@@ -9,6 +9,7 @@ import RemindersPanel from './RemindersPanel';
 import DocumentGenerator from './DocumentGenerator';
 import CustomerProfilePanel from './CustomerProfilePanel';
 import SignaturePanel from './SignaturePanel';
+import FeatureGate from './FeatureGate';
 import CaseSuggestionBanner from './CaseSuggestionBanner';
 import CaseCreationModal from './CaseCreationModal';
 import CaseLinkModal from './CaseLinkModal';
@@ -1332,7 +1333,9 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
       {/* Painel de Assinatura Eletrônica */}
       {activePanel === 'signatures' && (
         <div className="nc-panel p-4 max-h-80 overflow-y-auto">
-          <SignaturePanel conversationId={conversation?.id} />
+          <FeatureGate feature="signatures" title="Assinatura Eletrônica" requiredPlan="Profissional">
+            <SignaturePanel conversationId={conversation?.id} />
+          </FeatureGate>
         </div>
       )}
 

@@ -5,6 +5,16 @@ import { PLANS } from '@/lib/plans';
 const TRIAL_DAYS = 30;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function detectCardBrand(number) {
+  const clean = String(number || '').replace(/\D/g, '');
+  if (/^4/.test(clean)) return 'Visa';
+  if (/^(5[1-5]|222[1-9]|22[3-9]|2[3-6]|27[01]|2720)/.test(clean)) return 'Mastercard';
+  if (/^(4011|438935|451416|4576|504175|5067|5090|627780|636297|636368)/.test(clean)) return 'Elo';
+  if (/^(34|37)/.test(clean)) return 'American Express';
+  if (/^(606282|3841)/.test(clean)) return 'Hipercard';
+  return 'Cartão de Crédito';
+}
+
 async function handler(req, res) {
   if (!supabaseAdmin) {
     return res.status(500).json({ error: 'Supabase não configurado' });
@@ -14,7 +24,29 @@ async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido' });
   }
 
-  const { office_name, admin_name, email, phone, password, plan = 'trial' } = req.body || {};
+  const {
+    office_name,
+    cnpj,
+    admin_name,
+    email,
+    phone,
+    password,
+    plan = 'trial',
+    // Endereço
+    address_street,
+    address_number,
+    address_complement,
+    address_neighborhood,
+    address_city,
+    address_state,
+    address_zip,
+    // Faturamento / Pagamento (se pago)
+    billing_cpf_cnpj,
+    card_number,
+    card_name,
+    card_exp,
+    card_cvc
+  } = req.body || {};
 
   if (!office_name || !admin_name || !email || !password) {
     return res.status(400).json({ error: 'office_name, admin_name, email e password são obrigatórios' });
@@ -28,43 +60,89 @@ async function handler(req, res) {
     return res.status(400).json({ error: 'A senha deve ter ao menos 8 caracteres' });
   }
 
+  const planKey = (PLANS[plan] && plan !== 'trial') ? plan : 'trial';
+  const isPaid = planKey !== 'trial';
+
+  // Se plano pago, validação obrigatória dos dados de cobrança e cartão
+  if (isPaid) {
+    if (!billing_cpf_cnpj || !String(billing_cpf_cnpj).trim()) {
+      return res.status(400).json({ error: 'CPF ou CNPJ para faturamento é obrigatório no plano contratado' });
+    }
+    const cleanCard = String(card_number || '').replace(/\D/g, '');
+    if (cleanCard.length < 13 || cleanCard.length > 19) {
+      return res.status(400).json({ error: 'Número de cartão de crédito inválido' });
+    }
+    if (!card_name || !String(card_name).trim()) {
+      return res.status(400).json({ error: 'Nome impresso no cartão é obrigatório' });
+    }
+    if (!card_exp || !String(card_exp).trim()) {
+      return res.status(400).json({ error: 'Data de validade do cartão é obrigatória' });
+    }
+    if (!card_cvc || !String(card_cvc).trim()) {
+      return res.status(400).json({ error: 'Código de segurança (CVC) é obrigatório' });
+    }
+  }
+
   const cleanEmail = String(email).trim().toLowerCase();
   const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const planKey = PLANS[plan] ? plan : 'trial';
+  const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  const last4 = isPaid && card_number ? String(card_number).replace(/\D/g, '').slice(-4) : null;
+  const brand = isPaid ? detectCardBrand(card_number) : null;
 
   try {
-    // 1. Cria o escritorio em trial
+    // 1. Cria o escritorio
+    const officePayload = {
+      name: String(office_name).trim(),
+      email: cleanEmail,
+      phone: phone ? String(phone).trim() : null,
+      cnpj: cnpj ? String(cnpj).trim() : null,
+      address_street: address_street ? String(address_street).trim() : null,
+      address_number: address_number ? String(address_number).trim() : null,
+      address_complement: address_complement ? String(address_complement).trim() : null,
+      address_neighborhood: address_neighborhood ? String(address_neighborhood).trim() : null,
+      address_city: address_city ? String(address_city).trim() : null,
+      address_state: address_state ? String(address_state).trim() : null,
+      address_zip: address_zip ? String(address_zip).trim() : null,
+      plan: planKey,
+      status: isPaid ? 'active' : 'trial',
+      trial_ends_at: isPaid ? null : trialEndsAt,
+      billing_cpf_cnpj: billing_cpf_cnpj ? String(billing_cpf_cnpj).trim() : null,
+      payment_method: isPaid ? 'credit_card' : null,
+      last4_card: last4,
+      card_brand: brand
+    };
+
     const { data: office, error: officeError } = await supabaseAdmin
       .from('offices')
-      .insert({
-        name: String(office_name).trim(),
-        email: cleanEmail,
-        phone: phone ? String(phone).trim() : null,
-        plan: planKey,
-        status: 'trial',
-        trial_ends_at: trialEndsAt
-      })
+      .insert(officePayload)
       .select()
       .single();
 
     if (officeError) {
-      logger('error', 'REGISTER_OFFICE_ERROR', { httpStatus: 500 });
+      logger('error', 'REGISTER_OFFICE_ERROR', { error: officeError.message, httpStatus: 500 });
       return res.status(500).json({ error: 'Erro ao criar escritório' });
     }
 
-    // 2. Cria a assinatura em trialing
+    // 2. Cria a assinatura
+    const subPayload = {
+      office_id: office.id,
+      plan: planKey,
+      status: isPaid ? 'active' : 'trialing',
+      current_period_start: new Date().toISOString(),
+      current_period_end: isPaid ? periodEnd : trialEndsAt,
+      billing_cpf_cnpj: billing_cpf_cnpj ? String(billing_cpf_cnpj).trim() : null,
+      payment_method: isPaid ? 'credit_card' : null,
+      last4_card: last4,
+      card_brand: brand
+    };
+
     const { error: subError } = await supabaseAdmin
       .from('subscriptions')
-      .insert({
-        office_id: office.id,
-        plan: planKey,
-        status: 'trialing',
-        current_period_start: new Date().toISOString(),
-        current_period_end: trialEndsAt
-      });
+      .insert(subPayload);
 
     if (subError) {
-      logger('error', 'REGISTER_SUBSCRIPTION_ERROR', { officeId: office.id, httpStatus: 500 });
+      logger('error', 'REGISTER_SUBSCRIPTION_ERROR', { officeId: office.id, error: subError.message, httpStatus: 500 });
     }
 
     // 3. Cria o usuario admin no Supabase Auth
@@ -97,16 +175,18 @@ async function handler(req, res) {
       });
 
     if (userError) {
-      logger('error', 'REGISTER_USER_ERROR', { officeId: office.id, httpStatus: 500 });
+      logger('error', 'REGISTER_USER_ERROR', { officeId: office.id, error: userError.message, httpStatus: 500 });
       return res.status(500).json({ error: 'Erro ao vincular usuário administrador' });
     }
 
-    logger('info', 'REGISTER_OFFICE_SUCCESS', { officeId: office.id, httpStatus: 201 });
+    logger('info', 'REGISTER_OFFICE_SUCCESS', { officeId: office.id, isPaid, plan: planKey, httpStatus: 201 });
     return res.status(201).json({
       success: true,
       office: { id: office.id, name: office.name, plan: office.plan, status: office.status, trial_ends_at: office.trial_ends_at },
       user: { email: cleanEmail, role: 'admin' },
-      trial_days: TRIAL_DAYS
+      plan: planKey,
+      is_paid: isPaid,
+      trial_days: isPaid ? 0 : TRIAL_DAYS
     });
   } catch (error) {
     logger('error', 'REGISTER_OFFICE_EXCEPTION', { httpStatus: 500 });

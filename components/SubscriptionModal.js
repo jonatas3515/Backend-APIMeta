@@ -78,8 +78,9 @@ export default function SubscriptionModal({ open, onClose }) {
 
         <div className="p-4">
           {isTrialing && (
-            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800" data-testid="trial-banner">
-              Você está em período de teste: <strong>{data.trial.days_remaining} dia(s) restante(s)</strong>.
+            <div className="mb-4 p-3.5 bg-amber-950/40 border border-amber-500/40 rounded-xl text-sm text-amber-200 flex items-center gap-2" data-testid="trial-banner">
+              <span>⏳</span>
+              <span>Você está em período de teste: <strong className="text-amber-400 font-black">{data.trial.days_remaining} dia(s) restante(s)</strong>.</span>
             </div>
           )}
 
@@ -117,10 +118,10 @@ export default function SubscriptionModal({ open, onClose }) {
                     key={key}
                     className={`border rounded-xl p-4 flex flex-col justify-between transition ${
                       isCurrent
-                        ? 'border-nc-yellow ring-2 ring-nc-yellow bg-yellow-50/40 shadow-md'
+                        ? 'border-nc-yellow ring-2 ring-nc-yellow/70 bg-amber-950/20 shadow-md'
                         : isEnterprise
-                        ? 'border-purple-300 bg-gradient-to-b from-purple-50/30 to-white shadow-sm'
-                        : 'border-gray-800 hover:border-[#2A2D2F]'
+                        ? 'border-purple-500/50 bg-[#1E1830] ring-1 ring-purple-500/30 shadow-lg hover:border-purple-400'
+                        : 'border-gray-800 bg-[#161819] hover:border-gray-700'
                     }`}
                     data-testid={`plan-card-${key}`}
                   >
@@ -133,7 +134,7 @@ export default function SubscriptionModal({ open, onClose }) {
                           </span>
                         )}
                         {!isCurrent && isEnterprise && (
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-purple-100 text-purple-700 font-bold">
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-purple-900/70 text-purple-200 border border-purple-600/50 font-bold">
                             MAIS COMPLETO
                           </span>
                         )}
@@ -144,11 +145,11 @@ export default function SubscriptionModal({ open, onClose }) {
                       </p>
                       <p className="text-xs text-gray-400 mb-4">{plan.description}</p>
 
-                      <div className="border-t border-gray-100 pt-3 mb-4 space-y-1.5">
+                      <div className="border-t border-gray-800 pt-3 mb-4 space-y-1.5">
                         <p className="text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-2">O que inclui:</p>
                         {(plan.highlights || []).map((highlight, idx) => (
-                          <div key={idx} className="flex items-start gap-1.5 text-xs text-gray-400">
-                            <span className="text-green-500 font-bold shrink-0">✓</span>
+                          <div key={idx} className="flex items-start gap-1.5 text-xs text-gray-300">
+                            <span className="text-emerald-400 font-bold shrink-0">✓</span>
                             <span>{highlight}</span>
                           </div>
                         ))}
