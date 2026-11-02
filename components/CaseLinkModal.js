@@ -109,7 +109,7 @@ export default function CaseLinkModal({ isOpen, onClose, conversationId, onSucce
 
   const getStatusBadgeColor = (status) => {
     const colors = {
-      'prospect': 'bg-gray-100 text-gray-700',
+      'prospect': 'bg-gray-100 text-gray-300',
       'em_analise': 'bg-blue-100 text-blue-700',
       'proposta_enviada': 'bg-yellow-100 text-yellow-700',
       'contrato_assinado': 'bg-green-100 text-green-700',
@@ -117,20 +117,20 @@ export default function CaseLinkModal({ isOpen, onClose, conversationId, onSucce
       'aguardando_decisao': 'bg-orange-100 text-orange-700',
       'encerrado': 'bg-red-100 text-red-700'
     };
-    return colors[status] || 'bg-gray-100 text-gray-700';
+    return colors[status] || 'bg-gray-100 text-gray-300';
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-[#1B1D1E] rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="bg-white border-b px-6 py-4 flex items-center justify-between">
+        <div className="bg-[#1B1D1E] border-b px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold">Vincular a Caso Existente</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-400"
             disabled={linking}
           >
             ✕
@@ -138,21 +138,21 @@ export default function CaseLinkModal({ isOpen, onClose, conversationId, onSucce
         </div>
 
         {/* Filtros */}
-        <div className="px-6 py-4 border-b bg-gray-50 space-y-3">
+        <div className="px-6 py-4 border-b bg-[#181A1B] space-y-3">
           <div className="flex gap-3">
             <input
               type="text"
               placeholder="Buscar por título, área ou tipo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="flex-1 px-3 py-2 border border-[#2A2D2F] rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
           <div className="flex gap-3">
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-2 border border-[#2A2D2F] rounded focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Todos os status</option>
               <option value="prospect">Prospect</option>
@@ -166,7 +166,7 @@ export default function CaseLinkModal({ isOpen, onClose, conversationId, onSucce
             <select
               value={filterArea}
               onChange={(e) => setFilterArea(e.target.value)}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              className="flex-1 px-3 py-2 border border-[#2A2D2F] rounded focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Todas as áreas</option>
               <option value="Direito Administrativo">Direito Administrativo</option>
@@ -203,18 +203,18 @@ export default function CaseLinkModal({ isOpen, onClose, conversationId, onSucce
                   className={`border rounded-lg p-4 cursor-pointer transition-all ${
                     selectedCase?.id === caseItem.id
                       ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      : 'border-gray-800 hover:border-[#2A2D2F] hover:bg-[#181A1B]'
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-gray-900">{caseItem.title}</h3>
+                        <h3 className="font-medium text-white">{caseItem.title}</h3>
                         <span className={`text-xs px-2 py-1 rounded ${getStatusBadgeColor(caseItem.status)}`}>
                           {caseItem.status}
                         </span>
                       </div>
-                      <div className="text-sm text-gray-600 mt-1 space-y-1">
+                      <div className="text-sm text-gray-400 mt-1 space-y-1">
                         {caseItem.legal_area && (
                           <p>📚 {caseItem.legal_area} {caseItem.case_type && `• ${caseItem.case_type}`}</p>
                         )}
@@ -241,7 +241,7 @@ export default function CaseLinkModal({ isOpen, onClose, conversationId, onSucce
 
         {/* Footer com confirmação */}
         {selectedCase && (
-          <div className="border-t px-6 py-4 bg-gray-50">
+          <div className="border-t px-6 py-4 bg-[#181A1B]">
             <div className="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
               <p className="text-sm text-yellow-800">
                 <strong>⚠️ Confirmar vinculação:</strong> Esta conversa será vinculada ao caso "{selectedCase.title}". 
@@ -251,7 +251,7 @@ export default function CaseLinkModal({ isOpen, onClose, conversationId, onSucce
             <div className="flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-100 transition-colors"
+                className="flex-1 px-4 py-2 border border-[#2A2D2F] text-gray-300 rounded hover:bg-gray-100 transition-colors"
                 disabled={linking}
               >
                 Cancelar

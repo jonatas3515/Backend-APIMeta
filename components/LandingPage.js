@@ -291,7 +291,7 @@ export default function LandingPage({ onOpenLogin }) {
                 className={`w-12 h-6 rounded-full transition-colors relative ${isAnual ? 'bg-green-500' : 'bg-neutral-700'}`}
               >
                 <div
-                  className={`w-5 h-5 bg-white rounded-full transition-transform absolute top-0.5 ${isAnual ? 'left-6' : 'left-0.5'}`}
+                  className={`w-5 h-5 bg-[#1B1D1E] rounded-full transition-transform absolute top-0.5 ${isAnual ? 'left-6' : 'left-0.5'}`}
                 />
               </button>
               <span className={`text-sm font-medium transition-colors ${isAnual ? 'text-white' : 'text-gray-500'}`}>
@@ -334,7 +334,7 @@ export default function LandingPage({ onOpenLogin }) {
                     <div>
                       {/* Tag de destaque */}
                       {plano.tagDestaque && (
-                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-full text-sm font-medium text-gray-900">
+                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-full text-sm font-medium text-white">
                           {plano.tagDestaque}
                         </div>
                       )}
@@ -376,7 +376,7 @@ export default function LandingPage({ onOpenLogin }) {
                     <button
                       onClick={() => onNavigate('signup')}
                       className={`w-full py-3 rounded-xl font-medium transition-colors ${isDestaque
-                        ? 'bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-gray-900 font-bold'
+                        ? 'bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white font-bold'
                         : 'bg-neutral-800 hover:bg-neutral-700 text-white'
                         }`}
                     >

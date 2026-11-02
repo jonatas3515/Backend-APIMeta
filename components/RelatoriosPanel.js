@@ -326,7 +326,7 @@ export default function RelatoriosPanel() {
               <h3 className="font-bold text-sm text-white mb-3">Tabela Geral de Casos & Processos ({cases.length})</h3>
               <table className="w-full text-xs text-left">
                 <thead>
-                  <tr className="border-b border-gray-200 text-gray-500">
+                  <tr className="border-b border-gray-800 text-gray-500">
                     <th className="py-2 px-3">Título / Caso</th>
                     <th className="py-2 px-3">Cliente</th>
                     <th className="py-2 px-3">Tribunal</th>
@@ -340,9 +340,9 @@ export default function RelatoriosPanel() {
                   {cases.map((c) => (
                     <tr key={c.id} className="hover:bg-gray-800/40 transition-colors">
                       <td className="py-2.5 px-3 font-semibold text-white">{c.title}</td>
-                      <td className="py-2.5 px-3 text-gray-600">{c.client_name || '-'}</td>
+                      <td className="py-2.5 px-3 text-gray-400">{c.client_name || '-'}</td>
                       <td className="py-2.5 px-3 text-indigo-700 font-bold">{c.court || '-'}</td>
-                      <td className="py-2.5 px-3 text-gray-600">{c.legal_area || '-'}</td>
+                      <td className="py-2.5 px-3 text-gray-400">{c.legal_area || '-'}</td>
                       <td className="py-2.5 px-3 text-gray-500">{c.procedural_step || '-'}</td>
                       <td className="py-2.5 px-3 text-green-400 font-black font-bold">{c.case_value ? brl(Number(c.case_value)) : '-'}</td>
                       <td className="py-2.5 px-3 text-gray-500">{c.deadline_date ? new Date(c.deadline_date).toLocaleDateString('pt-BR') : '-'}</td>
@@ -396,7 +396,7 @@ export default function RelatoriosPanel() {
                 className={`p-4 rounded-xl border cursor-pointer transition ${
                   financeiroStatusFilter === 'vencidos'
                     ? 'bg-red-50 border-red-300 ring-2 ring-red-400'
-                    : 'bg-white border-gray-200 hover:border-red-300 shadow-xs'
+                    : 'bg-[#1B1D1E] border-gray-800 hover:border-red-300 shadow-xs'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -418,7 +418,7 @@ export default function RelatoriosPanel() {
                 className={`p-4 rounded-xl border cursor-pointer transition ${
                   financeiroStatusFilter === 'prox7'
                     ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-400'
-                    : 'bg-white border-gray-200 hover:border-blue-300 shadow-xs'
+                    : 'bg-[#1B1D1E] border-gray-800 hover:border-blue-300 shadow-xs'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -454,12 +454,12 @@ export default function RelatoriosPanel() {
                     value={financeiroSearch}
                     onChange={(e) => setFinanceiroSearch(e.target.value)}
                     placeholder="Buscar por processo, cliente..."
-                    className="px-3 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg text-white focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow min-w-[200px]"
+                    className="px-3 py-1.5 text-xs bg-[#181A1B] border border-[#2A2D2F] rounded-lg text-white focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow min-w-[200px]"
                   />
                   <select
                     value={financeiroStatusFilter}
                     onChange={(e) => setFinanceiroStatusFilter(e.target.value)}
-                    className="px-3 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg text-white focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
+                    className="px-3 py-1.5 text-xs bg-[#181A1B] border border-[#2A2D2F] rounded-lg text-white focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
                   >
                     <option value="todos">Todos os Processos</option>
                     <option value="ativos">⚡ Apenas Ativos (Em andamento)</option>
@@ -515,7 +515,7 @@ export default function RelatoriosPanel() {
 
                 if (financeiroCases.length === 0) {
                   return (
-                    <div className="p-8 text-center bg-gray-50 border border-dashed border-gray-200 rounded-xl text-xs text-gray-500">
+                    <div className="p-8 text-center bg-[#181A1B] border border-dashed border-gray-800 rounded-xl text-xs text-gray-500">
                       Nenhum processo financeiro encontrado com os filtros atuais.
                     </div>
                   );
@@ -535,17 +535,17 @@ export default function RelatoriosPanel() {
                           key={c.id}
                           className={`p-3.5 rounded-xl border transition-all ${
                             isClosed
-                              ? 'bg-gray-100/90 border-gray-300 text-gray-500 opacity-80 hover:opacity-100'
-                              : 'bg-white border-gray-200 shadow-xs hover:border-amber-400'
+                              ? 'bg-gray-100/90 border-[#2A2D2F] text-gray-500 opacity-80 hover:opacity-100'
+                              : 'bg-[#1B1D1E] border-gray-800 shadow-xs hover:border-amber-400'
                           } flex flex-col sm:flex-row sm:items-center justify-between gap-3`}
                         >
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className={`text-sm font-semibold ${isClosed ? 'text-gray-600 line-through' : 'text-white'}`}>
+                              <p className={`text-sm font-semibold ${isClosed ? 'text-gray-400 line-through' : 'text-white'}`}>
                                 {c.title}
                               </p>
                               {isClosed && (
-                                <span className="text-[10px] px-2 py-0.5 rounded bg-gray-200 text-gray-200 font-bold border border-gray-300">
+                                <span className="text-[10px] px-2 py-0.5 rounded bg-gray-200 text-gray-200 font-bold border border-[#2A2D2F]">
                                   📁 Encerrado
                                 </span>
                               )}
@@ -567,10 +567,10 @@ export default function RelatoriosPanel() {
                               {c.judicial_district ? ` • 📍 ${c.judicial_district}` : ''}
                               {c.court_division ? ` • ⚖️ ${c.court_division}` : ''}
                             </p>
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 mt-2">
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400 mt-2">
                               <span>Valor da Causa: <strong className="font-mono">{brl(valorCausa)}</strong></span>
                               {fee.awarded_value != null && (
-                                <span className={isClosed ? 'text-gray-600 font-medium' : 'text-green-400 font-black font-semibold'}>
+                                <span className={isClosed ? 'text-gray-400 font-medium' : 'text-green-400 font-black font-semibold'}>
                                   Condenação/Execução: <strong className="font-mono">{brl(fee.awarded_value)}</strong>
                                 </span>
                               )}
@@ -579,7 +579,7 @@ export default function RelatoriosPanel() {
                               </span>
                             </div>
                           </div>
-                          <div className="text-left sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-200/60 flex flex-col sm:items-end justify-between">
+                          <div className="text-left sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-800/60 flex flex-col sm:items-end justify-between">
                             <div>
                               <p className="text-[11px] text-gray-500">Honorários {isClosed ? 'Apurados / Liquidados' : 'Estimados'}</p>
                               <p className={`text-base font-bold ${isClosed ? 'text-gray-200' : 'text-green-400 font-black'}`}>
@@ -587,7 +587,7 @@ export default function RelatoriosPanel() {
                               </p>
                               <span className={`inline-block text-[10px] px-2.5 py-0.5 rounded font-medium mt-1 ${
                                 isClosed
-                                  ? 'bg-gray-200 text-gray-200 border border-gray-300'
+                                  ? 'bg-gray-200 text-gray-200 border border-[#2A2D2F]'
                                   : 'bg-amber-50 text-yellow-400 font-bold border border-amber-200'
                               }`}>
                                 {isClosed ? '✓ Encerrado / Liquidado' : '⚡ Ativo / Em andamento'}
@@ -627,23 +627,23 @@ export default function RelatoriosPanel() {
         {activeTab === 'performance' && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <div className="bg-[#1B1D1E] border border-gray-800 rounded-xl p-4 shadow-sm">
                 <div className="text-3xl font-bold text-blue-700">{conversations.length}</div>
                 <div className="text-xs text-gray-500 mt-1">Contatos / Leads</div>
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <div className="bg-[#1B1D1E] border border-gray-800 rounded-xl p-4 shadow-sm">
                 <div className="text-3xl font-bold text-green-400 font-black">
                   {cases.filter((c) => c.status !== 'encerrado').length}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">Processos Ativos</div>
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <div className="bg-[#1B1D1E] border border-gray-800 rounded-xl p-4 shadow-sm">
                 <div className="text-3xl font-bold text-yellow-400 font-bold">
                   {conversations.length > 0 ? `${Math.round((cases.length / conversations.length) * 100)}%` : '0%'}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">Taxa de Conversão</div>
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <div className="bg-[#1B1D1E] border border-gray-800 rounded-xl p-4 shadow-sm">
                 <div className="text-3xl font-bold text-purple-700">
                   {cases.filter((c) => c.deadline_date && new Date(c.deadline_date) <= new Date(Date.now() + 7 * 86400000)).length}
                 </div>
@@ -659,7 +659,7 @@ export default function RelatoriosPanel() {
               <div className="space-y-3">
                 <div>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-gray-600">Resolução de Prazos Urgentes</span>
+                    <span className="text-gray-400">Resolução de Prazos Urgentes</span>
                     <span className="text-green-400 font-black font-bold">{totalDeadlines > 0 ? `${deadlineEfficiency}%` : '0%'}</span>
                   </div>
                   <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
@@ -671,7 +671,7 @@ export default function RelatoriosPanel() {
                 </div>
                 <div>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-gray-600">Cobertura de Atendimento WhatsApp</span>
+                    <span className="text-gray-400">Cobertura de Atendimento WhatsApp</span>
                     <span className="text-blue-700 font-bold">{totalConversations > 0 ? `${whatsappCoverage}%` : '0%'}</span>
                   </div>
                   <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">

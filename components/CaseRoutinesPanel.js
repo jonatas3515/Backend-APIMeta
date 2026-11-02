@@ -128,9 +128,9 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
           {selectedRoutineData && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded text-sm">
               <p className="font-medium mb-1">{selectedRoutineData.name}</p>
-              <p className="text-gray-600 mb-2">{selectedRoutineData.description}</p>
+              <p className="text-gray-400 mb-2">{selectedRoutineData.description}</p>
               <p className="font-medium text-xs mb-1">Passos:</p>
-              <ul className="list-disc list-inside text-xs text-gray-600">
+              <ul className="list-disc list-inside text-xs text-gray-400">
                 {(selectedRoutineData.steps || []).map((step, idx) => (
                   <li key={idx}>{step}</li>
                 ))}
@@ -155,8 +155,8 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
       <div>
         <h3 className="font-semibold text-lg mb-3">📋 Histórico de Execuções</h3>
         {executions.length === 0 ? (
-          <div className="p-4 bg-gray-50 border rounded text-center space-y-2" role="status" aria-live="polite">
-            <p className="text-sm text-gray-600">Nenhuma rotina aplicada a este caso.</p>
+          <div className="p-4 bg-[#181A1B] border rounded text-center space-y-2" role="status" aria-live="polite">
+            <p className="text-sm text-gray-400">Nenhuma rotina aplicada a este caso.</p>
             <p className="text-xs text-gray-500">
               {hasConversation
                 ? 'Selecione uma rotina acima e confirme a aplicação.'
@@ -175,7 +175,7 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
         ) : (
           <div className="space-y-2">
             {executions.map((exec) => (
-              <div key={exec.id} className="p-3 border rounded bg-white">
+              <div key={exec.id} className="p-3 border rounded bg-[#1B1D1E]">
                 <div className="flex justify-between items-start mb-2">
                   <p className="font-medium text-sm">{exec.legal_routines?.name || 'Rotina'}</p>
                   <span className={`px-2 py-1 rounded text-xs ${
@@ -190,12 +190,12 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
                   Executado em {new Date(exec.executed_at || exec.created_at).toLocaleDateString('pt-BR')}
                 </p>
                 {exec.documents_generated && exec.documents_generated.length > 0 && (
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-gray-400">
                     📄 {exec.documents_generated.length} documento(s) gerado(s)
                   </p>
                 )}
                 {exec.reminders_created && exec.reminders_created.length > 0 && (
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-gray-400">
                     🔔 {exec.reminders_created.length} lembrete(s) criado(s)
                   </p>
                 )}
@@ -207,7 +207,7 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
 
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+          <div className="bg-[#1B1D1E] rounded-lg shadow-xl w-full max-w-md">
             <div className="p-4 border-b">
               <h3 className="font-bold text-lg">Confirmar Aplicação de Rotina</h3>
             </div>
@@ -216,7 +216,7 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
               <p className="text-sm mb-4">
                 Tem certeza que deseja aplicar a rotina <strong>{selectedRoutineData?.name}</strong>?
               </p>
-              <p className="text-xs text-gray-600 mb-4">
+              <p className="text-xs text-gray-400 mb-4">
                 Esta ação irá criar documentos em rascunho e lembretes internos conforme configurado na rotina.
               </p>
               
@@ -231,7 +231,7 @@ export default function CaseRoutinesPanel({ caseId, conversationId, userRole }) 
                 <button
                   onClick={() => setShowConfirm(false)}
                   disabled={loading}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                  className="px-4 py-2 bg-gray-200 text-gray-100 rounded hover:bg-gray-300"
                 >
                   Cancelar
                 </button>

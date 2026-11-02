@@ -28,7 +28,7 @@ function daysUntilDeadline(date) {
 const cleanPhone = (p) => String(p || '').replace(/\D/g, '');
 
 const STATUS_COLORS = {
-  prospect: 'bg-gray-100 text-gray-800',
+  prospect: 'bg-gray-800 text-gray-100',
   em_analise: 'bg-blue-100 text-blue-800',
   proposta_enviada: 'bg-yellow-100 text-yellow-800',
   contrato_assinado: 'bg-purple-100 text-purple-800',
@@ -37,7 +37,7 @@ const STATUS_COLORS = {
   em_recurso: 'bg-indigo-100 text-indigo-800',
   em_execucao: 'bg-amber-100 text-amber-800',
   encerrado: 'bg-green-100 text-green-800',
-  arquivado: 'bg-gray-100 text-gray-600'
+  arquivado: 'bg-gray-800 text-gray-400'
 };
 
 const STATUS_LABELS = {
@@ -121,9 +121,9 @@ export default function CaseDetailPanel({
   };
   if (!caseItem || typeof caseItem !== 'object') {
     return (
-      <div className="flex-1 h-full flex items-center justify-center bg-white rounded-lg shadow p-6 text-center">
+      <div className="flex-1 h-full flex items-center justify-center bg-[#1B1D1E] rounded-lg shadow p-6 text-center">
         <div>
-          <p className="text-sm text-gray-600">Nenhum caso selecionado.</p>
+          <p className="text-sm text-gray-400">Nenhum caso selecionado.</p>
           {onBack && (
             <button
               onClick={onBack}
@@ -150,9 +150,9 @@ export default function CaseDetailPanel({
   );
 
   return (
-    <div className="flex-1 h-full flex flex-col bg-white rounded-lg shadow overflow-hidden">
+    <div className="flex-1 h-full flex flex-col bg-[#1B1D1E] rounded-lg shadow overflow-hidden">
       {/* Header com navegação */}
-      <div className="p-4 border-b border-gray-200 bg-gray-50">
+      <div className="p-4 border-b border-gray-800 bg-[#1E2022]">
         <div className="flex items-center justify-between mb-3">
           <button
             onClick={onBack}
@@ -160,8 +160,8 @@ export default function CaseDetailPanel({
           >
             ← Voltar para lista
           </button>
-          <h2 className="text-lg font-bold text-gray-800 truncate px-2">{caseItem.title}</h2>
-          <span className={`text-xs px-2 py-1 rounded font-semibold ${STATUS_COLORS[caseItem.status] || 'bg-gray-100 text-gray-800'}`}>
+          <h2 className="text-lg font-bold text-gray-100 truncate px-2">{caseItem.title}</h2>
+          <span className={`text-xs px-2 py-1 rounded font-semibold ${STATUS_COLORS[caseItem.status] || 'bg-gray-800 text-gray-100'}`}>
             {STATUS_LABELS[caseItem.status] || caseItem.status || 'sem status'}
           </span>
         </div>
@@ -174,7 +174,7 @@ export default function CaseDetailPanel({
               className={`px-3 py-1.5 rounded text-xs font-medium transition ${
                 caseView === tab.key
                   ? 'bg-blue-600 text-white'
-                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-100'
+                  : 'bg-[#1B1D1E] border border-[#2A2D2F] text-gray-300 hover:bg-gray-800'
               }`}
             >
               {tab.label}
@@ -197,19 +197,19 @@ export default function CaseDetailPanel({
                 }`}
               >
                 <span>{alertFeedback.type === 'success' ? '✓' : '⚠️'} {alertFeedback.text}</span>
-                <button onClick={() => setAlertFeedback(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+                <button onClick={() => setAlertFeedback(null)} className="text-gray-500 hover:text-gray-300">✕</button>
               </div>
             )}
 
             {/* Painel Superior de Ações Rápidas do Processo */}
-            <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl space-y-3 shadow-xs">
+            <div className="p-4 bg-[#1E2022] border border-gray-800 rounded-xl space-y-3 shadow-xs">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                <span className="text-xs font-bold text-gray-100 flex items-center gap-1.5">
                   <span>⚡</span> Ações do Processo:
                 </span>
                 <span className={`text-[11px] px-2 py-0.5 rounded font-bold ${
                   caseItem.status === 'encerrado' || caseItem.status === 'arquivado'
-                    ? 'bg-gray-200 text-gray-700'
+                    ? 'bg-gray-200 text-gray-300'
                     : 'bg-emerald-100 text-emerald-800'
                 }`}>
                   {caseItem.status === 'encerrado' || caseItem.status === 'arquivado' ? '📁 Caso Encerrado' : '⚡ Caso Ativo'}
@@ -362,7 +362,7 @@ export default function CaseDetailPanel({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-3 bg-gray-50 rounded border">
+              <div className="p-3 bg-[#1E2022] rounded border">
                 <p className="text-xs text-gray-500">Área jurídica</p>
                 <p className="text-sm font-medium">
                   {caseItem.legal_area ? (
@@ -372,7 +372,7 @@ export default function CaseDetailPanel({
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-gray-50 rounded border">
+              <div className="p-3 bg-[#1E2022] rounded border">
                 <p className="text-xs text-gray-500">Tipo de caso</p>
                 <p className="text-sm font-medium">
                   {caseItem.case_type || (
@@ -380,9 +380,9 @@ export default function CaseDetailPanel({
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-gray-50 rounded border">
+              <div className="p-3 bg-[#1E2022] rounded border">
                 <p className="text-xs text-gray-500">Prioridade</p>
-                <p className={`text-sm font-medium ${PRIORITY_COLORS[caseItem.priority] || 'text-gray-600'}`}>
+                <p className={`text-sm font-medium ${PRIORITY_COLORS[caseItem.priority] || 'text-gray-400'}`}>
                   {caseItem.priority ? (
                     <span className="capitalize">{caseItem.priority}</span>
                   ) : (
@@ -390,14 +390,14 @@ export default function CaseDetailPanel({
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-gray-50 rounded border">
+              <div className="p-3 bg-[#1E2022] rounded border">
                 <p className="text-xs text-gray-500">Prazo</p>
                 <p className="text-sm font-medium">
                   {caseItem.deadline_date ? (
                     <>
                       {formatDate(caseItem.deadline_date)}
                       {daysLeft !== null && (
-                        <span className={`ml-2 ${daysLeft < 0 ? 'text-red-600 font-bold' : daysLeft < 7 ? 'text-orange-600 font-medium' : 'text-gray-600'}`}>
+                        <span className={`ml-2 ${daysLeft < 0 ? 'text-red-600 font-bold' : daysLeft < 7 ? 'text-orange-600 font-medium' : 'text-gray-400'}`}>
                           ({daysLeft < 0 ? `${Math.abs(daysLeft)}d atrasado` : `${daysLeft}d restantes`})
                         </span>
                       )}
@@ -409,7 +409,7 @@ export default function CaseDetailPanel({
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-gray-50 rounded border">
+              <div className="p-3 bg-[#1E2022] rounded border">
                 <p className="text-xs text-gray-500">Município</p>
                 <p className="text-sm font-medium">
                   {caseItem.municipality || (
@@ -417,7 +417,7 @@ export default function CaseDetailPanel({
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-gray-50 rounded border">
+              <div className="p-3 bg-[#1E2022] rounded border">
                 <p className="text-xs text-gray-500">Órgão</p>
                 <p className="text-sm font-medium">
                   {(caseItem.agency || caseItem.court_division) ? (
@@ -427,7 +427,7 @@ export default function CaseDetailPanel({
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-gray-50 rounded border">
+              <div className="p-3 bg-[#1E2022] rounded border">
                 <p className="text-xs text-gray-500">Papel do cliente</p>
                 <p className="text-sm font-medium">
                   {caseItem.client_role ? (
@@ -437,7 +437,7 @@ export default function CaseDetailPanel({
                   )}
                 </p>
               </div>
-              <div className="p-3 bg-gray-50 rounded border">
+              <div className="p-3 bg-[#1E2022] rounded border">
                 <p className="text-xs text-gray-500">Tipo de prazo</p>
                 <p className="text-sm font-medium">
                   {caseItem.deadline_type || (
@@ -448,13 +448,13 @@ export default function CaseDetailPanel({
             </div>
 
             {hasProcessData && (
-              <div className="p-3 bg-gray-50 rounded border">
+              <div className="p-3 bg-[#1E2022] rounded border">
                 <p className="text-xs text-gray-500 mb-2 font-bold">Dados processuais</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {caseItem.process_number && (
                     <div>
                       <p className="text-xs text-gray-500">Número do processo</p>
-                      <p className="text-sm font-medium font-mono text-gray-900">{caseItem.process_number}</p>
+                      <p className="text-sm font-medium font-mono text-white">{caseItem.process_number}</p>
                     </div>
                   )}
                   {caseItem.court && (
@@ -499,7 +499,7 @@ export default function CaseDetailPanel({
               </div>
             )}
 
-            <div className="p-3 bg-gray-50 rounded border">
+            <div className="p-3 bg-[#1E2022] rounded border">
               <p className="text-xs text-gray-500 mb-1 font-bold">Conversa vinculada</p>
               {linkedConversation ? (
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
@@ -529,7 +529,7 @@ export default function CaseDetailPanel({
               ) : (
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm text-gray-600">Nenhuma conversa vinculada.</p>
+                    <p className="text-sm text-gray-400">Nenhuma conversa vinculada.</p>
                     <p className="text-xs text-gray-500" aria-live="polite" role="status">
                       Vincule uma conversa para solicitar documentos ou interagir com o cliente.
                     </p>
@@ -549,9 +549,9 @@ export default function CaseDetailPanel({
             </div>
 
             {stripFeeFromNotes(caseItem.notes) && (
-              <div className="p-3 bg-gray-50 rounded border">
+              <div className="p-3 bg-[#1E2022] rounded border">
                 <p className="text-xs text-gray-500 font-bold mb-1">Notas e Observações</p>
-                <p className="text-sm whitespace-pre-wrap text-gray-800">{stripFeeFromNotes(caseItem.notes)}</p>
+                <p className="text-sm whitespace-pre-wrap text-gray-100">{stripFeeFromNotes(caseItem.notes)}</p>
               </div>
             )}
           </div>
@@ -569,15 +569,15 @@ export default function CaseDetailPanel({
       {/* Modal de Gerar Documento do Processo */}
       {showGenerateDocModal && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-              <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
+          <div className="bg-[#1B1D1E] rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="p-4 border-b border-gray-800 bg-[#1E2022] flex items-center justify-between">
+              <h3 className="font-bold text-gray-100 text-base flex items-center gap-2">
                 <span>📑</span> Gerar Documento do Processo
               </h3>
               <button
                 type="button"
                 onClick={() => setShowGenerateDocModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-lg font-bold p-1 rounded hover:bg-gray-200"
+                className="text-gray-400 hover:text-gray-400 text-lg font-bold p-1 rounded hover:bg-gray-200"
               >
                 ✕
               </button>

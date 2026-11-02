@@ -138,7 +138,7 @@ export default function ExecutiveDashboard({ onNavigateTab }) {
               <img src="/JNC.png" alt="JNC" className="h-9 w-9 object-contain" />
             )}
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white" data-testid="dashboard-greeting">{greeting}</h1>
+              <h1 className="text-xl md:text-2xl font-bold text-white dark:text-white" data-testid="dashboard-greeting">{greeting}</h1>
               <UserRoleBadge role={profile?.role} isMaster={profile?.is_master} />
             </div>
           </div>

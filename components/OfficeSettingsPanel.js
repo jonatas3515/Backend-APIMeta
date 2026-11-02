@@ -165,20 +165,20 @@ export default function OfficeSettingsPanel() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 overflow-y-auto" data-testid="office-settings-panel">
-      <h2 className="text-lg font-bold text-gray-900">🏢 Configurações do Escritório</h2>
+      <h2 className="text-lg font-bold text-white">🏢 Configurações do Escritório</h2>
 
       {msg && (
         <div className={`p-3 rounded text-sm ${msg.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>{msg.text}</div>
       )}
 
       {/* Logo */}
-      <section className="bg-white rounded-lg shadow p-4">
-        <h3 className="font-bold text-sm text-gray-800 mb-1">🖼️ Logo do Escritório</h3>
+      <section className="bg-[#1B1D1E] rounded-lg shadow p-4">
+        <h3 className="font-bold text-sm text-gray-100 mb-1">🖼️ Logo do Escritório</h3>
         <p className="text-xs text-gray-500 mb-3">
           A logo definida aqui aparecerá na barra lateral (menu superior esquerdo), no cabeçalho do Dashboard e nos relatórios/documentos emitidos pelo escritório.
         </p>
         <div className="flex flex-wrap items-start gap-4">
-          <div className="w-64 h-48 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden p-2">
+          <div className="w-64 h-48 border-2 border-dashed border-[#2A2D2F] rounded-xl bg-[#181A1B] flex items-center justify-center overflow-hidden p-2">
             {form.logo_url ? (
               <img src={form.logo_url} alt="Logo do escritório" className="max-w-full max-h-full object-contain rounded" />
             ) : (
@@ -220,8 +220,8 @@ export default function OfficeSettingsPanel() {
       </section>
 
       {/* Mensagem de aniversario */}
-      <section className="bg-white rounded-lg shadow p-4">
-        <h3 className="font-bold text-sm text-gray-800 mb-3">🎂 Mensagem de Aniversário</h3>
+      <section className="bg-[#1B1D1E] rounded-lg shadow p-4">
+        <h3 className="font-bold text-sm text-gray-100 mb-3">🎂 Mensagem de Aniversário</h3>
         <textarea
           rows={3}
           value={form.birthday_message}
@@ -240,8 +240,8 @@ export default function OfficeSettingsPanel() {
       </section>
 
       {/* Mensagem semanal */}
-      <section className="bg-white rounded-lg shadow p-4">
-        <h3 className="font-bold text-sm text-gray-800 mb-3">🎉 Mensagem de Aniversário Semanal</h3>
+      <section className="bg-[#1B1D1E] rounded-lg shadow p-4">
+        <h3 className="font-bold text-sm text-gray-100 mb-3">🎉 Mensagem de Aniversário Semanal</h3>
         <p className="text-xs text-gray-400 mb-2">Enviada até 7 dias antes do aniversário do cliente.</p>
         <textarea
           rows={3}
@@ -260,8 +260,8 @@ export default function OfficeSettingsPanel() {
       </section>
 
       {/* Horario/notificacoes */}
-      <section className="bg-white rounded-lg shadow p-4">
-        <h3 className="font-bold text-sm text-gray-800 mb-3">⏰ Horário e Fuso das Notificações</h3>
+      <section className="bg-[#1B1D1E] rounded-lg shadow p-4">
+        <h3 className="font-bold text-sm text-gray-100 mb-3">⏰ Horário e Fuso das Notificações</h3>
         <div className="flex flex-wrap gap-2 items-center">
           <select
             value={form.notify_hour}
@@ -298,8 +298,8 @@ export default function OfficeSettingsPanel() {
       </section>
 
       {/* Backup */}
-      <section className="bg-white rounded-lg shadow p-4">
-        <h3 className="font-bold text-sm text-gray-800 mb-3">💾 Backup de Dados</h3>
+      <section className="bg-[#1B1D1E] rounded-lg shadow p-4">
+        <h3 className="font-bold text-sm text-gray-100 mb-3">💾 Backup de Dados</h3>
         <div className="flex flex-wrap gap-2">
           <button onClick={exportBackup} className="px-4 py-2 rounded bg-nc-black text-white text-sm font-medium hover:opacity-90">
             ⬇️ Exportar Backup JSON

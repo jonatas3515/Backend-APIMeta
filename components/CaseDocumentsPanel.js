@@ -121,13 +121,13 @@ export default function CaseDocumentsPanel({ caseItem, checklist, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+      <div className="bg-[#1B1D1E] rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
         <div className="p-4 border-b flex justify-between items-center">
           <div>
             <h3 className="text-lg font-bold">Documentos do Caso</h3>
             <p className="text-sm text-gray-500">{caseItem?.title || 'Caso'}</p>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-xl">&times;</button>
         </div>
 
         <div className="p-4 overflow-y-auto flex-1 space-y-4">
@@ -137,7 +137,7 @@ export default function CaseDocumentsPanel({ caseItem, checklist, onClose }) {
             </div>
           )}
           {isIntern ? null : (
-            <div className="border rounded p-3 bg-gray-50">
+            <div className="border rounded p-3 bg-[#181A1B]">
               <p className="text-sm font-medium mb-2">Upload manual</p>
               <input
                 type="file"
@@ -161,7 +161,7 @@ export default function CaseDocumentsPanel({ caseItem, checklist, onClose }) {
           ) : (
             <div className="space-y-3">
               {documents.map((doc) => (
-                <div key={doc.id} className="border rounded p-3 bg-gray-50">
+                <div key={doc.id} className="border rounded p-3 bg-[#181A1B]">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                     <div className="flex-1">
                       <p className="font-medium text-sm">{doc.original_filename || 'Documento'}</p>

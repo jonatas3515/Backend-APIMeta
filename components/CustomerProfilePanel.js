@@ -19,17 +19,17 @@ const LEGAL_AREA_ICONS = {
 };
 
 const PRIORITY_COLORS = {
-  alta: 'bg-red-100 text-red-800 border-red-200',
-  media: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  baixa: 'bg-green-100 text-green-800 border-green-200'
+  alta: 'bg-red-950/50 text-red-300 border-red-800/60',
+  media: 'bg-yellow-950/50 text-yellow-300 border-yellow-800/60',
+  baixa: 'bg-blue-950/50 text-blue-300 border-blue-800/60'
 };
 
 const STATUS_BADGES = {
-  open: { text: 'Conversa Ativa', class: 'bg-green-100 text-green-800 border-green-200' },
-  closed: { text: 'Conversa Encerrada', class: 'bg-gray-100 text-gray-800 border-gray-200' },
-  lead: { text: 'Lead', class: 'bg-blue-100 text-blue-800 border-blue-200' },
-  client: { text: 'Cliente Ativo', class: 'bg-green-100 text-green-800 border-green-200' },
-  prospect: { text: 'Prospect', class: 'bg-blue-100 text-blue-800 border-blue-200' }
+  open: { text: 'Conversa Ativa', class: 'bg-emerald-950/50 text-emerald-300 border-emerald-800/60' },
+  closed: { text: 'Conversa Encerrada', class: 'bg-gray-800 text-gray-400 border-gray-700' },
+  lead: { text: 'Lead', class: 'bg-blue-950/50 text-blue-300 border-blue-800/60' },
+  client: { text: 'Cliente Ativo', class: 'bg-emerald-950/50 text-emerald-300 border-emerald-800/60' },
+  prospect: { text: 'Prospect', class: 'bg-blue-950/50 text-blue-300 border-blue-800/60' }
 };
 
 const getConsentStatus = (consents) => {
@@ -213,7 +213,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
   if (!isOpen) return null;
 
   const customer = data?.customer || {};
-  const statusBadge = STATUS_BADGES[customer.client_status] || STATUS_BADGES[customer.status] || { text: 'Conversa', class: 'bg-gray-100 text-gray-800 border-gray-200' };
+  const statusBadge = STATUS_BADGES[customer.client_status] || STATUS_BADGES[customer.status] || { text: 'Conversa', class: 'bg-gray-100 text-gray-100 border-gray-800' };
 
   return (
     <>
@@ -222,16 +222,16 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
         className="fixed inset-0 bg-black/30 z-30 md:hidden"
         onClick={onClose}
       />
-      <div className="fixed inset-y-0 right-0 z-40 w-full md:w-[30%] min-w-[320px] bg-nc-white border-l border-nc-gray-200 shadow-2xl flex flex-col">
+      <div className="fixed inset-y-0 right-0 z-40 w-full md:w-[30%] min-w-[320px] bg-[#1B1D1E] border-l border-gray-800 shadow-2xl flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-nc-gray-200 bg-nc-surface">
+        <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-nc-surface">
           <div>
-            <h2 className="text-lg font-bold text-nc-text-title">👤 Perfil do Cliente</h2>
-            <p className="text-xs text-nc-text-secondary">Dados consolidados do atendimento</p>
+            <h2 className="text-lg font-bold text-white">👤 Perfil do Cliente</h2>
+            <p className="text-xs text-gray-400">Dados consolidados do atendimento</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-nc-gray-200 text-nc-text-secondary transition"
+            className="p-2 rounded-full hover:bg-[#1E2022] text-gray-400 transition"
             title="Fechar"
           >
             ✕
@@ -241,7 +241,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
         {/* Conteúdo */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
           {loading && (
-            <div className="flex flex-col items-center justify-center h-32 text-nc-text-muted">
+            <div className="flex flex-col items-center justify-center h-32 text-gray-400">
               <span className="text-2xl animate-spin">⏳</span>
               <p className="text-sm mt-2">Carregando perfil...</p>
             </div>
@@ -254,7 +254,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
           )}
 
           {data?.anonymized && (
-            <div className="bg-gray-100 border border-gray-300 rounded p-3 text-sm text-gray-700">
+            <div className="bg-gray-100 border border-[#2A2D2F] rounded p-3 text-sm text-gray-300">
               Cliente anonimizado. Dados pessoais não estão disponíveis.
             </div>
           )}
@@ -262,17 +262,17 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
           {!loading && !error && data && !data.anonymized && (
             <>
               {/* Dados Básicos */}
-              <section className="bg-nc-surface rounded-lg border border-nc-gray-200 p-4">
+              <section className="bg-[#1E2022] rounded-xl border border-[#2A2D2F] p-4 text-gray-100">
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="font-bold text-sm text-nc-text-title">Dados Básicos</h3>
+                  <h3 className="font-bold text-sm text-white">Dados Básicos</h3>
                   <span className={`text-xs px-2 py-1 rounded border ${statusBadge.class}`}>
                     {statusBadge.text}
                   </span>
                 </div>
                 <div className="space-y-2 text-sm">
                   <p>
-                    <span className="text-nc-text-secondary">{customer.person_type === 'juridica' ? 'Razão Social:' : 'Nome:'}</span>{' '}
-                    <strong className="text-nc-text">{customer.name || 'Sem nome'}</strong>
+                    <span className="text-gray-400">{customer.person_type === 'juridica' ? 'Razão Social:' : 'Nome:'}</span>{' '}
+                    <strong className="text-gray-100">{customer.name || 'Sem nome'}</strong>
                     <span
                       className={`ml-2 text-[10px] px-1.5 py-0.5 rounded font-semibold ${
                         customer.person_type === 'juridica'
@@ -285,32 +285,32 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
                   </p>
                   {customer.document_number && (
                     <p>
-                      <span className="text-nc-text-secondary">{customer.person_type === 'juridica' ? 'CNPJ:' : 'CPF:'}</span>{' '}
+                      <span className="text-gray-400">{customer.person_type === 'juridica' ? 'CNPJ:' : 'CPF:'}</span>{' '}
                       {formatDocument(customer.document_number)}
                     </p>
                   )}
                   {customer.person_type === 'juridica' && customer.company_contact_name && (
-                    <p><span className="text-nc-text-secondary">Contato:</span> {customer.company_contact_name}</p>
+                    <p><span className="text-gray-400">Contato:</span> {customer.company_contact_name}</p>
                   )}
-                  <p><span className="text-nc-text-secondary">Telefone:</span> {formatPhone(customer.phone)}</p>
-                  {customer.email && <p><span className="text-nc-text-secondary">Email:</span> {customer.email}</p>}
+                  <p><span className="text-gray-400">Telefone:</span> {formatPhone(customer.phone)}</p>
+                  {customer.email && <p><span className="text-gray-400">Email:</span> {customer.email}</p>}
                   {customer.birth_or_foundation_date && (
                     <p>
-                      <span className="text-nc-text-secondary">
+                      <span className="text-gray-400">
                         {customer.person_type === 'juridica' ? 'Fundação:' : 'Nascimento:'}
                       </span>{' '}
                       {shortDate(customer.birth_or_foundation_date)}
                     </p>
                   )}
-                  <p><span className="text-nc-text-secondary">Localização:</span> {customer.municipality || '-'}{customer.state ? `/${customer.state}` : ''}</p>
-                  <p><span className="text-nc-text-secondary">Primeiro contato:</span> {shortDate(customer.first_contact_at)}</p>
+                  <p><span className="text-gray-400">Localização:</span> {customer.municipality || '-'}{customer.state ? `/${customer.state}` : ''}</p>
+                  <p><span className="text-gray-400">Primeiro contato:</span> {shortDate(customer.first_contact_at)}</p>
                 </div>
               </section>
 
               {/* Seção CRM Follow-up (Legado) */}
-              <section className="bg-nc-surface rounded-lg border border-nc-gray-200 p-4">
+              <section className="bg-[#1E2022] rounded-xl border border-[#2A2D2F] p-4 text-gray-100">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-bold text-sm text-nc-text-title flex items-center gap-1.5">
+                  <h3 className="font-bold text-sm text-white flex items-center gap-1.5">
                     <span>⚡</span> CRM & Follow-Up
                   </h3>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
@@ -319,13 +319,13 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
                     {followUpInfo?.daysSince ? `${followUpInfo.daysSince} dias sem contato` : 'Contato recente'}
                   </span>
                 </div>
-                <p className="text-xs text-nc-text-secondary mb-2">
+                <p className="text-xs text-gray-400 mb-2">
                   {followUpInfo?.isNeeded
                     ? 'Recomendamos enviar uma mensagem de acompanhamento para manter o relacionamento ativo.'
                     : 'Atendimento atualizado nos últimos 7 dias.'}
                 </p>
                 {followUpInfo && (
-                  <div className="bg-gray-50 rounded-lg p-2.5 border border-gray-200 text-xs text-gray-700 mb-2 italic">
+                  <div className="bg-[#181A1B] rounded-lg p-2.5 border border-gray-800 text-xs text-gray-300 mb-2 italic">
                     "{followUpInfo.suggestedMessage}"
                   </div>
                 )}
@@ -339,7 +339,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
                         setTimeout(() => setCopiedFollowUp(false), 2000);
                       }
                     }}
-                    className="flex-1 py-1.5 rounded bg-gray-200 hover:bg-gray-300 text-gray-800 text-xs font-semibold transition"
+                    className="flex-1 py-1.5 rounded bg-[#181A1B] hover:bg-gray-800 text-gray-200 border border-[#2A2D2F] text-xs font-semibold transition"
                   >
                     {copiedFollowUp ? '✓ Mensagem Copiada!' : '📋 Copiar Mensagem'}
                   </button>
@@ -357,12 +357,12 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
               </section>
 
               {/* Preferências de Comunicação */}
-              <section className="bg-nc-surface rounded-lg border border-nc-gray-200 p-4">
-                <h3 className="font-bold text-sm text-nc-text-title mb-3">📞 Preferências de Comunicação</h3>
+              <section className="bg-[#1E2022] rounded-xl border border-[#2A2D2F] p-4 text-gray-100">
+                <h3 className="font-bold text-sm text-white mb-3">📞 Preferências de Comunicação</h3>
                 <div className="space-y-2 text-sm">
-                  <p><span className="text-nc-text-secondary">Canal:</span> {customer.preferences?.preferred_channel || 'WhatsApp'}</p>
-                  <p><span className="text-nc-text-secondary">Melhor horário:</span> {customer.preferences?.best_time || 'Não informado'}</p>
-                  <p><span className="text-nc-text-secondary">Idioma:</span> {customer.preferences?.language || 'Português'}</p>
+                  <p><span className="text-gray-400">Canal:</span> {customer.preferences?.preferred_channel || 'WhatsApp'}</p>
+                  <p><span className="text-gray-400">Melhor horário:</span> {customer.preferences?.best_time || 'Não informado'}</p>
+                  <p><span className="text-gray-400">Idioma:</span> {customer.preferences?.language || 'Português'}</p>
                 </div>
               </section>
 
@@ -370,8 +370,8 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
               <ConsentManager clientId={conversationId} />
 
               {/* Histórico de Casos */}
-              <section className="bg-nc-surface rounded-lg border border-nc-gray-200 p-4">
-                <h3 className="font-bold text-sm text-nc-text-title mb-3">📋 Histórico de Casos</h3>
+              <section className="bg-[#1E2022] rounded-xl border border-[#2A2D2F] p-4 text-gray-100">
+                <h3 className="font-bold text-sm text-white mb-3">📋 Histórico de Casos</h3>
 
                 <div className="flex gap-2 mb-3">
                   <input
@@ -394,11 +394,11 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
 
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {filteredCases.length > 0 ? filteredCases.map(c => (
-                    <div key={c.id} className="border border-nc-gray-200 rounded p-2 bg-white">
+                    <div key={c.id} className="border border-[#2A2D2F] rounded-lg p-2.5 bg-[#181A1B] text-gray-100">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="font-semibold text-sm text-nc-text truncate">{c.title}</p>
-                          <p className="text-xs text-nc-text-secondary">
+                          <p className="font-semibold text-sm text-gray-100 truncate">{c.title}</p>
+                          <p className="text-xs text-gray-400">
                             {LEGAL_AREA_ICONS[c.legal_area] || '📁'} {c.legal_area || 'Sem área'} • {c.case_type || 'Sem tipo'}
                           </p>
                         </div>
@@ -406,24 +406,24 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
                           {c.priority}
                         </span>
                       </div>
-                      <p className="text-xs text-nc-text-secondary mt-1">Status: {c.status} {c.deadline_date && `• Prazo: ${shortDate(c.deadline_date)}`}</p>
+                      <p className="text-xs text-gray-400 mt-1">Status: {c.status} {c.deadline_date && `• Prazo: ${shortDate(c.deadline_date)}`}</p>
                     </div>
                   )) : (
-                    <p className="text-sm text-nc-text-muted">Nenhum caso encontrado.</p>
+                    <p className="text-sm text-gray-400">Nenhum caso encontrado.</p>
                   )}
                 </div>
               </section>
 
               {/* Documentos Recebidos */}
-              <section className="bg-nc-surface rounded-lg border border-nc-gray-200 p-4">
-                <h3 className="font-bold text-sm text-nc-text-title mb-3">📄 Documentos Recebidos</h3>
+              <section className="bg-[#1E2022] rounded-xl border border-[#2A2D2F] p-4 text-gray-100">
+                <h3 className="font-bold text-sm text-white mb-3">📄 Documentos Recebidos</h3>
                 {data.documents && data.documents.length > 0 ? (
                   <ul className="space-y-2 text-sm max-h-48 overflow-y-auto">
                     {data.documents.map(d => (
-                      <li key={d.id} className="flex items-center justify-between border-b border-nc-gray-200 pb-2 last:border-0 last:pb-0">
+                      <li key={d.id} className="flex items-center justify-between border-b border-gray-800 pb-2 last:border-0 last:pb-0">
                         <div className="min-w-0">
-                          <p className="font-medium text-nc-text truncate">{d.document_name}</p>
-                          <p className="text-xs text-nc-text-secondary">{shortDate(d.received_at)}</p>
+                          <p className="font-medium text-gray-100 truncate">{d.document_name}</p>
+                          <p className="text-xs text-gray-400">{shortDate(d.received_at)}</p>
                         </div>
                         {d.media_url ? (
                           <a
@@ -435,31 +435,31 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
                             Visualizar
                           </a>
                         ) : (
-                          <span className="text-xs text-nc-text-muted">Recebido</span>
+                          <span className="text-xs text-gray-400">Recebido</span>
                         )}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-nc-text-muted">Nenhum documento recebido.</p>
+                  <p className="text-sm text-gray-400">Nenhum documento recebido.</p>
                 )}
               </section>
 
               {/* Últimas Interações */}
-              <section className="bg-nc-surface rounded-lg border border-nc-gray-200 p-4">
-                <h3 className="font-bold text-sm text-nc-text-title mb-3">💬 Últimas Interações</h3>
+              <section className="bg-[#1E2022] rounded-xl border border-[#2A2D2F] p-4 text-gray-100">
+                <h3 className="font-bold text-sm text-white mb-3">💬 Últimas Interações</h3>
                 {data.recent_messages && data.recent_messages.length > 0 ? (
                   <div className="space-y-2 text-sm">
                     {data.recent_messages.map(msg => (
                       <div key={msg.id} className="flex gap-2">
-                        <span className="text-nc-text-secondary text-xs whitespace-nowrap pt-0.5">
+                        <span className="text-gray-400 text-xs whitespace-nowrap pt-0.5">
                           {new Date(msg.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs text-nc-text-secondary">
+                          <p className="text-xs text-gray-400">
                             {msg.direction === 'inbound' ? '⬅️ Recebida' : '➡️ Enviada'} {msg.sender_type === 'bot' && '(bot)'}
                           </p>
-                          <p className="text-nc-text truncate">
+                          <p className="text-gray-100 truncate">
                             {msg.content_type === 'text' ? (msg.text || 'Mensagem de texto') : `📎 ${msg.content_type}`}
                           </p>
                         </div>
@@ -467,7 +467,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-nc-text-muted">Nenhuma interação recente.</p>
+                  <p className="text-sm text-gray-400">Nenhuma interação recente.</p>
                 )}
               </section>
             </>
@@ -475,7 +475,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
         </div>
 
         {/* Ações Rápidas */}
-        <div className="border-t border-nc-gray-200 p-4 bg-nc-surface space-y-3">
+        <div className="border-t border-gray-800 p-4 bg-nc-surface space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setShowNewCase(!showNewCase)}
@@ -502,8 +502,8 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
           </div>
 
           {showNewCase && (
-            <form onSubmit={handleCreateCase} className="bg-white border border-nc-gray-200 rounded p-3 space-y-2">
-              <p className="text-sm font-bold text-nc-text-title">Novo Caso</p>
+            <form onSubmit={handleCreateCase} className="bg-[#1B1D1E] border border-gray-800 rounded p-3 space-y-2">
+              <p className="text-sm font-bold text-white">Novo Caso</p>
               <input
                 type="text"
                 value={newCase.title}
@@ -555,8 +555,8 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
           )}
 
           {showEdit && (
-            <form onSubmit={handleUpdateCustomer} className="bg-white border border-nc-gray-200 rounded p-3 space-y-2">
-              <p className="text-sm font-bold text-nc-text-title">Atualizar Dados</p>
+            <form onSubmit={handleUpdateCustomer} className="bg-[#1B1D1E] border border-gray-800 rounded p-3 space-y-2">
+              <p className="text-sm font-bold text-white">Atualizar Dados</p>
               <select
                 value={editData.person_type}
                 onChange={(e) => setEditData({ ...editData, person_type: e.target.value })}
@@ -595,7 +595,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
                 placeholder={editData.person_type === 'juridica' ? 'E-mail Corporativo' : 'E-mail'}
                 className="nc-input text-xs"
               />
-              <label className="block text-[10px] text-nc-text-secondary">
+              <label className="block text-[10px] text-gray-400">
                 {editData.person_type === 'juridica' ? 'Data de Fundação / Abertura' : 'Data de Nascimento'}
                 <input
                   type="date"

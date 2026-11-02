@@ -85,7 +85,7 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-xl overflow-hidden my-auto text-gray-900 animate-fadeIn">
+      <div className="bg-[#1B1D1E] rounded-2xl shadow-2xl border border-gray-800 w-full max-w-xl overflow-hidden my-auto text-white animate-fadeIn">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-800 to-teal-900 text-white p-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -120,11 +120,11 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
 
           {/* 1. Resultado */}
           <div>
-            <label className="block font-bold text-gray-700 mb-1">Resultado Processual / Motivo de Encerramento *</label>
+            <label className="block font-bold text-gray-300 mb-1">Resultado Processual / Motivo de Encerramento *</label>
             <select
               value={resultado}
               onChange={(e) => setResultado(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 font-medium focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+              className="w-full px-3 py-2 bg-[#1B1D1E] border border-[#2A2D2F] rounded-lg text-white font-medium focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
             >
               <option value="procedente_integral">Procedência Total</option>
               <option value="procedente_parcial">Procedência Parcial com Condenação</option>
@@ -138,14 +138,14 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
           {/* 2. Valores Condenação e Causa */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-medium text-gray-600 mb-1">Valor da Causa Original</label>
-              <div className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg font-mono text-gray-700">
+              <label className="block font-medium text-gray-400 mb-1">Valor da Causa Original</label>
+              <div className="px-3 py-2 bg-gray-100 border border-gray-800 rounded-lg font-mono text-gray-300">
                 R$ {Number(caseItem.case_value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </div>
             </div>
 
             <div>
-              <label className="block font-bold text-gray-700 mb-1">Valor da Condenação / Acordo (R$)</label>
+              <label className="block font-bold text-gray-300 mb-1">Valor da Condenação / Acordo (R$)</label>
               <input
                 type="number"
                 step="0.01"
@@ -153,15 +153,15 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
                 placeholder="Ex: 6207.59"
                 value={awardedValue}
                 onChange={(e) => setAwardedValue(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg font-mono text-gray-900 focus:outline-none focus:border-emerald-600"
+                className="w-full px-3 py-2 bg-[#1B1D1E] border border-[#2A2D2F] rounded-lg font-mono text-white focus:outline-none focus:border-emerald-600"
               />
               <span className="text-[10px] text-gray-500">Ex: No caso de Amanda, a causa era R$ 15.400 e a condenação R$ 6.207,59.</span>
             </div>
           </div>
 
           {/* 3. Regra e Percentual de Honorários */}
-          <div className="p-3.5 bg-gray-50 border border-gray-200 rounded-xl space-y-3">
-            <h4 className="font-bold text-gray-900 flex items-center justify-between">
+          <div className="p-3.5 bg-[#181A1B] border border-gray-800 rounded-xl space-y-3">
+            <h4 className="font-bold text-white flex items-center justify-between">
               <span>💰 Honorários Advocatícios Finais</span>
               <span className="text-emerald-700 font-mono text-sm">
                 R$ {finalHonorarios.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -170,11 +170,11 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div>
-                <label className="block text-gray-600 mb-0.5">Tipo</label>
+                <label className="block text-gray-400 mb-0.5">Tipo</label>
                 <select
                   value={feeType}
                   onChange={(e) => setFeeType(e.target.value)}
-                  className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-xs"
+                  className="w-full px-2 py-1.5 bg-[#1B1D1E] border border-[#2A2D2F] rounded text-xs"
                 >
                   <option value="percentual">Percentual (%)</option>
                   <option value="fixo">Valor Fixo (R$)</option>
@@ -184,7 +184,7 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
               {feeType === 'percentual' ? (
                 <>
                   <div>
-                    <label className="block text-gray-600 mb-0.5">Porcentagem (%)</label>
+                    <label className="block text-gray-400 mb-0.5">Porcentagem (%)</label>
                     <div className="flex gap-1">
                       <input
                         type="number"
@@ -193,19 +193,19 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
                         max="100"
                         value={feePercentage}
                         onChange={(e) => setFeePercentage(e.target.value)}
-                        className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-xs"
+                        className="w-full px-2 py-1.5 bg-[#1B1D1E] border border-[#2A2D2F] rounded text-xs"
                       />
                       <button
                         type="button"
                         onClick={() => setFeePercentage('20')}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${feePercentage === '20' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white border-gray-300 text-gray-700'}`}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${feePercentage === '20' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-[#1B1D1E] border-[#2A2D2F] text-gray-300'}`}
                       >
                         20%
                       </button>
                       <button
                         type="button"
                         onClick={() => setFeePercentage('30')}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${feePercentage === '30' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white border-gray-300 text-gray-700'}`}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${feePercentage === '30' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-[#1B1D1E] border-[#2A2D2F] text-gray-300'}`}
                       >
                         30%
                       </button>
@@ -213,11 +213,11 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
                   </div>
 
                   <div>
-                    <label className="block text-gray-600 mb-0.5">Base de Cálculo</label>
+                    <label className="block text-gray-400 mb-0.5">Base de Cálculo</label>
                     <select
                       value={feeBasis}
                       onChange={(e) => setFeeBasis(e.target.value)}
-                      className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-xs"
+                      className="w-full px-2 py-1.5 bg-[#1B1D1E] border border-[#2A2D2F] rounded text-xs"
                     >
                       <option value="condenacao">Sobre a Condenação / Acordo</option>
                       <option value="causa">Sobre o Valor da Causa</option>
@@ -226,7 +226,7 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
                 </>
               ) : (
                 <div className="sm:col-span-2">
-                  <label className="block text-gray-600 mb-0.5">Valor Fixo de Honorários (R$)</label>
+                  <label className="block text-gray-400 mb-0.5">Valor Fixo de Honorários (R$)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -234,14 +234,14 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
                     placeholder="Ex: 2500.00"
                     value={feeFixedValue}
                     onChange={(e) => setFeeFixedValue(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-white border border-gray-300 rounded text-xs font-mono"
+                    className="w-full px-2 py-1.5 bg-[#1B1D1E] border border-[#2A2D2F] rounded text-xs font-mono"
                   />
                 </div>
               )}
             </div>
 
             <div>
-              <label className="block text-gray-600 mb-0.5">Ajuste Fino Manual do Honorário Final (opcional):</label>
+              <label className="block text-gray-400 mb-0.5">Ajuste Fino Manual do Honorário Final (opcional):</label>
               <input
                 type="number"
                 step="0.01"
@@ -249,7 +249,7 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
                 placeholder={`Cálculo automático: R$ ${computedFee.toFixed(2)}`}
                 value={manualFeeOverride}
                 onChange={(e) => setManualFeeOverride(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-white border border-gray-300 rounded text-xs font-mono"
+                className="w-full px-2.5 py-1.5 bg-[#1B1D1E] border border-[#2A2D2F] rounded text-xs font-mono"
               />
               <span className="text-[10px] text-gray-400">Preencha apenas se quiser forçar um valor diferente do cálculo automático.</span>
             </div>
@@ -258,22 +258,22 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
           {/* 4. Data e Status */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block font-medium text-gray-700 mb-1">Data de Encerramento</label>
+              <label className="block font-medium text-gray-300 mb-1">Data de Encerramento</label>
               <input
                 type="date"
                 required
                 value={dataEncerramento}
                 onChange={(e) => setDataEncerramento(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
+                className="w-full px-3 py-2 bg-[#1B1D1E] border border-[#2A2D2F] rounded-lg text-white"
               />
             </div>
 
             <div>
-              <label className="block font-medium text-gray-700 mb-1">Status Final</label>
+              <label className="block font-medium text-gray-300 mb-1">Status Final</label>
               <select
                 value={statusFinal}
                 onChange={(e) => setStatusFinal(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
+                className="w-full px-3 py-2 bg-[#1B1D1E] border border-[#2A2D2F] rounded-lg text-white"
               >
                 <option value="encerrado">Encerrado</option>
                 <option value="arquivado">Arquivado</option>
@@ -282,21 +282,21 @@ ${obs ? 'Obs: ' + obs : ''}`.trim();
           </div>
 
           <div>
-            <label className="block font-medium text-gray-700 mb-1">Observações de Fechamento (opcional)</label>
+            <label className="block font-medium text-gray-300 mb-1">Observações de Fechamento (opcional)</label>
             <textarea
               rows={2}
               value={obs}
               onChange={(e) => setObs(e.target.value)}
               placeholder="Ex: Alvará expedido e levantado. TED realizada para a conta do cliente..."
-              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900"
+              className="w-full px-3 py-2 bg-[#1B1D1E] border border-[#2A2D2F] rounded-lg text-white"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
+          <div className="flex justify-end gap-2 pt-2 border-t border-gray-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-100"
+              className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-100"
             >
               Cancelar
             </button>

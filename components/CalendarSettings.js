@@ -161,15 +161,15 @@ export default function CalendarSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">📅 Calendários externos</h3>
-        <p className="text-sm text-gray-600 mb-4">
+        <h3 className="text-lg font-semibold text-white mb-2">📅 Calendários externos</h3>
+        <p className="text-sm text-gray-400 mb-4">
           Sincronize prazos e eventos com seu calendário pessoal.
         </p>
 
         <div className="space-y-3">
-          <div className="p-4 border rounded-lg bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="p-4 border rounded-lg bg-[#1B1D1E] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h4 className="font-medium text-gray-900">Google Calendar</h4>
+              <h4 className="font-medium text-white">Google Calendar</h4>
               <p className="text-xs text-gray-500">
                 {isConnected('google') ? `Conectado - ${isConnected('google').email}` : 'Configuração pendente'}
               </p>
@@ -197,9 +197,9 @@ export default function CalendarSettings() {
             )}
           </div>
 
-          <div className="p-4 border rounded-lg bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="p-4 border rounded-lg bg-[#1B1D1E] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h4 className="font-medium text-gray-900">Outlook Calendar</h4>
+              <h4 className="font-medium text-white">Outlook Calendar</h4>
               <p className="text-xs text-gray-500">
                 {isConnected('outlook') ? `Conectado - ${isConnected('outlook').email}` : 'Configuração pendente'}
               </p>
@@ -235,8 +235,8 @@ export default function CalendarSettings() {
       )}
 
       {isConnected('google') && (
-        <div className="p-4 border rounded-lg bg-white space-y-2">
-          <h4 className="font-medium text-gray-900">🔄 Sincronização manual</h4>
+        <div className="p-4 border rounded-lg bg-[#1B1D1E] space-y-2">
+          <h4 className="font-medium text-white">🔄 Sincronização manual</h4>
           <p className="text-xs text-gray-500">
             Envia todos os prazos, eventos e lembretes dos próximos 60 dias para o Google Calendar.
           </p>
@@ -252,14 +252,14 @@ export default function CalendarSettings() {
       )}
 
       <div className="border-t pt-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">🔗 Assinatura iCal</h3>
-        <p className="text-sm text-gray-600 mb-4">
+        <h3 className="text-lg font-semibold text-white mb-2">🔗 Assinatura iCal</h3>
+        <p className="text-sm text-gray-400 mb-4">
           Assine a agenda em qualquer aplicativo de calendário (Google, Outlook, Apple) sem OAuth.
         </p>
 
         {icalUrl ? (
-          <div className="p-4 border rounded-lg bg-white space-y-3">
-            <div className="text-sm text-gray-700 break-all bg-gray-50 p-2 rounded border border-gray-200">
+          <div className="p-4 border rounded-lg bg-[#1B1D1E] space-y-3">
+            <div className="text-sm text-gray-300 break-all bg-[#181A1B] p-2 rounded border border-gray-800">
               {icalUrl}
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -271,7 +271,7 @@ export default function CalendarSettings() {
               </button>
               <button
                 onClick={handleRegenerateIcal}
-                className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded border border-gray-300 hover:bg-gray-200"
+                className="px-3 py-1.5 text-sm bg-gray-100 text-gray-300 rounded border border-[#2A2D2F] hover:bg-gray-200"
               >
                 Gerar novo link
               </button>

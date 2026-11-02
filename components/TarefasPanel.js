@@ -212,7 +212,7 @@ export default function TarefasPanel() {
               <button
                 type="button"
                 onClick={() => setStatus(t, 'pendente')}
-                className="px-2.5 py-1.5 text-xs font-semibold rounded bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300 transition flex items-center gap-1"
+                className="px-2.5 py-1.5 text-xs font-semibold rounded bg-gray-100 text-gray-300 hover:bg-gray-200 border border-[#2A2D2F] transition flex items-center gap-1"
                 title="Reabrir tarefa como pendente"
               >
                 ↩ Reabrir
@@ -230,7 +230,7 @@ export default function TarefasPanel() {
             <select
               value={st}
               onChange={(e) => setStatus(t, e.target.value)}
-              className="px-2.5 py-1.5 bg-white border border-gray-300 rounded text-gray-800 text-xs focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
+              className="px-2.5 py-1.5 bg-[#1B1D1E] border border-[#2A2D2F] rounded text-gray-100 text-xs focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
             >
               <option value="pendente">Pendente</option>
               <option value="em_andamento">Em andamento</option>
@@ -239,7 +239,7 @@ export default function TarefasPanel() {
             </select>
             <button
               onClick={() => openEdit(t)}
-              className="text-gray-600 hover:text-yellow-600 p-1.5 text-xs rounded hover:bg-gray-100 transition-colors"
+              className="text-gray-400 hover:text-yellow-600 p-1.5 text-xs rounded hover:bg-gray-100 transition-colors"
               title="Editar tarefa"
             >
               ✏️
@@ -395,7 +395,7 @@ export default function TarefasPanel() {
 
             {outras.length > 0 && (
               <div className="bg-[#1B1D1E] rounded-xl border border-gray-800 p-4 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
                   <span>📋</span> Outras / Sem Prazo ({outras.length})
                 </h3>
                 <div className="space-y-3">{outras.map(renderCard)}</div>
@@ -403,11 +403,11 @@ export default function TarefasPanel() {
             )}
 
             {pendentes.length === 0 && concluidas.length === 0 && (
-              <div className="bg-white rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500 shadow-sm">
+              <div className="bg-[#1B1D1E] rounded-xl border border-dashed border-[#2A2D2F] p-8 text-center text-gray-500 shadow-sm">
                 <div className="w-12 h-12 bg-amber-50 text-amber-700 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
                   📝
                 </div>
-                <h4 className="font-semibold text-gray-800 text-sm mb-1">Nenhuma tarefa cadastrada ainda</h4>
+                <h4 className="font-semibold text-gray-100 text-sm mb-1">Nenhuma tarefa cadastrada ainda</h4>
                 <p className="text-xs text-gray-500 mb-4 max-w-md mx-auto">
                   Organize diligências, protocolos, contatos com clientes e tarefas internas do escritório vinculadas aos casos ou avulsas.
                 </p>
@@ -422,7 +422,7 @@ export default function TarefasPanel() {
             )}
 
             {pendentes.length === 0 && concluidas.length > 0 && (
-              <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500 shadow-sm">
+              <div className="bg-[#1B1D1E] rounded-xl border border-gray-800 p-8 text-center text-gray-500 shadow-sm">
                 <p>Nenhuma tarefa pendente com os filtros atuais (todas as tarefas estão concluídas!).</p>
               </div>
             )}
@@ -444,7 +444,7 @@ export default function TarefasPanel() {
             <div className="bg-[#1B1D1E] border border-gray-800 rounded-xl shadow-2xl w-full max-w-lg text-gray-100" onClick={(e) => e.stopPropagation()}>
               <div className="p-4 border-b border-gray-800 flex justify-between items-center">
                 <h3 className="font-bold text-base text-white">{modal.mode === 'new' ? '+ Nova Tarefa Jurídica' : 'Editar Tarefa'}</h3>
-                <button onClick={() => setModal(null)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+                <button onClick={() => setModal(null)} className="text-gray-400 hover:text-gray-400 text-lg">✕</button>
               </div>
               <form onSubmit={saveModal} className="p-4 space-y-3">
                 <div>

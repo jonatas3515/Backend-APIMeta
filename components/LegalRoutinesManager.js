@@ -169,7 +169,7 @@ export default function LegalRoutinesManager() {
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow">
+    <div className="p-6 bg-[#1B1D1E] rounded-lg shadow">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">⚖️ Rotinas Jurídicas</h2>
         <button
@@ -195,7 +195,7 @@ export default function LegalRoutinesManager() {
 
       {/* Formulário */}
       {showForm && (
-        <div className="mb-6 p-4 border rounded bg-gray-50">
+        <div className="mb-6 p-4 border rounded bg-[#181A1B]">
           <h3 className="text-lg font-bold mb-4">{editingRoutine ? 'Editar Rotina' : 'Nova Rotina'}</h3>
           
           <div className="grid grid-cols-2 gap-4 mb-4">
@@ -331,11 +331,11 @@ export default function LegalRoutinesManager() {
       ) : (
         <div className="space-y-4">
           {routines.map(routine => (
-            <div key={routine.id} className="p-4 border rounded-lg bg-gray-50">
+            <div key={routine.id} className="p-4 border rounded-lg bg-[#181A1B]">
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <h4 className="font-bold text-lg">{routine.name}</h4>
-                  <p className="text-sm text-gray-600">{routine.description}</p>
+                  <p className="text-sm text-gray-400">{routine.description}</p>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -374,7 +374,7 @@ export default function LegalRoutinesManager() {
               {routine.steps && routine.steps.length > 0 && (
                 <div className="mb-3">
                   <p className="text-sm font-semibold">Passos:</p>
-                  <ol className="text-sm text-gray-700 ml-4 list-decimal">
+                  <ol className="text-sm text-gray-300 ml-4 list-decimal">
                     {routine.steps.map((step, idx) => (
                       <li key={idx}>{step.description}</li>
                     ))}
@@ -383,7 +383,7 @@ export default function LegalRoutinesManager() {
               )}
 
               {routine.documents_to_generate && routine.documents_to_generate.length > 0 && (
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-400">
                   📄 {routine.documents_to_generate.length} documento(s) a gerar
                 </p>
               )}

@@ -240,7 +240,7 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
       </div>
 
       {showForm && (
-        <form onSubmit={handleAdd} className="bg-white p-4 rounded shadow mb-4">
+        <form onSubmit={handleAdd} className="bg-[#1B1D1E] p-4 rounded shadow mb-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
             <div>
               <label className="block text-sm font-medium">Número CNJ</label>
@@ -324,13 +324,13 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
                 <div
                   key={p.id}
                   onClick={() => setSelectedProcess(p)}
-                  className={`p-3 border rounded cursor-pointer hover:bg-gray-50 ${selectedProcess?.id === p.id ? 'bg-blue-50 border-blue-300' : 'bg-white'}`}
+                  className={`p-3 border rounded cursor-pointer hover:bg-[#181A1B] ${selectedProcess?.id === p.id ? 'bg-blue-50 border-blue-300' : 'bg-[#1B1D1E]'}`}
                 >
                   <div className="flex justify-between">
                     <span className="font-mono font-medium">{formatCNJ(p.process_number)}</span>
                     <span className="text-xs px-2 py-0.5 rounded bg-gray-200">{p.monitoring_status}</span>
                   </div>
-                  <div className="text-sm text-gray-600">{p.court_name || p.court_code?.toUpperCase()} {p.is_primary && '• Principal'}</div>
+                  <div className="text-sm text-gray-400">{p.court_name || p.court_code?.toUpperCase()} {p.is_primary && '• Principal'}</div>
                   <div className="text-xs text-gray-500">Última consulta: {p.last_checked_at ? new Date(p.last_checked_at).toLocaleString('pt-BR') : '—'}</div>
                   <div className="mt-2 flex gap-2">
                     <button
@@ -355,9 +355,9 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
           </div>
 
           {selectedProcess && (
-            <div className="bg-white p-4 border rounded">
+            <div className="bg-[#1B1D1E] p-4 border rounded">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <h4 className="font-semibold flex items-center gap-1.5 text-gray-900">
+                <h4 className="font-semibold flex items-center gap-1.5 text-white">
                   <span>📜</span> Movimentações
                 </h4>
                 {isLawyer && (
@@ -389,42 +389,42 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[11px] font-medium text-gray-700 mb-0.5">Data da Decisão / Andamento</label>
+                      <label className="block text-[11px] font-medium text-gray-300 mb-0.5">Data da Decisão / Andamento</label>
                       <input
                         type="date"
                         required
                         value={manualForm.movement_date}
                         onChange={(e) => setManualForm({ ...manualForm, movement_date: e.target.value })}
-                        className="w-full px-2 py-1 border rounded text-xs text-gray-900 bg-white"
+                        className="w-full px-2 py-1 border rounded text-xs text-white bg-[#1B1D1E]"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-gray-700 mb-0.5">Fonte (Tribunal / Sistema)</label>
+                      <label className="block text-[11px] font-medium text-gray-300 mb-0.5">Fonte (Tribunal / Sistema)</label>
                       <input
                         type="text"
                         placeholder="Ex: Projudi TJBA, PJe, DJE..."
                         value={manualForm.source}
                         onChange={(e) => setManualForm({ ...manualForm, source: e.target.value })}
-                        className="w-full px-2 py-1 border rounded text-xs text-gray-900 bg-white"
+                        className="w-full px-2 py-1 border rounded text-xs text-white bg-[#1B1D1E]"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-gray-700 mb-0.5">Texto do Andamento / Decisão</label>
+                    <label className="block text-[11px] font-medium text-gray-300 mb-0.5">Texto do Andamento / Decisão</label>
                     <textarea
                       required
                       rows={3}
                       placeholder="Cole o teor da decisão ou certidão (ex: Negado provimento ao recurso da TAM, mantida sentença, 20% honorários)..."
                       value={manualForm.movement_text}
                       onChange={(e) => setManualForm({ ...manualForm, movement_text: e.target.value })}
-                      className="w-full px-2.5 py-1.5 border rounded text-xs text-gray-900 bg-white"
+                      className="w-full px-2.5 py-1.5 border rounded text-xs text-white bg-[#1B1D1E]"
                     />
                   </div>
                   <div className="flex justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => setShowManualMovementModal(false)}
-                      className="px-3 py-1 text-xs border rounded text-gray-600 hover:bg-gray-100"
+                      className="px-3 py-1 text-xs border rounded text-gray-400 hover:bg-gray-100"
                     >
                       Cancelar
                     </button>
@@ -441,7 +441,7 @@ export default function CaseProcessMonitoring({ caseId, userRole }) {
               {movements.length === 0 && <p className="text-gray-500">Nenhuma movimentação registrada.</p>}
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {movements.map((m) => (
-                  <div key={m.id} className={`p-3 rounded border ${m.review_status === 'nova' ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50'}`}>
+                  <div key={m.id} className={`p-3 rounded border ${m.review_status === 'nova' ? 'bg-yellow-50 border-yellow-300' : 'bg-[#181A1B]'}`}>
                     <div className="text-xs text-gray-500">
                       {m.movement_date ? new Date(m.movement_date).toLocaleString('pt-BR') : '—'} • {m.source}
                     </div>

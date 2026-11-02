@@ -90,7 +90,7 @@ export default function DocumentGenerator({ conversation }) {
   return (
     <div className="nc-card p-4 space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="font-bold text-nc-text-title">📄 Gerar Documento</h3>
+        <h3 className="font-bold text-white">📄 Gerar Documento</h3>
         <button
           onClick={autoFill}
           className="text-xs text-nc-yellow hover:text-nc-yellow-700 font-medium transition"
@@ -100,7 +100,7 @@ export default function DocumentGenerator({ conversation }) {
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-nc-text-secondary mb-1">Template</label>
+        <label className="block text-xs font-semibold text-gray-400 mb-1">Template</label>
         <select
           value={selectedTemplate}
           onChange={(e) => setSelectedTemplate(e.target.value)}
@@ -114,14 +114,14 @@ export default function DocumentGenerator({ conversation }) {
       </div>
 
       {selectedTemplateData && (
-        <p className="text-xs text-nc-text-muted">{selectedTemplateData.description}</p>
+        <p className="text-xs text-gray-400">{selectedTemplateData.description}</p>
       )}
 
       {selectedTemplate && (
         <form onSubmit={handleSubmit} className="space-y-3">
           {selectedTemplateData?.fields?.map(field => (
             <div key={field.field}>
-              <label className="block text-xs font-semibold text-nc-text-secondary mb-1">
+              <label className="block text-xs font-semibold text-gray-400 mb-1">
                 {field.label} {field.required && <span className="text-red-500">*</span>}
               </label>
               <input
@@ -145,9 +145,9 @@ export default function DocumentGenerator({ conversation }) {
       )}
 
       {document && (
-        <div className="border-t border-nc-gray-200 pt-3">
+        <div className="border-t border-gray-800 pt-3">
           <div className="flex justify-between items-center mb-2">
-            <h4 className="font-semibold text-sm text-nc-text-title">Documento Gerado</h4>
+            <h4 className="font-semibold text-sm text-white">Documento Gerado</h4>
             <button
               onClick={handleCopy}
               className="text-xs text-nc-yellow hover:text-nc-yellow-700 font-medium"
@@ -155,7 +155,7 @@ export default function DocumentGenerator({ conversation }) {
               📋 Copiar
             </button>
           </div>
-          <pre className="bg-nc-gray-50 p-3 rounded-nc text-xs text-nc-text whitespace-pre-wrap max-h-80 overflow-y-auto font-mono border border-nc-gray-200">
+          <pre className="bg-[#181A1B] p-3 rounded-nc text-xs text-gray-100 whitespace-pre-wrap max-h-80 overflow-y-auto font-mono border border-gray-800">
             {document}
           </pre>
         </div>

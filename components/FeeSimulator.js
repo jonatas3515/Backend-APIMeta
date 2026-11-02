@@ -338,7 +338,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
   const selected = services.find((s) => s.id === selectedService);
 
   return (
-    <div className="p-4 bg-white rounded-lg border shadow-sm space-y-4 max-h-[80vh] overflow-y-auto">
+    <div className="p-4 bg-[#1B1D1E] rounded-lg border shadow-sm space-y-4 max-h-[80vh] overflow-y-auto">
       <h3 className="font-bold text-base sm:text-lg flex items-center gap-2">💰 Simular Honorários</h3>
 
       {services.length === 0 && (
@@ -371,7 +371,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
       <div className="space-y-3">
         {!caseId && (
           <div>
-            <label className="block text-sm font-medium text-gray-700">Caso vinculado</label>
+            <label className="block text-sm font-medium text-gray-300">Caso vinculado</label>
             <select
               value={selectedCaseId}
               onChange={(e) => setSelectedCaseId(e.target.value)}
@@ -390,7 +390,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Serviço</label>
+          <label className="block text-sm font-medium text-gray-300">Serviço</label>
           <select
             value={selectedService}
             onChange={(e) => setSelectedService(e.target.value)}
@@ -406,7 +406,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         </div>
 
         <div className="space-y-1">
-          <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <label className="flex items-center gap-2 text-sm font-medium text-gray-300">
             <input
               type="checkbox"
               checked={useOabBase}
@@ -428,7 +428,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
                   const key = oabCandidateKey(c);
                   const checked = oabReference && oabCandidateKey(oabReference) === key;
                   return (
-                    <label key={key} className={`flex items-start gap-2 p-2 rounded border text-xs cursor-pointer ${checked ? 'bg-green-50 border-green-300' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
+                    <label key={key} className={`flex items-start gap-2 p-2 rounded border text-xs cursor-pointer ${checked ? 'bg-green-50 border-green-300' : 'bg-[#1B1D1E] border-gray-800 hover:bg-[#181A1B]'}`}>
                       <input
                         type="radio"
                         name="oab-candidate"
@@ -438,12 +438,12 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
                         className="mt-0.5"
                       />
                       <span className="flex-1">
-                        <span className="block font-medium text-gray-800">{c.service}</span>
-                        <span className="block text-gray-600">
+                        <span className="block font-medium text-gray-100">{c.service}</span>
+                        <span className="block text-gray-400">
                           Área: {c.legal_area || '—'}
                           {c.id ? ` | Código: ${c.id}` : ''}
                         </span>
-                        <span className="block text-gray-700">
+                        <span className="block text-gray-300">
                           Mín: R$ {Number(c.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           {' | '}Sug: R$ {Number(c.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           {c.max_amount != null && ` | Máx: R$ ${Number(c.max_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
@@ -474,7 +474,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
               Referência OAB
             </p>
             <p className="text-sm"><strong>Serviço:</strong> {oabReference.service}</p>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-gray-300">
               <span className="font-medium text-green-800">Mínimo (OAB):</span> R$ {Number(oabReference.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}&nbsp;|&nbsp;
               <span className="font-medium text-green-800">Sugerido (OAB):</span> R$ {Number(oabReference.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}&nbsp;|&nbsp;
               <span className="font-medium text-green-800">Máximo (OAB):</span> R$ {Number(oabReference.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -487,7 +487,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Complexidade</label>
+            <label className="block text-sm font-medium text-gray-300">Complexidade</label>
             <select value={form.complexity} onChange={(e) => setForm({ ...form, complexity: e.target.value })} className="w-full mt-1 border rounded p-2 text-sm">
               <option value="baixa">Baixa</option>
               <option value="media">Média</option>
@@ -495,7 +495,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Urgência</label>
+            <label className="block text-sm font-medium text-gray-300">Urgência</label>
             <select value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })} className="w-full mt-1 border rounded p-2 text-sm">
               <option value="normal">Normal</option>
               <option value="prazo_curto">Prazo curto</option>
@@ -503,7 +503,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Etapa</label>
+            <label className="block text-sm font-medium text-gray-300">Etapa</label>
             <select value={form.service_stage} onChange={(e) => setForm({ ...form, service_stage: e.target.value })} className="w-full mt-1 border rounded p-2 text-sm">
               <option value="consulta">Consulta</option>
               <option value="extrajudicial">Extrajudicial</option>
@@ -517,7 +517,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Volume documental</label>
+            <label className="block text-sm font-medium text-gray-300">Volume documental</label>
             <select value={form.document_volume} onChange={(e) => setForm({ ...form, document_volume: e.target.value })} className="w-full mt-1 border rounded p-2 text-sm">
               <option value="reduzido">Reduzido</option>
               <option value="padrao">Padrão</option>
@@ -527,7 +527,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Valor econômico estimado (R$)</label>
+          <label className="block text-sm font-medium text-gray-300">Valor econômico estimado (R$)</label>
           <input
             type="number"
             value={form.estimated_economic_value}
@@ -538,7 +538,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700">Observações internas</label>
+          <label className="block text-sm font-medium text-gray-300">Observações internas</label>
           <textarea
             value={form.internal_notes}
             onChange={(e) => setForm({ ...form, internal_notes: e.target.value })}
@@ -578,25 +578,25 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
               <strong>Valor base {useOabBase ? '(OAB)' : '(catálogo)'}:</strong> R$ {Number(result.base_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
             {!useOabBase && result.applied_rules.map((r, i) => (
-              <p key={i} className="text-gray-600">
+              <p key={i} className="text-gray-400">
                 {r.rule_type} ({r.rule_value}): {r.adjustment_kind === 'percentual' ? `${r.adjustment_value}%` : `R$ ${Number(r.adjustment_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} → {r.amount >= 0 ? '+' : ''} R$ {Number(r.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
             ))}
             <p className="font-semibold text-lg">
               Valor sugerido: R$ {Number(result.suggested_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
-            <p className="text-gray-600">
+            <p className="text-gray-400">
               Faixa permitida: R$ {Number(result.min_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} a R$ {Number(result.max_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
-            <p className="text-gray-600">
+            <p className="text-gray-400">
               Pagamento sugerido: entrada R$ {Number(result.down_payment).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} + {result.installments_count}x R$ {Number(result.installment_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
 
           {useOabBase && oabReference && (
-            <div className="p-3 bg-white border border-green-200 rounded space-y-1">
+            <div className="p-3 bg-[#1B1D1E] border border-green-200 rounded space-y-1">
               <p className="text-xs font-semibold text-green-700 uppercase">Valores OAB</p>
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-gray-300">
                 <span className="font-medium text-green-800">Mínimo (OAB):</span> R$ {Number(oabReference.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}&nbsp;|&nbsp;
                 <span className="font-medium text-green-800">Sugerido (OAB):</span> R$ {Number(oabReference.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}&nbsp;|&nbsp;
                 <span className="font-medium text-green-800">Máximo (OAB):</span> R$ {Number(oabReference.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
@@ -614,7 +614,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Valor proposto (R$)</label>
+            <label className="block text-sm font-medium text-gray-300">Valor proposto (R$)</label>
             <input
               type="number"
               value={form.final_amount}
@@ -638,7 +638,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Validade da proposta</label>
+            <label className="block text-sm font-medium text-gray-300">Validade da proposta</label>
             <input
               type="date"
               value={form.proposal_valid_until}
@@ -652,7 +652,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
               onClick={() => handleSave('rascunho')}
               disabled={saving}
               title={saving ? 'Salvando...' : 'Salvar rascunho da simulação'}
-              className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 disabled:opacity-50 text-sm"
+              className="flex-1 px-4 py-2 bg-gray-200 text-gray-100 rounded hover:bg-gray-300 disabled:opacity-50 text-sm"
             >
               {saving ? 'Salvando...' : 'Salvar rascunho'}
             </button>
@@ -698,8 +698,8 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
           )}
         </div>
         {simulations.length === 0 ? (
-          <div className="p-4 bg-gray-50 border rounded text-center space-y-2">
-            <p className="text-sm text-gray-600">Nenhuma simulação encontrada.</p>
+          <div className="p-4 bg-[#181A1B] border rounded text-center space-y-2">
+            <p className="text-sm text-gray-400">Nenhuma simulação encontrada.</p>
             {isAdminOrLawyerFinal && (
               <button
                 onClick={() => {
@@ -721,12 +721,12 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
                   <div>
                     <p className="font-medium">{sim.fee_service_catalog?.name || 'Serviço'}</p>
                     {sim.cases?.title && (
-                      <p className="text-gray-600">Caso: {sim.cases.title}</p>
+                      <p className="text-gray-400">Caso: {sim.cases.title}</p>
                     )}
-                    <p className="text-gray-600">Status: <span className="capitalize font-semibold">{sim.status}</span></p>
-                    <p className="text-gray-600">Sugerido: R$ {Number(sim.suggested_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    <p className="text-gray-400">Status: <span className="capitalize font-semibold">{sim.status}</span></p>
+                    <p className="text-gray-400">Sugerido: R$ {Number(sim.suggested_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                     {sim.final_amount && sim.final_amount !== sim.suggested_amount && (
-                      <p className="text-gray-600">Final: R$ {Number(sim.final_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                      <p className="text-gray-400">Final: R$ {Number(sim.final_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                     )}
                   </div>
                   {isAdminOrLawyerFinal && sim.status === 'aguardando_aprovacao' && (

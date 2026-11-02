@@ -65,7 +65,7 @@ export default function SubscriptionModal({ open, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div
-        className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
+        className="bg-[#1B1D1E] rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-4 border-b flex justify-between items-center">
@@ -73,7 +73,7 @@ export default function SubscriptionModal({ open, onClose }) {
             <h3 className="font-bold text-lg">Planos e Assinatura</h3>
             <p className="text-xs text-gray-500">{data?.office?.name || 'Seu escritório'}</p>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-300">✕</button>
         </div>
 
         <div className="p-4">
@@ -120,13 +120,13 @@ export default function SubscriptionModal({ open, onClose }) {
                         ? 'border-nc-yellow ring-2 ring-nc-yellow bg-yellow-50/40 shadow-md'
                         : isEnterprise
                         ? 'border-purple-300 bg-gradient-to-b from-purple-50/30 to-white shadow-sm'
-                        : 'border-gray-200 hover:border-gray-300'
+                        : 'border-gray-800 hover:border-[#2A2D2F]'
                     }`}
                     data-testid={`plan-card-${key}`}
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-bold text-base text-gray-900">{plan.name}</h4>
+                        <h4 className="font-bold text-base text-white">{plan.name}</h4>
                         {isCurrent && (
                           <span className="text-[10px] px-2 py-0.5 rounded bg-nc-yellow text-nc-black font-extrabold">
                             PLANO ATUAL
@@ -138,16 +138,16 @@ export default function SubscriptionModal({ open, onClose }) {
                           </span>
                         )}
                       </div>
-                      <p className="text-2xl font-black mb-1 text-gray-900">
+                      <p className="text-2xl font-black mb-1 text-white">
                         R$ {plan.price}
                         <span className="text-xs font-normal text-gray-500">/{plan.interval}</span>
                       </p>
-                      <p className="text-xs text-gray-600 mb-4">{plan.description}</p>
+                      <p className="text-xs text-gray-400 mb-4">{plan.description}</p>
 
                       <div className="border-t border-gray-100 pt-3 mb-4 space-y-1.5">
-                        <p className="text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-2">O que inclui:</p>
+                        <p className="text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-2">O que inclui:</p>
                         {(plan.highlights || []).map((highlight, idx) => (
-                          <div key={idx} className="flex items-start gap-1.5 text-xs text-gray-600">
+                          <div key={idx} className="flex items-start gap-1.5 text-xs text-gray-400">
                             <span className="text-green-500 font-bold shrink-0">✓</span>
                             <span>{highlight}</span>
                           </div>
@@ -160,7 +160,7 @@ export default function SubscriptionModal({ open, onClose }) {
                       disabled={isCurrent || !!checkoutLoading}
                       className={`w-full py-2.5 rounded-lg text-xs font-bold transition shadow-sm ${
                         isCurrent
-                          ? 'bg-gray-100 text-gray-400 cursor-default border border-gray-200'
+                          ? 'bg-gray-100 text-gray-400 cursor-default border border-gray-800'
                           : isEnterprise
                           ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 hover:shadow-md'
                           : 'bg-nc-black text-white hover:bg-nc-gray-800'

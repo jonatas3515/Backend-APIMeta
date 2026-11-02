@@ -426,7 +426,7 @@ export default function AgendaPanel() {
                 type="checkbox"
                 checked={showIcal}
                 onChange={(e) => setShowIcal(e.target.checked)}
-                className="rounded border-gray-300"
+                className="rounded border-[#2A2D2F]"
               />
               Mostrar opções de calendário externo (iCal e Google)
             </label>
@@ -561,7 +561,7 @@ export default function AgendaPanel() {
                             type="checkbox"
                             checked={selectedItems.has(`${item.item_type}:${item.case_id}`)}
                             onChange={() => toggleSelectedItem(item)}
-                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mb-2"
+                            className="h-4 w-4 rounded border-[#2A2D2F] text-blue-600 focus:ring-blue-500 mb-2"
                             title="Selecionar para sincronização em lote"
                           />
                           <div className="text-lg">{getPriorityIcon(item.priority)}</div>
@@ -593,8 +593,8 @@ export default function AgendaPanel() {
 
       {/* Estatísticas */}
       {agenda.total_items > 0 && (
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
-          <p className="text-sm text-gray-600">
+        <div className="p-4 border-t border-gray-800 bg-[#181A1B]">
+          <p className="text-sm text-gray-400">
             <strong>Total:</strong> {agenda.total_items} item{agenda.total_items !== 1 ? 'ns' : ''} no período
           </p>
         </div>

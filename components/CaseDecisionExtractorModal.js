@@ -436,7 +436,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-3xl overflow-hidden my-auto text-gray-900 animate-fadeIn">
+      <div className="bg-[#1B1D1E] rounded-2xl shadow-2xl border border-gray-800 w-full max-w-3xl overflow-hidden my-auto text-white animate-fadeIn">
         {/* Header */}
         <div className="bg-gradient-to-r from-gray-900 via-indigo-950 to-gray-900 text-white p-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -511,7 +511,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
           {!analysis && (
             <form onSubmit={handleAnalyze} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                <label className="block text-xs font-bold text-gray-300 mb-1.5 flex items-center justify-between">
                   <span>Cole aqui o texto da decisão, despacho, certidão ou ata do Projudi / PJe:</span>
                   <span className="text-[11px] font-normal text-gray-500">A IA identificará o processo e suas decisões</span>
                 </label>
@@ -521,7 +521,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   placeholder="Cole aqui o texto completo copiado do Projudi ou PJe (com número de processo, partes, decisão, etc)..."
-                  className="w-full p-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 font-mono text-gray-800 bg-gray-50/50"
+                  className="w-full p-3 border border-[#2A2D2F] rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 font-mono text-gray-100 bg-[#181A1B]/50"
                 />
               </div>
 
@@ -529,7 +529,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                  className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-100"
                 >
                   Cancelar
                 </button>
@@ -569,62 +569,62 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs pt-1">
                     <div className="sm:col-span-2">
-                      <label className="block text-[11px] font-bold text-gray-700 mb-1">Título do Novo Caso:</label>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">Título do Novo Caso:</label>
                       <input
                         type="text"
                         value={newCaseData.title}
                         onChange={(e) => setNewCaseData({ ...newCaseData, title: e.target.value })}
-                        className="w-full p-2 border border-amber-300 rounded-lg bg-white text-xs font-semibold text-gray-900"
+                        className="w-full p-2 border border-amber-300 rounded-lg bg-[#1B1D1E] text-xs font-semibold text-white"
                         placeholder="Ex: Cumprimento de Sentença — Beatriz Soares Andrade"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-700 mb-1">Número CNJ:</label>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">Número CNJ:</label>
                       <input
                         type="text"
                         value={newCaseData.process_number}
                         onChange={(e) => setNewCaseData({ ...newCaseData, process_number: e.target.value })}
-                        className="w-full p-2 border border-amber-300 rounded-lg bg-white text-xs font-mono text-gray-900"
+                        className="w-full p-2 border border-amber-300 rounded-lg bg-[#1B1D1E] text-xs font-mono text-white"
                         placeholder="0001620-89.2025.8.05.0120"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-700 mb-1">Tribunal:</label>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">Tribunal:</label>
                       <input
                         type="text"
                         value={newCaseData.court}
                         onChange={(e) => setNewCaseData({ ...newCaseData, court: e.target.value })}
-                        className="w-full p-2 border border-gray-300 rounded-lg bg-white text-xs text-gray-900"
+                        className="w-full p-2 border border-[#2A2D2F] rounded-lg bg-[#1B1D1E] text-xs text-white"
                         placeholder="Ex: TJ, TRT"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-700 mb-1">Comarca:</label>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">Comarca:</label>
                       <input
                         type="text"
                         value={newCaseData.judicial_district}
                         onChange={(e) => setNewCaseData({ ...newCaseData, judicial_district: e.target.value })}
-                        className="w-full p-2 border border-gray-300 rounded-lg bg-white text-xs text-gray-900"
+                        className="w-full p-2 border border-[#2A2D2F] rounded-lg bg-[#1B1D1E] text-xs text-white"
                         placeholder="Ex: Itamaraju"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-700 mb-1">Vara / Juízo:</label>
+                      <label className="block text-[11px] font-bold text-gray-300 mb-1">Vara / Juízo:</label>
                       <input
                         type="text"
                         value={newCaseData.court_division}
                         onChange={(e) => setNewCaseData({ ...newCaseData, court_division: e.target.value })}
-                        className="w-full p-2 border border-gray-300 rounded-lg bg-white text-xs text-gray-900"
+                        className="w-full p-2 border border-[#2A2D2F] rounded-lg bg-[#1B1D1E] text-xs text-white"
                         placeholder="Ex: Vara do Sistema dos Juizados"
                       />
                     </div>
                   </div>
 
                   {allCases && allCases.length > 0 && (
-                    <div className="pt-1 flex items-center gap-2 text-[11px] text-gray-600">
+                    <div className="pt-1 flex items-center gap-2 text-[11px] text-gray-400">
                       <span>Ou vincular a um caso existente:</span>
                       <select
-                        className="p-1 border border-gray-300 rounded bg-white text-gray-800 text-[11px]"
+                        className="p-1 border border-[#2A2D2F] rounded bg-[#1B1D1E] text-gray-100 text-[11px]"
                         onChange={(e) => {
                           const c = allCases.find((x) => String(x.id) === e.target.value);
                           if (c) {
@@ -704,7 +704,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                     Resultado: <strong className="capitalize">{analysis.resultado?.replace(/_/g, ' ') || 'Processado'}</strong>
                   </span>
                 </div>
-                <p className="text-xs text-gray-800 leading-relaxed font-medium">
+                <p className="text-xs text-gray-100 leading-relaxed font-medium">
                   {analysis.resumo}
                 </p>
               </div>
@@ -712,9 +712,9 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
               {/* Grid com detalhes extraídos */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                 {/* 1. Audiência */}
-                <div className="p-3.5 rounded-xl border border-gray-200 bg-white">
+                <div className="p-3.5 rounded-xl border border-gray-800 bg-[#1B1D1E]">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold flex items-center gap-1.5 text-gray-900">
+                    <span className="font-bold flex items-center gap-1.5 text-white">
                       <span>📅</span> Audiência
                     </span>
                     {analysis.audiencia?.identificada ? (
@@ -724,7 +724,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                     )}
                   </div>
                   {analysis.audiencia?.identificada ? (
-                    <div className="space-y-1 text-gray-700">
+                    <div className="space-y-1 text-gray-300">
                       <p><strong>Tipo:</strong> {analysis.audiencia.tipo || 'Não especificado'}</p>
                       <p><strong>Data/Hora:</strong> {analysis.audiencia.data || 'A definir'} {analysis.audiencia.hora ? `às ${analysis.audiencia.hora}` : ''}</p>
                       {analysis.audiencia.modalidade && <p><strong>Modalidade:</strong> {analysis.audiencia.modalidade}</p>}
@@ -735,9 +735,9 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                 </div>
 
                 {/* 2. Prazos */}
-                <div className="p-3.5 rounded-xl border border-gray-200 bg-white">
+                <div className="p-3.5 rounded-xl border border-gray-800 bg-[#1B1D1E]">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold flex items-center gap-1.5 text-gray-900">
+                    <span className="font-bold flex items-center gap-1.5 text-white">
                       <span>⏳</span> Prazo & Providência
                     </span>
                     {analysis.prazo?.identificado ? (
@@ -747,7 +747,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                     )}
                   </div>
                   {analysis.prazo?.identificado ? (
-                    <div className="space-y-1 text-gray-700">
+                    <div className="space-y-1 text-gray-300">
                       <p><strong>Ato/Prazo:</strong> {analysis.prazo.tipo || 'Intimação'}</p>
                       <p><strong>Duração:</strong> {analysis.prazo.dias ? `${analysis.prazo.dias} dias ${analysis.prazo.tipo_dias || ''}` : 'Conforme lei'}</p>
                       {analysis.prazo.sugestao_data_limite && (
@@ -760,9 +760,9 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                 </div>
 
                 {/* 3. Valores e Honorários */}
-                <div className="p-3.5 rounded-xl border border-gray-200 bg-white">
+                <div className="p-3.5 rounded-xl border border-gray-800 bg-[#1B1D1E]">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold flex items-center gap-1.5 text-gray-900">
+                    <span className="font-bold flex items-center gap-1.5 text-white">
                       <span>💰</span> Valores & Honorários
                     </span>
                     {analysis.valores?.tem_valores || analysis.valores?.honorarios_percentual ? (
@@ -772,28 +772,28 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                     )}
                   </div>
 
-                  <div className="space-y-2.5 text-gray-700 text-xs">
+                  <div className="space-y-2.5 text-gray-300 text-xs">
                     {/* Discriminativo das Verbas Identificadas */}
                     {(analysis.valores?.valor_dano_material || analysis.valores?.valor_dano_moral) && (
-                      <div className="p-2.5 rounded-lg bg-gray-50 border border-gray-200 space-y-1.5">
-                        <span className="text-[11px] font-bold text-gray-800 block">Composição da Condenação identificada:</span>
+                      <div className="p-2.5 rounded-lg bg-[#181A1B] border border-gray-800 space-y-1.5">
+                        <span className="text-[11px] font-bold text-gray-100 block">Composição da Condenação identificada:</span>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
                           {analysis.valores?.valor_dano_material != null && (
-                            <div className="flex justify-between items-center bg-white px-2 py-1 rounded border border-gray-100">
-                              <span className="text-gray-600">📦 Ressarcimento / Dano Material:</span>
-                              <strong className="text-gray-900 font-mono">{formatBRL(analysis.valores.valor_dano_material)}</strong>
+                            <div className="flex justify-between items-center bg-[#1B1D1E] px-2 py-1 rounded border border-gray-100">
+                              <span className="text-gray-400">📦 Ressarcimento / Dano Material:</span>
+                              <strong className="text-white font-mono">{formatBRL(analysis.valores.valor_dano_material)}</strong>
                             </div>
                           )}
                           {analysis.valores?.valor_dano_moral != null && (
-                            <div className="flex justify-between items-center bg-white px-2 py-1 rounded border border-gray-100">
-                              <span className="text-gray-600">⚖️ Danos Morais:</span>
-                              <strong className="text-gray-900 font-mono">{formatBRL(analysis.valores.valor_dano_moral)}</strong>
+                            <div className="flex justify-between items-center bg-[#1B1D1E] px-2 py-1 rounded border border-gray-100">
+                              <span className="text-gray-400">⚖️ Danos Morais:</span>
+                              <strong className="text-white font-mono">{formatBRL(analysis.valores.valor_dano_moral)}</strong>
                             </div>
                           )}
                           {analysis.valores?.outras_verbas != null && Number(analysis.valores.outras_verbas) > 0 && (
-                            <div className="flex justify-between items-center bg-white px-2 py-1 rounded border border-gray-100">
-                              <span className="text-gray-600">➕ Outras Verbas:</span>
-                              <strong className="text-gray-900 font-mono">{formatBRL(analysis.valores.outras_verbas)}</strong>
+                            <div className="flex justify-between items-center bg-[#1B1D1E] px-2 py-1 rounded border border-gray-100">
+                              <span className="text-gray-400">➕ Outras Verbas:</span>
+                              <strong className="text-white font-mono">{formatBRL(analysis.valores.outras_verbas)}</strong>
                             </div>
                           )}
                           <div className="flex justify-between items-center bg-emerald-50 px-2 py-1 rounded border border-emerald-200 sm:col-span-2">
@@ -808,7 +808,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[11px] font-semibold text-gray-600 mb-0.5">
+                        <label className="block text-[11px] font-semibold text-gray-400 mb-0.5">
                           Valor da Condenação / Execução (Total R$):
                         </label>
                         <input
@@ -816,7 +816,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                           step="0.01"
                           value={editableCondenacao}
                           onChange={(e) => setEditableCondenacao(e.target.value)}
-                          className="w-full p-1.5 border border-gray-300 rounded text-xs font-semibold bg-gray-50 text-gray-900 font-mono"
+                          className="w-full p-1.5 border border-[#2A2D2F] rounded text-xs font-semibold bg-[#181A1B] text-white font-mono"
                           placeholder="Ex: 11154.68"
                         />
                         <span className="text-[10px] text-gray-500 mt-0.5 block">
@@ -824,7 +824,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                         </span>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-semibold text-gray-600 mb-0.5">
+                        <label className="block text-[11px] font-semibold text-gray-400 mb-0.5">
                           % Honorários Sucumbenciais:
                         </label>
                         <input
@@ -832,7 +832,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                           step="1"
                           value={editableHonorariosPercentual}
                           onChange={(e) => setEditableHonorariosPercentual(e.target.value)}
-                          className="w-full p-1.5 border border-gray-300 rounded text-xs font-semibold bg-gray-50 text-gray-900 font-mono"
+                          className="w-full p-1.5 border border-[#2A2D2F] rounded text-xs font-semibold bg-[#181A1B] text-white font-mono"
                           placeholder="Ex: 20"
                         />
                         <span className="text-[10px] text-gray-500 mt-0.5 block">
@@ -856,13 +856,13 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                 </div>
 
                 {/* 4. Fase Sugerida */}
-                <div className="p-3.5 rounded-xl border border-gray-200 bg-white">
+                <div className="p-3.5 rounded-xl border border-gray-800 bg-[#1B1D1E]">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold flex items-center gap-1.5 text-gray-900">
+                    <span className="font-bold flex items-center gap-1.5 text-white">
                       <span>🎯</span> Fase Processual Sugerida
                     </span>
                   </div>
-                  <p className="text-gray-700">
+                  <p className="text-gray-300">
                     O sistema recomenda definir a fase do processo para:
                   </p>
                   <span className="inline-block mt-2 px-3 py-1 rounded-lg bg-indigo-100 text-indigo-900 font-bold text-xs uppercase tracking-wide">
@@ -873,20 +873,20 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
 
               {/* 5. Tarefas sugeridas */}
               {analysis.tarefas_sugeridas && analysis.tarefas_sugeridas.length > 0 && (
-                <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
-                  <h4 className="font-bold text-xs text-gray-900 mb-2 flex items-center gap-1.5">
+                <div className="p-4 rounded-xl border border-gray-800 bg-[#181A1B]/70">
+                  <h4 className="font-bold text-xs text-white mb-2 flex items-center gap-1.5">
                     <span>📋</span> Tarefas Operacionais Recomendadas (selecione as que deseja criar na aba Tarefas):
                   </h4>
                   <div className="space-y-2">
                     {analysis.tarefas_sugeridas.map((tarefa, idx) => (
-                      <label key={idx} className="flex items-start gap-2.5 p-2 bg-white rounded-lg border border-gray-200 hover:border-indigo-300 cursor-pointer text-xs">
+                      <label key={idx} className="flex items-start gap-2.5 p-2 bg-[#1B1D1E] rounded-lg border border-gray-800 hover:border-indigo-300 cursor-pointer text-xs">
                         <input
                           type="checkbox"
                           checked={!!selectedTasks[idx]}
                           onChange={(e) => setSelectedTasks({ ...selectedTasks, [idx]: e.target.checked })}
                           className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500"
                         />
-                        <span className="text-gray-800">{tarefa}</span>
+                        <span className="text-gray-100">{tarefa}</span>
                       </label>
                     ))}
                   </div>
@@ -894,8 +894,8 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
               )}
 
               {/* Opções de aplicação */}
-              <div className="p-3.5 bg-white border border-gray-200 rounded-xl space-y-2 text-xs">
-                <p className="font-bold text-gray-900">Confirmar o que será gravado no processo:</p>
+              <div className="p-3.5 bg-[#1B1D1E] border border-gray-800 rounded-xl space-y-2 text-xs">
+                <p className="font-bold text-white">Confirmar o que será gravado no processo:</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={applyPhase} onChange={(e) => setApplyPhase(e.target.checked)} className="rounded text-indigo-600" />
@@ -927,7 +927,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                 <button
                   type="button"
                   onClick={() => setAnalysis(null)}
-                  className="text-xs text-gray-600 hover:text-gray-900 underline"
+                  className="text-xs text-gray-400 hover:text-white underline"
                 >
                   ← Analisar outro texto
                 </button>
@@ -935,7 +935,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
                   <button
                     type="button"
                     onClick={onClose}
-                    className="px-4 py-2 border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                    className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-100"
                   >
                     Fechar
                   </button>

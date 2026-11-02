@@ -105,9 +105,9 @@ export default function CollaborationPanel({ conversationId, caseId }) {
   };
 
   return (
-    <div className="w-96 bg-white border-l border-gray-200 flex flex-col">
+    <div className="w-96 bg-[#1B1D1E] border-l border-gray-800 flex flex-col">
       {/* Header com abas */}
-      <div className="border-b border-gray-200 p-4">
+      <div className="border-b border-gray-800 p-4">
         <h3 className="font-bold text-lg mb-3">👥 Colaboração</h3>
         <div className="flex gap-2">
           <button
@@ -115,7 +115,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
             className={`px-3 py-1 rounded text-sm font-medium transition ${
               activeTab === 'notes'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                : 'bg-gray-200 text-gray-300 hover:bg-gray-300'
             }`}
           >
             📝 Notas
@@ -125,7 +125,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
             className={`px-3 py-1 rounded text-sm font-medium transition ${
               activeTab === 'audit'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                : 'bg-gray-200 text-gray-300 hover:bg-gray-300'
             }`}
           >
             📋 Auditoria
@@ -135,7 +135,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
             className={`px-3 py-1 rounded text-sm font-medium transition ${
               activeTab === 'assign'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                : 'bg-gray-200 text-gray-300 hover:bg-gray-300'
             }`}
           >
             👤 Atribuir
@@ -150,7 +150,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
         ) : activeTab === 'notes' ? (
           <div className="space-y-4">
             {/* Formulário de nova nota */}
-            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="p-3 bg-[#181A1B] rounded-lg border border-gray-800">
               <textarea
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
@@ -182,9 +182,9 @@ export default function CollaborationPanel({ conversationId, caseId }) {
                 <p className="text-xs text-gray-500 text-center py-4">Nenhuma nota</p>
               ) : (
                 notes.map(note => (
-                  <div key={note.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div key={note.id} className="p-3 bg-[#181A1B] rounded-lg border border-gray-800">
                     <div className="flex justify-between items-start mb-1">
-                      <span className="text-xs font-semibold text-gray-700">
+                      <span className="text-xs font-semibold text-gray-300">
                         {note.users?.name || 'Sistema'}
                       </span>
                       {note.is_visible_to_client && (
@@ -193,7 +193,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-600 mb-1">{note.text}</p>
+                    <p className="text-xs text-gray-400 mb-1">{note.text}</p>
                     <p className="text-xs text-gray-400">
                       {new Date(note.created_at).toLocaleString('pt-BR')}
                     </p>
@@ -213,13 +213,13 @@ export default function CollaborationPanel({ conversationId, caseId }) {
               <p className="text-xs text-gray-500 text-center py-4">Nenhuma alteração registrada</p>
             ) : (
               auditLogs.map(log => (
-                <div key={log.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div key={log.id} className="p-3 bg-[#181A1B] rounded-lg border border-gray-800">
                   <div className="flex justify-between items-start mb-1">
-                    <span className="text-xs font-semibold text-gray-700">
+                    <span className="text-xs font-semibold text-gray-300">
                       {log.action.replace(/_/g, ' ').toUpperCase()}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-600 mb-1">
+                  <p className="text-xs text-gray-400 mb-1">
                     Por: {log.users?.name || 'Sistema'}
                   </p>
                   {log.old_value && (
@@ -241,7 +241,7 @@ export default function CollaborationPanel({ conversationId, caseId }) {
           </div>
         ) : activeTab === 'assign' ? (
           <div className="space-y-3">
-            <p className="text-sm text-gray-600 mb-3">Atribuir responsável:</p>
+            <p className="text-sm text-gray-400 mb-3">Atribuir responsável:</p>
             {users.length === 0 ? (
               <p className="text-xs text-gray-500">Nenhum usuário disponível</p>
             ) : (
@@ -252,11 +252,11 @@ export default function CollaborationPanel({ conversationId, caseId }) {
                   className={`w-full p-3 rounded-lg border-2 text-left transition ${
                     assignedUser === user.id
                       ? 'border-blue-600 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:border-blue-400'
+                      : 'border-gray-800 bg-[#1B1D1E] hover:border-blue-400'
                   }`}
                 >
                   <p className="font-semibold text-sm">{user.name}</p>
-                  <p className="text-xs text-gray-600">{user.email}</p>
+                  <p className="text-xs text-gray-400">{user.email}</p>
                   <p className="text-xs text-gray-500 mt-1">
                     {user.role === 'admin' ? '👑 Admin' : user.role === 'advogado' ? '⚖️ Advogado' : '📚 Estagiário'}
                   </p>

@@ -33,11 +33,11 @@ module.exports = {
           900: '#171717',
         },
         'nc-text': {
-          DEFAULT: '#171717',
-          title: '#111111',
-          secondary: '#666666',
-          muted: '#888888',
-          placeholder: '#999999',
+          DEFAULT: '#F3F4F6',
+          title: '#FFFFFF',
+          secondary: '#9CA3AF',
+          muted: '#9CA3AF',
+          placeholder: '#6B7280',
         },
         'nc-yellow': {
           DEFAULT: '#E6B21A',

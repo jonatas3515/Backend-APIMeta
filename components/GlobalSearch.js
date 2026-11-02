@@ -170,7 +170,7 @@ export default function GlobalSearch() {
   if (!open) return (
     <button
       onClick={() => setOpen(true)}
-      className="hidden md:flex fixed md:bottom-4 md:right-4 z-40 w-10 h-10 bg-nc-white/90 backdrop-blur-sm text-nc-text-secondary border border-nc-gray-300 rounded-full shadow-sm hover:bg-nc-white hover:text-nc-text transition items-center justify-center"
+      className="hidden md:flex fixed md:bottom-4 md:right-4 z-40 w-10 h-10 bg-[#1B1D1E]/90 backdrop-blur-sm text-gray-400 border border-[#2A2D2F] rounded-full shadow-sm hover:bg-[#1B1D1E] hover:text-gray-100 transition items-center justify-center"
       title={`Busca global (${shortcut})`}
     >
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
@@ -184,11 +184,11 @@ export default function GlobalSearch() {
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-24 bg-nc-black/60 backdrop-blur-sm">
       <div
         ref={modalRef}
-        className="w-[92%] max-w-2xl bg-nc-white rounded-nc shadow-card border border-nc-gray-300 overflow-hidden"
+        className="w-[92%] max-w-2xl bg-[#1B1D1E] rounded-nc shadow-card border border-[#2A2D2F] overflow-hidden"
       >
         {/* Header do input */}
-        <div className="relative border-b border-nc-gray-200">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-nc-text-muted text-lg">
+        <div className="relative border-b border-gray-800">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
             🔍
           </span>
           <input
@@ -198,9 +198,9 @@ export default function GlobalSearch() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Buscar casos, conversas, documentos..."
-            className="w-full pl-12 pr-24 py-4 text-nc-text bg-transparent outline-none placeholder-nc-text-muted text-base"
+            className="w-full pl-12 pr-24 py-4 text-gray-100 bg-transparent outline-none placeholder-nc-text-muted text-base"
           />
-          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-nc-text-muted border border-nc-gray-300 rounded px-2 py-1 hidden sm:inline">
+          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 border border-[#2A2D2F] rounded px-2 py-1 hidden sm:inline">
             {shortcut}
           </span>
         </div>
@@ -209,14 +209,14 @@ export default function GlobalSearch() {
         <div className="max-h-[70vh] overflow-y-auto p-2">
           {query.trim().length < 2 && history.length > 0 && !results && (
             <div className="p-2">
-              <p className="text-xs font-semibold text-nc-text-secondary uppercase tracking-wide mb-2 px-2">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-2">
                 Buscas recentes
               </p>
               {history.map((h, i) => (
                 <button
                   key={i}
                   onClick={() => setQuery(h)}
-                  className="w-full text-left px-3 py-2 rounded hover:bg-nc-gray-100 text-sm text-nc-text"
+                  className="w-full text-left px-3 py-2 rounded hover:bg-[#1E2022] text-sm text-gray-100"
                 >
                   🕒 {h}
                 </button>
@@ -225,14 +225,14 @@ export default function GlobalSearch() {
           )}
 
           {loading && (
-            <div className="p-8 text-center text-nc-text-secondary text-sm">
+            <div className="p-8 text-center text-gray-400 text-sm">
               <span className="inline-block w-5 h-5 border-2 border-nc-yellow border-t-transparent rounded-full animate-spin mr-2" />
               Buscando...
             </div>
           )}
 
           {!loading && query.trim().length >= 2 && allItems.length === 0 && (
-            <div className="p-8 text-center text-nc-text-secondary text-sm">
+            <div className="p-8 text-center text-gray-400 text-sm">
               Nenhum resultado encontrado
             </div>
           )}
@@ -245,7 +245,7 @@ export default function GlobalSearch() {
 
                 return (
                   <div key={category.key} className="mb-4">
-                    <p className="text-xs font-semibold text-nc-text-secondary uppercase tracking-wide px-3 mb-1 flex items-center gap-1">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-3 mb-1 flex items-center gap-1">
                       <span>{category.icon}</span>
                       {category.label}
                     </p>
@@ -258,28 +258,28 @@ export default function GlobalSearch() {
                           onClick={() => handleSelect(item)}
                           onMouseEnter={() => setSelectedIndex(globalIndex)}
                           className={`w-full text-left px-3 py-2.5 rounded flex items-start gap-3 transition mx-1 ${
-                            isSelected ? 'bg-nc-gray-100' : 'hover:bg-nc-gray-50'
+                            isSelected ? 'bg-[#1E2022]' : 'hover:bg-[#181A1B]'
                           }`}
                         >
                           <span className="text-lg mt-0.5">
                             {getCategoryIcon(item.type, item.kind)}
                           </span>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-nc-text-title truncate">
+                            <p className="text-sm font-medium text-white truncate">
                               {item.title}
                             </p>
                             {item.subtitle && (
-                              <p className="text-xs text-nc-text-secondary truncate">
+                              <p className="text-xs text-gray-400 truncate">
                                 {item.subtitle}
                               </p>
                             )}
                             {item.meta && (
-                              <p className="text-[10px] text-nc-text-muted truncate mt-0.5">
+                              <p className="text-[10px] text-gray-400 truncate mt-0.5">
                                 {item.meta}
                               </p>
                             )}
                           </div>
-                          <span className="text-[10px] text-nc-text-muted uppercase">
+                          <span className="text-[10px] text-gray-400 uppercase">
                             {getCategoryLabel(item.type, item.kind)}
                           </span>
                         </button>
@@ -293,7 +293,7 @@ export default function GlobalSearch() {
         </div>
 
         {/* Footer com dicas */}
-        <div className="border-t border-nc-gray-200 p-2 px-4 flex justify-between text-[10px] text-nc-text-muted bg-nc-gray-50">
+        <div className="border-t border-gray-800 p-2 px-4 flex justify-between text-[10px] text-gray-400 bg-[#181A1B]">
           <span>↑↓ navegar</span>
           <span>Enter selecionar</span>
           <span>Esc fechar</span>

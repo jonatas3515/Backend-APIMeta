@@ -15,14 +15,14 @@ import { FUNNEL_STAGES as BASE_FUNNEL_STAGES, normalizeFunnelStage } from '../li
 
 // Etapas padronizadas do funil (fonte única em lib/funnelStages.js)
 const STAGE_COLORS = {
-  lead_novo: 'bg-gray-100',
-  intake_em_andamento: 'bg-blue-100',
-  intake_concluido: 'bg-green-100',
-  proposta_enviada: 'bg-yellow-100',
-  contrato_assinado: 'bg-purple-100',
-  acao_protocolada: 'bg-orange-100',
-  aguardando_decisao: 'bg-red-100',
-  encerrado: 'bg-gray-200'
+  lead_novo: 'bg-slate-900/90 border-b border-slate-700/60 text-slate-100',
+  intake_em_andamento: 'bg-blue-950/70 border-b border-blue-800/60 text-blue-100',
+  intake_concluido: 'bg-emerald-950/70 border-b border-emerald-800/60 text-emerald-100',
+  proposta_enviada: 'bg-yellow-950/70 border-b border-yellow-800/60 text-yellow-100',
+  contrato_assinado: 'bg-purple-950/70 border-b border-purple-800/60 text-purple-100',
+  acao_protocolada: 'bg-amber-950/70 border-b border-amber-800/60 text-amber-100',
+  aguardando_decisao: 'bg-rose-950/70 border-b border-rose-800/60 text-rose-100',
+  encerrado: 'bg-gray-900/90 border-b border-gray-800 text-gray-300'
 };
 
 const FUNNEL_STAGES = BASE_FUNNEL_STAGES.map(stage => ({
@@ -240,13 +240,13 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
   };
 
   return (
-    <div className="h-full w-full min-w-0 flex flex-col bg-nc-surface">
+    <div className="h-full w-full min-w-0 flex flex-col bg-[#181A1B] text-gray-100">
       {/* Filtros */}
-      <div className="bg-white p-4 border-b border-gray-200 shadow-sm">
+      <div className="bg-[#1B1D1E] p-4 border-b border-gray-800 shadow-sm">
         <div className="flex flex-wrap justify-between items-center gap-3 mb-3">
-          <h2 className="text-xl font-bold">🎯 Funil de Atendimento</h2>
+          <h2 className="text-xl font-bold text-white">🎯 Funil de Atendimento</h2>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600">Total: <strong>{totalConversations}</strong> conversas</span>
+            <span className="text-sm text-gray-400">Total: <strong className="text-white">{totalConversations}</strong> conversas</span>
             <ExportButtons
               onPdf={handleExportPdf}
               onExcel={handleExportExcel}
@@ -258,7 +258,7 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
           <select
             value={filters.area}
             onChange={(e) => setSelectedArea(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded text-sm"
+            className="px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-sm text-gray-100 focus:outline-none focus:border-nc-yellow"
           >
             <option value="">Todas as áreas</option>
             {LEGAL_AREAS.map(area => (
@@ -271,24 +271,24 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
             placeholder="Buscar cliente ou telefone..."
-            className="px-3 py-2 border border-gray-300 rounded text-sm flex-1 min-w-[200px]"
+            className="px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-sm text-gray-100 placeholder-gray-500 flex-1 min-w-[200px] focus:outline-none focus:border-nc-yellow"
           />
         </div>
       </div>
 
       {/* Kanban */}
-      <div className="flex-1 min-w-0 overflow-x-auto p-4 bg-gray-50" style={{ minHeight: 0 }}>
+      <div className="flex-1 min-w-0 overflow-x-auto p-4 bg-[#181A1B]" style={{ minHeight: 0 }}>
         <div className="flex gap-4 h-full min-h-0 min-w-max">
           {groupedConversations.map(stage => (
             <div
               key={stage.id}
-              className="w-80 h-full min-h-0 flex flex-col bg-white rounded-lg border border-gray-300 shadow-sm"
+              className="w-80 h-full min-h-0 flex flex-col bg-[#1B1D1E] rounded-xl border border-gray-800 shadow-sm overflow-hidden"
             >
               {/* Header da coluna */}
-              <div className={`p-4 ${stage.color} border-b border-gray-300 rounded-t-lg`}>
+              <div className={`p-3.5 ${stage.color} rounded-t-xl`}>
                 <div className="flex justify-between items-center">
-                  <h3 className="font-bold text-sm">{stage.label}</h3>
-                  <span className="bg-white text-gray-800 border border-gray-300 text-xs px-2.5 py-1 rounded-full font-semibold">
+                  <h3 className="font-bold text-sm text-white tracking-wide">{stage.label}</h3>
+                  <span className="bg-[#1E2022] text-gray-200 border border-[#2A2D2F] text-xs px-2.5 py-0.5 rounded-full font-bold">
                     {stage.items.length}
                   </span>
                 </div>
@@ -300,28 +300,28 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
                   <div
                     key={conv.id}
                     onClick={() => onSelectConversation?.(conv)}
-                    className="p-3 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:border-blue-400 hover:shadow-md transition"
+                    className="p-3.5 bg-[#1E2022] border border-[#2A2D2F] rounded-xl cursor-pointer hover:border-nc-yellow/60 hover:shadow-lg transition"
                   >
                     <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <p className="font-semibold text-sm text-gray-900 truncate">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-white truncate">
                           {conv.client_name || 'Sem nome'}
                         </p>
-                        <p className="text-xs text-gray-500">{conv.client_phone}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{conv.client_phone}</p>
                       </div>
                       {conv.mode === 'human' && (
-                        <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded font-medium">👤 Humano</span>
+                        <span className="text-[10px] bg-amber-950/50 text-amber-300 border border-amber-800/60 px-2 py-0.5 rounded font-semibold ml-1">👤 Humano</span>
                       )}
                     </div>
 
                     {conv.legal_area && (
-                      <span className="inline-block text-xs px-2 py-1 bg-blue-100 text-blue-800 border border-blue-200 rounded mb-2">
+                      <span className="inline-block text-xs px-2 py-0.5 bg-blue-950/50 text-blue-300 border border-blue-800/60 rounded font-medium mb-2">
                         {conv.legal_area}
                       </span>
                     )}
 
                     {conv.has_case && (
-                      <span className="inline-block text-xs px-2 py-1 bg-green-100 text-green-800 border border-green-200 rounded ml-1 mb-2">
+                      <span className="inline-block text-xs px-2 py-0.5 bg-emerald-950/50 text-emerald-300 border border-emerald-800/60 rounded font-medium ml-1 mb-2">
                         📋 Com caso
                       </span>
                     )}
@@ -335,7 +335,7 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
                               e.stopPropagation();
                               handleOpenCase(conv);
                             }}
-                            className="w-full text-xs px-2 py-1.5 bg-green-50 text-green-700 border border-green-300 rounded hover:bg-green-100 transition"
+                            className="w-full text-xs px-2 py-1.5 bg-emerald-950/50 text-emerald-300 border border-emerald-800/60 rounded-lg hover:bg-emerald-900/50 transition font-medium"
                           >
                             ⚖️ Abrir caso vinculado
                           </button>
@@ -348,7 +348,7 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
                                     e.stopPropagation();
                                     handleCreateCase(conv);
                                   }}
-                                  className="flex-1 text-xs px-2 py-1.5 bg-blue-50 text-blue-700 border border-blue-300 rounded hover:bg-blue-100 transition"
+                                  className="flex-1 text-xs px-2 py-1.5 bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 rounded-lg hover:bg-yellow-500/30 transition font-medium"
                                 >
                                   ⚖️ Criar caso
                                 </button>
@@ -357,7 +357,7 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
                                     e.stopPropagation();
                                     handleLinkCase(conv);
                                   }}
-                                  className="flex-1 text-xs px-2 py-1.5 bg-purple-50 text-purple-700 border border-purple-300 rounded hover:bg-purple-100 transition"
+                                  className="flex-1 text-xs px-2 py-1.5 bg-[#181A1B] text-gray-200 border border-[#2A2D2F] rounded-lg hover:bg-gray-800 transition font-medium"
                                 >
                                   🔗 Vincular
                                 </button>
@@ -380,7 +380,7 @@ export default function FunnelKanban({ conversations = [], onSelectConversation 
                       onClick={(e) => e.stopPropagation()}
                       disabled={loading}
                       data-testid="funnel-stage-select"
-                      className="w-full mt-2 px-2 py-1 text-xs border border-gray-300 rounded bg-white hover:bg-gray-50 disabled:opacity-50"
+                      className="w-full mt-2 px-2 py-1 text-xs border border-[#2A2D2F] rounded bg-[#1B1D1E] hover:bg-[#181A1B] disabled:opacity-50"
                     >
                       {FUNNEL_STAGES.map(s => (
                         <option key={s.id} value={s.id}>{s.label}</option>

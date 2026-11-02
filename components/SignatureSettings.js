@@ -119,7 +119,7 @@ export default function SignatureSettings() {
   if (loading && integrations.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
-        <p className="text-nc-text-muted">Carregando configurações...</p>
+        <p className="text-gray-400">Carregando configurações...</p>
       </div>
     );
   }

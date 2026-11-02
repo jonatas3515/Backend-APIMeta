@@ -74,7 +74,7 @@ export default function WhatsAppMessageInput({ conversationId, onSent }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="p-3 bg-white border-t border-nc-gray-200 space-y-2">
+    <form onSubmit={handleSubmit} className="p-3 bg-[#1B1D1E] border-t border-gray-800 space-y-2">
       <div className="flex items-end gap-2">
         <div className="flex-1">
           <label htmlFor="whatsapp-message" className="sr-only">Mensagem</label>
@@ -110,8 +110,8 @@ export default function WhatsAppMessageInput({ conversationId, onSent }) {
       </div>
 
       {showTemplates && (
-        <div className="border border-nc-gray-200 rounded p-2 bg-nc-surface">
-          <label htmlFor="template-select" className="text-xs text-nc-text-secondary">Template</label>
+        <div className="border border-gray-800 rounded p-2 bg-nc-surface">
+          <label htmlFor="template-select" className="text-xs text-gray-400">Template</label>
           <select
             id="template-select"
             value={selectedTemplate ? selectedTemplate.id : ''}
@@ -126,7 +126,7 @@ export default function WhatsAppMessageInput({ conversationId, onSent }) {
 
           {selectedTemplate && selectedTemplate.variables && selectedTemplate.variables.map(v => (
             <div key={v} className="mt-2">
-              <label htmlFor={`var-${v}`} className="text-xs text-nc-text-secondary">{'Variável {{' + v + '}}'}</label>
+              <label htmlFor={`var-${v}`} className="text-xs text-gray-400">{'Variável {{' + v + '}}'}</label>
               <input
                 id={`var-${v}`}
                 type="text"

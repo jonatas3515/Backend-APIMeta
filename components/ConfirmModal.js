@@ -34,12 +34,12 @@ export default function ConfirmModal({
         onClick={() => !loading && onCancel?.()}
         data-testid="confirm-modal-backdrop"
       />
-      <div className="relative bg-white rounded-lg shadow-2xl border border-gray-200 w-full max-w-md p-6 mx-4">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">
+      <div className="relative bg-[#1B1D1E] rounded-lg shadow-2xl border border-gray-800 w-full max-w-md p-6 mx-4">
+        <h3 className="text-lg font-bold text-white mb-4">
           {title}
         </h3>
 
-        <div className="text-sm text-gray-700 mb-6 space-y-2">
+        <div className="text-sm text-gray-300 mb-6 space-y-2">
           {children}
         </div>
 
@@ -53,7 +53,7 @@ export default function ConfirmModal({
           <button
             onClick={() => onCancel?.()}
             disabled={loading || disabled}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-100 hover:bg-gray-200 rounded disabled:opacity-50"
             data-testid="confirm-modal-cancel"
           >
             {cancelText}

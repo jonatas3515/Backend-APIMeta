@@ -620,9 +620,9 @@ export default function ProcessTriagePanel({ movementId, profile }) {
 
   if (role === 'estagiario') {
     return (
-      <div className="flex-1 flex flex-col bg-nc-gray-50 p-8 items-center justify-center">
-        <div className="bg-nc-white p-6 rounded-lg shadow max-w-md text-center">
-          <h2 className="text-lg font-semibold text-nc-text-title mb-2">Acesso restrito</h2>
+      <div className="flex-1 flex flex-col bg-[#181A1B] p-8 items-center justify-center">
+        <div className="bg-[#1B1D1E] p-6 rounded-lg shadow max-w-md text-center">
+          <h2 className="text-lg font-semibold text-white mb-2">Acesso restrito</h2>
           <p className="text-sm text-gray-300">A Central de Triagem Processual não está disponível para estagiários.</p>
         </div>
       </div>
@@ -716,7 +716,7 @@ export default function ProcessTriagePanel({ movementId, profile }) {
 
       <div className="flex-1 overflow-y-auto p-4" data-testid="triage-list">
         {loading && movements.length === 0 && (
-          <div className="text-center py-12 text-nc-text-secondary" data-testid="triage-loading">Carregando movimentações...</div>
+          <div className="text-center py-12 text-gray-400" data-testid="triage-loading">Carregando movimentações...</div>
         )}
 
         {!loading && error && (
@@ -727,7 +727,7 @@ export default function ProcessTriagePanel({ movementId, profile }) {
         )}
 
         {!loading && !error && visibleMovements.length === 0 && (
-          <div className="text-center py-12 text-nc-text-secondary" data-testid="triage-empty">
+          <div className="text-center py-12 text-gray-400" data-testid="triage-empty">
             {Object.values(filters).some((v) => v) || search ? (
               <>
                 <p className="mb-3">Nenhuma movimentação corresponde aos filtros aplicados</p>
@@ -744,7 +744,7 @@ export default function ProcessTriagePanel({ movementId, profile }) {
             const isHighlighted = highlightedId === mov.id;
             const isUnassigned = !mov.assigned_user_id;
             const assignedName = mov.assigned_user?.name || (isUnassigned ? 'Sem responsável' : 'Responsável atribuído');
-            const statusClass = STATUS_STYLES[mov.triage_status] || 'bg-gray-50 text-gray-700 border-gray-200';
+            const statusClass = STATUS_STYLES[mov.triage_status] || 'bg-[#181A1B] text-gray-300 border-gray-800';
             const priorityClass = PRIORITY_STYLES[mov.priority || 'media'];
             const classificationLabel = CLASSIFICATION_LABELS[mov.legal_classification] || '';
             const isSuggestion = mov.triage_status === 'novo' && mov.legal_classification && mov.legal_classification !== 'ainda_nao_classificada';
@@ -838,18 +838,18 @@ export default function ProcessTriagePanel({ movementId, profile }) {
           <div className="bg-[#1B1D1E] border border-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto text-gray-100" onClick={(e) => e.stopPropagation()}>
             <div className="sticky top-0 bg-[#1E2022] border-b border-gray-800 p-4 flex items-center justify-between">
               <h2 className="text-lg font-bold text-white">Detalhes da Movimentação</h2>
-              <button onClick={closeDetail} className="text-nc-text-secondary hover:text-nc-text" aria-label="Fechar" data-testid="close-detail">✕</button>
+              <button onClick={closeDetail} className="text-gray-400 hover:text-gray-100" aria-label="Fechar" data-testid="close-detail">✕</button>
             </div>
             <div className="p-4 space-y-4">
               {message && (
                 <div className={cx('p-3 rounded text-sm', message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700')} data-testid="detail-message">{message.text}</div>
               )}
-              <div className="bg-nc-gray-50 p-4 rounded">
+              <div className="bg-[#181A1B] p-4 rounded">
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div><span className="text-nc-text-secondary">Tribunal:</span><div className="font-medium" data-testid="detail-court">{selectedMovement.case_process?.court_name || '-'}</div></div>
-                  <div><span className="text-nc-text-secondary">Área jurídica:</span><div className="font-medium" data-testid="detail-area">{selectedMovement.case_process?.case?.legal_area || '-'}</div></div>
-                  <div><span className="text-nc-text-secondary">Data da movimentação:</span><div className="font-medium" data-testid="detail-movement-date">{formatDate(selectedMovement.movement_date)}</div></div>
-                  <div><span className="text-nc-text-secondary">Detectada em:</span><div className="font-medium" data-testid="detail-detected-at">{formatDateTime(selectedMovement.detected_at)}</div></div>
+                  <div><span className="text-gray-400">Tribunal:</span><div className="font-medium" data-testid="detail-court">{selectedMovement.case_process?.court_name || '-'}</div></div>
+                  <div><span className="text-gray-400">Área jurídica:</span><div className="font-medium" data-testid="detail-area">{selectedMovement.case_process?.case?.legal_area || '-'}</div></div>
+                  <div><span className="text-gray-400">Data da movimentação:</span><div className="font-medium" data-testid="detail-movement-date">{formatDate(selectedMovement.movement_date)}</div></div>
+                  <div><span className="text-gray-400">Detectada em:</span><div className="font-medium" data-testid="detail-detected-at">{formatDateTime(selectedMovement.detected_at)}</div></div>
                 </div>
               </div>
 
@@ -905,19 +905,19 @@ export default function ProcessTriagePanel({ movementId, profile }) {
                 </div>
               )}
 
-              <div className="bg-nc-gray-50 p-4 rounded">
-                <h3 className="font-semibold text-nc-text-title mb-3">Histórico de triagem</h3>
+              <div className="bg-[#181A1B] p-4 rounded">
+                <h3 className="font-semibold text-white mb-3">Histórico de triagem</h3>
                 {history.length === 0 ? (
                   <p className="text-sm text-gray-300" data-testid="history-empty">Ainda não há ações registradas para esta movimentação.</p>
                 ) : (
                   <div className="space-y-2">
                     {history.map((h) => (
-                      <div key={h.id} className="bg-nc-white p-3 rounded text-sm" data-testid="history-item">
+                      <div key={h.id} className="bg-[#1B1D1E] p-3 rounded text-sm" data-testid="history-item">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="font-medium text-nc-text">{h.user?.name || 'Sistema'}</span>
-                          <span className="text-xs text-nc-text-secondary">{formatDateTime(h.created_at)}</span>
+                          <span className="font-medium text-gray-100">{h.user?.name || 'Sistema'}</span>
+                          <span className="text-xs text-gray-400">{formatDateTime(h.created_at)}</span>
                         </div>
-                        <div className="text-nc-text-secondary">
+                        <div className="text-gray-400">
                           {h.action === 'update_triage' && `Atualizou triagem`}
                           {h.action === 'create_note' && `Criou nota interna`}
                           {h.action === 'create_reminder' && `Criou lembrete`}
@@ -925,12 +925,12 @@ export default function ProcessTriagePanel({ movementId, profile }) {
                           {h.action === 'assign_user' && `Atribuiu responsável`}
                         </div>
                         {h.old_status && h.new_status && (
-                          <div className="text-xs text-nc-text-secondary mt-1">
+                          <div className="text-xs text-gray-400 mt-1">
                             Status: {TRIAGE_STATUS_LABELS[h.old_status] || h.old_status} → {TRIAGE_STATUS_LABELS[h.new_status] || h.new_status}
                           </div>
                         )}
                         {h.old_priority && h.new_priority && h.old_priority !== h.new_priority && (
-                          <div className="text-xs text-nc-text-secondary mt-1">
+                          <div className="text-xs text-gray-400 mt-1">
                             Prioridade: {PRIORITY_LABELS[h.old_priority] || h.old_priority} → {PRIORITY_LABELS[h.new_priority] || h.new_priority}
                           </div>
                         )}

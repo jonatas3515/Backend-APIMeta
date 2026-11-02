@@ -40,7 +40,7 @@ const CATEGORIES = [
 
 function KeyBadge({ children }) {
   return (
-    <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 bg-nc-gray-100 border border-nc-gray-300 rounded text-xs font-semibold text-nc-text shadow-sm">
+    <span className="inline-flex items-center justify-center min-w-[2rem] px-2 py-1 bg-[#1E2022] border border-[#2A2D2F] rounded text-xs font-semibold text-gray-100 shadow-sm">
       {children}
     </span>
   );
@@ -76,20 +76,20 @@ export default function KeyboardShortcutsHelp({ open, onClose }) {
         ref={modalRef}
         tabIndex={-1}
         onKeyDown={handleKeyDown}
-        className="w-[92%] max-w-2xl max-h-[85vh] overflow-y-auto bg-nc-white rounded-nc shadow-card border border-nc-gray-300 p-6 outline-none"
+        className="w-[92%] max-w-2xl max-h-[85vh] overflow-y-auto bg-[#1B1D1E] rounded-nc shadow-card border border-[#2A2D2F] p-6 outline-none"
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-nc-text-title">⌨️ Atalhos de Teclado</h2>
+          <h2 className="text-xl font-bold text-white">⌨️ Atalhos de Teclado</h2>
           <button
             onClick={onClose}
-            className="text-2xl text-nc-text-muted hover:text-nc-text transition"
+            className="text-2xl text-gray-400 hover:text-gray-100 transition"
             title="Fechar (Esc)"
           >
             ×
           </button>
         </div>
 
-        <p className="text-sm text-nc-text-secondary mb-6">
+        <p className="text-sm text-gray-400 mb-6">
           Os atalhos não são acionados enquanto você digita em campos de formulário.
           Você pode usar letras maiúsculas ou minúsculas.
         </p>
@@ -97,7 +97,7 @@ export default function KeyboardShortcutsHelp({ open, onClose }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {CATEGORIES.map((category) => (
             <div key={category.title}>
-              <h3 className="text-sm font-bold uppercase tracking-wide text-nc-text-secondary mb-3">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-gray-400 mb-3">
                 {category.title}
               </h3>
               <div className="space-y-3">
@@ -110,7 +110,7 @@ export default function KeyboardShortcutsHelp({ open, onClose }) {
                         </span>
                       ))}
                     </div>
-                    <span className="text-sm text-nc-text">{shortcut.description}</span>
+                    <span className="text-sm text-gray-100">{shortcut.description}</span>
                   </div>
                 ))}
               </div>
@@ -118,7 +118,7 @@ export default function KeyboardShortcutsHelp({ open, onClose }) {
           ))}
         </div>
 
-        <div className="mt-6 pt-4 border-t border-nc-gray-200 flex justify-between items-center text-xs text-nc-text-secondary">
+        <div className="mt-6 pt-4 border-t border-gray-800 flex justify-between items-center text-xs text-gray-400">
           <span>Pressione <KeyBadge>?</KeyBadge> para abrir este modal a qualquer momento</span>
           <span>Esc ou clique fora para fechar</span>
         </div>

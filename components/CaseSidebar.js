@@ -131,7 +131,7 @@ export default function CaseSidebar({ conversationId, userRole }) {
 
   const getStatusColor = (status) => {
     const colors = {
-      prospect: 'bg-gray-100 text-gray-800',
+      prospect: 'bg-gray-100 text-gray-100',
       em_analise: 'bg-blue-100 text-blue-800',
       proposta_enviada: 'bg-yellow-100 text-yellow-800',
       contrato_assinado: 'bg-purple-100 text-purple-800',
@@ -139,7 +139,7 @@ export default function CaseSidebar({ conversationId, userRole }) {
       aguardando_decisao: 'bg-red-100 text-red-800',
       encerrado: 'bg-green-100 text-green-800'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-gray-100 text-gray-100';
   };
 
   const formatDate = (date) => {
@@ -156,14 +156,14 @@ export default function CaseSidebar({ conversationId, userRole }) {
   };
 
   return (
-    <div className="w-80 bg-gray-50 border-l border-gray-200 overflow-y-auto">
+    <div className="w-80 bg-[#181A1B] border-l border-gray-800 overflow-y-auto">
       {message && (
         <div className={`p-3 m-4 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
           {message.text}
         </div>
       )}
 
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-800">
         <h3 className="font-bold text-base sm:text-lg mb-3">Casos</h3>
         <button
           onClick={() => setShowForm(!showForm)}
@@ -177,7 +177,7 @@ export default function CaseSidebar({ conversationId, userRole }) {
 
       {/* Formulário de Novo Caso */}
       {showForm && (
-        <div className="p-4 border-b border-gray-200 bg-white">
+        <div className="p-4 border-b border-gray-800 bg-[#1B1D1E]">
           <div className="space-y-2 text-sm">
             <input
               type="text"
@@ -250,7 +250,7 @@ export default function CaseSidebar({ conversationId, userRole }) {
             {cases.map((caseItem) => {
               const daysLeft = daysUntilDeadline(caseItem.deadline_date);
               return (
-                <div key={caseItem.id} className="p-3 bg-white border rounded">
+                <div key={caseItem.id} className="p-3 bg-[#1B1D1E] border rounded">
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-semibold text-sm">{caseItem.title}</h4>
                     {canEdit && (
@@ -266,7 +266,7 @@ export default function CaseSidebar({ conversationId, userRole }) {
 
                   <div className="space-y-1 text-xs">
                     {caseItem.legal_area && (
-                      <p className="text-gray-600">Área: {caseItem.legal_area}</p>
+                      <p className="text-gray-400">Área: {caseItem.legal_area}</p>
                     )}
 
                     <div className="flex gap-2">
@@ -291,19 +291,19 @@ export default function CaseSidebar({ conversationId, userRole }) {
                     )}
 
                     {caseItem.notes && (
-                      <p className="text-gray-600 italic">{caseItem.notes}</p>
+                      <p className="text-gray-400 italic">{caseItem.notes}</p>
                     )}
 
                     <div className="flex gap-2 mt-2">
                       <button
                         onClick={() => setSelectedCaseForChecklist(caseItem)}
-                        className="flex-1 px-2 py-1 bg-white border border-blue-300 text-blue-700 rounded text-xs hover:bg-blue-50"
+                        className="flex-1 px-2 py-1 bg-[#1B1D1E] border border-blue-300 text-blue-700 rounded text-xs hover:bg-blue-50"
                       >
                         📎 Documentos
                       </button>
                       <button
                         onClick={() => setSelectedCaseForFee(caseItem)}
-                        className="flex-1 px-2 py-1 bg-white border border-green-300 text-green-700 rounded text-xs hover:bg-green-50"
+                        className="flex-1 px-2 py-1 bg-[#1B1D1E] border border-green-300 text-green-700 rounded text-xs hover:bg-green-50"
                       >
                         💰 Honorários
                       </button>
@@ -340,12 +340,12 @@ export default function CaseSidebar({ conversationId, userRole }) {
 
       {selectedCaseForFee && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#1B1D1E] rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">Simulador de Honorários</h3>
               <button
                 onClick={() => setSelectedCaseForFee(null)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-300"
               >
                 ✕
               </button>

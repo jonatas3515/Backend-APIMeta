@@ -166,7 +166,7 @@ export default function FeeServiceAdmin({ viewMode = null }) {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="border rounded p-3 bg-gray-50">
+        <div className="border rounded p-3 bg-[#181A1B]">
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-semibold text-sm">Serviços</h3>
             <button onClick={() => { setSelected(null); resetForm(); setRules([]); }} className="text-xs text-blue-600 hover:underline">+ Novo</button>
@@ -176,18 +176,18 @@ export default function FeeServiceAdmin({ viewMode = null }) {
               <div
                 key={s.id}
                 onClick={() => handleSelect(s)}
-                className={`p-2 rounded cursor-pointer text-sm ${selected?.id === s.id ? 'bg-blue-100 border border-blue-300' : 'bg-white border hover:bg-gray-100'}`}
+                className={`p-2 rounded cursor-pointer text-sm ${selected?.id === s.id ? 'bg-blue-100 border border-blue-300' : 'bg-[#1B1D1E] border hover:bg-gray-100'}`}
               >
                 <p className="font-medium">{s.name}</p>
-                <p className="text-xs text-gray-600">{s.legal_area} {s.case_type ? `— ${s.case_type}` : ''}</p>
-                <p className="text-xs text-gray-600">R$ {Number(s.base_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                <p className="text-xs text-gray-400">{s.legal_area} {s.case_type ? `— ${s.case_type}` : ''}</p>
+                <p className="text-xs text-gray-400">R$ {Number(s.base_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 {!s.is_active && <span className="text-xs text-red-600">Inativo</span>}
               </div>
             ))}
           </div>
         </div>
 
-        <div className="lg:col-span-2 border rounded p-4 bg-white space-y-4">
+        <div className="lg:col-span-2 border rounded p-4 bg-[#1B1D1E] space-y-4">
           <h3 className="font-semibold text-sm">{selected ? 'Editar serviço' : 'Novo serviço'}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border rounded p-2 text-sm" />
@@ -244,7 +244,7 @@ export default function FeeServiceAdmin({ viewMode = null }) {
               </div>
               <div className="space-y-1">
                 {rules.map((r) => (
-                  <div key={r.id} className="flex justify-between items-center p-2 bg-gray-50 rounded text-sm">
+                  <div key={r.id} className="flex justify-between items-center p-2 bg-[#181A1B] rounded text-sm">
                     <span>{r.rule_type}={r.rule_value} ({r.adjustment_kind} {r.adjustment_value})</span>
                     <button onClick={() => handleDeleteRule(r.id)} className="text-red-600 text-xs hover:underline">Remover</button>
                   </div>

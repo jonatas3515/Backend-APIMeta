@@ -31,31 +31,31 @@ export default function FunnelMetrics() {
   const totalHumanMode = metrics?.reduce((sum, m) => sum + m.human_mode_count, 0) || 0;
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow">
+    <div className="p-6 bg-[#1B1D1E] rounded-lg shadow">
       <h2 className="text-2xl font-bold mb-6">📊 Métricas do Funil</h2>
 
       {/* KPIs Principais */}
       <div className="grid grid-cols-4 gap-4 mb-8">
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-gray-600">Total de Leads</p>
+          <p className="text-sm text-gray-400">Total de Leads</p>
           <p className="text-3xl font-bold text-blue-600">{totalLeads}</p>
         </div>
         <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-sm text-gray-600">Com Caso Jurídico</p>
+          <p className="text-sm text-gray-400">Com Caso Jurídico</p>
           <p className="text-3xl font-bold text-green-600">{totalWithCase}</p>
           <p className="text-xs text-gray-500 mt-1">
             {totalLeads > 0 ? `${((totalWithCase / totalLeads) * 100).toFixed(1)}%` : '0%'}
           </p>
         </div>
         <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
-          <p className="text-sm text-gray-600">Em Atendimento Humano</p>
+          <p className="text-sm text-gray-400">Em Atendimento Humano</p>
           <p className="text-3xl font-bold text-orange-600">{totalHumanMode}</p>
           <p className="text-xs text-gray-500 mt-1">
             {totalLeads > 0 ? `${((totalHumanMode / totalLeads) * 100).toFixed(1)}%` : '0%'}
           </p>
         </div>
         <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-          <p className="text-sm text-gray-600">Tempo Médio Total</p>
+          <p className="text-sm text-gray-400">Tempo Médio Total</p>
           <p className="text-3xl font-bold text-purple-600">
             {metrics && metrics.length > 0
               ? (metrics.reduce((sum, m) => sum + (parseFloat(m.avg_days_in_stage) || 0), 0) / metrics.length).toFixed(1)
@@ -81,7 +81,7 @@ export default function FunnelMetrics() {
             </thead>
             <tbody>
               {metrics?.map((metric, idx) => (
-                <tr key={idx} className="border-b hover:bg-gray-50">
+                <tr key={idx} className="border-b hover:bg-[#181A1B]">
                   <td className="border p-3 font-semibold">{metric.funnel_stage}</td>
                   <td className="border p-3 text-center text-lg font-bold">{metric.total_count}</td>
                   <td className="border p-3 text-center text-green-600">{metric.with_case_count}</td>
@@ -99,10 +99,10 @@ export default function FunnelMetrics() {
         <h3 className="text-lg font-bold mb-4">Taxa de Conversão</h3>
         <div className="space-y-3">
           {conversions?.map((conv, idx) => (
-            <div key={idx} className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <div key={idx} className="p-4 bg-[#181A1B] border border-gray-800 rounded-lg">
               <div className="flex justify-between items-center mb-2">
                 <span className="font-semibold">{conv.funnel_stage}</span>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-gray-400">
                   {conv.count} conversas ({conv.conversion_from_first}% do total)
                 </span>
               </div>

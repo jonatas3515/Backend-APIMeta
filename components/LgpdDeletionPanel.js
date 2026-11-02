@@ -47,8 +47,8 @@ export default function LgpdDeletionPanel() {
   }
 
   return (
-    <section className="bg-nc-surface rounded-lg border border-nc-gray-200 p-4 mt-4">
-      <h3 className="font-bold text-sm text-nc-text-title mb-3">🗑️ Solicitações de Exclusão/Anonimização (LGPD)</h3>
+    <section className="bg-nc-surface rounded-lg border border-gray-800 p-4 mt-4">
+      <h3 className="font-bold text-sm text-white mb-3">🗑️ Solicitações de Exclusão/Anonimização (LGPD)</h3>
 
       {error && (
         <div className="p-2 bg-red-50 border border-red-200 text-red-700 rounded text-xs mb-3" role="alert">
@@ -57,18 +57,18 @@ export default function LgpdDeletionPanel() {
       )}
 
       {loading ? (
-        <p className="text-sm text-nc-text-muted">Carregando...</p>
+        <p className="text-sm text-gray-400">Carregando...</p>
       ) : (
         <div className="space-y-2 max-h-80 overflow-y-auto">
           {requests.length > 0 ? (
             requests.map(r => (
-              <div key={r.id} className="border border-nc-gray-200 rounded p-3 bg-white text-sm">
+              <div key={r.id} className="border border-gray-800 rounded p-3 bg-[#1B1D1E] text-sm">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-nc-text">{r.mode === 'full' ? 'Exclusão completa' : 'Anonimização'}</p>
-                    <p className="text-xs text-nc-text-secondary">Cliente: {r.conversation_id}</p>
-                    <p className="text-xs text-nc-text-secondary">Motivo: {r.reason}</p>
-                    <p className="text-xs text-nc-text-secondary">
+                    <p className="font-medium text-gray-100">{r.mode === 'full' ? 'Exclusão completa' : 'Anonimização'}</p>
+                    <p className="text-xs text-gray-400">Cliente: {r.conversation_id}</p>
+                    <p className="text-xs text-gray-400">Motivo: {r.reason}</p>
+                    <p className="text-xs text-gray-400">
                       Criado em: {new Date(r.created_at).toLocaleString('pt-BR')}
                     </p>
                   </div>
@@ -97,7 +97,7 @@ export default function LgpdDeletionPanel() {
               </div>
             ))
           ) : (
-            <p className="text-sm text-nc-text-muted">Nenhuma solicitação encontrada.</p>
+            <p className="text-sm text-gray-400">Nenhuma solicitação encontrada.</p>
           )}
         </div>
       )}

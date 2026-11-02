@@ -9,15 +9,15 @@ export default function ModelsAndRoutinesPanel({ userRole }) {
 
   if (!canEdit) {
     return (
-      <div className="p-6 bg-white rounded-lg shadow">
+      <div className="p-6 bg-[#1B1D1E] rounded-lg shadow">
         <p className="text-sm text-red-600 font-medium">🚫 Acesso restrito</p>
-        <p className="text-sm text-gray-600 mt-1">Esta função é restrita a administradores e advogados.</p>
+        <p className="text-sm text-gray-400 mt-1">Esta função é restrita a administradores e advogados.</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 md:p-6 bg-white rounded-lg shadow w-full h-full overflow-y-auto">
+    <div className="p-4 md:p-6 bg-[#1B1D1E] rounded-lg shadow w-full h-full overflow-y-auto">
       <h2 className="text-2xl font-bold mb-4">📚 Modelos e Rotinas</h2>
       
       <div className="flex gap-2 mb-6">
@@ -26,7 +26,7 @@ export default function ModelsAndRoutinesPanel({ userRole }) {
           className={`px-4 py-2 rounded font-medium ${
             activeView === 'templates'
               ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              : 'bg-gray-200 text-gray-300 hover:bg-gray-300'
           }`}
         >
           📄 Modelos de Documento
@@ -36,7 +36,7 @@ export default function ModelsAndRoutinesPanel({ userRole }) {
           className={`px-4 py-2 rounded font-medium ${
             activeView === 'routines'
               ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              : 'bg-gray-200 text-gray-300 hover:bg-gray-300'
           }`}
         >
           🔄 Rotinas Jurídicas

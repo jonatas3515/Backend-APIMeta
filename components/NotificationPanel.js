@@ -279,7 +279,7 @@ export default function NotificationPanel(props) {
             {isMobile && (
               <button
                 onClick={onClose}
-                className="p-2 rounded-full hover:bg-nc-gray-100 transition-colors"
+                className="p-2 rounded-full hover:bg-[#1E2022] transition-colors"
                 aria-label="Fechar"
               >
                 ✕
@@ -315,14 +315,14 @@ export default function NotificationPanel(props) {
         {/* Corpo */}
         <div className="flex-1 overflow-y-auto p-4">
           {isLoadingList && currentNotifications.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-nc-text-muted">
+            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
               <div className="animate-spin text-3xl mb-2">⏳</div>
               <p className="text-sm">Carregando notificações...</p>
             </div>
           )}
 
           {!isLoadingList && !authExpired && !networkError && !rateLimited && currentNotifications.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-nc-text-muted">
+            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
               <div className="text-5xl mb-3">{notifications.length === 0 ? '🔕' : '📂'}</div>
               <p className="text-sm font-medium">
                 {notifications.length === 0 ? 'Nenhuma notificação' : 'Nenhuma notificação nesta categoria'}
@@ -359,10 +359,10 @@ export default function NotificationPanel(props) {
 
         {/* Footer (opcional) */}
         {!isLoadingList && !authExpired && !networkError && notifications.length > 0 && (
-          <div className="flex-shrink-0 border-t border-nc-gray-200 p-3 text-center">
+          <div className="flex-shrink-0 border-t border-gray-800 p-3 text-center">
             <button
               onClick={onClose}
-              className="text-sm text-nc-text-secondary hover:text-nc-text transition-colors"
+              className="text-sm text-gray-400 hover:text-gray-100 transition-colors"
             >
               Fechar
             </button>

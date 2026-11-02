@@ -136,13 +136,13 @@ export default function LegalClassification({ conversation, onUpdate }) {
     }
   };
 
-  const getBadgeStyle = () => 'bg-nc-gray-100 text-nc-text border border-nc-gray-200';
+  const getBadgeStyle = () => 'bg-[#1E2022] text-gray-100 border border-gray-800';
 
   if (!editing) {
     return (
       <div className="nc-card p-4 space-y-3">
         <div className="flex justify-between items-center">
-          <h3 className="font-bold text-nc-text-title">📋 Classificação Jurídica</h3>
+          <h3 className="font-bold text-white">📋 Classificação Jurídica</h3>
           <button
             onClick={() => setEditing(true)}
             className="text-sm text-nc-yellow hover:text-nc-yellow-700 font-medium transition"
@@ -159,18 +159,18 @@ export default function LegalClassification({ conversation, onUpdate }) {
                 {legalAreas.find(a => a.value === formData.legal_area)?.label || formData.legal_area}
               </span>
             ) : (
-              <span className="text-nc-text-muted text-xs">Não definida</span>
+              <span className="text-gray-400 text-xs">Não definida</span>
             )}
           </div>
 
           <div>
             <p className="text-gray-500 text-xs mb-1">Situação</p>
             {formData.legal_situation ? (
-              <span className="text-xs text-nc-text">
+              <span className="text-xs text-gray-100">
                 {legalSituations.find(s => s.value === formData.legal_situation)?.label || formData.legal_situation}
               </span>
             ) : (
-              <span className="text-nc-text-muted text-xs">Não definida</span>
+              <span className="text-gray-400 text-xs">Não definida</span>
             )}
           </div>
 
@@ -197,8 +197,8 @@ export default function LegalClassification({ conversation, onUpdate }) {
 
           {formData.notes && (
             <div className="col-span-2">
-              <p className="text-nc-text-muted text-xs mb-1">Observações</p>
-              <p className="text-xs text-nc-text bg-nc-gray-50 p-2 rounded">{formData.notes}</p>
+              <p className="text-gray-400 text-xs mb-1">Observações</p>
+              <p className="text-xs text-gray-100 bg-[#181A1B] p-2 rounded">{formData.notes}</p>
             </div>
           )}
 
@@ -253,7 +253,7 @@ export default function LegalClassification({ conversation, onUpdate }) {
         {!conversation.archived && (
           <button
             onClick={handleArchive}
-            className="w-full mt-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition"
+            className="w-full mt-2 px-3 py-2 bg-gray-100 text-gray-300 rounded-lg text-sm hover:bg-gray-200 transition"
           >
             📦 Arquivar Caso
           </button>
@@ -263,12 +263,12 @@ export default function LegalClassification({ conversation, onUpdate }) {
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+    <div className="bg-[#1B1D1E] border border-gray-800 rounded-lg p-4 space-y-3">
       <div className="flex justify-between items-center">
-        <h3 className="font-bold text-gray-900">📋 Editar Classificação</h3>
+        <h3 className="font-bold text-white">📋 Editar Classificação</h3>
         <button
           onClick={() => setEditing(false)}
-          className="text-sm text-gray-600 hover:text-gray-800"
+          className="text-sm text-gray-400 hover:text-gray-100"
         >
           ✖️ Cancelar
         </button>
@@ -276,11 +276,11 @@ export default function LegalClassification({ conversation, onUpdate }) {
 
       <div className="space-y-3">
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Área Jurídica</label>
+          <label className="block text-xs font-semibold text-gray-300 mb-1">Área Jurídica</label>
           <select
             value={formData.legal_area}
             onChange={(e) => setFormData({ ...formData, legal_area: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-[#2A2D2F] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Selecione...</option>
             {legalAreas.map(area => (
@@ -290,11 +290,11 @@ export default function LegalClassification({ conversation, onUpdate }) {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Situação</label>
+          <label className="block text-xs font-semibold text-gray-300 mb-1">Situação</label>
           <select
             value={formData.legal_situation}
             onChange={(e) => setFormData({ ...formData, legal_situation: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-[#2A2D2F] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Selecione...</option>
             {legalSituations.map(sit => (
@@ -304,11 +304,11 @@ export default function LegalClassification({ conversation, onUpdate }) {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Status do Cliente</label>
+          <label className="block text-xs font-semibold text-gray-300 mb-1">Status do Cliente</label>
           <select
             value={formData.client_status}
             onChange={(e) => setFormData({ ...formData, client_status: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-[#2A2D2F] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {clientStatuses.map(status => (
               <option key={status.value} value={status.value}>{status.label}</option>
@@ -317,11 +317,11 @@ export default function LegalClassification({ conversation, onUpdate }) {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Prioridade</label>
+          <label className="block text-xs font-semibold text-gray-300 mb-1">Prioridade</label>
           <select
             value={formData.priority}
             onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-[#2A2D2F] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {priorities.map(priority => (
               <option key={priority.value} value={priority.value}>{priority.label}</option>
@@ -330,24 +330,24 @@ export default function LegalClassification({ conversation, onUpdate }) {
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Responsável</label>
+          <label className="block text-xs font-semibold text-gray-300 mb-1">Responsável</label>
           <input
             type="text"
             value={formData.assigned_to}
             onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
             placeholder="Nome do advogado responsável"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-[#2A2D2F] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        <div className="border-t border-gray-200 pt-3">
-          <h4 className="font-semibold text-gray-800 mb-2 text-sm">🎯 Funil de Atendimento</h4>
+        <div className="border-t border-gray-800 pt-3">
+          <h4 className="font-semibold text-gray-100 mb-2 text-sm">🎯 Funil de Atendimento</h4>
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Etapa do Funil</label>
+            <label className="block text-xs font-semibold text-gray-300 mb-1">Etapa do Funil</label>
             <select
               value={formData.funnel_stage}
               onChange={(e) => setFormData({ ...formData, funnel_stage: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-[#2A2D2F] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {funnelStages.map(stage => (
                 <option key={stage.value} value={stage.value}>{stage.label}</option>
@@ -356,39 +356,39 @@ export default function LegalClassification({ conversation, onUpdate }) {
           </div>
         </div>
 
-        <div className="border-t border-gray-200 pt-3">
-          <h4 className="font-semibold text-gray-800 mb-2 text-sm">📍 Segmentação</h4>
+        <div className="border-t border-gray-800 pt-3">
+          <h4 className="font-semibold text-gray-100 mb-2 text-sm">📍 Segmentação</h4>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Município</label>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">Município</label>
               <input
                 type="text"
                 value={formData.municipality}
                 onChange={(e) => setFormData({ ...formData, municipality: e.target.value })}
                 placeholder="Ex: Eunápolis"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">UF</label>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">UF</label>
               <input
                 type="text"
                 value={formData.state}
                 onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                 placeholder="Ex: BA"
                 maxLength={2}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mt-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Órgão/Entidade</label>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">Órgão/Entidade</label>
               <select
                 value={formData.agency}
                 onChange={(e) => setFormData({ ...formData, agency: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecione...</option>
                 {agencies.map(agency => (
@@ -397,11 +397,11 @@ export default function LegalClassification({ conversation, onUpdate }) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Papel do Cliente</label>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">Papel do Cliente</label>
               <select
                 value={formData.client_role}
                 onChange={(e) => setFormData({ ...formData, client_role: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecione...</option>
                 {clientRoles.map(clientRole => (
@@ -424,15 +424,15 @@ export default function LegalClassification({ conversation, onUpdate }) {
           </div>
         </div>
 
-        <div className="border-t border-gray-200 pt-3">
-          <h4 className="font-semibold text-gray-800 mb-2 text-sm">📈 Marketing</h4>
+        <div className="border-t border-gray-800 pt-3">
+          <h4 className="font-semibold text-gray-100 mb-2 text-sm">📈 Marketing</h4>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Origem</label>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">Origem</label>
               <select
                 value={formData.source}
                 onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecione...</option>
                 {sources.map(source => (
@@ -441,37 +441,37 @@ export default function LegalClassification({ conversation, onUpdate }) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Campanha</label>
+              <label className="block text-xs font-semibold text-gray-300 mb-1">Campanha</label>
               <input
                 type="text"
                 value={formData.campaign}
                 onChange={(e) => setFormData({ ...formData, campaign: e.target.value })}
                 placeholder="Ex: Aposentadoria 2026"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Tipo do Caso</label>
+          <label className="block text-xs font-semibold text-gray-300 mb-1">Tipo do Caso</label>
           <input
             type="text"
             value={formData.case_type}
             onChange={(e) => setFormData({ ...formData, case_type: e.target.value })}
             placeholder="Ex: Demissão sem justa causa, Adicional de insalubridade"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-[#2A2D2F] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">Observações Internas</label>
+          <label className="block text-xs font-semibold text-gray-300 mb-1">Observações Internas</label>
           <textarea
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             placeholder="Anotações sobre o caso..."
             rows="3"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full px-3 py-2 border border-[#2A2D2F] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           />
         </div>
 

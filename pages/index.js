@@ -737,9 +737,9 @@ export default function Home() {
         )}
 
         {showNewConvModal && (
-          <div className="fixed inset-0 bg-nc-black/70 flex items-center justify-center z-50">
-            <div className="bg-nc-white rounded-nc p-6 w-96 shadow-card border border-nc-gray-300">
-              <h2 className="text-lg font-bold mb-4 text-nc-text-title">Iniciar conversa</h2>
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+            <div className="bg-[#1B1D1E] rounded-xl p-6 w-full max-w-md shadow-2xl border border-gray-800 text-gray-100">
+              <h2 className="text-lg font-bold mb-4 text-white">Iniciar conversa</h2>
               <form onSubmit={handleStartConversation} className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-nc-text-secondary mb-1">Número do WhatsApp</label>

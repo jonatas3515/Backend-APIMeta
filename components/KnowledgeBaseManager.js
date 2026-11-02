@@ -148,7 +148,7 @@ export default function KnowledgeBaseManager() {
 
   const statusBadge = (status) => {
     const colors = {
-      rascunho: 'bg-gray-100 text-gray-800',
+      rascunho: 'bg-gray-100 text-gray-100',
       revisado: 'bg-yellow-100 text-yellow-800',
       aprovado: 'bg-green-100 text-green-800'
     };
@@ -174,13 +174,13 @@ export default function KnowledgeBaseManager() {
             placeholder="Buscar documento..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full sm:w-64 px-3 py-2 border rounded text-sm bg-white text-gray-900"
+            className="w-full sm:w-64 px-3 py-2 border rounded text-sm bg-[#1B1D1E] text-white"
           />
           <div className="flex gap-2 w-full sm:w-auto">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="flex-1 sm:flex-none px-3 py-2 border rounded text-sm bg-white text-gray-900"
+              className="flex-1 sm:flex-none px-3 py-2 border rounded text-sm bg-[#1B1D1E] text-white"
             >
               <option value="all">Todos</option>
               <option value="rascunho">Rascunho</option>
@@ -198,7 +198,7 @@ export default function KnowledgeBaseManager() {
       </div>
 
       {showForm && (
-        <div className="mb-6 p-4 border rounded bg-white text-gray-900 shadow-sm">
+        <div className="mb-6 p-4 border rounded bg-[#1B1D1E] text-white shadow-sm">
           <h3 className="text-lg font-bold mb-4">
             {editing ? 'Revisar versão anonimizada' : 'Novo Documento (será salvo como rascunho)'}
           </h3>
@@ -282,11 +282,11 @@ export default function KnowledgeBaseManager() {
       ) : (
         <div className="space-y-4">
           {filteredDocs.map(doc => (
-            <div key={doc.id} className="p-4 border rounded-lg bg-white text-gray-900 shadow-sm">
+            <div key={doc.id} className="p-4 border rounded-lg bg-[#1B1D1E] text-white shadow-sm">
               <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-2 mb-2">
                 <div>
-                  <h4 className="font-bold text-base sm:text-lg text-nc-text break-words">{doc.title}</h4>
-                  <div className="flex flex-wrap gap-2 mt-1 text-sm text-gray-600">
+                  <h4 className="font-bold text-base sm:text-lg text-gray-100 break-words">{doc.title}</h4>
+                  <div className="flex flex-wrap gap-2 mt-1 text-sm text-gray-400">
                     <span>{doc.type}</span>
                     {doc.area && <span>· {doc.area}</span>}
                     {doc.tribunal && <span>· {doc.tribunal}</span>}
@@ -323,7 +323,7 @@ export default function KnowledgeBaseManager() {
               <div className="flex flex-wrap gap-1 max-w-full overflow-hidden mb-2">
                 {statusBadge(doc.status)}
                 {Array.isArray(doc.tags) && doc.tags.map(tag => (
-                  <span key={tag} className="text-xs px-2 py-1 bg-gray-200 text-gray-700 rounded">
+                  <span key={tag} className="text-xs px-2 py-1 bg-gray-200 text-gray-300 rounded">
                     {tag}
                   </span>
                 ))}
@@ -333,7 +333,7 @@ export default function KnowledgeBaseManager() {
                 Última atualização: {new Date(doc.updated_at).toLocaleString('pt-BR')}
               </p>
 
-              <div className="bg-gray-50 p-2.5 sm:p-3 rounded border border-gray-200 text-xs sm:text-sm text-gray-700 max-h-32 overflow-y-auto whitespace-pre-line break-words break-all">
+              <div className="bg-[#181A1B] p-2.5 sm:p-3 rounded border border-gray-800 text-xs sm:text-sm text-gray-300 max-h-32 overflow-y-auto whitespace-pre-line break-words break-all">
                 {doc.preview || 'Sem prévia'}
               </div>
             </div>

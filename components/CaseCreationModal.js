@@ -94,12 +94,12 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+      <div className="bg-[#1B1D1E] rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-[#1B1D1E] border-b px-6 py-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold">Criar Caso Jurídico</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-400"
             disabled={loading}
           >
             ✕
@@ -121,7 +121,7 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
 
           {/* Título (obrigatório) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Título do Caso <span className="text-red-500">*</span>
             </label>
             <input
@@ -129,7 +129,7 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
               name="title"
               value={formData.title}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-[#2A2D2F] rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Ex: Licença Prêmio - João Silva"
               required
             />
@@ -137,14 +137,14 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
 
           {/* Área Jurídica */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Área Jurídica
             </label>
             <select
               name="legal_area"
               value={formData.legal_area}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-[#2A2D2F] rounded focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Selecione...</option>
               <option value="Direito Administrativo">Direito Administrativo</option>
@@ -157,7 +157,7 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
 
           {/* Tipo de Caso */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Tipo de Caso
             </label>
             <input
@@ -165,7 +165,7 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
               name="case_type"
               value={formData.case_type}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-[#2A2D2F] rounded focus:ring-2 focus:ring-blue-500"
               placeholder="Ex: Licença Prêmio, Aposentadoria"
             />
           </div>
@@ -173,7 +173,7 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
           {/* Município e Órgão */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Município
               </label>
               <input
@@ -181,12 +181,12 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
                 name="municipality"
                 value={formData.municipality}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded focus:ring-2 focus:ring-blue-500"
                 placeholder="Ex: São Paulo"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Órgão/Agência
               </label>
               <input
@@ -194,7 +194,7 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
                 name="agency"
                 value={formData.agency}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded focus:ring-2 focus:ring-blue-500"
                 placeholder="Ex: INSS, Prefeitura"
               />
             </div>
@@ -202,14 +202,14 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
 
           {/* Papel do Cliente */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Papel do Cliente
             </label>
             <select
               name="client_role"
               value={formData.client_role}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-[#2A2D2F] rounded focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Selecione...</option>
               <option value="autor">Autor</option>
@@ -221,14 +221,14 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
           {/* Status e Prioridade */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Status
               </label>
               <select
                 name="status"
                 value={formData.status}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded focus:ring-2 focus:ring-blue-500"
               >
                 <option value="prospect">Prospect</option>
                 <option value="em_analise">Em Análise</option>
@@ -239,14 +239,14 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Prioridade
               </label>
               <select
                 name="priority"
                 value={formData.priority}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded focus:ring-2 focus:ring-blue-500"
               >
                 <option value="baixa">Baixa</option>
                 <option value="media">Média</option>
@@ -258,7 +258,7 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
           {/* Prazo */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Data do Prazo
               </label>
               <input
@@ -266,18 +266,18 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
                 name="deadline_date"
                 value={formData.deadline_date}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Tipo de Prazo
               </label>
               <select
                 name="deadline_type"
                 value={formData.deadline_type}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecione...</option>
                 <option value="prazo_para_ajuizar_acao">Prazo para Ajuizar Ação</option>
@@ -291,7 +291,7 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
 
           {/* Notas */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Notas/Resumo
             </label>
             <textarea
@@ -299,7 +299,7 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
               value={formData.notes}
               onChange={handleChange}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-[#2A2D2F] rounded focus:ring-2 focus:ring-blue-500"
               placeholder="Informações adicionais sobre o caso..."
             />
           </div>
@@ -309,7 +309,7 @@ export default function CaseCreationModal({ isOpen, onClose, conversation, onSuc
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-2 border border-[#2A2D2F] text-gray-300 rounded hover:bg-[#181A1B] transition-colors"
               disabled={loading}
             >
               Cancelar

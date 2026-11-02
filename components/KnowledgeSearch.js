@@ -36,7 +36,7 @@ export default function KnowledgeSearch({ onSearch, results = [] }) {
           {results.map((r) => (
             <li key={`${r.documentId}-${r.chunkIndex}`} className="py-2">
               <div className="font-semibold">{r.title} <span className="text-sm text-gray-500">({r.type})</span></div>
-              <p className="text-sm text-gray-700">{r.content}</p>
+              <p className="text-sm text-gray-300">{r.content}</p>
             </li>
           ))}
         </ul>

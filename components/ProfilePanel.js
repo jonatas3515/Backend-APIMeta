@@ -50,7 +50,7 @@ export default function ProfilePanel() {
   if (loading || !client) {
     return (
       <div className="flex-1 flex items-center justify-center bg-nc-surface">
-        <p className="text-nc-text-secondary">Carregando...</p>
+        <p className="text-gray-400">Carregando...</p>
       </div>
     );
   }
@@ -58,40 +58,40 @@ export default function ProfilePanel() {
   if (!authUser || !profile) {
     return (
       <div className="flex-1 flex items-center justify-center bg-nc-surface">
-        <p className="text-nc-text-secondary">Acesso negado</p>
+        <p className="text-gray-400">Acesso negado</p>
       </div>
     );
   }
 
   return (
     <div className="flex-1 overflow-auto bg-nc-surface p-4 md:p-8">
-      <div className="max-w-2xl mx-auto bg-nc-white rounded-nc shadow-card border border-nc-gray-300 p-6 md:p-8">
-        <h1 className="text-2xl font-bold text-nc-text-title mb-2">👤 Perfil</h1>
-        <p className="text-sm text-nc-text-secondary mb-6">
+      <div className="max-w-2xl mx-auto bg-[#1B1D1E] rounded-nc shadow-card border border-[#2A2D2F] p-6 md:p-8">
+        <h1 className="text-2xl font-bold text-white mb-2">👤 Perfil</h1>
+        <p className="text-sm text-gray-400 mb-6">
           Gerencie suas preferências de notificação e dados pessoais.
         </p>
 
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-nc-text-title mb-2">Dados do usuário</h2>
+          <h2 className="text-lg font-semibold text-white mb-2">Dados do usuário</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-nc-text-secondary">Nome:</span>
-              <p className="font-medium text-nc-text">{profile.name || '-'}</p>
+              <span className="text-gray-400">Nome:</span>
+              <p className="font-medium text-gray-100">{profile.name || '-'}</p>
             </div>
             <div>
-              <span className="text-nc-text-secondary">Email:</span>
-              <p className="font-medium text-nc-text">{profile.email || '-'}</p>
+              <span className="text-gray-400">Email:</span>
+              <p className="font-medium text-gray-100">{profile.email || '-'}</p>
             </div>
             <div>
-              <span className="text-nc-text-secondary">Papel:</span>
-              <p className="font-medium text-nc-text capitalize">{profile.role || '-'}</p>
+              <span className="text-gray-400">Papel:</span>
+              <p className="font-medium text-gray-100 capitalize">{profile.role || '-'}</p>
             </div>
           </div>
         </div>
 
-        <div className="border-t border-nc-gray-200 pt-6 mb-6">
+        <div className="border-t border-gray-800 pt-6 mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-nc-text-title">🔐 Segurança da Conta</h2>
+            <h2 className="text-lg font-semibold text-white">🔐 Segurança da Conta</h2>
             <button
               onClick={() => {
                 setShowPasswordForm(!showPasswordForm);
@@ -120,7 +120,7 @@ export default function ProfilePanel() {
             <form onSubmit={handlePasswordSubmit} className="space-y-3" data-testid="password-form">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-nc-text-secondary mb-1">Senha atual</label>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Senha atual</label>
                   <input
                     type="password"
                     value={passwordData.currentPassword}
@@ -131,7 +131,7 @@ export default function ProfilePanel() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-nc-text-secondary mb-1">Nova senha</label>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Nova senha</label>
                   <input
                     type="password"
                     value={passwordData.newPassword}
@@ -143,7 +143,7 @@ export default function ProfilePanel() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-nc-text-secondary mb-1">Confirmar nova senha</label>
+                  <label className="block text-sm font-medium text-gray-400 mb-1">Confirmar nova senha</label>
                   <input
                     type="password"
                     value={passwordData.confirmPassword}
@@ -167,13 +167,13 @@ export default function ProfilePanel() {
           )}
         </div>
 
-        <div className="border-t border-nc-gray-200 pt-6">
-          <h2 className="text-lg font-semibold text-nc-text-title mb-4">🔔 Configurações de notificação</h2>
+        <div className="border-t border-gray-800 pt-6">
+          <h2 className="text-lg font-semibold text-white mb-4">🔔 Configurações de notificação</h2>
           <NotificationSettings />
         </div>
 
-        <div className="border-t border-nc-gray-200 pt-6 mt-6">
-          <h2 className="text-lg font-semibold text-nc-text-title mb-4">📅 Calendários externos</h2>
+        <div className="border-t border-gray-800 pt-6 mt-6">
+          <h2 className="text-lg font-semibold text-white mb-4">📅 Calendários externos</h2>
           <CalendarSettings />
         </div>
 

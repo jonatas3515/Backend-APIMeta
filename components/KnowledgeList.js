@@ -18,7 +18,7 @@ export default function KnowledgeList({ documents, query, onQueryChange, onSearc
           onChange={onQueryChange}
           onKeyDown={handleKeyDown}
           placeholder="Buscar por palavra-chave..."
-          className="flex-1 rounded border border-gray-300 px-3 py-2"
+          className="flex-1 rounded border border-[#2A2D2F] px-3 py-2"
           aria-describedby="knowledge-search-help"
         />
         <button
@@ -55,7 +55,7 @@ export default function KnowledgeList({ documents, query, onQueryChange, onSearc
                 aria-label={`Abrir documento ${doc.title}`}
               >
                 <div className="font-semibold">{doc.title}</div>
-                <div className="text-sm text-gray-600">{doc.type} {doc.tags?.length ? `• ${doc.tags.join(', ')}` : ''}</div>
+                <div className="text-sm text-gray-400">{doc.type} {doc.tags?.length ? `• ${doc.tags.join(', ')}` : ''}</div>
               </button>
               {canDelete && (
                 <button

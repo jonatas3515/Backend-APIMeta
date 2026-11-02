@@ -156,7 +156,7 @@ export default function CaseCalendarSync({
   const renderStatus = () => {
     if (!status || !status.synced) {
       return (
-        <div className="text-xs text-gray-600" data-testid="sync-status">
+        <div className="text-xs text-gray-400" data-testid="sync-status">
           Ainda não sincronizado com o Google Calendar.
         </div>
       );
@@ -168,7 +168,7 @@ export default function CaseCalendarSync({
           <div className="font-semibold text-orange-700" data-testid="outdated-warning">
             Google Calendar desatualizado
           </div>
-          <div className="text-gray-700 mt-0.5">
+          <div className="text-gray-300 mt-0.5">
             Este item foi alterado no sistema depois da última sincronização com o Google Calendar.
           </div>
           <div className="text-gray-500 mt-0.5">
@@ -179,7 +179,7 @@ export default function CaseCalendarSync({
     }
 
     return (
-      <div className="text-xs text-gray-600" data-testid="sync-status">
+      <div className="text-xs text-gray-400" data-testid="sync-status">
         <div>
           Última sincronização com o Google Calendar: {formatSyncDate(status.synced_at)}
         </div>

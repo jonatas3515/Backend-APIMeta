@@ -85,13 +85,13 @@ export default function NotificationSettings() {
     granted: { label: '✅ Notificações permitidas no navegador', class: 'bg-green-50 text-green-800 border-green-200' },
     denied: { label: '❌ Notificações bloqueadas no navegador', class: 'bg-red-50 text-red-700 border-red-200' },
     default: { label: '⚠️ Permissão pendente', class: 'bg-amber-50 text-amber-800 border-amber-200' },
-    unsupported: { label: '➖ Não suportado neste navegador', class: 'bg-nc-gray-100 text-nc-text-secondary border-nc-gray-200' }
+    unsupported: { label: '➖ Não suportado neste navegador', class: 'bg-[#1E2022] text-gray-400 border-gray-800' }
   };
 
   const permissionKey = isSupported() ? (browserPermission || 'default') : 'unsupported';
   const badge = PERMISSION_BADGES[permissionKey] || PERMISSION_BADGES.default;
 
-  if (loading) return <p className="text-sm text-nc-text-secondary">Carregando...</p>;
+  if (loading) return <p className="text-sm text-gray-400">Carregando...</p>;
 
   return (
     <div className="space-y-6">
@@ -104,7 +104,7 @@ export default function NotificationSettings() {
       <div className="border rounded p-4 space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h3 className="font-semibold text-nc-text-title">Notificações do navegador</h3>
+            <h3 className="font-semibold text-white">Notificações do navegador</h3>
             <span
               className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border mt-1 ${badge.class}`}
               data-testid="browser-permission-badge"
@@ -142,8 +142,8 @@ export default function NotificationSettings() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-nc-text-title">Notificações ativas</h3>
-          <p className="text-sm text-nc-text-secondary">Habilita/desabilita todos os alertas</p>
+          <h3 className="font-semibold text-white">Notificações ativas</h3>
+          <p className="text-sm text-gray-400">Habilita/desabilita todos os alertas</p>
         </div>
         <button
           onClick={toggleGlobal}
@@ -153,7 +153,7 @@ export default function NotificationSettings() {
           }`}
         >
           <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+            className={`inline-block h-4 w-4 transform rounded-full bg-[#1B1D1E] transition ${
               prefs.enabled ? 'translate-x-6' : 'translate-x-1'
             }`}
           />
@@ -163,13 +163,13 @@ export default function NotificationSettings() {
       <div className="grid grid-cols-1 gap-3">
         {TYPES.map(({ key, label }) => (
           <label key={key} className="flex items-center justify-between p-3 border rounded">
-            <span className="text-sm text-nc-text">{label}</span>
+            <span className="text-sm text-gray-100">{label}</span>
             <input
               type="checkbox"
               checked={!!prefs[key]}
               onChange={() => toggle(key)}
               disabled={saving || !prefs.enabled}
-              className="h-4 w-4 text-nc-yellow focus:ring-nc-yellow border-nc-gray-300 rounded"
+              className="h-4 w-4 text-nc-yellow focus:ring-nc-yellow border-[#2A2D2F] rounded"
             />
           </label>
         ))}
@@ -177,7 +177,7 @@ export default function NotificationSettings() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-semibold text-nc-text-secondary mb-1">Horário de silêncio (início)</label>
+          <label className="block text-sm font-semibold text-gray-400 mb-1">Horário de silêncio (início)</label>
           <input
             type="time"
             value={prefs.silent_start || ''}
@@ -187,7 +187,7 @@ export default function NotificationSettings() {
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-nc-text-secondary mb-1">Horário de silêncio (fim)</label>
+          <label className="block text-sm font-semibold text-gray-400 mb-1">Horário de silêncio (fim)</label>
           <input
             type="time"
             value={prefs.silent_end || ''}

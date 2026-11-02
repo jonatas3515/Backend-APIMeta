@@ -41,13 +41,13 @@ export default function NotificationPermissionPrompt({ profile, onClose, onUpdat
 
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-nc-black/60 backdrop-blur-sm p-4">
-      <div className="bg-nc-white rounded-nc shadow-card border border-nc-gray-300 p-6 w-full max-w-md">
+      <div className="bg-[#1B1D1E] rounded-nc shadow-card border border-[#2A2D2F] p-6 w-full max-w-md">
         <div className="flex items-center gap-3 mb-4">
           <span className="text-3xl">🔔</span>
-          <h2 className="text-lg font-bold text-nc-text-title">Ativar notificações?</h2>
+          <h2 className="text-lg font-bold text-white">Ativar notificações?</h2>
         </div>
 
-        <p className="text-sm text-nc-text-secondary mb-4">
+        <p className="text-sm text-gray-400 mb-4">
           Receba alertas de novas mensagens e prazos mesmo com o navegador em segundo plano.
           Você pode desativar a qualquer momento nas configurações.
         </p>

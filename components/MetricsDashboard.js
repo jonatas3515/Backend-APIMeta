@@ -127,7 +127,7 @@ export default function MetricsDashboard({ conversations }) {
   return (
     <div className="w-full p-4 md:p-6 bg-nc-surface">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
-        <h2 className="text-2xl font-bold text-nc-text-title">📊 Métricas do Escritório</h2>
+        <h2 className="text-2xl font-bold text-white">📊 Métricas do Escritório</h2>
         <div className="w-full sm:w-auto flex justify-start sm:justify-end">
           <ExportButtons
             onPdf={handleExportPdf}
@@ -140,19 +140,19 @@ export default function MetricsDashboard({ conversations }) {
       {/* Cards principais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="nc-card p-4">
-          <p className="text-sm text-nc-text-secondary">Total de Conversas</p>
-          <p className="text-2xl font-bold text-nc-text">{metrics.totalConversations}</p>
+          <p className="text-sm text-gray-400">Total de Conversas</p>
+          <p className="text-2xl font-bold text-gray-100">{metrics.totalConversations}</p>
         </div>
         <div className="nc-card p-4">
-          <p className="text-sm text-nc-text-secondary">Leads</p>
-          <p className="text-2xl font-bold text-nc-text">{metrics.totalLeads}</p>
+          <p className="text-sm text-gray-400">Leads</p>
+          <p className="text-2xl font-bold text-gray-100">{metrics.totalLeads}</p>
         </div>
         <div className="nc-card p-4">
-          <p className="text-sm text-nc-text-secondary">Clientes Ativos</p>
-          <p className="text-2xl font-bold text-nc-text">{metrics.totalActiveClients}</p>
+          <p className="text-sm text-gray-400">Clientes Ativos</p>
+          <p className="text-2xl font-bold text-gray-100">{metrics.totalActiveClients}</p>
         </div>
         <div className="nc-card p-4">
-          <p className="text-sm text-nc-text-secondary">Taxa de Conversão</p>
+          <p className="text-sm text-gray-400">Taxa de Conversão</p>
           <p className="text-2xl font-bold text-nc-yellow">{metrics.conversionRate}%</p>
         </div>
       </div>
@@ -160,12 +160,12 @@ export default function MetricsDashboard({ conversations }) {
       {/* Gráficos simples */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         <div className="nc-card p-4">
-          <h3 className="font-bold text-nc-text-title mb-4">Por Área Jurídica</h3>
+          <h3 className="font-bold text-white mb-4">Por Área Jurídica</h3>
           <div className="space-y-2">
             {Object.entries(metrics.byArea).map(([area, count]) => (
               <div key={area} className="flex justify-between items-center">
-                <span className="text-sm text-nc-text">{areaLabels[area] || area}</span>
-                <span className="bg-nc-gray-100 text-nc-text border border-nc-gray-200 text-xs px-2 py-1 rounded-full font-medium">
+                <span className="text-sm text-gray-100">{areaLabels[area] || area}</span>
+                <span className="bg-[#1E2022] text-gray-100 border border-gray-800 text-xs px-2 py-1 rounded-full font-medium">
                   {count}
                 </span>
               </div>
@@ -174,12 +174,12 @@ export default function MetricsDashboard({ conversations }) {
         </div>
 
         <div className="nc-card p-4">
-          <h3 className="font-bold text-nc-text-title mb-4">Por Etapa do Funil</h3>
+          <h3 className="font-bold text-white mb-4">Por Etapa do Funil</h3>
           <div className="space-y-2">
             {Object.entries(metrics.byFunnel).map(([funnel, count]) => (
               <div key={funnel} className="flex justify-between items-center">
-                <span className="text-sm text-nc-text">{getFunnelStageLabel(funnel)}</span>
-                <span className="bg-nc-gray-100 text-nc-text border border-nc-gray-200 text-xs px-2 py-1 rounded-full font-medium">
+                <span className="text-sm text-gray-100">{getFunnelStageLabel(funnel)}</span>
+                <span className="bg-[#1E2022] text-gray-100 border border-gray-800 text-xs px-2 py-1 rounded-full font-medium">
                   {count}
                 </span>
               </div>
@@ -188,12 +188,12 @@ export default function MetricsDashboard({ conversations }) {
         </div>
 
         <div className="nc-card p-4 col-span-2">
-          <h3 className="font-bold text-nc-text-title mb-4">Por Município</h3>
+          <h3 className="font-bold text-white mb-4">Por Município</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {Object.entries(metrics.byMunicipality).map(([municipality, count]) => (
-              <div key={municipality} className="flex justify-between items-center p-2 bg-nc-gray-50 rounded">
-                <span className="text-sm text-nc-text">{municipality}</span>
-                <span className="bg-nc-white text-nc-text border border-nc-gray-300 text-xs px-2 py-1 rounded-full font-medium">
+              <div key={municipality} className="flex justify-between items-center p-2 bg-[#181A1B] rounded">
+                <span className="text-sm text-gray-100">{municipality}</span>
+                <span className="bg-[#1B1D1E] text-gray-100 border border-[#2A2D2F] text-xs px-2 py-1 rounded-full font-medium">
                   {count}
                 </span>
               </div>

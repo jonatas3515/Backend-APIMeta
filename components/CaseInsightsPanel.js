@@ -138,7 +138,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
   };
 
   return (
-    <div className="w-full bg-white rounded-lg shadow">
+    <div className="w-full bg-[#1B1D1E] rounded-lg shadow">
       {message && (
         <div className={`m-4 p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
           {message.text}
@@ -146,7 +146,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
       )}
 
       {/* Header com abas */}
-      <div className="border-b border-gray-200 p-4">
+      <div className="border-b border-gray-800 p-4">
         <h2 className="text-2xl font-bold mb-4">📚 Central de Conhecimento</h2>
         <div className="flex gap-2 flex-wrap">
           <button
@@ -155,7 +155,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
             className={`px-4 py-2 rounded font-medium transition ${
               activeTab === 'list'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed'
+                : 'bg-gray-200 text-gray-300 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed'
             }`}
           >
             📋 Insights
@@ -166,7 +166,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
             className={`px-4 py-2 rounded font-medium transition ${
               activeTab === 'analytics'
                 ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed'
+                : 'bg-gray-200 text-gray-300 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed'
             }`}
           >
             📊 Análise
@@ -179,7 +179,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
                 className={`px-4 py-2 rounded font-medium transition ${
                   activeTab === 'similar'
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed'
+                    : 'bg-gray-200 text-gray-300 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed'
                 }`}
               >
                 🔗 Similares
@@ -190,7 +190,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
                 className={`px-4 py-2 rounded font-medium transition ${
                   activeTab === 'create'
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed'
+                    : 'bg-gray-200 text-gray-300 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed'
                 }`}
               >
                 ✨ Criar Insight
@@ -206,7 +206,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
         {activeTab === 'list' && (
           <div>
             {/* Filtros */}
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+            <div className="mb-4 p-3 bg-[#181A1B] rounded-lg">
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <input
                   type="text"
@@ -239,13 +239,13 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
                   <div
                     key={insight.id}
                     onClick={() => setSelectedInsight(insight)}
-                    className="p-3 border rounded-lg bg-gray-50 cursor-pointer hover:border-blue-400 transition"
+                    className="p-3 border rounded-lg bg-[#181A1B] cursor-pointer hover:border-blue-400 transition"
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <h4 className="font-bold text-sm">{insight.legal_area}</h4>
-                        <p className="text-xs text-gray-600 mb-1">{insight.case_type}</p>
-                        <p className="text-sm text-gray-700 line-clamp-2">{insight.summary}</p>
+                        <p className="text-xs text-gray-400 mb-1">{insight.case_type}</p>
+                        <p className="text-sm text-gray-300 line-clamp-2">{insight.summary}</p>
                       </div>
                       <span className="text-xs text-gray-500 ml-2">
                         {new Date(insight.created_at).toLocaleDateString('pt-BR')}
@@ -277,8 +277,8 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
                         Match: {insight.match_score}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-600 mb-2">{insight.case_type} • {insight.municipality}</p>
-                    <p className="text-sm text-gray-700 mb-2">{insight.summary}</p>
+                    <p className="text-xs text-gray-400 mb-2">{insight.case_type} • {insight.municipality}</p>
+                    <p className="text-sm text-gray-300 mb-2">{insight.summary}</p>
                     <button
                       onClick={() => setSelectedInsight(insight)}
                       className="text-xs text-blue-600 hover:underline"
@@ -296,7 +296,7 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
           <div>
             {!proposal ? (
               <div className="text-center py-8">
-                <p className="text-gray-600 mb-4">Gerar proposta de insight usando IA?</p>
+                <p className="text-gray-400 mb-4">Gerar proposta de insight usando IA?</p>
                 <button
                   onClick={generateProposal}
                   disabled={generatingProposal}
@@ -384,13 +384,13 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
       {/* Modal de detalhes */}
       {selectedInsight && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto">
+          <div className="bg-[#1B1D1E] rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-xl font-bold">{selectedInsight.legal_area}</h3>
                 <button
                   onClick={() => setSelectedInsight(null)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 hover:text-gray-300"
                 >
                   ✕
                 </button>
@@ -398,33 +398,33 @@ export default function CaseInsightsPanel({ conversationId, caseId, onClose, ini
 
               <div className="space-y-3 text-sm">
                 <div>
-                  <p className="font-semibold text-gray-600">Tipo: {selectedInsight.case_type}</p>
-                  <p className="font-semibold text-gray-600">Município: {selectedInsight.municipality}</p>
+                  <p className="font-semibold text-gray-400">Tipo: {selectedInsight.case_type}</p>
+                  <p className="font-semibold text-gray-400">Município: {selectedInsight.municipality}</p>
                 </div>
 
                 <div>
                   <h4 className="font-bold mb-1">Resumo</h4>
-                  <p className="text-gray-700">{selectedInsight.summary}</p>
+                  <p className="text-gray-300">{selectedInsight.summary}</p>
                 </div>
 
                 <div>
                   <h4 className="font-bold mb-1">Estratégias</h4>
-                  <p className="text-gray-700">{selectedInsight.strategy_notes}</p>
+                  <p className="text-gray-300">{selectedInsight.strategy_notes}</p>
                 </div>
 
                 <div>
                   <h4 className="font-bold mb-1">Riscos</h4>
-                  <p className="text-gray-700">{selectedInsight.risk_notes}</p>
+                  <p className="text-gray-300">{selectedInsight.risk_notes}</p>
                 </div>
 
                 <div>
                   <h4 className="font-bold mb-1">Resultado</h4>
-                  <p className="text-gray-700">{selectedInsight.outcome_notes}</p>
+                  <p className="text-gray-300">{selectedInsight.outcome_notes}</p>
                 </div>
 
                 <div>
                   <h4 className="font-bold mb-1">Padrões</h4>
-                  <p className="text-gray-700">{selectedInsight.similar_patterns}</p>
+                  <p className="text-gray-300">{selectedInsight.similar_patterns}</p>
                 </div>
               </div>
             </div>

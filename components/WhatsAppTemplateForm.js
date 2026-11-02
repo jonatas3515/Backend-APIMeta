@@ -47,11 +47,11 @@ export default function WhatsAppTemplateForm({ onSuccess, onCancel }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white border border-nc-gray-200 rounded p-4 space-y-3 text-sm">
-      <p className="font-bold text-nc-text-title">Novo Template</p>
+    <form onSubmit={handleSubmit} className="bg-[#1B1D1E] border border-gray-800 rounded p-4 space-y-3 text-sm">
+      <p className="font-bold text-white">Novo Template</p>
 
       <div>
-        <label htmlFor="template-name" className="block text-xs text-nc-text-secondary mb-1">Nome</label>
+        <label htmlFor="template-name" className="block text-xs text-gray-400 mb-1">Nome</label>
         <input
           id="template-name"
           type="text"
@@ -64,7 +64,7 @@ export default function WhatsAppTemplateForm({ onSuccess, onCancel }) {
       </div>
 
       <div>
-        <label htmlFor="template-category" className="block text-xs text-nc-text-secondary mb-1">Categoria</label>
+        <label htmlFor="template-category" className="block text-xs text-gray-400 mb-1">Categoria</label>
         <select
           id="template-category"
           value={form.category}
@@ -76,7 +76,7 @@ export default function WhatsAppTemplateForm({ onSuccess, onCancel }) {
       </div>
 
       <div>
-        <label htmlFor="template-content" className="block text-xs text-nc-text-secondary mb-1">Conteúdo</label>
+        <label htmlFor="template-content" className="block text-xs text-gray-400 mb-1">Conteúdo</label>
         <textarea
           id="template-content"
           value={form.content}
@@ -86,11 +86,11 @@ export default function WhatsAppTemplateForm({ onSuccess, onCancel }) {
           maxLength="1000"
           required
         />
-        <p className="text-[10px] text-nc-text-muted mt-1">{'Use {{1}}, {{2}}... para variáveis'}</p>
+        <p className="text-[10px] text-gray-400 mt-1">{'Use {{1}}, {{2}}... para variáveis'}</p>
       </div>
 
       <div>
-        <label htmlFor="template-variables" className="block text-xs text-nc-text-secondary mb-1">Variáveis (ex: 1,2,3)</label>
+        <label htmlFor="template-variables" className="block text-xs text-gray-400 mb-1">Variáveis (ex: 1,2,3)</label>
         <input
           id="template-variables"
           type="text"
@@ -102,7 +102,7 @@ export default function WhatsAppTemplateForm({ onSuccess, onCancel }) {
       </div>
 
       <div>
-        <label htmlFor="template-status" className="block text-xs text-nc-text-secondary mb-1">Status</label>
+        <label htmlFor="template-status" className="block text-xs text-gray-400 mb-1">Status</label>
         <select
           id="template-status"
           value={form.status}

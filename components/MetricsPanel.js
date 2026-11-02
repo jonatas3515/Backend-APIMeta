@@ -55,28 +55,28 @@ export default function MetricsPanel() {
   };
 
   return (
-    <div className="w-full bg-white rounded-lg shadow p-6">
+    <div className="w-full bg-[#1B1D1E] rounded-lg shadow p-6">
       <h2 className="text-2xl font-bold mb-4">📊 Inteligência de Demanda</h2>
 
       {/* Filtros */}
-      <div className="grid grid-cols-3 gap-3 mb-6 p-4 bg-gray-50 rounded-lg">
+      <div className="grid grid-cols-3 gap-3 mb-6 p-4 bg-[#181A1B] rounded-lg">
         <input
           type="date"
           value={filters.start_date}
           onChange={(e) => setFilters({ ...filters, start_date: e.target.value })}
-          className="px-3 py-2 border border-gray-300 rounded text-sm"
+          className="px-3 py-2 border border-[#2A2D2F] rounded text-sm"
           placeholder="Data inicial"
         />
         <input
           type="date"
           value={filters.end_date}
           onChange={(e) => setFilters({ ...filters, end_date: e.target.value })}
-          className="px-3 py-2 border border-gray-300 rounded text-sm"
+          className="px-3 py-2 border border-[#2A2D2F] rounded text-sm"
           placeholder="Data final"
         />
         <button
           onClick={() => setFilters({ legal_area: '', start_date: '', end_date: '' })}
-          className="px-3 py-2 bg-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-400"
+          className="px-3 py-2 bg-gray-300 text-gray-300 rounded text-sm font-medium hover:bg-gray-400"
         >
           Limpar Filtros
         </button>
@@ -91,19 +91,19 @@ export default function MetricsPanel() {
             <div className="grid grid-cols-4 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <div className="text-center">
                 <p className="text-3xl font-bold text-blue-600">{summary.total_cases}</p>
-                <p className="text-sm text-gray-600">Total de Casos</p>
+                <p className="text-sm text-gray-400">Total de Casos</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-bold text-green-600">{summary.areas_count}</p>
-                <p className="text-sm text-gray-600">Áreas Jurídicas</p>
+                <p className="text-sm text-gray-400">Áreas Jurídicas</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-bold text-orange-600">{summary.municipalities_count}</p>
-                <p className="text-sm text-gray-600">Municípios</p>
+                <p className="text-sm text-gray-400">Municípios</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-bold text-purple-600">{summary.agencies_count}</p>
-                <p className="text-sm text-gray-600">Órgãos</p>
+                <p className="text-sm text-gray-400">Órgãos</p>
               </div>
             </div>
           )}
@@ -162,7 +162,7 @@ export default function MetricsPanel() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-gray-50">
+                  <tr className="border-b bg-[#181A1B]">
                     <th className="text-left p-2 font-semibold">Município</th>
                     <th className="text-left p-2 font-semibold">Órgão</th>
                     <th className="text-right p-2 font-semibold">Casos</th>
@@ -178,7 +178,7 @@ export default function MetricsPanel() {
                     casesByLocation.map((item, idx) => {
                       const topArea = Object.entries(item.areas || {}).sort((a, b) => b[1] - a[1])[0];
                       return (
-                        <tr key={idx} className="border-b hover:bg-gray-50">
+                        <tr key={idx} className="border-b hover:bg-[#181A1B]">
                           <td className="p-2">{item.municipality || 'N/A'}</td>
                           <td className="p-2">{item.agency || 'N/A'}</td>
                           <td className="p-2 text-right font-bold text-blue-600">{item.count}</td>
@@ -223,7 +223,7 @@ export default function MetricsPanel() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-gray-50">
+                  <tr className="border-b bg-[#181A1B]">
                     <th className="text-left p-2 font-semibold">Mês</th>
                     <th className="text-right p-2 font-semibold">Conversas</th>
                     <th className="text-right p-2 font-semibold">Casos</th>
@@ -237,7 +237,7 @@ export default function MetricsPanel() {
                     </tr>
                   ) : (
                     timeSeriesData.map((row, idx) => (
-                      <tr key={idx} className="border-b hover:bg-gray-50">
+                      <tr key={idx} className="border-b hover:bg-[#181A1B]">
                         <td className="p-2 font-medium">{row.month}</td>
                         <td className="p-2 text-right">{row.conversations}</td>
                         <td className="p-2 text-right font-bold text-blue-600">{row.cases}</td>

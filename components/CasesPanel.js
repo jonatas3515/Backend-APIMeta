@@ -612,7 +612,7 @@ export default function CasesPanel({ notice }) {
 
   const getStatusColor = (status) => {
     const colors = {
-      prospect: 'bg-gray-100 text-gray-800 border border-gray-200',
+      prospect: 'bg-gray-100 text-gray-100 border border-gray-800',
       em_analise: 'bg-blue-100 text-blue-800 border border-blue-200',
       proposta_enviada: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
       contrato_assinado: 'bg-purple-100 text-purple-800 border border-purple-200',
@@ -621,18 +621,18 @@ export default function CasesPanel({ notice }) {
       em_recurso: 'bg-indigo-100 text-indigo-800 border border-indigo-200',
       em_execucao: 'bg-amber-100 text-amber-800 border border-amber-200',
       encerrado: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
-      arquivado: 'bg-gray-100 text-gray-600 border border-gray-200'
+      arquivado: 'bg-gray-100 text-gray-400 border border-gray-800'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-gray-100 text-gray-100';
   };
 
   const getPriorityColor = (priority) => {
     const colors = {
-      baixa: 'text-green-600',
-      media: 'text-yellow-600',
-      alta: 'text-red-600'
+      baixa: 'text-blue-400',
+      media: 'text-yellow-400',
+      alta: 'text-red-400'
     };
-    return colors[priority] || 'text-gray-600';
+    return colors[priority] || 'text-gray-300';
   };
 
   const parseLocalDate = (date) => {
@@ -721,16 +721,16 @@ export default function CasesPanel({ notice }) {
     if (!showForm) return null;
     return (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 overflow-y-auto" onClick={() => { setShowForm(false); setEditingCase(null); }}>
-          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-4xl max-h-[90vh] overflow-y-auto p-5 md:p-6 text-gray-900 animate-fadeIn my-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between pb-3 border-b border-gray-200 mb-4">
-              <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900">
+          <div className="bg-[#1B1D1E] rounded-2xl shadow-2xl border border-gray-800 w-full max-w-4xl max-h-[90vh] overflow-y-auto p-5 md:p-6 text-white animate-fadeIn my-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-3 border-b border-gray-800 mb-4">
+              <h3 className="text-lg font-bold flex items-center gap-2 text-white">
                 <span>{editingCase ? '✏️' : '➕'}</span>
                 <span>{editingCase ? `Editar Caso: ${editingCase.title}` : 'Novo Caso'}</span>
               </h3>
               <button
                 type="button"
                 onClick={() => { setShowForm(false); setEditingCase(null); }}
-                className="text-gray-400 hover:text-gray-700 text-xl p-1 rounded-lg hover:bg-gray-100 transition"
+                className="text-gray-400 hover:text-gray-300 text-xl p-1 rounded-lg hover:bg-gray-100 transition"
               >
                 ✕
               </button>
@@ -741,14 +741,14 @@ export default function CasesPanel({ notice }) {
                 placeholder="ID da conversa (opcional)"
                 value={formData.conversation_id}
                 onChange={(e) => setFormData({ ...formData, conversation_id: e.target.value })}
-                className="px-3 py-2 border rounded text-sm text-gray-900 bg-white"
+                className="px-3 py-2 border rounded text-sm text-white bg-[#1B1D1E]"
               />
               <input
                 type="text"
                 placeholder="Título do caso *"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="px-3 py-2 border rounded text-sm font-semibold text-gray-900 bg-white"
+                className="px-3 py-2 border rounded text-sm font-semibold text-white bg-[#1B1D1E]"
                 required
               />
             <input
@@ -798,7 +798,7 @@ export default function CasesPanel({ notice }) {
             </select>
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-gray-700">Próxima Audiência ou Prazo (opcional)</label>
+                <label className="text-xs font-semibold text-gray-300">Próxima Audiência ou Prazo (opcional)</label>
                 {formData.deadline_date && (
                   <button
                     type="button"
@@ -813,14 +813,14 @@ export default function CasesPanel({ notice }) {
                 type="date"
                 value={formData.deadline_date || ''}
                 onChange={(e) => setFormData({ ...formData, deadline_date: e.target.value })}
-                className="px-3 py-2 border rounded text-sm text-gray-900 bg-white"
+                className="px-3 py-2 border rounded text-sm text-white bg-[#1B1D1E]"
               />
               <span className="text-[10px] text-gray-500">
                 Preencha apenas se houver audiência agendada ou prazo fatal. Se já ocorreu, deixe vazio.
               </span>
             </div>
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-semibold text-gray-700">Tipo de Prazo / Evento</label>
+              <label className="text-xs font-semibold text-gray-300">Tipo de Prazo / Evento</label>
               <input
                 type="text"
                 placeholder="Ex: Audiência de Conciliação, Recurso, etc."
@@ -838,7 +838,7 @@ export default function CasesPanel({ notice }) {
             />
 
             <div className="col-span-2 border-t pt-4 mt-2">
-              <h4 className="text-sm font-semibold text-gray-700 mb-3">Dados Processuais (Opcional)</h4>
+              <h4 className="text-sm font-semibold text-gray-300 mb-3">Dados Processuais (Opcional)</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input
                   type="text"
@@ -889,7 +889,7 @@ export default function CasesPanel({ notice }) {
                   <option value="outro">Outro</option>
                 </select>
                 <div className="flex flex-col gap-1">
-                  <label className="text-xs font-medium text-gray-700">Valor da Causa / Patrimônio (R$)</label>
+                  <label className="text-xs font-medium text-gray-300">Valor da Causa / Patrimônio (R$)</label>
                   <input
                     type="number"
                     placeholder="Valor total da causa (R$)"
@@ -897,7 +897,7 @@ export default function CasesPanel({ notice }) {
                     step="0.01"
                     value={formData.case_value ?? ''}
                     onChange={(e) => setFormData({ ...formData, case_value: e.target.value })}
-                    className="px-3 py-2 border rounded text-sm text-gray-900 bg-white"
+                    className="px-3 py-2 border rounded text-sm text-white bg-[#1B1D1E]"
                   />
                   <span className="text-[10px] text-gray-500">
                     {formData.case_value ? `Honorários estimados (20% sucumbência/contratual): R$ ${(Number(formData.case_value) * 0.20).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'Reflete o valor da ação. Honorários calculados em % ou no simulador.'}
@@ -909,14 +909,14 @@ export default function CasesPanel({ notice }) {
                     type="date"
                     value={formData.distribution_date || ''}
                     onChange={(e) => setFormData({ ...formData, distribution_date: e.target.value })}
-                    className="px-3 py-2 border rounded text-sm text-gray-900"
+                    className="px-3 py-2 border rounded text-sm text-white"
                   />
                 </label>
               </div>
 
               {/* Seção de Honorários do Escritório */}
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <h4 className="text-sm font-semibold text-gray-700 mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="mt-4 pt-4 border-t border-gray-800">
+                <h4 className="text-sm font-semibold text-gray-300 mb-2 flex flex-wrap items-center justify-between gap-2">
                   <span>💰 Configuração de Honorários Advocatícios</span>
                   <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                     {(() => {
@@ -934,11 +934,11 @@ export default function CasesPanel({ notice }) {
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Tipo de Honorários</label>
+                    <label className="block text-xs font-medium text-gray-300 mb-1">Tipo de Honorários</label>
                     <select
                       value={formData.fee_type || 'percentual'}
                       onChange={(e) => setFormData({ ...formData, fee_type: e.target.value })}
-                      className="w-full px-3 py-2 border rounded text-sm text-gray-900 bg-white"
+                      className="w-full px-3 py-2 border rounded text-sm text-white bg-[#1B1D1E]"
                     >
                       <option value="percentual">Percentual (%)</option>
                       <option value="fixo">Valor Fixo (R$)</option>
@@ -948,7 +948,7 @@ export default function CasesPanel({ notice }) {
                   {formData.fee_type === 'percentual' ? (
                     <>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Percentual (%)</label>
+                        <label className="block text-xs font-medium text-gray-300 mb-1">Percentual (%)</label>
                         <div className="flex gap-1.5">
                           <input
                             type="number"
@@ -958,19 +958,19 @@ export default function CasesPanel({ notice }) {
                             placeholder="30"
                             value={formData.fee_percentage || ''}
                             onChange={(e) => setFormData({ ...formData, fee_percentage: e.target.value })}
-                            className="w-full px-3 py-2 border rounded text-sm text-gray-900 bg-white"
+                            className="w-full px-3 py-2 border rounded text-sm text-white bg-[#1B1D1E]"
                           />
                           <button
                             type="button"
                             onClick={() => setFormData({ ...formData, fee_percentage: '20' })}
-                            className={`px-2 py-1 rounded text-xs font-bold border ${formData.fee_percentage === '20' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white border-gray-300 text-gray-700'}`}
+                            className={`px-2 py-1 rounded text-xs font-bold border ${formData.fee_percentage === '20' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-[#1B1D1E] border-[#2A2D2F] text-gray-300'}`}
                           >
                             20%
                           </button>
                           <button
                             type="button"
                             onClick={() => setFormData({ ...formData, fee_percentage: '30' })}
-                            className={`px-2 py-1 rounded text-xs font-bold border ${formData.fee_percentage === '30' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white border-gray-300 text-gray-700'}`}
+                            className={`px-2 py-1 rounded text-xs font-bold border ${formData.fee_percentage === '30' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-[#1B1D1E] border-[#2A2D2F] text-gray-300'}`}
                           >
                             30%
                           </button>
@@ -978,11 +978,11 @@ export default function CasesPanel({ notice }) {
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Base de Cálculo</label>
+                        <label className="block text-xs font-medium text-gray-300 mb-1">Base de Cálculo</label>
                         <select
                           value={formData.fee_basis || 'condenacao'}
                           onChange={(e) => setFormData({ ...formData, fee_basis: e.target.value })}
-                          className="w-full px-3 py-2 border rounded text-sm text-gray-900 bg-white"
+                          className="w-full px-3 py-2 border rounded text-sm text-white bg-[#1B1D1E]"
                         >
                           <option value="condenacao">Sobre Condenação / Acordo (Recomendado)</option>
                           <option value="causa">Sobre o Valor da Causa</option>
@@ -991,7 +991,7 @@ export default function CasesPanel({ notice }) {
                     </>
                   ) : (
                     <div className="md:col-span-2">
-                      <label className="block text-xs font-medium text-gray-700 mb-1">Valor Fixo em Reais (R$)</label>
+                      <label className="block text-xs font-medium text-gray-300 mb-1">Valor Fixo em Reais (R$)</label>
                       <input
                         type="number"
                         step="0.01"
@@ -999,15 +999,15 @@ export default function CasesPanel({ notice }) {
                         placeholder="Ex: 3000.00"
                         value={formData.fee_fixed_value || ''}
                         onChange={(e) => setFormData({ ...formData, fee_fixed_value: e.target.value })}
-                        className="w-full px-3 py-2 border rounded text-sm text-gray-900 bg-white font-mono"
+                        className="w-full px-3 py-2 border rounded text-sm text-white bg-[#1B1D1E] font-mono"
                       />
                     </div>
                   )}
                 </div>
 
                 {/* Opções de Pagamento, Entrada, Parcelamento e Notificação */}
-                <div className="mt-4 p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-white border border-gray-200">
+                <div className="mt-4 p-4 rounded-xl bg-[#181A1B] border border-gray-800 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-[#1B1D1E] border border-gray-800">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
@@ -1015,7 +1015,7 @@ export default function CasesPanel({ notice }) {
                         onChange={(e) => setFormData({ ...formData, fee_paid: e.target.checked })}
                         className="h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                       />
-                      <span className="text-xs font-bold text-gray-900">
+                      <span className="text-xs font-bold text-white">
                         Honorários 100% Pagos / Recebidos (marcar se já recebeu o valor integral)
                       </span>
                     </label>
@@ -1029,8 +1029,8 @@ export default function CasesPanel({ notice }) {
                   {!formData.fee_paid && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                       {/* Opção de Entrada */}
-                      <div className="p-3 bg-white rounded-lg border border-gray-200 space-y-2">
-                        <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-gray-800">
+                      <div className="p-3 bg-[#1B1D1E] rounded-lg border border-gray-800 space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-gray-100">
                           <input
                             type="checkbox"
                             checked={!!formData.fee_has_entry}
@@ -1043,14 +1043,14 @@ export default function CasesPanel({ notice }) {
                         {formData.fee_has_entry && (
                           <div className="space-y-2 pt-1 text-xs">
                             <div>
-                              <label className="block text-[11px] text-gray-600 font-medium mb-0.5">Valor da Entrada (R$):</label>
+                              <label className="block text-[11px] text-gray-400 font-medium mb-0.5">Valor da Entrada (R$):</label>
                               <input
                                 type="number"
                                 step="0.01"
                                 placeholder="Ex: 1000.00"
                                 value={formData.fee_entry_value || ''}
                                 onChange={(e) => setFormData({ ...formData, fee_entry_value: e.target.value })}
-                                className="w-full p-1.5 border rounded text-xs font-mono bg-gray-50 text-gray-900"
+                                className="w-full p-1.5 border rounded text-xs font-mono bg-[#181A1B] text-white"
                               />
                             </div>
                             <div className="flex items-center gap-2">
@@ -1061,17 +1061,17 @@ export default function CasesPanel({ notice }) {
                                 onChange={(e) => setFormData({ ...formData, fee_entry_paid: e.target.checked })}
                                 className="rounded text-emerald-600"
                               />
-                              <label htmlFor="fee_entry_paid_input" className="text-[11px] text-gray-700 cursor-pointer font-medium">
+                              <label htmlFor="fee_entry_paid_input" className="text-[11px] text-gray-300 cursor-pointer font-medium">
                                 Entrada já foi paga pelo cliente
                               </label>
                             </div>
                             <div>
-                              <label className="block text-[11px] text-gray-600 font-medium mb-0.5">Data de Vencimento / Pagamento da Entrada:</label>
+                              <label className="block text-[11px] text-gray-400 font-medium mb-0.5">Data de Vencimento / Pagamento da Entrada:</label>
                               <input
                                 type="date"
                                 value={formData.fee_entry_date || ''}
                                 onChange={(e) => setFormData({ ...formData, fee_entry_date: e.target.value })}
-                                className="w-full p-1.5 border rounded text-xs bg-gray-50 text-gray-900"
+                                className="w-full p-1.5 border rounded text-xs bg-[#181A1B] text-white"
                               />
                             </div>
                           </div>
@@ -1079,8 +1079,8 @@ export default function CasesPanel({ notice }) {
                       </div>
 
                       {/* Opção de Parcelamento */}
-                      <div className="p-3 bg-white rounded-lg border border-gray-200 space-y-2">
-                        <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-gray-800">
+                      <div className="p-3 bg-[#1B1D1E] rounded-lg border border-gray-800 space-y-2">
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-gray-100">
                           <input
                             type="checkbox"
                             checked={!!formData.fee_is_installment}
@@ -1094,7 +1094,7 @@ export default function CasesPanel({ notice }) {
                           <div className="space-y-2 pt-1 text-xs">
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <label className="block text-[11px] text-gray-600 font-medium mb-0.5">Qtd de Parcelas:</label>
+                                <label className="block text-[11px] text-gray-400 font-medium mb-0.5">Qtd de Parcelas:</label>
                                 <input
                                   type="number"
                                   min="1"
@@ -1102,16 +1102,16 @@ export default function CasesPanel({ notice }) {
                                   placeholder="Ex: 3"
                                   value={formData.fee_installments_count || '1'}
                                   onChange={(e) => setFormData({ ...formData, fee_installments_count: e.target.value })}
-                                  className="w-full p-1.5 border rounded text-xs font-mono bg-gray-50 text-gray-900"
+                                  className="w-full p-1.5 border rounded text-xs font-mono bg-[#181A1B] text-white"
                                 />
                               </div>
                               <div>
-                                <label className="block text-[11px] text-gray-600 font-medium mb-0.5">1º Vencimento:</label>
+                                <label className="block text-[11px] text-gray-400 font-medium mb-0.5">1º Vencimento:</label>
                                 <input
                                   type="date"
                                   value={formData.fee_due_date || ''}
                                   onChange={(e) => setFormData({ ...formData, fee_due_date: e.target.value })}
-                                  className="w-full p-1.5 border rounded text-xs bg-gray-50 text-gray-900"
+                                  className="w-full p-1.5 border rounded text-xs bg-[#181A1B] text-white"
                                 />
                               </div>
                             </div>
@@ -1136,7 +1136,7 @@ export default function CasesPanel({ notice }) {
 
                   {/* Indicação por Notificação */}
                   <div className="pt-1 flex items-center justify-between text-xs">
-                    <label className="flex items-center gap-2 cursor-pointer text-gray-700 font-medium">
+                    <label className="flex items-center gap-2 cursor-pointer text-gray-300 font-medium">
                       <input
                         type="checkbox"
                         checked={formData.fee_notify_due !== false}
@@ -1150,7 +1150,7 @@ export default function CasesPanel({ notice }) {
 
                 {formData.fee_type === 'percentual' && formData.fee_basis === 'condenacao' && (
                   <div className="mt-3">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                    <label className="block text-xs font-medium text-gray-300 mb-1">
                       Valor da Condenação / Acordo Obtido (R$) - preenchido após decisão/sentença
                     </label>
                     <input
@@ -1160,7 +1160,7 @@ export default function CasesPanel({ notice }) {
                       placeholder="Ex: 6207.59 (como no caso de Amanda)"
                       value={formData.awarded_value || ''}
                       onChange={(e) => setFormData({ ...formData, awarded_value: e.target.value })}
-                      className="w-full md:w-1/2 px-3 py-2 border rounded text-sm text-gray-900 bg-white font-mono"
+                      className="w-full md:w-1/2 px-3 py-2 border rounded text-sm text-white bg-[#1B1D1E] font-mono"
                     />
                     <span className="block text-[11px] text-gray-500 mt-1">
                       Quando preenchido, os honorários serão calculados exatamente sobre este montante (ex: {formData.fee_percentage || 30}% sobre {formData.awarded_value ? `R$ ${Number(formData.awarded_value).toFixed(2)}` : 'R$ 0,00'}).
@@ -1170,7 +1170,7 @@ export default function CasesPanel({ notice }) {
               </div>
             </div>
           </div>
-          <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-200">
+          <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-800">
             <button
               type="button"
               onClick={() => {
@@ -1178,7 +1178,7 @@ export default function CasesPanel({ notice }) {
                 setEditingCase(null);
               }}
               disabled={saving}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-100 transition disabled:opacity-60"
+              className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-100 transition disabled:opacity-60"
             >
               Cancelar
             </button>
@@ -1283,10 +1283,10 @@ export default function CasesPanel({ notice }) {
 
         {feeCase && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-[#1B1D1E] rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
               <div className="p-4 border-b flex justify-between items-center">
                 <h3 className="font-bold text-lg">Simulador de Honorários</h3>
-                <button onClick={() => setFeeCase(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+                <button onClick={() => setFeeCase(null)} className="text-gray-500 hover:text-gray-300">✕</button>
               </div>
               <FeeSimulator caseId={feeCase.id} caseData={feeCase} userRole={profile?.role} />
             </div>
@@ -1500,8 +1500,8 @@ export default function CasesPanel({ notice }) {
           <p className="text-gray-500">Carregando casos...</p>
         </div>
       ) : cases.length === 0 ? (
-        <div className="text-center p-8 bg-gray-50 border rounded" role="status" aria-live="polite">
-          <p className="text-gray-600 font-medium">Nenhum caso encontrado</p>
+        <div className="text-center p-8 bg-[#181A1B] border rounded" role="status" aria-live="polite">
+          <p className="text-gray-400 font-medium">Nenhum caso encontrado</p>
           <p className="text-sm text-gray-500 mt-1">Crie um novo caso ou ajuste os filtros para começar.</p>
         </div>
       ) : (
@@ -1540,11 +1540,11 @@ export default function CasesPanel({ notice }) {
                       {isClosed ? '📁 ' : ''}{idx + 1}
                     </td>
                     <td className="border p-3">
-                      <span className={isClosed ? 'text-gray-500 line-through' : 'font-medium'}>
+                      <span className={isClosed ? 'text-gray-500 line-through' : 'font-semibold text-white'}>
                         {caseItem.title}
                       </span>
                       {isClosed && (
-                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-700 font-bold inline-flex items-center gap-1">
+                        <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-300 font-bold inline-flex items-center gap-1">
                           📁 Encerrado
                         </span>
                       )}
@@ -1556,41 +1556,41 @@ export default function CasesPanel({ notice }) {
                       {(caseItem.process_number || caseItem.court || caseItem.procedural_step) && (
                         <div className="mt-1 flex flex-wrap items-center gap-1">
                           {caseItem.process_number && (
-                            <span className="inline-flex items-center gap-1 text-[10px] text-gray-600">
-                              <span className="font-mono">{caseItem.process_number}</span>
+                            <span className="inline-flex items-center gap-1 text-[10px] text-gray-300">
+                              <span className="font-mono text-gray-200">{caseItem.process_number}</span>
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleCopyProcessNumber(caseItem.process_number); }}
                                 title="Copiar número do processo"
-                                className="px-1 py-0.5 text-[10px] bg-gray-100 hover:bg-gray-200 rounded border border-gray-300"
+                                className="px-1.5 py-0.5 text-[10px] bg-[#1E2022] hover:bg-gray-700 rounded border border-[#2A2D2F] text-gray-300"
                               >
                                 Copiar
                               </button>
                             </span>
                           )}
                           {caseItem.court && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 font-medium">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-950/50 text-blue-300 border border-blue-800/60 font-semibold">
                               {caseItem.court}
                             </span>
                           )}
                           {caseItem.judicial_district && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-medium" title="Comarca / Cidade">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1E2022] text-gray-300 border border-[#2A2D2F] font-medium" title="Comarca / Cidade">
                               📍 {caseItem.judicial_district}
                             </span>
                           )}
                           {caseItem.court_division && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-medium" title="Vara / Juizado">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-900/60 text-slate-300 border border-slate-700 font-medium" title="Vara / Juizado">
                               ⚖️ {caseItem.court_division}
                             </span>
                           )}
                           {caseItem.procedural_step && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-300 border border-amber-800/50 font-medium">
                               {PROCEDURAL_STEP_LABELS[caseItem.procedural_step] || caseItem.procedural_step}
                             </span>
                           )}
                         </div>
                       )}
                     </td>
-                    <td className="border p-2 text-[11px] text-gray-700">{caseItem.legal_area || '-'}</td>
+                    <td className="border border-gray-800 p-2 text-xs text-gray-300">{caseItem.legal_area || '-'}</td>
                     <td className="border p-2">
                       <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${getStatusColor(caseItem.status)}`}>
                         {STATUS_LABELS[caseItem.status] || caseItem.status}
@@ -1604,7 +1604,7 @@ export default function CasesPanel({ notice }) {
                     <td className="border p-3">
                       {caseItem.deadline_date ? (
                         <div>
-                          <div className={caseItem.status === 'encerrado' || caseItem.status === 'arquivado' ? 'text-gray-400 line-through text-xs' : 'font-medium text-gray-900 text-sm'}>
+                          <div className={caseItem.status === 'encerrado' || caseItem.status === 'arquivado' ? 'text-gray-500 line-through text-xs' : 'font-semibold text-gray-100 text-sm'}>
                             {formatDate(caseItem.deadline_date)}
                           </div>
                           {caseItem.status === 'encerrado' || caseItem.status === 'arquivado' ? (
@@ -1614,7 +1614,7 @@ export default function CasesPanel({ notice }) {
                           ) : (
                             <>
                               {daysLeft !== null && (
-                                <div className={`text-xs mt-0.5 ${daysLeft < 0 ? 'text-red-600 font-bold' : daysLeft === 0 ? 'text-blue-600 font-bold' : daysLeft < 7 ? 'text-orange-600 font-medium' : 'text-gray-600'}`}>
+                                <div className={`text-xs mt-0.5 ${daysLeft < 0 ? 'text-red-600 font-bold' : daysLeft === 0 ? 'text-blue-600 font-bold' : daysLeft < 7 ? 'text-orange-600 font-medium' : 'text-gray-400'}`}>
                                   {daysLeft < 0 ? `${Math.abs(daysLeft)} dias atrasado` : daysLeft === 0 ? '⏰ Hoje' : `${daysLeft} dias restantes`}
                                 </div>
                               )}
@@ -1658,10 +1658,10 @@ export default function CasesPanel({ notice }) {
 
       {feeCase && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#1B1D1E] rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">Simulador de Honorários</h3>
-              <button onClick={() => setFeeCase(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+              <button onClick={() => setFeeCase(null)} className="text-gray-500 hover:text-gray-300">✕</button>
             </div>
             <FeeSimulator caseId={feeCase.id} caseData={feeCase} userRole={profile?.role} />
           </div>
@@ -1670,10 +1670,10 @@ export default function CasesPanel({ notice }) {
 
       {processCase && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#1B1D1E] rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">Monitoramento Processual</h3>
-              <button onClick={() => setProcessCase(null)} className="text-gray-500 hover:text-gray-700">✕</button>
+              <button onClick={() => setProcessCase(null)} className="text-gray-500 hover:text-gray-300">✕</button>
             </div>
             <CaseProcessMonitoring caseId={processCase.id} userRole={profile?.role} />
           </div>

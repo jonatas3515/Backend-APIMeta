@@ -91,7 +91,7 @@ export default function CalendarTokenManager() {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <p className="text-nc-text-muted">Carregando token iCal...</p>
+        <p className="text-gray-400">Carregando token iCal...</p>
       </div>
     );
   }
@@ -99,8 +99,8 @@ export default function CalendarTokenManager() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-nc-text mb-2">📅 Token iCal</h2>
-        <p className="text-nc-text-muted">
+        <h2 className="text-2xl font-bold text-gray-100 mb-2">📅 Token iCal</h2>
+        <p className="text-gray-400">
           Integre sua agenda jurídica com qualquer aplicativo de calendário (Google Calendar, Outlook, Apple Calendar, etc.)
         </p>
       </div>
@@ -120,15 +120,15 @@ export default function CalendarTokenManager() {
       {token && icalUrl ? (
         <div className="space-y-6">
           {/* URL iCal */}
-          <div className="p-6 bg-nc-surface border border-nc-gray-300 rounded-lg space-y-4">
-            <h3 className="text-lg font-semibold text-nc-text">URL do Calendário iCal</h3>
+          <div className="p-6 bg-nc-surface border border-[#2A2D2F] rounded-lg space-y-4">
+            <h3 className="text-lg font-semibold text-gray-100">URL do Calendário iCal</h3>
             
             <div className="flex gap-2">
               <input
                 type="text"
                 value={icalUrl}
                 readOnly
-                className="flex-1 px-3 py-2 border border-nc-gray-300 rounded bg-white text-nc-text text-sm font-mono"
+                className="flex-1 px-3 py-2 border border-[#2A2D2F] rounded bg-[#1B1D1E] text-gray-100 text-sm font-mono"
               />
               <button
                 onClick={handleCopy}
@@ -138,7 +138,7 @@ export default function CalendarTokenManager() {
               </button>
             </div>
 
-            <p className="text-sm text-nc-text-muted">
+            <p className="text-sm text-gray-400">
               Cole esta URL em qualquer aplicativo de calendário que suporte iCal/ICS
             </p>
           </div>
@@ -180,8 +180,8 @@ export default function CalendarTokenManager() {
           </div>
 
           {/* Gerenciamento */}
-          <div className="p-6 bg-nc-surface border border-nc-gray-300 rounded-lg space-y-4">
-            <h3 className="text-lg font-semibold text-nc-text">Gerenciamento</h3>
+          <div className="p-6 bg-nc-surface border border-[#2A2D2F] rounded-lg space-y-4">
+            <h3 className="text-lg font-semibold text-gray-100">Gerenciamento</h3>
             
             <div className="space-y-3">
               <button
@@ -200,7 +200,7 @@ export default function CalendarTokenManager() {
               </button>
             </div>
 
-            <p className="text-sm text-nc-text-muted">
+            <p className="text-sm text-gray-400">
               Regenerar o token desabilitará a URL anterior. Desabilitar o token impedirá o acesso ao calendário até que você gere um novo.
             </p>
           </div>
@@ -217,11 +217,11 @@ export default function CalendarTokenManager() {
           </div>
         </div>
       ) : (
-        <div className="p-6 bg-nc-surface border border-nc-gray-300 rounded-lg text-center space-y-4">
-          <p className="text-nc-text-muted">Nenhum token iCal ativo</p>
+        <div className="p-6 bg-nc-surface border border-[#2A2D2F] rounded-lg text-center space-y-4">
+          <p className="text-gray-400">Nenhum token iCal ativo</p>
           <button
             onClick={fetchToken}
-            className="px-4 py-2 bg-nc-yellow text-nc-text font-medium rounded hover:bg-nc-yellow-700 transition"
+            className="px-4 py-2 bg-nc-yellow text-gray-100 font-medium rounded hover:bg-nc-yellow-700 transition"
           >
             🔄 Recarregar
           </button>

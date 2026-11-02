@@ -138,7 +138,7 @@ export default function DocumentTemplatesManager() {
   );
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow">
+    <div className="p-6 bg-[#1B1D1E] rounded-lg shadow">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <h2 className="text-2xl font-bold">📄 Templates de Documentos</h2>
         <input
@@ -169,7 +169,7 @@ export default function DocumentTemplatesManager() {
 
       {/* Formulário */}
       {showForm && (
-        <div className="mb-6 p-4 border rounded bg-gray-50">
+        <div className="mb-6 p-4 border rounded bg-[#181A1B]">
           <h3 className="text-lg font-bold mb-4">{editingTemplate ? 'Editar Template' : 'Novo Template'}</h3>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <input
@@ -219,7 +219,7 @@ export default function DocumentTemplatesManager() {
               rows="12"
               placeholder="Exemplo: Requerimento de {{client_name}} para {{municipality}}"
             />
-            <p className="text-xs text-gray-600 mt-2">
+            <p className="text-xs text-gray-400 mt-2">
               Placeholders: client_name, client_phone, municipality, agency, client_role, case_type, case_summary, date, year
             </p>
           </div>
@@ -252,11 +252,11 @@ export default function DocumentTemplatesManager() {
       ) : (
         <div className="space-y-4">
           {filteredTemplates.map(template => (
-            <div key={template.id} className="p-4 border rounded-lg bg-gray-50">
+            <div key={template.id} className="p-4 border rounded-lg bg-[#181A1B]">
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <h4 className="font-bold text-lg">{template.name}</h4>
-                  <p className="text-sm text-gray-600">{template.description}</p>
+                  <p className="text-sm text-gray-400">{template.description}</p>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -287,7 +287,7 @@ export default function DocumentTemplatesManager() {
                 )}
               </div>
 
-              <div className="bg-white p-3 rounded border border-gray-300 text-sm font-mono max-h-32 overflow-y-auto">
+              <div className="bg-[#1B1D1E] p-3 rounded border border-[#2A2D2F] text-sm font-mono max-h-32 overflow-y-auto">
                 {template.template_text.substring(0, 200)}...
               </div>
             </div>

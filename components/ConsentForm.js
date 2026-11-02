@@ -68,11 +68,11 @@ export default function ConsentForm({ clientId, onSuccess, onCancel }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white border border-nc-gray-200 rounded p-3 space-y-3 text-sm">
-      <p className="font-bold text-nc-text-title">Novo Consentimento</p>
+    <form onSubmit={handleSubmit} className="bg-[#1B1D1E] border border-gray-800 rounded p-3 space-y-3 text-sm">
+      <p className="font-bold text-white">Novo Consentimento</p>
 
       <div>
-        <label htmlFor="consent-purpose" className="block text-xs text-nc-text-secondary mb-1">Finalidade</label>
+        <label htmlFor="consent-purpose" className="block text-xs text-gray-400 mb-1">Finalidade</label>
         <select
           id="consent-purpose"
           value={form.purpose}
@@ -84,7 +84,7 @@ export default function ConsentForm({ clientId, onSuccess, onCancel }) {
       </div>
 
       <div>
-        <label htmlFor="consent-basis" className="block text-xs text-nc-text-secondary mb-1">Base legal</label>
+        <label htmlFor="consent-basis" className="block text-xs text-gray-400 mb-1">Base legal</label>
         <select
           id="consent-basis"
           value={form.legalBasis}
@@ -96,7 +96,7 @@ export default function ConsentForm({ clientId, onSuccess, onCancel }) {
       </div>
 
       <div>
-        <label htmlFor="consent-channel" className="block text-xs text-nc-text-secondary mb-1">Canal</label>
+        <label htmlFor="consent-channel" className="block text-xs text-gray-400 mb-1">Canal</label>
         <select
           id="consent-channel"
           value={form.channel}
@@ -108,7 +108,7 @@ export default function ConsentForm({ clientId, onSuccess, onCancel }) {
       </div>
 
       <div>
-        <label htmlFor="consent-version" className="block text-xs text-nc-text-secondary mb-1">Versão do termo</label>
+        <label htmlFor="consent-version" className="block text-xs text-gray-400 mb-1">Versão do termo</label>
         <input
           id="consent-version"
           type="text"
@@ -121,7 +121,7 @@ export default function ConsentForm({ clientId, onSuccess, onCancel }) {
       </div>
 
       <div>
-        <label htmlFor="consent-notes" className="block text-xs text-nc-text-secondary mb-1">Observações</label>
+        <label htmlFor="consent-notes" className="block text-xs text-gray-400 mb-1">Observações</label>
         <textarea
           id="consent-notes"
           value={form.notes}

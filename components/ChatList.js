@@ -49,8 +49,8 @@ export default function ChatList({ conversations, selectedConversation, onSelect
 
   if (loading) {
     return (
-      <div className="w-full h-full bg-nc-white border-r border-nc-gray-300 flex items-center justify-center">
-        <p className="text-nc-text-muted">Carregando conversas...</p>
+      <div className="w-full h-full bg-[#181A1B] border-r border-gray-800 flex items-center justify-center">
+        <p className="text-gray-400">Carregando conversas...</p>
       </div>
     );
   }
@@ -82,10 +82,10 @@ export default function ChatList({ conversations, selectedConversation, onSelect
     });
 
   return (
-    <div className="w-full h-full bg-nc-white border-r border-nc-gray-300 flex flex-col">
-      <div className="p-4 border-b border-nc-gray-200">
+    <div className="w-full h-full bg-[#181A1B] border-r border-gray-800 flex flex-col text-gray-100">
+      <div className="p-4 border-b border-gray-800 bg-[#1B1D1E]">
         <div className="flex justify-between items-center mb-3">
-          <h1 className="text-xl font-bold text-nc-text-title">Conversas</h1>
+          <h1 className="text-xl font-bold text-white">Conversas</h1>
           <div className="flex items-center gap-1.5">
             <button
               onClick={async () => {
@@ -96,14 +96,14 @@ export default function ChatList({ conversations, selectedConversation, onSelect
                   console.error('Erro ao marcar lidas:', e);
                 }
               }}
-              className="px-2 py-1 bg-nc-gray-100 hover:bg-nc-gray-200 text-nc-text-secondary rounded text-[11px] font-medium transition"
+              className="px-2 py-1 bg-[#1E2022] hover:bg-gray-700 text-gray-300 border border-[#2A2D2F] rounded text-[11px] font-medium transition"
               title="Marcar todas as conversas como lidas"
             >
               ✓✓ Lidas
             </button>
             <button
               onClick={onNewConversation}
-              className="w-8 h-8 bg-nc-yellow text-nc-black rounded-nc hover:bg-nc-yellow-600 flex items-center justify-center text-xl font-semibold transition"
+              className="w-8 h-8 bg-nc-yellow text-nc-black rounded-lg hover:bg-yellow-400 flex items-center justify-center text-xl font-bold transition shadow-sm"
               title="Nova conversa"
             >
               +
@@ -122,10 +122,10 @@ export default function ChatList({ conversations, selectedConversation, onSelect
             <button
               key={filter.key}
               onClick={() => setActiveFilter(filter.key)}
-              className={`flex-1 py-1.5 px-2 rounded-nc text-xs font-medium transition border ${
+              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition border ${
                 activeFilter === filter.key
-                  ? 'bg-nc-yellow text-nc-black border-nc-yellow'
-                  : 'bg-nc-white text-nc-text-secondary border-nc-gray-300 hover:border-nc-yellow hover:text-nc-yellow'
+                  ? 'bg-nc-yellow text-nc-black border-nc-yellow shadow-sm'
+                  : 'bg-[#1E2022] text-gray-300 border-[#2A2D2F] hover:border-nc-yellow hover:text-white'
               }`}
               aria-label={`${filter.label} (${filterCounts[filter.key] || 0})`}
             >
@@ -142,7 +142,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
           <select
             value={triageFilters.legal_area}
             onChange={(e) => setTriageFilters({ ...triageFilters, legal_area: e.target.value })}
-            className="nc-select text-xs py-1.5"
+            className="w-full px-2 py-1.5 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-xs text-gray-200 focus:outline-none focus:border-nc-yellow"
           >
             {LEGAL_AREA_OPTIONS.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -152,7 +152,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
           <select
             value={triageFilters.municipality}
             onChange={(e) => setTriageFilters({ ...triageFilters, municipality: e.target.value })}
-            className="nc-select text-xs py-1.5"
+            className="w-full px-2 py-1.5 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-xs text-gray-200 focus:outline-none focus:border-nc-yellow"
           >
             <option value="">Município</option>
             {uniqueValues('municipality').map(v => (
@@ -163,7 +163,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
           <select
             value={triageFilters.agency}
             onChange={(e) => setTriageFilters({ ...triageFilters, agency: e.target.value })}
-            className="nc-select text-xs py-1.5"
+            className="w-full px-2 py-1.5 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-xs text-gray-200 focus:outline-none focus:border-nc-yellow"
           >
             <option value="">Órgão</option>
             {uniqueValues('agency').map(v => (
@@ -174,7 +174,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
           <select
             value={triageFilters.client_role}
             onChange={(e) => setTriageFilters({ ...triageFilters, client_role: e.target.value })}
-            className="nc-select text-xs py-1.5"
+            className="w-full px-2 py-1.5 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-xs text-gray-200 focus:outline-none focus:border-nc-yellow"
           >
             <option value="">Papel</option>
             {uniqueValues('client_role').map(v => (
@@ -185,7 +185,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
           <select
             value={triageFilters.funnel_stage}
             onChange={(e) => setTriageFilters({ ...triageFilters, funnel_stage: e.target.value })}
-            className="nc-select text-xs py-1.5"
+            className="w-full px-2 py-1.5 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-xs text-gray-200 focus:outline-none focus:border-nc-yellow"
             title="Filtrar por etapa do funil"
             data-testid="funnel-stage-filter"
           >
@@ -198,7 +198,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
       </div>
       <div className="flex-1 overflow-y-auto">
         {filteredConversations.length === 0 ? (
-          <div className="p-3 text-center text-nc-text-muted text-sm">
+          <div className="p-4 text-center text-gray-400 text-sm">
             {searchTerm ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}
           </div>
         ) : (
@@ -206,21 +206,21 @@ export default function ChatList({ conversations, selectedConversation, onSelect
             <div
               key={conv.id}
               onClick={() => onSelectConversation(conv)}
-              className={`px-3 py-2 border-b border-nc-gray-150 cursor-pointer transition relative ${
+              className={`px-3 py-2.5 border-b border-[#2A2D2F] cursor-pointer transition relative ${
                 selectedConversation?.id === conv.id
-                  ? 'bg-nc-gray-100 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-nc-yellow'
-                  : `hover:bg-nc-gray-50 ${conv.client_status === 'spam' ? 'bg-red-50/20' : ''}`
+                  ? 'bg-[#1E2022] before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-nc-yellow shadow-sm'
+                  : `hover:bg-[#1E2022]/60 ${conv.client_status === 'spam' ? 'bg-red-950/20' : ''}`
               }`}
             >
               <div className="flex justify-between items-start gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <p className={`text-sm font-medium truncate ${
-                      selectedConversation?.id === conv.id ? 'text-nc-text-title' : 'text-nc-text'
+                      selectedConversation?.id === conv.id ? 'text-white font-bold' : 'text-gray-100 font-semibold'
                     }`}>
                       {conv.client_name ? getFirstName(conv.client_name) : formatPhone(conv.client_phone)}
                     </p>
-                    <span className="text-xs text-nc-text-muted whitespace-nowrap">
+                    <span className="text-xs text-gray-400 whitespace-nowrap">
                       {(() => {
                         const now = new Date();
                         const updated = new Date(conv.updated_at);
@@ -235,29 +235,29 @@ export default function ChatList({ conversations, selectedConversation, onSelect
                   </div>
                   <div className="flex flex-wrap gap-0.5 mb-1">
                     {conv.client_status === 'spam' && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 font-semibold" data-testid="spam-badge">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-950/50 text-red-300 border border-red-800/60 font-semibold" data-testid="spam-badge">
                         🚫 Telemarketing
                       </span>
                     )}
                     <span
-                      className="text-[9px] px-1 py-0.5 rounded bg-nc-gray-100 text-nc-text-secondary border border-nc-gray-200"
+                      className="text-[9px] px-1 py-0.5 rounded bg-[#181A1B] text-gray-300 border border-gray-700"
                       title={getFunnelStageLabel(conv.funnel_stage)}
                       data-testid="funnel-stage-badge"
                     >
                       {getFunnelStageShortLabel(conv.funnel_stage)}
                     </span>
                     {conv.legal_area && (
-                      <span className="text-[9px] px-1 py-0.5 rounded bg-nc-gray-100 text-nc-text-secondary border border-nc-gray-200">
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-[#181A1B] text-gray-300 border border-gray-700">
                         {conv.legal_area}
                       </span>
                     )}
                     {conv.case_type && (
-                      <span className="text-[9px] px-1 py-0.5 rounded bg-nc-white text-nc-text-secondary border border-nc-gray-200">
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-[#181A1B] text-gray-300 border border-gray-700">
                         {conv.case_type}
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-nc-text-secondary truncate">
+                  <p className="text-xs text-gray-400 truncate mt-0.5">
                     {conv.messages?.[conv.messages?.length - 1]?.text || 'Sem mensagens'}
                   </p>
                 </div>
@@ -275,7 +275,7 @@ export default function ChatList({ conversations, selectedConversation, onSelect
                       onDeleteConversation(conv);
                     }}
                     disabled={deletingId === conv.id}
-                    className="text-nc-text-muted hover:text-red-600 text-xs transition"
+                    className="text-gray-400 hover:text-red-600 text-xs transition"
                     title="Excluir conversa"
                   >
                     {deletingId === conv.id ? '...' : '🗑️'}

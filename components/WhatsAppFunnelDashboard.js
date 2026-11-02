@@ -48,7 +48,7 @@ export default function WhatsAppFunnelDashboard({ from, to }) {
   }, [from, to]);
 
   if (loading) {
-    return <p className="p-4 text-sm text-nc-text-muted" role="status">Carregando funil de WhatsApp...</p>;
+    return <p className="p-4 text-sm text-gray-400" role="status">Carregando funil de WhatsApp...</p>;
   }
 
   return (
@@ -60,27 +60,27 @@ export default function WhatsAppFunnelDashboard({ from, to }) {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-4 bg-white border border-nc-gray-200 rounded">
-          <p className="text-xs text-nc-text-secondary">Conversas</p>
-          <p className="text-2xl font-bold text-nc-text">{metrics?.totalConversations || 0}</p>
+        <div className="p-4 bg-[#1B1D1E] border border-gray-800 rounded">
+          <p className="text-xs text-gray-400">Conversas</p>
+          <p className="text-2xl font-bold text-gray-100">{metrics?.totalConversations || 0}</p>
         </div>
-        <div className="p-4 bg-white border border-nc-gray-200 rounded">
-          <p className="text-xs text-nc-text-secondary">Mensagens</p>
-          <p className="text-2xl font-bold text-nc-text">{metrics?.totalMessages || 0}</p>
+        <div className="p-4 bg-[#1B1D1E] border border-gray-800 rounded">
+          <p className="text-xs text-gray-400">Mensagens</p>
+          <p className="text-2xl font-bold text-gray-100">{metrics?.totalMessages || 0}</p>
         </div>
-        <div className="p-4 bg-white border border-nc-gray-200 rounded">
-          <p className="text-xs text-nc-text-secondary">Conversão first → closed</p>
-          <p className="text-2xl font-bold text-nc-text">{metrics?.conversionRate || 0}%</p>
+        <div className="p-4 bg-[#1B1D1E] border border-gray-800 rounded">
+          <p className="text-xs text-gray-400">Conversão first → closed</p>
+          <p className="text-2xl font-bold text-gray-100">{metrics?.conversionRate || 0}%</p>
         </div>
       </div>
 
-      <div className="p-4 bg-white border border-nc-gray-200 rounded">
-        <h2 className="text-sm font-bold text-nc-text-title mb-3">Distribuição de eventos</h2>
+      <div className="p-4 bg-[#1B1D1E] border border-gray-800 rounded">
+        <h2 className="text-sm font-bold text-white mb-3">Distribuição de eventos</h2>
         <WhatsAppMetricsChart data={metrics?.eventDistribution || {}} labels={STAGES} />
       </div>
 
-      <div className="p-4 bg-white border border-nc-gray-200 rounded">
-        <h2 className="text-sm font-bold text-nc-text-title mb-3">Volume de mensagens por dia</h2>
+      <div className="p-4 bg-[#1B1D1E] border border-gray-800 rounded">
+        <h2 className="text-sm font-bold text-white mb-3">Volume de mensagens por dia</h2>
         <WhatsAppMetricsChart
           data={(metrics?.volumeByDay || []).reduce((acc, d) => {
             acc[d.date] = d.inbound + d.outbound;

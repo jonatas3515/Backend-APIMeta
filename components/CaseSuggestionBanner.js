@@ -89,7 +89,7 @@ export default function CaseSuggestionBanner({
           {!activeCase && canEdit && (
             <button
               onClick={onCreateCase}
-              className="text-xs px-2 py-0.5 bg-white border border-current rounded hover:opacity-80 transition-colors"
+              className="text-xs px-2 py-0.5 bg-[#1B1D1E] border border-current rounded hover:opacity-80 transition-colors"
             >
               Criar Caso
             </button>
@@ -149,7 +149,7 @@ export default function CaseSuggestionBanner({
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <p className="text-green-800 font-medium">✨ Pronto para criar caso jurídico</p>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-400 mt-1">
               Esta conversa está em <strong>{conversation.funnel_stage}</strong> e pode ser convertida em caso.
             </p>
           </div>
@@ -162,7 +162,7 @@ export default function CaseSuggestionBanner({
             </button>
             <button
               onClick={onLinkCase}
-              className="px-4 py-2 bg-white border border-green-600 text-green-700 text-sm rounded hover:bg-green-50 transition-colors whitespace-nowrap"
+              className="px-4 py-2 bg-[#1B1D1E] border border-green-600 text-green-700 text-sm rounded hover:bg-green-50 transition-colors whitespace-nowrap"
             >
               🔗 Vincular Existente
             </button>
@@ -186,7 +186,7 @@ export default function CaseSuggestionBanner({
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <p className="text-yellow-800 font-medium">⚠️ Atenção</p>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-400 mt-1">
               Esta conversa está em <strong>{conversation.funnel_stage}</strong> mas não possui caso ativo vinculado.
             </p>
           </div>
@@ -199,7 +199,7 @@ export default function CaseSuggestionBanner({
             </button>
             <button
               onClick={onLinkCase}
-              className="px-4 py-2 bg-white border border-yellow-600 text-yellow-700 text-sm rounded hover:bg-yellow-50 transition-colors whitespace-nowrap"
+              className="px-4 py-2 bg-[#1B1D1E] border border-yellow-600 text-yellow-700 text-sm rounded hover:bg-yellow-50 transition-colors whitespace-nowrap"
             >
               🔗 Vincular Existente
             </button>

@@ -59,10 +59,10 @@ export default function Login({ onLogin }) {
       <h1 className="text-center text-white text-xl md:text-2xl font-bold tracking-tight mb-1">JusJNC — Plataforma Jurídica</h1>
       <p className="text-center text-gray-200 text-sm md:text-base font-medium mb-6">Acesse o painel do seu escritório</p>
 
-      <div className="bg-nc-white rounded-nc shadow-card p-8 w-full max-w-md border border-nc-gray-300">
+      <div className="bg-[#1B1D1E] rounded-nc shadow-card p-8 w-full max-w-md border border-[#2A2D2F]">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-semibold text-nc-text mb-2">
+            <label className="block text-sm font-semibold text-gray-100 mb-2">
               Email
             </label>
             <input
@@ -76,7 +76,7 @@ export default function Login({ onLogin }) {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-nc-text mb-2">
+            <label className="block text-sm font-semibold text-gray-100 mb-2">
               Senha
             </label>
             <div className="relative">
@@ -91,7 +91,7 @@ export default function Login({ onLogin }) {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-nc-text-muted hover:text-nc-text"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-100"
               >
                 {showPassword ? '👁️' : '👁️‍🗨️'}
               </button>
@@ -104,15 +104,15 @@ export default function Login({ onLogin }) {
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 text-red-600 border-nc-gray-300 rounded focus:ring-red-500"
+              className="h-4 w-4 text-red-600 border-[#2A2D2F] rounded focus:ring-red-500"
             />
-            <label htmlFor="remember-me" className="ml-2 text-sm text-nc-text-secondary">
+            <label htmlFor="remember-me" className="ml-2 text-sm text-gray-400">
               Lembrar-me (salvar email)
             </label>
           </div>
 
           {error && (
-            <div className="bg-nc-gray-100 border border-red-400 text-red-700 px-4 py-3 rounded-nc">
+            <div className="bg-[#1E2022] border border-red-400 text-red-700 px-4 py-3 rounded-nc">
               {error}
             </div>
           )}
@@ -126,11 +126,11 @@ export default function Login({ onLogin }) {
           </button>
         </form>
         <div className="mt-4 text-center">
-          <a href="/" className="text-xs text-nc-text-muted hover:text-nc-text transition">
+          <a href="/" className="text-xs text-gray-400 hover:text-gray-100 transition">
             ← Voltar para a página inicial
           </a>
         </div>
-        <div className="mt-6 pt-4 border-t border-nc-gray-200 text-center space-y-2">
+        <div className="mt-6 pt-4 border-t border-gray-800 text-center space-y-2">
           <a
             href="/landing"
             className="block text-sm font-medium text-red-500 hover:text-red-600 transition"
@@ -139,7 +139,7 @@ export default function Login({ onLogin }) {
           </a>
           <a
             href="/landing#planos"
-            className="block text-xs text-nc-text-secondary hover:text-red-500 transition"
+            className="block text-xs text-gray-400 hover:text-red-500 transition"
           >
             Criar conta para meu escritório (30 dias grátis)
           </a>

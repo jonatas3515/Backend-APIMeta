@@ -69,25 +69,25 @@ export default function LgpdExportModal({ clientId, clientName, onClose }) {
       <div
         ref={modalRef}
         tabIndex="-1"
-        className="bg-nc-white rounded-lg shadow-2xl w-full max-w-md outline-none"
+        className="bg-[#1B1D1E] rounded-lg shadow-2xl w-full max-w-md outline-none"
       >
-        <div className="p-4 border-b border-nc-gray-200">
-          <h2 id="lgpd-export-title" className="text-lg font-bold text-nc-text-title">
+        <div className="p-4 border-b border-gray-800">
+          <h2 id="lgpd-export-title" className="text-lg font-bold text-white">
             Exportar dados (LGPD)
           </h2>
-          <p className="text-sm text-nc-text-secondary mt-1">
+          <p className="text-sm text-gray-400 mt-1">
             Escolha o formato para baixar os dados pessoais do titular.
           </p>
         </div>
 
         <div className="p-4 space-y-4">
           <div>
-            <p className="text-sm text-nc-text mb-2">Formato do arquivo</p>
+            <p className="text-sm text-gray-100 mb-2">Formato do arquivo</p>
             <div className="flex gap-3" role="radiogroup" aria-label="Formato de exportação">
               {FORMATS.map(f => (
                 <label
                   key={f.key}
-                  className={`flex-1 cursor-pointer rounded border p-3 text-center text-sm ${format === f.key ? 'border-nc-yellow bg-nc-yellow/10 text-nc-text-title' : 'border-nc-gray-200 text-nc-text-secondary'}`}
+                  className={`flex-1 cursor-pointer rounded border p-3 text-center text-sm ${format === f.key ? 'border-nc-yellow bg-nc-yellow/10 text-white' : 'border-gray-800 text-gray-400'}`}
                 >
                   <input
                     type="radio"
@@ -109,16 +109,16 @@ export default function LgpdExportModal({ clientId, clientName, onClose }) {
             </div>
           )}
 
-          <p className="text-xs text-nc-text-muted">
+          <p className="text-xs text-gray-400">
             O download será iniciado no navegador. Os dados devem ser tratados conforme a LGPD.
           </p>
         </div>
 
-        <div className="p-4 border-t border-nc-gray-200 flex gap-2 justify-end">
+        <div className="p-4 border-t border-gray-800 flex gap-2 justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded border border-nc-gray-200 text-nc-text text-sm hover:bg-nc-gray-100"
+            className="px-4 py-2 rounded border border-gray-800 text-gray-100 text-sm hover:bg-[#1E2022]"
           >
             Cancelar
           </button>

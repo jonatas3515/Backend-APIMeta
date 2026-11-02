@@ -320,7 +320,7 @@ export default function FeeTablesManager({ viewMode = null }) {
                           className={`flex-shrink-0 text-xs px-2.5 py-1 rounded border ${
                             selectedArea === area
                               ? 'bg-blue-600 text-white border-blue-600'
-                              : 'bg-gray-100 text-gray-300 border-gray-300 hover:bg-gray-200'
+                              : 'bg-gray-100 text-gray-300 border-[#2A2D2F] hover:bg-gray-200'
                           }`}
                         >
                           {area}
@@ -329,7 +329,7 @@ export default function FeeTablesManager({ viewMode = null }) {
                       {selectedArea && (
                         <button
                           onClick={() => setSelectedArea('')}
-                          className="flex-shrink-0 text-xs px-2.5 py-1 rounded border bg-gray-100 text-gray-300 border-gray-300 hover:bg-gray-200"
+                          className="flex-shrink-0 text-xs px-2.5 py-1 rounded border bg-gray-100 text-gray-300 border-[#2A2D2F] hover:bg-gray-200"
                         >
                           Todas
                         </button>

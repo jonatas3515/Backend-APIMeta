@@ -129,7 +129,7 @@ export default function UserManagement() {
       case 'admin': return 'text-red-600 bg-red-100';
       case 'advogado': return 'text-blue-600 bg-blue-100';
       case 'estagiario': return 'text-green-600 bg-green-100';
-      default: return 'text-gray-600 bg-gray-100';
+      default: return 'text-gray-400 bg-gray-100';
     }
   };
 
@@ -139,10 +139,10 @@ export default function UserManagement() {
   const canCreateUsers = isAdmin || isAdvogado;
 
   return (
-    <div className="flex-1 flex flex-col bg-white overflow-y-auto">
+    <div className="flex-1 flex flex-col bg-[#1B1D1E] overflow-y-auto">
       <div className="flex-1 p-6 overflow-y-auto">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">
+        <h2 className="text-2xl font-bold text-white">
           {isAdmin ? '⚙️ Gestão de Usuários' : isAdvogado ? '👥 Gestão de Equipe' : '🎓 Meu Perfil'}
         </h2>
         <div className="flex gap-2">
@@ -153,7 +153,7 @@ export default function UserManagement() {
               setMessage('');
               setError('');
             }}
-            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
+            className="px-4 py-2 bg-gray-100 text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200"
           >
             {showPasswordForm ? 'Cancelar' : '🔐 Alterar Senha'}
           </button>
@@ -191,37 +191,37 @@ export default function UserManagement() {
       )}
 
       {showPasswordForm && (
-        <form onSubmit={handlePasswordSubmit} className="mb-6 p-4 border rounded-lg bg-gray-50">
+        <form onSubmit={handlePasswordSubmit} className="mb-6 p-4 border rounded-lg bg-[#181A1B]">
           <h3 className="font-semibold mb-3">🔐 Alterar minha senha</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Senha atual</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Senha atual</label>
               <input
                 type="password"
                 value={passwordData.currentPassword}
                 onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded text-sm"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Nova senha</label>
               <input
                 type="password"
                 value={passwordData.newPassword}
                 onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded text-sm"
                 required
                 minLength={6}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar nova senha</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Confirmar nova senha</label>
               <input
                 type="password"
                 value={passwordData.confirmPassword}
                 onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded text-sm"
                 required
                 minLength={6}
               />
@@ -238,35 +238,35 @@ export default function UserManagement() {
       )}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="mb-6 p-4 border rounded-lg bg-gray-50">
+        <form onSubmit={handleSubmit} className="mb-6 p-4 border rounded-lg bg-[#181A1B]">
           <h3 className="font-semibold mb-3">Criar novo usuário</h3>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Nome</label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded text-sm"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded text-sm"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Papel</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Papel</label>
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded text-sm"
               >
                 {profile?.is_master && <option value="admin">👑 Admin</option>}
                 {isAdmin && <option value="advogado">⚖️ Advogado</option>}
@@ -274,12 +274,12 @@ export default function UserManagement() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Senha inicial</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Senha inicial</label>
               <input
                 type="text"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                className="w-full px-3 py-2 border border-[#2A2D2F] rounded text-sm"
                 required
               />
             </div>
@@ -302,7 +302,7 @@ export default function UserManagement() {
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-gray-50">
+            <tr className="border-b bg-[#181A1B]">
               <th className="text-left p-3 font-semibold">Nome</th>
               <th className="text-left p-3 font-semibold">Email</th>
               <th className="text-left p-3 font-semibold">Papel</th>
@@ -319,9 +319,9 @@ export default function UserManagement() {
               </tr>
             ) : (
               users.map(user => (
-                <tr key={user.id} className="border-b hover:bg-gray-50">
+                <tr key={user.id} className="border-b hover:bg-[#181A1B]">
                   <td className="p-3">{user.name}</td>
-                  <td className="p-3 text-gray-600">{user.email}</td>
+                  <td className="p-3 text-gray-400">{user.email}</td>
                   <td className="p-3">
                     <span className={`px-2 py-1 rounded text-xs font-medium ${getRoleColor(user.role)}`}>
                       {getRoleLabel(user.role)}

@@ -66,9 +66,9 @@ export default function LgpdDeletionRequestModal({ clientId, onClose }) {
       <div
         ref={modalRef}
         tabIndex="-1"
-        className="bg-white rounded-lg shadow-xl w-full max-w-md p-4 outline-none"
+        className="bg-[#1B1D1E] rounded-lg shadow-xl w-full max-w-md p-4 outline-none"
       >
-        <h2 className="text-lg font-bold text-nc-text-title mb-3">Solicitar Exclusão/Anonimização (LGPD)</h2>
+        <h2 className="text-lg font-bold text-white mb-3">Solicitar Exclusão/Anonimização (LGPD)</h2>
 
         {success ? (
           <div className="text-center py-4">
@@ -78,7 +78,7 @@ export default function LgpdDeletionRequestModal({ clientId, onClose }) {
         ) : (
           <form onSubmit={handleSubmit} className="space-y-3 text-sm">
             <div>
-              <label htmlFor="deletion-mode" className="block text-xs text-nc-text-secondary mb-1">Modo</label>
+              <label htmlFor="deletion-mode" className="block text-xs text-gray-400 mb-1">Modo</label>
               <select
                 id="deletion-mode"
                 value={mode}
@@ -90,7 +90,7 @@ export default function LgpdDeletionRequestModal({ clientId, onClose }) {
             </div>
 
             <div>
-              <label htmlFor="deletion-reason" className="block text-xs text-nc-text-secondary mb-1">Motivo</label>
+              <label htmlFor="deletion-reason" className="block text-xs text-gray-400 mb-1">Motivo</label>
               <select
                 id="deletion-reason"
                 value={reason}
@@ -102,7 +102,7 @@ export default function LgpdDeletionRequestModal({ clientId, onClose }) {
             </div>
 
             <div>
-              <label htmlFor="deletion-notes" className="block text-xs text-nc-text-secondary mb-1">Observações</label>
+              <label htmlFor="deletion-notes" className="block text-xs text-gray-400 mb-1">Observações</label>
               <textarea
                 id="deletion-notes"
                 value={notes}

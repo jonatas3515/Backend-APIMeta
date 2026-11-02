@@ -60,12 +60,12 @@ export default function DeadlineCalendar() {
       media: 'border-l-4 border-yellow-500 bg-yellow-50',
       baixa: 'border-l-4 border-green-500 bg-green-50'
     };
-    return colors[priority] || 'border-l-4 border-gray-500 bg-gray-50';
+    return colors[priority] || 'border-l-4 border-gray-500 bg-[#181A1B]';
   };
 
   const getStatusBadge = (status) => {
     const colors = {
-      prospect: 'bg-gray-100 text-gray-800',
+      prospect: 'bg-gray-100 text-gray-100',
       em_analise: 'bg-blue-100 text-blue-800',
       proposta_enviada: 'bg-yellow-100 text-yellow-800',
       contrato_assinado: 'bg-purple-100 text-purple-800',
@@ -73,13 +73,13 @@ export default function DeadlineCalendar() {
       aguardando_decisao: 'bg-red-100 text-red-800',
       encerrado: 'bg-green-100 text-green-800'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-gray-100 text-gray-100';
   };
 
   const sortedDates = Object.keys(deadlines).sort();
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow">
+    <div className="p-6 bg-[#1B1D1E] rounded-lg shadow">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Agenda de Prazos</h2>
         <select
@@ -125,12 +125,12 @@ export default function DeadlineCalendar() {
                       </div>
 
                       {item.deadline_type && (
-                        <p className="text-sm text-gray-700 mb-2">
+                        <p className="text-sm text-gray-300 mb-2">
                           <strong>Tipo:</strong> {item.deadline_type}
                         </p>
                       )}
 
-                      <p className="text-xs text-gray-600">
+                      <p className="text-xs text-gray-400">
                         <strong>Prioridade:</strong> {item.priority}
                       </p>
                     </div>

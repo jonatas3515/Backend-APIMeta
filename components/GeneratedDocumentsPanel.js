@@ -115,12 +115,12 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
 
   const getStatusColor = (status) => {
     const colors = {
-      draft: 'bg-gray-100 text-gray-800',
+      draft: 'bg-gray-100 text-gray-100',
       review: 'bg-yellow-100 text-yellow-800',
       approved: 'bg-green-100 text-green-800',
       sent: 'bg-blue-100 text-blue-800'
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-gray-100 text-gray-100';
   };
 
   const getStatusLabel = (status) => {
@@ -158,12 +158,12 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
       </div>
 
       {loading ? (
-        <div className="p-4 bg-gray-50 border rounded text-center" role="status" aria-live="polite">
+        <div className="p-4 bg-[#181A1B] border rounded text-center" role="status" aria-live="polite">
           <p className="text-sm text-gray-500">Carregando documentos...</p>
         </div>
       ) : documents.length === 0 ? (
-        <div className="p-4 bg-gray-50 border rounded text-center space-y-2" role="status" aria-live="polite">
-          <p className="text-sm text-gray-600">Nenhum documento gerado para este caso.</p>
+        <div className="p-4 bg-[#181A1B] border rounded text-center space-y-2" role="status" aria-live="polite">
+          <p className="text-sm text-gray-400">Nenhum documento gerado para este caso.</p>
           <p className="text-xs text-gray-500">Selecione um template e clique em "Gerar Documento" para começar.</p>
           {canGenerate && (
             <button
@@ -177,7 +177,7 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
       ) : (
         <div className="space-y-2">
           {documents.map((doc) => (
-            <div key={doc.id} className="p-3 border rounded bg-white">
+            <div key={doc.id} className="p-3 border rounded bg-[#1B1D1E]">
               <div className="flex justify-between items-start mb-2">
                 <div className="flex-1">
                   <p className="font-medium text-sm">{doc.title}</p>
@@ -242,12 +242,12 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
 
       {showTemplateSelector && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+          <div className="bg-[#1B1D1E] rounded-lg shadow-xl w-full max-w-md">
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="font-bold text-lg">Selecionar Template</h3>
               <button
                 onClick={() => setShowTemplateSelector(false)}
-                className="text-gray-500 hover:text-gray-700 text-xl"
+                className="text-gray-500 hover:text-gray-300 text-xl"
               >
                 ×
               </button>
@@ -277,7 +277,7 @@ export default function GeneratedDocumentsPanel({ caseId, conversationId, onClos
                 </button>
                 <button
                   onClick={() => setShowTemplateSelector(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                  className="px-4 py-2 bg-gray-200 text-gray-100 rounded hover:bg-gray-300"
                 >
                   Cancelar
                 </button>

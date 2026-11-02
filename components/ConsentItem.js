@@ -12,16 +12,16 @@ export default function ConsentItem({ consent, onRevoke, canManage }) {
   }
 
   return (
-    <div className="border border-nc-gray-200 rounded p-3 bg-white text-sm">
+    <div className="border border-gray-800 rounded p-3 bg-[#1B1D1E] text-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-nc-text truncate">{consent.purpose}</p>
+          <p className="font-medium text-gray-100 truncate">{consent.purpose}</p>
           {(consent.legalBasis || consent.channel || consent.version) && (
-            <p className="text-xs text-nc-text-secondary">
+            <p className="text-xs text-gray-400">
               Base: {consent.legalBasis || '—'} • Canal: {consent.channel || '—'} • Versão: {consent.version || '—'}
             </p>
           )}
-          <p className="text-xs text-nc-text-secondary">
+          <p className="text-xs text-gray-400">
             Criado em: {new Date(consent.createdAt).toLocaleString('pt-BR')}
           </p>
           {consent.revokedAt && (
@@ -30,7 +30,7 @@ export default function ConsentItem({ consent, onRevoke, canManage }) {
             </p>
           )}
           {consent.notes && (
-            <p className="text-xs text-nc-text-muted mt-1">Obs: {consent.notes}</p>
+            <p className="text-xs text-gray-400 mt-1">Obs: {consent.notes}</p>
           )}
         </div>
 
@@ -60,7 +60,7 @@ export default function ConsentItem({ consent, onRevoke, canManage }) {
             </button>
           ) : (
             <div className="flex items-center gap-2 text-xs">
-              <span className="text-nc-text-secondary">Confirma?</span>
+              <span className="text-gray-400">Confirma?</span>
               <button
                 type="button"
                 onClick={confirmRevoke}
@@ -72,7 +72,7 @@ export default function ConsentItem({ consent, onRevoke, canManage }) {
               <button
                 type="button"
                 onClick={() => setConfirming(false)}
-                className="text-nc-text-secondary hover:text-nc-text"
+                className="text-gray-400 hover:text-gray-100"
               >
                 Não
               </button>

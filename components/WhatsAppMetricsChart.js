@@ -1,6 +1,6 @@
 export default function WhatsAppMetricsChart({ data, labels = [] }) {
   if (!data || Object.keys(data).length === 0) {
-    return <p className="text-xs text-nc-text-muted">Sem dados para exibir.</p>;
+    return <p className="text-xs text-gray-400">Sem dados para exibir.</p>;
   }
 
   const entries = Object.entries(data);
@@ -16,11 +16,11 @@ export default function WhatsAppMetricsChart({ data, labels = [] }) {
         const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
         return (
           <div key={key} className="space-y-1">
-            <div className="flex items-center justify-between text-xs text-nc-text-secondary">
+            <div className="flex items-center justify-between text-xs text-gray-400">
               <span>{labelMap[key] || key}</span>
               <span>{value}</span>
             </div>
-            <div className="w-full bg-nc-gray-100 rounded h-2" aria-hidden="true">
+            <div className="w-full bg-[#1E2022] rounded h-2" aria-hidden="true">
               <div
                 className="bg-nc-primary h-2 rounded transition-all"
                 style={{ width: `${Math.min(percentage, 100)}%` }}

@@ -41,9 +41,9 @@ export default function ConsentManager({ clientId, canManage = true }) {
   }
 
   return (
-    <section className="bg-nc-surface rounded-lg border border-nc-gray-200 p-4">
+    <section className="bg-nc-surface rounded-lg border border-gray-800 p-4">
       <div className="flex items-start justify-between mb-3">
-        <h3 className="font-bold text-sm text-nc-text-title">🛡️ Consentimentos (LGPD)</h3>
+        <h3 className="font-bold text-sm text-white">🛡️ Consentimentos (LGPD)</h3>
         {canManage && (
           <button
             type="button"
@@ -73,7 +73,7 @@ export default function ConsentManager({ clientId, canManage = true }) {
       )}
 
       {loading ? (
-        <p className="text-sm text-nc-text-muted">Carregando...</p>
+        <p className="text-sm text-gray-400">Carregando...</p>
       ) : (
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {consents.length > 0 ? (
@@ -81,7 +81,7 @@ export default function ConsentManager({ clientId, canManage = true }) {
               <ConsentItem key={c.id} consent={c} onRevoke={handleRevoke} canManage={canManage} />
             ))
           ) : (
-            <p className="text-sm text-nc-text-muted">Nenhum consentimento registrado.</p>
+            <p className="text-sm text-gray-400">Nenhum consentimento registrado.</p>
           )}
         </div>
       )}

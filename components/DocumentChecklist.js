@@ -155,18 +155,18 @@ export default function DocumentChecklist({ caseItem, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div className="bg-[#1B1D1E] rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <div className="p-4 border-b flex justify-between items-center">
           <div>
             <h3 className="text-lg font-bold">Checklist de Documentos</h3>
             <p className="text-sm text-gray-500">{caseItem.title}</p>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-xl">&times;</button>
         </div>
 
         <div className="p-4 overflow-y-auto flex-1">
           {caseItem.case_type ? (
-            <p className="text-sm text-gray-600 mb-4">Tipo: <span className="font-medium">{caseItem.case_type}</span></p>
+            <p className="text-sm text-gray-400 mb-4">Tipo: <span className="font-medium">{caseItem.case_type}</span></p>
           ) : (
             <p className="text-sm text-red-600 mb-4">Caso sem tipo definido. O checklist nao pode ser sincronizado automaticamente.</p>
           )}
@@ -194,12 +194,12 @@ export default function DocumentChecklist({ caseItem, onClose }) {
                 <p className="text-center text-gray-500">Nenhum documento configurado para este tipo de caso.</p>
               ) : (
                 items.map((item) => (
-                  <div key={item.id} className="border rounded p-3 bg-gray-50">
+                  <div key={item.id} className="border rounded p-3 bg-[#181A1B]">
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
                       <div className="flex-1">
                         <p className="font-medium text-sm">{item.title || item.document_name}</p>
                         {item.description && (
-                          <p className="text-xs text-gray-600 mt-1">{item.description}</p>
+                          <p className="text-xs text-gray-400 mt-1">{item.description}</p>
                         )}
                         {item.is_sensitive && (
                           <span className="text-xs text-red-600 font-bold">SENSIVEL</span>
@@ -301,7 +301,7 @@ export default function DocumentChecklist({ caseItem, onClose }) {
                   {templates.length > 0 && (
                     <ul className="space-y-2">
                       {templates.map((t) => (
-                        <li key={t.id} className="flex justify-between items-center text-sm border rounded p-2 bg-white">
+                        <li key={t.id} className="flex justify-between items-center text-sm border rounded p-2 bg-[#1B1D1E]">
                           <span>{t.title || t.document_name}</span>
                           <button
                             onClick={() => handleDeleteTemplate(t.id)}

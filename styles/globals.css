@@ -81,6 +81,9 @@ body {
   .nc-input {
     @apply w-full px-3 py-2 bg-[#1B1D1E] border border-gray-700 rounded-nc text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow transition-all duration-200;
   }
+  .nc-select {
+    @apply px-3 py-2 bg-[#1B1D1E] border border-gray-700 rounded-nc text-sm text-gray-100 focus:outline-none focus:border-nc-yellow transition-all duration-200;
+  }
   .nc-card {
     @apply bg-[#1B1D1E] border border-gray-800 rounded-nc shadow-card;
   }

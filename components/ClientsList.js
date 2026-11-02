@@ -203,17 +203,17 @@ export default function ClientsList({ onSelectClient }) {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center bg-nc-surface">
-        <p className="text-nc-text-muted">Carregando clientes...</p>
+        <p className="text-gray-400">Carregando clientes...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white min-h-0">
+    <div className="flex-1 flex flex-col bg-[#181A1B] text-gray-100 min-h-0">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-4">
+      <div className="bg-[#1B1D1E] border-b border-gray-800 p-4">
         <div className="flex items-center justify-between mb-3">
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
             <span>📋</span> Lista de Clientes
           </h1>
           <button
@@ -232,7 +232,7 @@ export default function ClientsList({ onSelectClient }) {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Pesquisar por nome, telefone, CPF/CNPJ ou e-mail..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+            className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-xl text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
           />
         </div>
 
@@ -242,8 +242,8 @@ export default function ClientsList({ onSelectClient }) {
             onClick={() => setLetterFilter('')}
             className={`px-2 py-1 text-xs font-medium rounded transition ${
               letterFilter === ''
-                ? 'bg-nc-black text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-nc-yellow text-nc-black font-bold shadow-sm'
+                : 'bg-[#1E2022] text-gray-300 border border-[#2A2D2F] hover:text-white hover:border-gray-600'
             }`}
           >
             Todos
@@ -254,8 +254,8 @@ export default function ClientsList({ onSelectClient }) {
               onClick={() => setLetterFilter(letter)}
               className={`px-2 py-1 text-xs font-medium rounded transition ${
                 letterFilter === letter
-                  ? 'bg-nc-black text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'bg-nc-yellow text-nc-black font-bold shadow-sm'
+                  : 'bg-[#1E2022] text-gray-300 border border-[#2A2D2F] hover:text-white hover:border-gray-600'
               }`}
             >
               {letter}
@@ -274,9 +274,9 @@ export default function ClientsList({ onSelectClient }) {
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-gray-800">
             {/* Header da tabela */}
-            <div className="sticky top-0 bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-700 grid grid-cols-12 gap-2 border-b border-gray-300">
+            <div className="sticky top-0 bg-[#1E2022] px-4 py-2.5 text-xs font-bold text-gray-400 grid grid-cols-12 gap-2 border-b border-gray-800">
               <div className="col-span-1">#</div>
               <div className="col-span-5 md:col-span-3">Nome</div>
               <div className="col-span-5 md:col-span-2">Telefone</div>
@@ -291,13 +291,13 @@ export default function ClientsList({ onSelectClient }) {
               <div
                 key={client.id}
                 onClick={() => onSelectClient && onSelectClient(client)}
-                className="px-4 py-2 hover:bg-yellow-50/40 transition grid grid-cols-12 gap-2 items-center text-sm cursor-pointer"
+                className="px-4 py-2.5 hover:bg-[#1E2022]/70 transition grid grid-cols-12 gap-2 items-center text-sm cursor-pointer border-b border-[#2A2D2F]/50 text-gray-200"
               >
-                <div className="col-span-1 font-semibold text-gray-600">{index + 1}</div>
+                <div className="col-span-1 font-semibold text-gray-400">{index + 1}</div>
 
                 <div className="col-span-5 md:col-span-3">
                   <span
-                    className="text-gray-900 cursor-pointer md:cursor-default"
+                    className="text-white font-semibold cursor-pointer md:cursor-default"
                     onClick={(e) => {
                       e.stopPropagation();
                       setExpandedId(expandedId === client.id ? null : client.id);
@@ -307,8 +307,8 @@ export default function ClientsList({ onSelectClient }) {
                     <span
                       className={`ml-1.5 text-[10px] px-1 py-0.5 rounded font-medium align-middle ${
                         client.person_type === 'juridica'
-                          ? 'bg-purple-100 text-purple-700 font-bold'
-                          : 'bg-blue-50 text-blue-600 font-bold'
+                          ? 'bg-purple-950/50 text-purple-300 border border-purple-800/60 font-bold'
+                          : 'bg-blue-950/50 text-blue-300 border border-blue-800/60 font-bold'
                       }`}
                     >
                       {client.person_type === 'juridica' ? 'PJ' : 'PF'}
@@ -316,20 +316,20 @@ export default function ClientsList({ onSelectClient }) {
                   </span>
                 </div>
 
-                <div className="col-span-5 md:col-span-2 text-gray-600">
+                <div className="col-span-5 md:col-span-2 text-gray-300">
                   📱 {formatPhone(client.client_phone)}
                 </div>
 
-                <div className="hidden md:col-span-2 md:block text-xs font-medium text-gray-800">
+                <div className="hidden md:col-span-2 md:block text-xs font-medium text-gray-300">
                   {formatBirthday(client.birth_or_foundation_date)}
                 </div>
 
-                <div className="hidden md:col-span-2 md:block text-gray-600 text-xs">
+                <div className="hidden md:col-span-2 md:block text-gray-400 text-xs">
                   {new Date(client.updated_at).toLocaleDateString('pt-BR')}
                 </div>
 
                 <div className="hidden md:col-span-1 md:block text-center">
-                  <span className="inline-block bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs font-medium">
+                  <span className="inline-block bg-yellow-950/40 text-yellow-300 border border-yellow-800/50 px-2 py-0.5 rounded text-xs font-medium">
                     {client.messages?.length || 0}
                   </span>
                 </div>
@@ -352,9 +352,9 @@ export default function ClientsList({ onSelectClient }) {
                 {expandedId === client.id && (
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="col-span-12 md:hidden bg-gray-50 rounded p-2 mt-1"
+                    className="col-span-12 md:hidden bg-[#181A1B] rounded p-2 mt-1"
                   >
-                    <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                    <div className="grid grid-cols-3 gap-2 text-xs text-gray-400">
                       <div>
                         <span className="block text-gray-400 text-[10px]">Primeiro Contato</span>
                         {new Date(client.created_at).toLocaleDateString('pt-BR')}
@@ -365,7 +365,7 @@ export default function ClientsList({ onSelectClient }) {
                       </div>
                       <div>
                         <span className="block text-gray-400 text-[10px]">Mensagens</span>
-                        <span className="inline-block bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded text-xs font-medium">
+                        <span className="inline-block bg-yellow-950/40 text-yellow-300 border border-yellow-800/50 px-2 py-0.5 rounded text-xs font-medium">
                           {client.messages?.length || 0}
                         </span>
                       </div>
@@ -379,14 +379,14 @@ export default function ClientsList({ onSelectClient }) {
       </div>
 
       {/* Footer com estatísticas */}
-      <div className="bg-gray-50 border-t border-gray-200 px-4 py-3 text-sm text-gray-600">
+      <div className="bg-[#181A1B] border-t border-gray-800 px-4 py-3 text-sm text-gray-400">
         <span>Total: <strong>{clients.length}</strong> | Exibindo: <strong>{filteredClients.length}</strong></span>
       </div>
 
       {/* Modal Novo Cliente */}
       {showNewModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowNewModal(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-200" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[#1B1D1E] rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-800" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 bg-nc-black border-b border-gray-800 flex justify-between items-center text-white">
               <h3 className="font-bold text-base text-nc-yellow flex items-center gap-2">
                 <span>➕</span> Cadastrar Novo Cliente
@@ -395,35 +395,35 @@ export default function ClientsList({ onSelectClient }) {
             </div>
             <form onSubmit={handleCreateClient} className="p-5 space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Nome Completo *</label>
+                <label className="block text-xs font-semibold text-gray-300 mb-1">Nome Completo *</label>
                 <input
                   type="text"
                   required
                   placeholder="Nome do cliente ou razão social"
                   value={newClient.client_name}
                   onChange={(e) => setNewClient({ ...newClient, client_name: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                  className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">WhatsApp / Telefone *</label>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">WhatsApp / Telefone *</label>
                   <input
                     type="tel"
                     required
                     placeholder="73999999999"
                     value={newClient.client_phone}
                     onChange={(e) => setNewClient({ ...newClient, client_phone: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                    className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Tipo de Pessoa</label>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">Tipo de Pessoa</label>
                   <select
                     value={newClient.person_type}
                     onChange={(e) => setNewClient({ ...newClient, person_type: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                    className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
                   >
                     <option value="fisica">Pessoa Física (CPF)</option>
                     <option value="juridica">Pessoa Jurídica (CNPJ)</option>
@@ -433,7 +433,7 @@ export default function ClientsList({ onSelectClient }) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">
                     {newClient.person_type === 'juridica' ? 'CNPJ' : 'CPF'}
                   </label>
                   <input
@@ -441,41 +441,41 @@ export default function ClientsList({ onSelectClient }) {
                     placeholder={newClient.person_type === 'juridica' ? '00.000.000/0001-00' : '000.000.000-00'}
                     value={newClient.document_number}
                     onChange={(e) => setNewClient({ ...newClient, document_number: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                    className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">
                     {newClient.person_type === 'juridica' ? 'Data de Fundação' : 'Data de Nascimento'}
                   </label>
                   <input
                     type="date"
                     value={newClient.birth_or_foundation_date}
                     onChange={(e) => setNewClient({ ...newClient, birth_or_foundation_date: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                    className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2">
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">E-mail</label>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">E-mail</label>
                   <input
                     type="email"
                     placeholder="cliente@exemplo.com"
                     value={newClient.email}
                     onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                    className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Município/UF</label>
+                  <label className="block text-xs font-semibold text-gray-300 mb-1">Município/UF</label>
                   <input
                     type="text"
                     placeholder="Ilhéus / BA"
                     value={newClient.municipality}
                     onChange={(e) => setNewClient({ ...newClient, municipality: e.target.value })}
-                    className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-yellow-500"
+                    className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
                   />
                 </div>
               </div>
@@ -497,7 +497,7 @@ export default function ClientsList({ onSelectClient }) {
       {/* Modal Editar Cliente */}
       {editingClient && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={() => setEditingClient(null)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-200 animate-fadeIn" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-[#1B1D1E] rounded-xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-800 text-gray-100 animate-fadeIn" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 bg-gray-900 border-b border-gray-800 flex justify-between items-center text-white">
               <h3 className="font-bold text-base text-yellow-400 flex items-center gap-2">
                 <span>✏️</span> Editar Dados do Cliente
@@ -506,24 +506,24 @@ export default function ClientsList({ onSelectClient }) {
             </div>
             <form onSubmit={handleSaveEditClient} className="p-5 space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Nome Completo *</label>
+                <label className="block text-xs font-bold text-gray-300 mb-1">Nome Completo *</label>
                 <input
                   type="text"
                   required
                   value={editingName}
                   onChange={(e) => setEditingName(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:outline-none focus:border-yellow-500 font-medium"
+                  className="w-full px-3 py-2 border rounded-lg text-sm text-white focus:outline-none focus:border-yellow-500 font-medium"
                   placeholder="Nome do cliente"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Data de Nascimento / Fundação</label>
+                <label className="block text-xs font-bold text-gray-300 mb-1">Data de Nascimento / Fundação</label>
                 <input
                   type="date"
                   value={editingBirthDate}
                   onChange={(e) => setEditingBirthDate(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm text-gray-900 focus:outline-none focus:border-yellow-500"
+                  className="w-full px-3 py-2 border rounded-lg text-sm text-white focus:outline-none focus:border-yellow-500"
                 />
                 <p className="text-[11px] text-gray-500 mt-1">Usada para calcular a idade e identificar aniversariantes.</p>
               </div>
@@ -532,7 +532,7 @@ export default function ClientsList({ onSelectClient }) {
                 <button
                   type="button"
                   onClick={() => setEditingClient(null)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                  className="px-4 py-2 border border-[#2A2D2F] rounded-lg text-xs font-semibold text-gray-300 hover:bg-gray-100"
                 >
                   Cancelar
                 </button>
