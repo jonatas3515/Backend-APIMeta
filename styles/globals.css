@@ -17,8 +17,8 @@ html {
 
 body {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: #171717;
-  background-color: #FAFAFA;
+  color: #F3F4F6;
+  background-color: #181A1B;
 }
 
 /* Scrollbars discretas */
@@ -61,30 +61,30 @@ body {
 
 @layer components {
   .nc-btn {
-    @apply inline-flex items-center justify-center px-3 py-2 bg-nc-white text-nc-text border border-nc-gray-300 rounded-nc text-sm font-medium transition-all duration-200;
+    @apply inline-flex items-center justify-center px-3 py-2 bg-[#1B1D1E] text-gray-200 border border-gray-700 rounded-nc text-sm font-medium transition-all duration-200;
   }
   .nc-btn:hover {
     @apply border-nc-yellow text-nc-yellow;
   }
   .nc-btn-active {
-    @apply bg-nc-yellow text-nc-black border-nc-yellow;
+    @apply bg-nc-yellow text-nc-black border-nc-yellow font-bold;
   }
   .nc-btn-active:hover {
     @apply bg-nc-yellow-400 text-nc-black border-nc-yellow-400;
   }
   .nc-btn-primary {
-    @apply inline-flex items-center justify-center px-4 py-2 bg-nc-yellow text-nc-black rounded-nc text-sm font-semibold transition-all duration-200;
+    @apply inline-flex items-center justify-center px-4 py-2 bg-nc-yellow text-nc-black rounded-nc text-sm font-bold shadow-md shadow-yellow-500/10 transition-all duration-200;
   }
   .nc-btn-primary:hover {
-    @apply bg-nc-yellow-600;
+    @apply bg-nc-yellow-500;
   }
   .nc-input {
-    @apply w-full px-3 py-2 bg-nc-white border border-nc-gray-350 rounded-nc text-sm text-nc-text placeholder-nc-text-placeholder focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow transition-all duration-200;
+    @apply w-full px-3 py-2 bg-[#1B1D1E] border border-gray-700 rounded-nc text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow transition-all duration-200;
   }
   .nc-card {
-    @apply bg-nc-white border border-nc-gray-300 rounded-nc shadow-card;
+    @apply bg-[#1B1D1E] border border-gray-800 rounded-nc shadow-card;
   }
   .nc-panel {
-    @apply bg-nc-surface border-b border-nc-gray-200;
+    @apply bg-[#181A1B] border-b border-gray-800;
   }
 }

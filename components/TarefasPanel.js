@@ -4,16 +4,16 @@ import { safeError } from '../lib/safeLogger';
 import { apiJson } from '../lib/apiClient';
 
 const PRIORITY_BADGE = {
-  alta: 'bg-red-50 text-red-700 border-red-200',
-  media: 'bg-amber-50 text-amber-700 border-amber-200',
-  baixa: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  alta: 'bg-red-950/40 text-red-300 border-red-800/50',
+  media: 'bg-amber-950/40 text-amber-300 border-amber-800/50',
+  baixa: 'bg-blue-950/40 text-blue-300 border-blue-800/50'
 };
 
 const STATUS_BADGE = {
-  pendente: 'bg-blue-50 text-blue-700 border-blue-200',
-  em_andamento: 'bg-amber-50 text-amber-700 border-amber-200',
-  concluida: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  cancelada: 'bg-gray-100 text-gray-500 border-gray-200'
+  pendente: 'bg-blue-950/40 text-blue-300 border-blue-800/50',
+  em_andamento: 'bg-amber-950/40 text-amber-300 border-amber-800/50',
+  concluida: 'bg-emerald-950/40 text-emerald-300 border-emerald-800/50',
+  cancelada: 'bg-gray-800 text-gray-400 border-gray-700'
 };
 
 const STATUS_LABELS = {
@@ -169,30 +169,30 @@ export default function TarefasPanel() {
     const linkedCase = cases.find((c) => c.id === t.case_id);
 
     return (
-      <div key={t.id} className={`p-4 rounded-lg border bg-white ${isAtrasada ? 'border-red-300' : 'border-gray-200'} hover:border-nc-yellow shadow-sm transition-colors`}>
+      <div key={t.id} className={`p-4 rounded-xl border bg-[#1E2022] ${isAtrasada ? 'border-red-500/50' : 'border-[#2A2D2F]'} hover:border-nc-yellow/60 shadow-sm transition-colors`}>
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <h4 className={`font-semibold text-sm ${st === 'concluida' ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+              <h4 className={`font-semibold text-sm ${st === 'concluida' ? 'line-through text-gray-500' : 'text-white'}`}>
                 {t.title}
               </h4>
               {isAtrasada && (
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-red-100 text-red-700 border border-red-200 uppercase">
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-red-950/40 text-red-300 border border-red-800/50 uppercase">
                   Atrasado
                 </span>
               )}
             </div>
             {t.description && (
-              <p className="text-gray-600 text-xs mb-2 leading-relaxed">{t.description}</p>
+              <p className="text-gray-400 text-xs mb-2 leading-relaxed">{t.description}</p>
             )}
-            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mb-2">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400 mb-2">
               {linkedCase && (
-                <span className="flex items-center gap-1 font-mono text-[11px] text-gray-600">
+                <span className="flex items-center gap-1 font-mono text-[11px] text-gray-300">
                   📁 {linkedCase.client_name || linkedCase.title} {linkedCase.process_number ? `(${linkedCase.process_number})` : ''}
                 </span>
               )}
               {t.due_date && (
-                <span className={`flex items-center gap-1 ${isAtrasada ? 'text-red-600 font-bold' : ''}`}>
+                <span className={`flex items-center gap-1 ${isAtrasada ? 'text-red-400 font-bold' : 'text-gray-300'}`}>
                   ⏰ Limite: {new Date(t.due_date + 'T00:00:00').toLocaleDateString('pt-BR')}
                 </span>
               )}
@@ -258,15 +258,15 @@ export default function TarefasPanel() {
   };
 
   return (
-    <div className="min-h-full bg-nc-surface text-gray-900 p-4 md:p-6" data-testid="tarefas-panel">
+    <div className="min-h-full bg-[#181A1B] text-gray-100 p-4 md:p-6" data-testid="tarefas-panel">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
               <span>✅</span> Tarefas Jurídicas
             </h1>
-            <p className="text-gray-500 text-xs">Gerencie prazos internos, diligências e rotinas do escritório</p>
+            <p className="text-gray-400 text-xs">Gerencie prazos internos, diligências e rotinas do escritório</p>
           </div>
           <button
             onClick={openNew}
@@ -285,43 +285,43 @@ export default function TarefasPanel() {
 
         {/* Resumo Rápido */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-center shadow-sm">
-            <div className="text-3xl font-bold text-blue-700">{pendentes.length}</div>
-            <div className="text-xs text-blue-600 mt-1 font-medium">Tarefas Pendentes</div>
+          <div className="bg-[#1B1D1E] border border-gray-800 rounded-xl p-4 text-center shadow-sm">
+            <div className="text-3xl font-bold text-blue-400">{pendentes.length}</div>
+            <div className="text-xs text-gray-400 mt-1 font-medium">Tarefas Pendentes</div>
           </div>
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center shadow-sm">
-            <div className="text-3xl font-bold text-red-700">{atrasadas.length}</div>
-            <div className="text-xs text-red-600 mt-1 font-medium">Atrasadas</div>
+          <div className={`rounded-xl p-4 text-center shadow-sm border ${atrasadas.length > 0 ? 'bg-red-950/20 border-red-800/40' : 'bg-[#1B1D1E] border-gray-800'}`}>
+            <div className={`text-3xl font-bold ${atrasadas.length > 0 ? 'text-red-400' : 'text-gray-300'}`}>{atrasadas.length}</div>
+            <div className="text-xs text-gray-400 mt-1 font-medium">Atrasadas</div>
           </div>
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center shadow-sm">
-            <div className="text-3xl font-bold text-emerald-700">{concluidas.length}</div>
-            <div className="text-xs text-emerald-600 mt-1 font-medium">Tarefas Concluídas</div>
+          <div className="bg-[#1B1D1E] border border-gray-800 rounded-xl p-4 text-center shadow-sm">
+            <div className="text-3xl font-bold text-emerald-400">{concluidas.length}</div>
+            <div className="text-xs text-gray-400 mt-1 font-medium">Tarefas Concluídas</div>
           </div>
-          <div className="bg-white border border-gray-200 rounded-xl p-4 text-center shadow-sm">
-            <div className="text-3xl font-bold text-gray-800">{filtered.length}</div>
-            <div className="text-xs text-gray-500 mt-1 font-medium">Total Filtradas</div>
+          <div className="bg-[#1B1D1E] border border-gray-800 rounded-xl p-4 text-center shadow-sm">
+            <div className="text-3xl font-bold text-gray-200">{filtered.length}</div>
+            <div className="text-xs text-gray-400 mt-1 font-medium">Total Filtradas</div>
           </div>
         </div>
 
         {/* Barra de Filtros */}
-        <div className="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+        <div className="bg-[#1B1D1E] rounded-xl p-4 border border-gray-800 shadow-sm">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Buscar</label>
+              <label className="block text-xs font-medium text-gray-400 mb-1">Buscar</label>
               <input
                 type="text"
                 placeholder="Título ou descrição..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-xs focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
+                className="w-full px-3 py-1.5 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-gray-200 text-xs focus:outline-none focus:border-nc-yellow"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Prioridade</label>
+              <label className="block text-xs font-medium text-gray-400 mb-1">Prioridade</label>
               <select
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value)}
-                className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-xs focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
+                className="w-full px-3 py-1.5 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-gray-200 text-xs focus:outline-none focus:border-nc-yellow"
               >
                 <option value="todas">Todas</option>
                 <option value="alta">🔴 Alta</option>
@@ -330,11 +330,11 @@ export default function TarefasPanel() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+              <label className="block text-xs font-medium text-gray-400 mb-1">Status</label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-xs focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
+                className="w-full px-3 py-1.5 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-gray-200 text-xs focus:outline-none focus:border-nc-yellow"
               >
                 <option value="todas">Todos</option>
                 <option value="pendente">Pendente</option>
@@ -344,11 +344,11 @@ export default function TarefasPanel() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Cliente / Caso</label>
+              <label className="block text-xs font-medium text-gray-400 mb-1">Cliente / Caso</label>
               <select
                 value={filterClient}
                 onChange={(e) => setFilterClient(e.target.value)}
-                className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-gray-900 text-xs focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
+                className="w-full px-3 py-1.5 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-gray-200 text-xs focus:outline-none focus:border-nc-yellow"
               >
                 <option value="">Todos os clientes</option>
                 {clients.map((c) => (
@@ -367,8 +367,8 @@ export default function TarefasPanel() {
         ) : (
           <div className="space-y-6">
             {atrasadas.length > 0 && (
-              <div className="bg-white rounded-xl border border-red-200 p-4 shadow-sm">
-                <h3 className="text-sm font-bold text-red-700 mb-3 flex items-center gap-2">
+              <div className="bg-[#1B1D1E] rounded-xl border border-red-900/40 p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-red-400 mb-3 flex items-center gap-2">
                   <span>⏰</span> Atrasadas ({atrasadas.length})
                 </h3>
                 <div className="space-y-3">{atrasadas.map(renderCard)}</div>
@@ -376,8 +376,8 @@ export default function TarefasPanel() {
             )}
 
             {deHoje.length > 0 && (
-              <div className="bg-white rounded-xl border border-amber-200 p-4 shadow-sm">
-                <h3 className="text-sm font-bold text-amber-700 mb-3 flex items-center gap-2">
+              <div className="bg-[#1B1D1E] rounded-xl border border-amber-900/40 p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-amber-400 mb-3 flex items-center gap-2">
                   <span>📌</span> Para Hoje ({deHoje.length})
                 </h3>
                 <div className="space-y-3">{deHoje.map(renderCard)}</div>
@@ -385,8 +385,8 @@ export default function TarefasPanel() {
             )}
 
             {proximos.length > 0 && (
-              <div className="bg-white rounded-xl border border-blue-200 p-4 shadow-sm">
-                <h3 className="text-sm font-bold text-blue-700 mb-3 flex items-center gap-2">
+              <div className="bg-[#1B1D1E] rounded-xl border border-blue-900/40 p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-blue-400 mb-3 flex items-center gap-2">
                   <span>🗓️</span> Próximos 7 Dias ({proximos.length})
                 </h3>
                 <div className="space-y-3">{proximos.map(renderCard)}</div>
@@ -394,7 +394,7 @@ export default function TarefasPanel() {
             )}
 
             {outras.length > 0 && (
-              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+              <div className="bg-[#1B1D1E] rounded-xl border border-gray-800 p-4 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                   <span>📋</span> Outras / Sem Prazo ({outras.length})
                 </h3>
@@ -428,8 +428,8 @@ export default function TarefasPanel() {
             )}
 
             {concluidas.length > 0 && (
-              <div className="bg-white/80 rounded-xl border border-gray-200 p-4 shadow-sm">
-                <h3 className="text-sm font-bold text-emerald-700 mb-3 flex items-center gap-2">
+              <div className="bg-[#1B1D1E] rounded-xl border border-gray-800 p-4 shadow-sm">
+                <h3 className="text-sm font-bold text-emerald-400 mb-3 flex items-center gap-2">
                   <span>✓</span> Concluídas ({concluidas.length})
                 </h3>
                 <div className="space-y-3">{concluidas.map(renderCard)}</div>
@@ -441,41 +441,41 @@ export default function TarefasPanel() {
         {/* Modal criar/editar */}
         {modal && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setModal(null)}>
-            <div className="bg-white border border-gray-200 rounded-xl shadow-2xl w-full max-w-lg text-gray-900" onClick={(e) => e.stopPropagation()}>
-              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 className="font-bold text-base text-gray-900">{modal.mode === 'new' ? '+ Nova Tarefa Jurídica' : 'Editar Tarefa'}</h3>
+            <div className="bg-[#1B1D1E] border border-gray-800 rounded-xl shadow-2xl w-full max-w-lg text-gray-100" onClick={(e) => e.stopPropagation()}>
+              <div className="p-4 border-b border-gray-800 flex justify-between items-center">
+                <h3 className="font-bold text-base text-white">{modal.mode === 'new' ? '+ Nova Tarefa Jurídica' : 'Editar Tarefa'}</h3>
                 <button onClick={() => setModal(null)} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
               </div>
               <form onSubmit={saveModal} className="p-4 space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Título *</label>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">Título *</label>
                   <input
                     required
                     type="text"
                     placeholder="Ex: Protocolar contestação, Ligar para cliente..."
                     value={modal.form.title}
                     onChange={(e) => setModal({ ...modal, form: { ...modal.form, title: e.target.value } })}
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
+                    className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-gray-100 text-sm focus:outline-none focus:border-nc-yellow"
                     data-testid="task-modal-title"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Descrição</label>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">Descrição</label>
                   <textarea
                     rows={3}
                     placeholder="Detalhes da diligência..."
                     value={modal.form.description}
                     onChange={(e) => setModal({ ...modal, form: { ...modal.form, description: e.target.value } })}
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
+                    className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-gray-100 text-sm focus:outline-none focus:border-nc-yellow"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Prioridade</label>
+                    <label className="block text-xs font-medium text-gray-300 mb-1">Prioridade</label>
                     <select
                       value={modal.form.priority}
                       onChange={(e) => setModal({ ...modal, form: { ...modal.form, priority: e.target.value } })}
-                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
+                      className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-gray-100 text-sm focus:outline-none focus:border-nc-yellow"
                     >
                       <option value="alta">🔴 Alta</option>
                       <option value="media">🟡 Média</option>
@@ -483,21 +483,21 @@ export default function TarefasPanel() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Data Limite</label>
+                    <label className="block text-xs font-medium text-gray-300 mb-1">Data Limite</label>
                     <input
                       type="date"
                       value={modal.form.due_date}
                       onChange={(e) => setModal({ ...modal, form: { ...modal.form, due_date: e.target.value } })}
-                      className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
+                      className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-gray-100 text-sm focus:outline-none focus:border-nc-yellow"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Vincular a Processo / Caso</label>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">Vincular a Processo / Caso</label>
                   <select
                     value={modal.form.case_id || ''}
                     onChange={(e) => setModal({ ...modal, form: { ...modal.form, case_id: e.target.value } })}
-                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 text-sm focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
+                    className="w-full px-3 py-2 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-gray-100 text-sm focus:outline-none focus:border-nc-yellow"
                   >
                     <option value="">Sem vínculo</option>
                     {cases.map((c) => (

@@ -154,32 +154,47 @@ export default function ExecutiveDashboard({ onNavigateTab }) {
       </div>
 
       {/* Card de Destaque: Resumo de Hoje (absorvido do legado) */}
-      <div className="bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-red-500/10 border border-yellow-500/30 rounded-xl p-5">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
-            <span className="text-xl">📅</span>
+      <div className="bg-[#1B1D1E] border border-gray-800 rounded-2xl p-5 shadow-lg relative overflow-hidden">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-xl text-yellow-400 shadow-sm">
+            📅
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Resumo de Hoje</h2>
-            <p className="text-gray-500 text-xs">O que precisa de atenção imediata no escritório</p>
+            <h2 className="text-base sm:text-lg font-bold text-white">Resumo de Hoje</h2>
+            <p className="text-gray-400 text-xs">O que precisa de atenção imediata no escritório</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-red-600">{todayDeadlinesCount}</div>
-            <div className="text-xs text-red-700 font-medium">Prazos de Hoje</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          {/* Prazos de Hoje: Vermelho crítico APENAS quando houver pendências (>0), senão neutro elegante */}
+          <div className={`p-3.5 rounded-xl text-center border transition ${
+            todayDeadlinesCount > 0
+              ? 'bg-red-500/10 border-red-500/40 shadow-sm shadow-red-500/10'
+              : 'bg-[#1E2022] border-gray-800/80 hover:border-gray-700'
+          }`}>
+            <div className={`text-2xl font-black ${todayDeadlinesCount > 0 ? 'text-red-500' : 'text-gray-300'}`}>
+              {todayDeadlinesCount}
+            </div>
+            <div className={`text-xs mt-1 font-semibold ${todayDeadlinesCount > 0 ? 'text-red-400' : 'text-gray-400'}`}>
+              Prazos de Hoje
+            </div>
           </div>
-          <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-orange-600">{todayHearings}</div>
-            <div className="text-xs text-orange-700 font-medium">Audiências</div>
+
+          {/* Audiências: Neutro / Âmbar */}
+          <div className="bg-[#1E2022] border border-gray-800/80 hover:border-gray-700 rounded-xl p-3.5 text-center transition">
+            <div className="text-2xl font-black text-amber-400">{todayHearings}</div>
+            <div className="text-xs text-gray-400 mt-1 font-medium">Audiências</div>
           </div>
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-blue-600">{urgentDeadlines.length}</div>
-            <div className="text-xs text-blue-700 font-medium">Eventos Próximos (7d)</div>
+
+          {/* Eventos Próximos (7d): Azul Suave */}
+          <div className="bg-[#1E2022] border border-gray-800/80 hover:border-blue-500/30 rounded-xl p-3.5 text-center transition">
+            <div className="text-2xl font-black text-blue-400">{urgentDeadlines.length}</div>
+            <div className="text-xs text-gray-400 mt-1 font-medium">Eventos Próximos (7d)</div>
           </div>
-          <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold text-green-600">{activeClientsCount}</div>
-            <div className="text-xs text-green-700 font-medium">Clientes Ativos</div>
+
+          {/* Clientes Ativos: Verde para status Ativo */}
+          <div className="bg-[#1E2022] border border-green-500/20 hover:border-green-500/40 rounded-xl p-3.5 text-center transition">
+            <div className="text-2xl font-black text-green-400">{activeClientsCount}</div>
+            <div className="text-xs text-green-400/90 mt-1 font-semibold">Clientes Ativos</div>
           </div>
         </div>
       </div>
@@ -188,20 +203,20 @@ export default function ExecutiveDashboard({ onNavigateTab }) {
       <div className="flex gap-2" data-testid="dashboard-view-selector">
         <button
           onClick={() => setView('executive')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition shadow-sm ${
             view === 'executive'
-              ? 'bg-nc-black text-white'
-              : 'bg-white text-gray-700 border hover:bg-gray-50'
+              ? 'bg-nc-yellow text-nc-black'
+              : 'bg-[#1B1D1E] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
           }`}
         >
           📊 Visão Executiva & Processos
         </button>
         <button
           onClick={() => setView('funil')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+          className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition shadow-sm ${
             view === 'funil'
-              ? 'bg-nc-black text-white'
-              : 'bg-white text-gray-700 border hover:bg-gray-50'
+              ? 'bg-nc-yellow text-nc-black'
+              : 'bg-[#1B1D1E] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
           }`}
         >
           📈 Atendimento & Funil
@@ -216,53 +231,74 @@ export default function ExecutiveDashboard({ onNavigateTab }) {
       <>
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 bg-white rounded-lg shadow border-l-4 border-blue-500">
-          <p className="text-xs text-gray-500">⚖️ Casos & Processos Ativos</p>
-          <p className="text-2xl font-bold text-gray-900" data-testid="kpi-cases">{loading ? '…' : (metrics?.total ?? cases.length)}</p>
+        <div className="p-4 bg-[#1B1D1E] border border-gray-800 rounded-xl shadow-sm border-l-4 border-l-blue-500">
+          <p className="text-xs text-gray-400">⚖️ Casos & Processos Ativos</p>
+          <p className="text-2xl font-bold text-white mt-1" data-testid="kpi-cases">{loading ? '…' : (metrics?.total ?? cases.length)}</p>
           {newThisMonth > 0 && (
-            <span className="text-[10px] px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-medium" data-testid="kpi-new-month">
+            <span className="inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-semibold" data-testid="kpi-new-month">
               +{newThisMonth} este mês
             </span>
           )}
         </div>
-        <div className="p-4 bg-white rounded-lg shadow border-l-4 border-green-500">
-          <p className="text-xs text-gray-500">💰 Patrimônio Sob Gestão</p>
-          <p className="text-2xl font-bold text-gray-900" data-testid="kpi-patrimony">{loading ? '…' : brl(metrics?.case_value?.total)}</p>
+        <div className="p-4 bg-[#1B1D1E] border border-gray-800 rounded-xl shadow-sm border-l-4 border-l-green-500">
+          <p className="text-xs text-gray-400">💰 Patrimônio Sob Gestão</p>
+          <p className="text-2xl font-black text-green-400 mt-1" data-testid="kpi-patrimony">{loading ? '…' : brl(metrics?.case_value?.total)}</p>
+          <span className="text-[10px] text-green-400/70">Ativo circulante</span>
         </div>
-        <div className={`p-4 bg-white rounded-lg shadow border-l-4 ${urgentDeadlines.length > 0 ? 'border-red-500' : 'border-amber-400'}`}>
-          <p className="text-xs text-gray-500">📅 Prazos Urgentes (7 dias)</p>
-          <p className={`text-2xl font-bold ${urgentDeadlines.length > 0 ? 'text-red-700' : 'text-gray-900'}`} data-testid="kpi-urgent">
+        <div className={`p-4 bg-[#1B1D1E] border border-gray-800 rounded-xl shadow-sm border-l-4 ${urgentDeadlines.length > 0 ? 'border-l-red-500' : 'border-l-gray-700'}`}>
+          <p className="text-xs text-gray-400">📅 Prazos Urgentes (7 dias)</p>
+          <p className={`text-2xl font-bold mt-1 ${urgentDeadlines.length > 0 ? 'text-red-400' : 'text-gray-300'}`} data-testid="kpi-urgent">
             {loading ? '…' : urgentDeadlines.length}
           </p>
+          <span className="text-[10px] text-gray-500">Exige acompanhamento</span>
         </div>
-        <div className="p-4 bg-white rounded-lg shadow border-l-4 border-teal-500">
-          <p className="text-xs text-gray-500">💬 Atendimentos WhatsApp</p>
-          <p className="text-2xl font-bold text-gray-900" data-testid="kpi-conversations">{loading ? '…' : convsThisMonth}</p>
-          <span className="text-[10px] text-gray-400">este mês</span>
+        <div className="p-4 bg-[#1B1D1E] border border-gray-800 rounded-xl shadow-sm border-l-4 border-l-teal-500">
+          <p className="text-xs text-gray-400">💬 Atendimentos WhatsApp</p>
+          <p className="text-2xl font-bold text-white mt-1" data-testid="kpi-conversations">{loading ? '…' : convsThisMonth}</p>
+          <span className="text-[10px] text-gray-500">este mês</span>
         </div>
       </div>
 
       {/* Graficos */}
-      <section className="bg-white rounded-lg shadow p-4">
-        <h2 className="font-bold text-sm text-gray-800 mb-3">📊 Distribuição Processual</h2>
+      <section className="bg-[#1B1D1E] border border-gray-800 rounded-2xl shadow-lg p-5">
+        <h2 className="font-bold text-sm text-white mb-4 flex items-center gap-2">
+          <span>📊</span> Distribuição Processual
+        </h2>
         <ProcessAnalyticsPanel />
       </section>
 
       {/* Ações rápidas */}
-      <section className="bg-white rounded-lg shadow p-4">
-        <h2 className="font-bold text-sm text-gray-800 mb-3">⚡ Ações Rápidas</h2>
+      <section className="bg-[#1B1D1E] border border-gray-800 rounded-2xl shadow-lg p-5">
+        <h2 className="font-bold text-sm text-white mb-4 flex items-center gap-2">
+          <span>⚡</span> Ações Rápidas
+        </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button onClick={() => navigate('cases', '&new=1')} className="p-3 rounded-lg bg-nc-black text-white text-sm font-medium hover:opacity-90" data-testid="action-new-case">
-            ➕ Novo Caso
+          {/* Ação Primária Dourada */}
+          <button
+            onClick={() => navigate('cases', '&new=1')}
+            className="p-3.5 rounded-xl bg-gradient-to-r from-yellow-500 via-amber-500 to-yellow-600 hover:from-yellow-400 hover:to-amber-400 text-black font-extrabold text-sm shadow-md shadow-yellow-500/15 transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+            data-testid="action-new-case"
+          >
+            <span>➕</span> Novo Caso
           </button>
-          <button onClick={() => navigate('funnel')} className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium">
-            🔀 Funil de Atendimento
+          {/* Ações Secundárias */}
+          <button
+            onClick={() => navigate('funnel')}
+            className="p-3.5 rounded-xl bg-[#1E2022] hover:bg-gray-800 text-gray-200 hover:text-white border border-gray-800 hover:border-gray-700 text-sm font-semibold transition flex items-center justify-center gap-2"
+          >
+            <span>🔀</span> Funil de Atendimento
           </button>
-          <button onClick={() => navigate('agenda')} className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium">
-            📅 Agenda de Prazos
+          <button
+            onClick={() => navigate('agenda')}
+            className="p-3.5 rounded-xl bg-[#1E2022] hover:bg-gray-800 text-gray-200 hover:text-white border border-gray-800 hover:border-gray-700 text-sm font-semibold transition flex items-center justify-center gap-2"
+          >
+            <span>📅</span> Agenda de Prazos
           </button>
-          <button onClick={() => navigate('cases')} className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium">
-            💰 Simular Honorários
+          <button
+            onClick={() => navigate('cases')}
+            className="p-3.5 rounded-xl bg-[#1E2022] hover:bg-gray-800 text-gray-200 hover:text-white border border-gray-800 hover:border-gray-700 text-sm font-semibold transition flex items-center justify-center gap-2"
+          >
+            <span>💰</span> Simular Honorários
           </button>
         </div>
       </section>
@@ -271,62 +307,68 @@ export default function ExecutiveDashboard({ onNavigateTab }) {
       <TasksQuickPanel />
 
       {/* Próximos prazos */}
-      <section className="bg-white rounded-lg shadow p-4">
-        <h2 className="font-bold text-sm text-gray-800 mb-3">🗓️ Próximos Prazos</h2>
+      <section className="bg-[#1B1D1E] border border-gray-800 rounded-2xl shadow-lg p-5">
+        <h2 className="font-bold text-sm text-white mb-4 flex items-center gap-2">
+          <span>🗓️</span> Próximos Prazos
+        </h2>
         {upcoming.length === 0 ? (
-          <p className="text-sm text-gray-500">Nenhum prazo nos próximos 7 dias.</p>
+          <p className="text-sm text-gray-500 py-4 text-center">Nenhum prazo nos próximos 7 dias.</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-gray-500 border-b">
-                <th className="py-2">Data</th>
-                <th>Caso</th>
-                <th className="hidden md:table-cell">Fase</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {upcoming.map((c) => (
-                <tr key={c.id} className="border-b last:border-0">
-                  <td className={`py-2 font-medium ${new Date(c.deadline_date) < new Date() ? 'text-red-600' : 'text-amber-600'}`}>
-                    {shortDate(c.deadline_date)}
-                  </td>
-                  <td className="py-2">{c.title}</td>
-                  <td className="py-2 hidden md:table-cell text-gray-500">{STEP_LABELS[c.procedural_step] || c.procedural_step || '-'}</td>
-                  <td className="py-2 text-right">
-                    <button
-                      onClick={() => navigate('cases', `&caseId=${c.id}`)}
-                      className="text-xs text-blue-600 hover:underline font-medium"
-                    >
-                      Abrir →
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs sm:text-sm">
+              <thead>
+                <tr className="text-left text-gray-400 border-b border-gray-800 pb-2">
+                  <th className="py-2.5">Data</th>
+                  <th>Caso</th>
+                  <th className="hidden md:table-cell">Fase</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-800/80">
+                {upcoming.map((c) => (
+                  <tr key={c.id} className="hover:bg-gray-800/40 transition">
+                    <td className={`py-3 font-semibold ${new Date(c.deadline_date) < new Date() ? 'text-red-400' : 'text-yellow-400'}`}>
+                      {shortDate(c.deadline_date)}
+                    </td>
+                    <td className="py-3 text-white font-medium">{c.title}</td>
+                    <td className="py-3 hidden md:table-cell text-gray-400">{STEP_LABELS[c.procedural_step] || c.procedural_step || '-'}</td>
+                    <td className="py-3 text-right">
+                      <button
+                        onClick={() => navigate('cases', `&caseId=${c.id}`)}
+                        className="text-xs text-blue-400 hover:text-blue-300 hover:underline font-semibold"
+                      >
+                        Abrir →
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
       {/* Resumo Rápido do Escritório (Legado) */}
-      <section className="bg-white rounded-lg shadow p-5">
-        <h2 className="text-base font-bold text-gray-900 mb-4">🏛️ Resumo Geral do Escritório</h2>
+      <section className="bg-[#1B1D1E] border border-gray-800 rounded-2xl shadow-lg p-5">
+        <h2 className="text-base font-bold text-white mb-4 flex items-center gap-2">
+          <span>🏛️</span> Resumo Geral do Escritório
+        </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-          <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
-            <div className="text-2xl font-bold text-blue-600">{conversations.length}</div>
-            <div className="text-xs text-gray-500 mt-1">Total de Contatos / Clientes</div>
+          <div className="p-4 rounded-xl bg-[#1E2022] border border-gray-800 hover:border-gray-700 transition">
+            <div className="text-2xl font-bold text-white">{conversations.length}</div>
+            <div className="text-xs text-gray-400 mt-1">Total de Contatos / Clientes</div>
           </div>
-          <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
-            <div className="text-2xl font-bold text-green-600">{totalActiveCases}</div>
-            <div className="text-xs text-gray-500 mt-1">Processos Ativos</div>
+          <div className="p-4 rounded-xl bg-[#1E2022] border border-gray-800 hover:border-gray-700 transition">
+            <div className="text-2xl font-bold text-white">{totalActiveCases}</div>
+            <div className="text-xs text-gray-400 mt-1">Processos Ativos</div>
           </div>
-          <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
-            <div className="text-2xl font-bold text-yellow-600">{urgentDeadlines.length}</div>
-            <div className="text-xs text-gray-500 mt-1">Prazos Próximos (7d)</div>
+          <div className="p-4 rounded-xl bg-[#1E2022] border border-gray-800 hover:border-gray-700 transition">
+            <div className="text-2xl font-bold text-yellow-400">{urgentDeadlines.length}</div>
+            <div className="text-xs text-gray-400 mt-1">Prazos Próximos (7d)</div>
           </div>
-          <div className="p-3 rounded-lg bg-gray-50 border border-gray-100">
-            <div className="text-2xl font-bold text-purple-600">{brl(metrics?.case_value?.total)}</div>
-            <div className="text-xs text-gray-500 mt-1">Honorários em Gestão</div>
+          <div className="p-4 rounded-xl bg-[#1E2022] border border-green-500/20 hover:border-green-500/40 transition">
+            <div className="text-2xl font-black text-green-400">{brl(metrics?.case_value?.total)}</div>
+            <div className="text-xs text-green-400/80 mt-1 font-semibold">Honorários em Gestão</div>
           </div>
         </div>
       </section>

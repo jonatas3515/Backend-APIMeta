@@ -756,26 +756,26 @@ export default function CasesPanel({ notice }) {
               placeholder="Área jurídica"
               value={formData.legal_area}
               onChange={(e) => setFormData({ ...formData, legal_area: e.target.value })}
-              className="px-3 py-2 border rounded"
+              className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
             />
             <input
               type="text"
               placeholder="Tipo de caso"
               value={formData.case_type}
               onChange={(e) => setFormData({ ...formData, case_type: e.target.value })}
-              className="px-3 py-2 border rounded"
+              className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
             />
             <input
               type="text"
               placeholder="Município"
               value={formData.municipality}
               onChange={(e) => setFormData({ ...formData, municipality: e.target.value })}
-              className="px-3 py-2 border rounded"
+              className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
             />
             <select
               value={formData.status}
               onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-              className="px-3 py-2 border rounded"
+              className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
             >
               <option value="prospect">Prospect</option>
               <option value="em_analise">Em Análise</option>
@@ -790,7 +790,7 @@ export default function CasesPanel({ notice }) {
             <select
               value={formData.priority}
               onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-              className="px-3 py-2 border rounded"
+              className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
             >
               <option value="baixa">Baixa</option>
               <option value="media">Média</option>
@@ -845,12 +845,12 @@ export default function CasesPanel({ notice }) {
                   placeholder="Número do processo (CNJ)"
                   value={formData.process_number || ''}
                   onChange={(e) => setFormData({ ...formData, process_number: e.target.value })}
-                  className="px-3 py-2 border rounded"
+                  className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
                 />
                 <select
                   value={formData.court || ''}
                   onChange={(e) => setFormData({ ...formData, court: e.target.value })}
-                  className="px-3 py-2 border rounded"
+                  className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
                 >
                   <option value="">Tribunal</option>
                   <option value="TRT">TRT</option>
@@ -865,19 +865,19 @@ export default function CasesPanel({ notice }) {
                   placeholder="Vara ou Juizado"
                   value={formData.court_division || ''}
                   onChange={(e) => setFormData({ ...formData, court_division: e.target.value })}
-                  className="px-3 py-2 border rounded"
+                  className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
                 />
                 <input
                   type="text"
                   placeholder="Comarca"
                   value={formData.judicial_district || ''}
                   onChange={(e) => setFormData({ ...formData, judicial_district: e.target.value })}
-                  className="px-3 py-2 border rounded"
+                  className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
                 />
                 <select
                   value={formData.procedural_step || ''}
                   onChange={(e) => setFormData({ ...formData, procedural_step: e.target.value })}
-                  className="px-3 py-2 border rounded"
+                  className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
                 >
                   <option value="">Fase processual</option>
                   <option value="conciliacao">Conciliação</option>
@@ -1317,7 +1317,7 @@ export default function CasesPanel({ notice }) {
   }
 
   return (
-    <div className="p-4 md:p-6 bg-white rounded-lg shadow w-full h-full overflow-y-auto">
+    <div className="p-4 md:p-6 bg-[#181A1B] text-gray-100 rounded-2xl shadow-lg w-full h-full overflow-y-auto">
       {actionMessage && (
         <div
           className={`mb-4 p-3 rounded text-sm ${
@@ -1347,7 +1347,7 @@ export default function CasesPanel({ notice }) {
       <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
         <div className="flex items-center gap-3">
           <h2 className="text-xl sm:text-2xl font-bold">Casos</h2>
-          <span className="text-xs px-2.5 py-1 bg-gray-100 border border-gray-300 rounded-full text-gray-700 font-medium">
+          <span className="text-xs px-2.5 py-1 bg-gray-800 border border-gray-700 rounded-full text-gray-300 font-medium">
             {cases.length} processos ({activeCount} ativos, {closedCount} encerrados)
           </span>
         </div>
@@ -1403,7 +1403,7 @@ export default function CasesPanel({ notice }) {
                   distribution_date: ''
                 });
               }}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="px-4 py-2 bg-gradient-to-r from-yellow-500 via-amber-500 to-yellow-600 hover:from-yellow-400 hover:to-amber-400 text-black font-extrabold rounded-xl shadow-md shadow-yellow-500/10 transition transform hover:-translate-y-0.5"
             >
               + Novo Caso
             </button>
@@ -1416,7 +1416,7 @@ export default function CasesPanel({ notice }) {
         <select
           value={filters.status}
           onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-          className="px-3 py-2 border rounded"
+          className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
         >
           <option value="">Todos os Status</option>
           <option value="prospect">Prospect</option>
@@ -1433,7 +1433,7 @@ export default function CasesPanel({ notice }) {
         <select
           value={filters.priority}
           onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-          className="px-3 py-2 border rounded"
+          className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
         >
           <option value="">Todas as Prioridades</option>
           <option value="baixa">Baixa</option>
@@ -1444,7 +1444,7 @@ export default function CasesPanel({ notice }) {
         <select
           value={filters.document_status}
           onChange={(e) => setFilters({ ...filters, document_status: e.target.value })}
-          className="px-3 py-2 border rounded"
+          className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
         >
           <option value="">Todos os Documentos</option>
           <option value="pending">Documentos Pendentes</option>
@@ -1454,7 +1454,7 @@ export default function CasesPanel({ notice }) {
         <select
           value={filters.legal_area}
           onChange={(e) => setSelectedArea(e.target.value)}
-          className="px-3 py-2 border rounded"
+          className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
         >
           <option value="">Todas as áreas</option>
           {LEGAL_AREAS.map((area) => (
@@ -1465,7 +1465,7 @@ export default function CasesPanel({ notice }) {
         <select
           value={filters.court}
           onChange={(e) => setFilters({ ...filters, court: e.target.value })}
-          className="px-3 py-2 border rounded"
+          className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
         >
           <option value="">Todos os Tribunais</option>
           <option value="TRT">TRT</option>
@@ -1479,7 +1479,7 @@ export default function CasesPanel({ notice }) {
         <select
           value={filters.procedural_step}
           onChange={(e) => setFilters({ ...filters, procedural_step: e.target.value })}
-          className="px-3 py-2 border rounded"
+          className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
         >
           <option value="">Todas as Fases</option>
           <option value="conciliacao">Conciliação</option>
@@ -1505,15 +1505,15 @@ export default function CasesPanel({ notice }) {
           <p className="text-sm text-gray-500 mt-1">Crie um novo caso ou ajuste os filtros para começar.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto -mx-2 px-2">
+        <div className="overflow-x-auto -mx-2 px-2 rounded-xl border border-gray-800 bg-[#1B1D1E] shadow-lg">
           <table className="w-full border-collapse">
             <thead>
-              <tr className="bg-gray-100 text-xs md:text-sm">
-                <th className="border p-2.5 text-center text-[11px] font-bold text-gray-700 w-12">#</th>
+              <tr className="bg-gray-900/90 text-xs md:text-sm text-gray-400 border-b border-gray-800">
+                <th className="border p-2.5 text-center text-[11px] font-bold text-gray-400 w-12">#</th>
                 <th className="border p-3 text-left">Título</th>
-                <th className="border p-2.5 text-left text-[11px] font-bold text-gray-700">Área</th>
-                <th className="border p-2.5 text-left text-[11px] font-bold text-gray-700">Status</th>
-                <th className="border p-2.5 text-left text-[11px] font-bold text-gray-700">Prioridade</th>
+                <th className="border p-2.5 text-left text-[11px] font-bold text-gray-400">Área</th>
+                <th className="border p-2.5 text-left text-[11px] font-bold text-gray-400">Status</th>
+                <th className="border p-2.5 text-left text-[11px] font-bold text-gray-400">Prioridade</th>
                 <th className="border p-3 text-left">Prazo</th>
               </tr>
             </thead>
@@ -1532,8 +1532,8 @@ export default function CasesPanel({ notice }) {
                     isClosed
                       ? 'bg-gray-100/80 text-gray-500 opacity-70 hover:bg-gray-200/60'
                       : selectedCase?.id === caseItem.id
-                      ? 'bg-blue-50 ring-2 ring-inset ring-blue-200 hover:bg-blue-100/60'
-                      : 'hover:bg-gray-50'
+                      ? 'bg-yellow-500/10 ring-2 ring-inset ring-yellow-500/30 text-yellow-300 hover:bg-yellow-500/15'
+                      : 'hover:bg-gray-800/40 text-gray-200'
                   }`}
                 >
                     <td className="border p-2 text-center text-xs font-bold text-gray-400">

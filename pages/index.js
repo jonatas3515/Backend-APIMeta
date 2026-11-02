@@ -529,25 +529,25 @@ export default function Home() {
         <link rel="icon" href="/Logo transparente.png" />
       </Head>
       
-      <div className="flex flex-col md:flex-row h-screen bg-nc-surface overflow-hidden">
+      <div className="flex flex-col md:flex-row h-screen bg-[#181A1B] text-gray-100 overflow-hidden">
         <Sidebar activeTab={activeTab} onChangeTab={handleTabChange} />
 
         {/* Conteúdo principal */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <header className="flex items-center px-2 sm:px-3 py-2 bg-white border-b border-gray-200 z-10 gap-1.5 sm:gap-2 relative overflow-x-auto scrollbar-none">
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#181A1B]">
+          <header className="flex items-center px-2 sm:px-3 py-2 bg-[#1B1D1E] border-b border-gray-800 z-10 gap-1.5 sm:gap-2 relative overflow-x-auto scrollbar-none text-white">
             {profile?.office?.logo_url ? (
               <img src={profile.office.logo_url} alt={profile.office.name || 'Logo'} className="md:hidden h-7 w-auto max-w-[100px] object-contain flex-shrink-0 rounded" />
             ) : (
-              <h1 className="md:hidden text-base font-bold flex-shrink-0">{profile?.office?.name?.slice(0, 15) || 'JusJNC'}</h1>
+              <h1 className="md:hidden text-base font-bold flex-shrink-0 text-white">{profile?.office?.name?.slice(0, 15) || 'JusJNC'}</h1>
             )}
             {activeTab === 'chat' && (
-              <div className="flex gap-1 bg-nc-gray-100 p-1 rounded text-xs font-medium">
+              <div className="flex gap-1 bg-gray-900/60 p-1 rounded-lg text-xs font-medium border border-gray-800">
                 <button
                   onClick={() => setChatView('conversas')}
                   className={`px-3 py-1 rounded transition ${
                     chatView === 'conversas'
-                      ? 'bg-white shadow text-nc-text-title'
-                      : 'text-nc-text-secondary hover:text-nc-text'
+                      ? 'bg-nc-yellow text-nc-black font-bold shadow-sm'
+                      : 'text-gray-400 hover:text-white'
                   }`}
                 >
                   💬 Conversas
@@ -556,8 +556,8 @@ export default function Home() {
                   onClick={() => setChatView('clientes')}
                   className={`px-3 py-1 rounded transition ${
                     chatView === 'clientes'
-                      ? 'bg-white shadow text-nc-text-title'
-                      : 'text-nc-text-secondary hover:text-nc-text'
+                      ? 'bg-nc-yellow text-nc-black font-bold shadow-sm'
+                      : 'text-gray-400 hover:text-white'
                   }`}
                 >
                   👥 Clientes
@@ -582,7 +582,7 @@ export default function Home() {
                     window.dispatchEvent(new CustomEvent('nc:open-global-search'));
                   }
                 }}
-                className="md:hidden p-2 text-nc-text-secondary hover:text-nc-text rounded-full hover:bg-nc-gray-100 transition"
+                className="md:hidden p-2 text-gray-400 hover:text-white rounded-full hover:bg-gray-800 transition"
                 title="Buscar"
               >
                 🔍
@@ -654,7 +654,7 @@ export default function Home() {
                   )}
                 </>
               ) : (
-                <div className="flex-1 h-[calc(100vh-120px)] md:h-[calc(100vh-80px)] flex flex-col overflow-hidden bg-white">
+                <div className="flex-1 h-[calc(100vh-120px)] md:h-[calc(100vh-80px)] flex flex-col overflow-hidden bg-[#181A1B] text-gray-100">
                   <ClientsList
                     onSelectClient={(client) => {
                       setSelectedClient(client);

@@ -256,13 +256,13 @@ export default function AgendaPanel() {
   const getPriorityColor = (priority) => {
     switch (priority) {
       case 'alta':
-        return 'bg-red-100 text-red-800 border-red-300';
+        return 'border-l-4 border-l-red-500 bg-[#1E2022] text-gray-100 border border-[#2A2D2F]';
       case 'media':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+        return 'border-l-4 border-l-amber-500 bg-[#1E2022] text-gray-100 border border-[#2A2D2F]';
       case 'baixa':
-        return 'bg-green-100 text-green-800 border-green-300';
+        return 'border-l-4 border-l-blue-500 bg-[#1E2022] text-gray-100 border border-[#2A2D2F]';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return 'border-l-4 border-l-slate-600 bg-[#1E2022] text-gray-100 border border-[#2A2D2F]';
     }
   };
 
@@ -298,17 +298,17 @@ export default function AgendaPanel() {
   };
 
   return (
-    <div className="w-full bg-white rounded-lg shadow">
+    <div className="w-full bg-[#1B1D1E] rounded-xl border border-gray-800 text-gray-100 shadow-sm">
       {/* Header */}
-      <div className="border-b border-gray-200 p-4">
-        <h2 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-4">📅 Agenda</h2>
+      <div className="border-b border-gray-800 p-4">
+        <h2 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-4 text-white">📅 Agenda</h2>
         <div className="flex gap-2 flex-wrap mb-4">
           <button
             onClick={() => setActiveTab('past')}
             className={`px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center gap-1.5 ${
               activeTab === 'past'
-                ? 'bg-rose-600 text-white shadow-sm ring-2 ring-rose-400'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                ? 'bg-red-600 text-white shadow-sm ring-1 ring-red-400'
+                : 'bg-[#1E2022] text-gray-300 hover:text-white border border-[#2A2D2F]'
             }`}
             title="Mostrar prazos e compromissos que já passaram ou estão vencidos (Atalho: P)"
           >
@@ -318,8 +318,8 @@ export default function AgendaPanel() {
             onClick={() => setActiveTab('today')}
             className={`px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center gap-1.5 ${
               activeTab === 'today'
-                ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-400'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                ? 'bg-nc-yellow text-nc-black shadow-sm font-bold'
+                : 'bg-[#1E2022] text-gray-300 hover:text-white border border-[#2A2D2F]'
             }`}
             title="Prazos e compromissos de hoje (Atalho: H)"
           >
@@ -329,8 +329,8 @@ export default function AgendaPanel() {
             onClick={() => setActiveTab('week')}
             className={`px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center gap-1.5 ${
               activeTab === 'week'
-                ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-400'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                ? 'bg-nc-yellow text-nc-black shadow-sm font-bold'
+                : 'bg-[#1E2022] text-gray-300 hover:text-white border border-[#2A2D2F]'
             }`}
             title="Prazos para os próximos 7 dias (Atalho: 7)"
           >
@@ -340,8 +340,8 @@ export default function AgendaPanel() {
             onClick={() => setActiveTab('month')}
             className={`px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center gap-1.5 ${
               activeTab === 'month'
-                ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-400'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                ? 'bg-nc-yellow text-nc-black shadow-sm font-bold'
+                : 'bg-[#1E2022] text-gray-300 hover:text-white border border-[#2A2D2F]'
             }`}
             title="Prazos para os próximos 30 dias (Atalho: 3 0)"
           >
@@ -351,8 +351,8 @@ export default function AgendaPanel() {
             onClick={() => setActiveTab('quarter')}
             className={`px-3.5 py-1.5 rounded-lg text-xs md:text-sm font-bold transition flex items-center gap-1.5 ${
               activeTab === 'quarter'
-                ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-400'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                ? 'bg-nc-yellow text-nc-black shadow-sm font-bold'
+                : 'bg-[#1E2022] text-gray-300 hover:text-white border border-[#2A2D2F]'
             }`}
             title="Prazos para os próximos 90 dias (Atalho: 9 0)"
           >
@@ -371,7 +371,7 @@ export default function AgendaPanel() {
           <select
             value={filters.legal_area}
             onChange={(e) => setSelectedArea(e.target.value)}
-            className="px-2 py-1 border rounded text-sm"
+            className="px-3 py-1.5 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-sm text-gray-200 focus:outline-none focus:border-nc-yellow"
           >
             <option value="">Todas as áreas</option>
             {LEGAL_AREAS.map((area) => (
@@ -381,7 +381,7 @@ export default function AgendaPanel() {
           <select
             value={filters.priority}
             onChange={(e) => setFilters({ ...filters, priority: e.target.value })}
-            className="px-2 py-1 border rounded text-sm"
+            className="px-3 py-1.5 bg-[#1E2022] border border-[#2A2D2F] rounded-lg text-sm text-gray-200 focus:outline-none focus:border-nc-yellow"
           >
             <option value="">Todas as prioridades</option>
             <option value="alta">Alta</option>
@@ -395,7 +395,7 @@ export default function AgendaPanel() {
           <button
             onClick={generateSummary}
             disabled={generatingSummary}
-            className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 text-sm font-medium"
+            className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black rounded-lg disabled:opacity-50 text-sm font-bold shadow-sm transition"
           >
             {generatingSummary ? '⏳ Gerando...' : '✨ Gerar Resumo com IA'}
           </button>
@@ -421,7 +421,7 @@ export default function AgendaPanel() {
           />
 
           <div className="flex items-center gap-2 ml-auto">
-            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-300 cursor-pointer">
               <input
                 type="checkbox"
                 checked={showIcal}
@@ -505,10 +505,10 @@ export default function AgendaPanel() {
             {Object.entries(agenda.by_day || {})
               .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
               .map(([date, items]) => (
-                <div key={date} className="border rounded-lg p-4 bg-gray-50">
-                  <h3 className="font-bold text-lg mb-3">
+                <div key={date} className="border border-gray-800 rounded-xl p-4 bg-[#181A1B]">
+                  <h3 className="font-bold text-lg mb-3 text-white">
                     {formatDate(date)}
-                    <span className="text-sm text-gray-600 ml-2">({items.length} item{items.length !== 1 ? 'ns' : ''})</span>
+                    <span className="text-sm text-gray-400 ml-2">({items.length} item{items.length !== 1 ? 'ns' : ''})</span>
                   </h3>
 
                   <div className="space-y-2">
@@ -527,29 +527,29 @@ export default function AgendaPanel() {
                             >
                               {item.title}
                             </span>
-                            <span className="text-xs bg-white bg-opacity-60 px-2 py-0.5 rounded">
+                            <span className="text-xs bg-gray-800/80 border border-gray-700 text-gray-300 px-2 py-0.5 rounded">
                               {item.event_type}
                             </span>
                           </div>
 
                           <div className="text-xs space-y-1">
                             {item.legal_area && (
-                              <p className="text-gray-700">
+                              <p className="text-gray-400">
                                 <strong>Área:</strong> {item.legal_area}
                               </p>
                             )}
                             {item.case_type && (
-                              <p className="text-gray-700">
+                              <p className="text-gray-400">
                                 <strong>Tipo:</strong> {item.case_type}
                               </p>
                             )}
                             {item.municipality && (
-                              <p className="text-gray-700">
+                              <p className="text-gray-400">
                                 <strong>Município:</strong> {item.municipality}
                               </p>
                             )}
                             {item.event_time && (
-                              <p className="text-gray-700">
+                              <p className="text-gray-400">
                                 <strong>Horário:</strong> {item.event_time}
                               </p>
                             )}

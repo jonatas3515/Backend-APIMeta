@@ -20,10 +20,10 @@ const ICONS = {
 };
 
 const PRIORITY_COLORS = {
-  critical: 'border-l-4 border-red-500 bg-red-50',
-  high: 'border-l-4 border-orange-500 bg-orange-50',
-  normal: 'border-l-4 border-blue-500 bg-white',
-  low: 'border-l-4 border-gray-300 bg-white'
+  critical: 'border-l-4 border-red-500 bg-red-950/20 text-red-200 border-t border-r border-b border-gray-800',
+  high: 'border-l-4 border-amber-500 bg-amber-950/20 text-amber-200 border-t border-r border-b border-gray-800',
+  normal: 'border-l-4 border-blue-500 bg-[#1E2022] text-gray-200 border-t border-r border-b border-gray-800',
+  low: 'border-l-4 border-gray-600 bg-[#1E2022] text-gray-300 border-t border-r border-b border-gray-800'
 };
 
 export default function NotificationItem({ notification, onAction }) {
@@ -56,12 +56,12 @@ export default function NotificationItem({ notification, onAction }) {
         {/* Conteúdo */}
         <div className="flex-1 min-w-0">
           {/* Título */}
-          <h4 className="text-sm font-semibold text-nc-text truncate">
+          <h4 className="text-sm font-semibold text-white font-semibold truncate">
             {notification.title}
           </h4>
 
           {/* Data relativa */}
-          <p className="text-xs text-nc-text-secondary mt-0.5">
+          <p className="text-xs text-gray-400 mt-0.5">
             {notification.isOverdue && 'Venceu '}
             {notification.isToday && !notification.isOverdue && 'Hoje • '}
             {relativeDate}
@@ -83,7 +83,7 @@ export default function NotificationItem({ notification, onAction }) {
         {/* Badge de prioridade (opcional) */}
         {notification.priority === 'critical' && (
           <div className="flex-shrink-0">
-            <span className="inline-block px-2 py-0.5 text-xs font-bold text-red-700 bg-red-100 rounded">
+            <span className="inline-block px-2 py-0.5 text-xs font-bold text-red-400 bg-red-500/20 border border-red-500/30 rounded-full">
               Urgente
             </span>
           </div>

@@ -28,7 +28,7 @@ const NotificationBell = forwardRef(({ onOpen }, ref) => {
     <button
       ref={ref}
       onClick={handleClick}
-      className="relative p-2 rounded-full hover:bg-nc-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-nc-yellow"
+      className="relative p-2 rounded-full hover:bg-gray-800 text-gray-300 hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-nc-yellow"
       aria-label={ariaLabel}
       role="button"
       title="Notificações"
@@ -36,7 +36,7 @@ const NotificationBell = forwardRef(({ onOpen }, ref) => {
     >
       {/* Sino */}
       <svg
-        className="w-6 h-6 text-nc-text-secondary"
+        className="w-6 h-6 text-gray-300 hover:text-white transition"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"

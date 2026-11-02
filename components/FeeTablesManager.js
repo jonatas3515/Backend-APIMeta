@@ -226,7 +226,7 @@ export default function FeeTablesManager({ viewMode = null }) {
           <p className="text-sm text-gray-500">Nenhuma tabela enviada.</p>
         ) : (
           items.map((item) => (
-            <div key={item.id} className="p-2 bg-white border rounded text-sm flex justify-between items-center">
+            <div key={item.id} className="p-2 bg-[#1B1D1E] border rounded text-sm flex justify-between items-center">
               <div>
                 <p className="font-medium">{item.name}</p>
                 <p className="text-xs text-gray-500">
@@ -252,7 +252,7 @@ export default function FeeTablesManager({ viewMode = null }) {
   };
 
   return (
-    <div className="p-4 border rounded bg-white space-y-4">
+    <div className="p-4 border rounded bg-[#1B1D1E] space-y-4">
       <h3 className="font-bold text-base sm:text-lg">📤 Tabelas de referência</h3>
       <p className="text-xs text-gray-500">
         Envie a tabela da OAB ou os valores cobrados pelo escritório. Os dados ficam salvos para consulta futura.
@@ -287,12 +287,12 @@ export default function FeeTablesManager({ viewMode = null }) {
           />
         </div>
 
-        <div className="border rounded bg-white p-2 overflow-x-auto">
+        <div className="border rounded bg-[#1B1D1E] p-2 overflow-x-auto">
           {referenceLoading ? (
             <p className="text-sm text-gray-500 p-2">Carregando referências...</p>
           ) : referenceItems.length === 0 ? (
-            <div className="p-4 bg-gray-50 border rounded text-center space-y-2">
-              <p className="text-sm text-gray-600">Nenhuma tabela da OAB encontrada.</p>
+            <div className="p-4 bg-[#181A1B] border rounded text-center space-y-2">
+              <p className="text-sm text-gray-400">Nenhuma tabela da OAB encontrada.</p>
               <button
                 onClick={() => {
                   const uploadSection = document.getElementById('fee-table-upload');
@@ -320,7 +320,7 @@ export default function FeeTablesManager({ viewMode = null }) {
                           className={`flex-shrink-0 text-xs px-2.5 py-1 rounded border ${
                             selectedArea === area
                               ? 'bg-blue-600 text-white border-blue-600'
-                              : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200'
+                              : 'bg-gray-100 text-gray-300 border-gray-300 hover:bg-gray-200'
                           }`}
                         >
                           {area}
@@ -329,7 +329,7 @@ export default function FeeTablesManager({ viewMode = null }) {
                       {selectedArea && (
                         <button
                           onClick={() => setSelectedArea('')}
-                          className="flex-shrink-0 text-xs px-2.5 py-1 rounded border bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200"
+                          className="flex-shrink-0 text-xs px-2.5 py-1 rounded border bg-gray-100 text-gray-300 border-gray-300 hover:bg-gray-200"
                         >
                           Todas
                         </button>
@@ -349,13 +349,13 @@ export default function FeeTablesManager({ viewMode = null }) {
                       </thead>
                       <tbody>
                         {itemsForSelectedArea.map((item, idx) => (
-                          <tr key={idx} className="border-t">
+                          <tr key={idx} className="border-t border-gray-800">
                             <td className="p-2 whitespace-nowrap">{item.legal_area}</td>
                             <td className="p-2 whitespace-nowrap">{item.case_type}</td>
                             <td className="p-2 whitespace-nowrap">{item.service}</td>
                             <td className="p-2 whitespace-nowrap">R$ {Number(item.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                             <td className="p-2 whitespace-nowrap">R$ {Number(item.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                            <td className="p-2 whitespace-nowrap font-semibold text-blue-700">R$ {Number(item.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                            <td className="p-2 whitespace-nowrap font-semibold text-blue-400">R$ {Number(item.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                             <td className="p-2 whitespace-nowrap">R$ {Number(item.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                           </tr>
                         ))}
@@ -373,15 +373,15 @@ export default function FeeTablesManager({ viewMode = null }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div id="fee-table-upload" className="border rounded p-3 bg-gray-50 space-y-3">
+        <div id="fee-table-upload" className="border rounded p-3 bg-[#181A1B] space-y-3">
           <h4 className="font-semibold text-sm">⬆️ Enviar nova tabela</h4>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Tipo</label>
+            <label className="block text-sm font-medium text-gray-300">Tipo</label>
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full mt-1 border rounded p-2 text-sm"
+              className="w-full mt-1 bg-[#1E2022] border border-[#2A2D2F] rounded-lg p-2 text-sm text-gray-100 focus:outline-none focus:border-nc-yellow"
             >
               {TABLE_TYPES.map((t) => (
                 <option key={t.key} value={t.key}>{t.label}</option>
@@ -390,18 +390,18 @@ export default function FeeTablesManager({ viewMode = null }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Nome da tabela</label>
+            <label className="block text-sm font-medium text-gray-300">Nome da tabela</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ex: Tabela OAB 2025"
-              className="w-full mt-1 border rounded p-2 text-sm"
+              className="w-full mt-1 bg-[#1E2022] border border-[#2A2D2F] rounded-lg p-2 text-sm text-gray-100 focus:outline-none focus:border-nc-yellow"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Arquivo (CSV, Excel ou PDF)</label>
+            <label className="block text-sm font-medium text-gray-300">Arquivo (CSV, Excel ou PDF)</label>
             <input
               type="file"
               accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, .pdf, application/pdf"
@@ -411,14 +411,14 @@ export default function FeeTablesManager({ viewMode = null }) {
           </div>
 
           {preview.length > 0 && previewValidation && (
-            <div className="border rounded bg-white p-2 text-xs space-y-2">
+            <div className="border rounded bg-[#1B1D1E] p-2 text-xs space-y-2">
               <div className="flex gap-2 flex-wrap">
                 <span className="font-semibold">Linhas: {previewValidation.rowCount}</span>
                 <span className={`px-2 rounded ${previewValidation.valid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                   {previewValidation.valid ? 'Colunas válidas' : 'Colunas inválidas'}
                 </span>
               </div>
-              <p className="text-gray-700">
+              <p className="text-gray-300">
                 <span className="font-semibold">Reconhecidas:</span>{' '}
                 {Object.entries(previewValidation.recognized).filter(([, v]) => v).map(([k, v]) => `${k} (${v})`).join(', ') || 'nenhuma'}
               </p>
@@ -460,7 +460,7 @@ export default function FeeTablesManager({ viewMode = null }) {
           </button>
         </div>
 
-        <div className="border rounded p-3 bg-gray-50 space-y-3">
+        <div className="border rounded p-3 bg-[#181A1B] space-y-3">
           <h4 className="font-semibold text-sm">📂 Tabelas salvas</h4>
           {TABLE_TYPES.map((t) => (
             <div key={t.key}>

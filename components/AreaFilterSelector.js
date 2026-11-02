@@ -26,7 +26,7 @@ export default function AreaFilterSelector({ compact = false, showClear = true }
       <select
         value={selectedArea}
         onChange={(e) => handleChange(e.target.value)}
-        className={`block border border-gray-300 rounded bg-white text-gray-800 focus:ring-2 focus:ring-blue-500 focus:outline-none ${
+        className={`block border border-gray-700/80 rounded-lg bg-gray-900 text-gray-200 focus:ring-2 focus:ring-yellow-500/50 focus:border-yellow-500 focus:outline-none ${
           compact ? 'px-2 py-1 text-xs max-w-[130px] sm:max-w-none sm:w-40 truncate' : 'px-3 py-2 text-sm w-full'
         }`}
         aria-label="Filtrar por área jurídica"
@@ -40,14 +40,14 @@ export default function AreaFilterSelector({ compact = false, showClear = true }
       </select>
       {isActive && (
         <>
-          <span className="hidden sm:inline text-xs font-medium text-blue-700 truncate max-w-[120px]">
+          <span className="hidden sm:inline text-xs font-semibold text-yellow-400 truncate max-w-[120px]">
             {getLegalAreaLabel(selectedArea)}
           </span>
           {showClear && (
             <button
               onClick={handleClear}
               type="button"
-              className="text-xs text-gray-500 hover:text-red-600 underline"
+              className="text-xs text-gray-400 hover:text-red-400 underline"
               title="Limpar filtro"
             >
               Limpar

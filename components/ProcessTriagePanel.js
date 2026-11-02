@@ -14,13 +14,13 @@ const TRIAGE_STATUS_LABELS = {
 };
 
 const STATUS_STYLES = {
-  novo: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  em_analise: 'bg-blue-100 text-blue-800 border-blue-200',
-  revisado: 'bg-green-100 text-green-800 border-green-200',
-  ignorado: 'bg-gray-100 text-gray-700 border-gray-200',
-  convertido_em_nota: 'bg-purple-100 text-purple-800 border-purple-200',
-  convertido_em_lembrete: 'bg-pink-100 text-pink-800 border-pink-200',
-  convertido_em_agenda: 'bg-orange-100 text-orange-800 border-orange-200'
+  novo: 'bg-yellow-950/40 text-yellow-300 border-yellow-800/50',
+  em_analise: 'bg-blue-950/40 text-blue-300 border-blue-800/50',
+  revisado: 'bg-emerald-950/40 text-emerald-300 border-emerald-800/50',
+  ignorado: 'bg-gray-800 text-gray-400 border-gray-700',
+  convertido_em_nota: 'bg-purple-950/40 text-purple-300 border-purple-800/50',
+  convertido_em_lembrete: 'bg-pink-950/40 text-pink-300 border-pink-800/50',
+  convertido_em_agenda: 'bg-amber-950/40 text-amber-300 border-amber-800/50'
 };
 
 const PRIORITY_LABELS = {
@@ -31,10 +31,10 @@ const PRIORITY_LABELS = {
 };
 
 const PRIORITY_STYLES = {
-  baixa: 'bg-green-50 text-green-800 border-green-200',
-  media: 'bg-yellow-50 text-yellow-800 border-yellow-200',
-  alta: 'bg-orange-50 text-orange-800 border-orange-200',
-  urgente: 'bg-red-50 text-red-800 border-red-200'
+  baixa: 'bg-blue-950/40 text-blue-300 border-blue-800/50',
+  media: 'bg-yellow-950/40 text-yellow-300 border-yellow-800/50',
+  alta: 'bg-amber-950/40 text-amber-300 border-amber-800/50',
+  urgente: 'bg-red-950/40 text-red-300 border-red-800/50'
 };
 
 const PRIORITY_WEIGHT = { urgente: 0, alta: 1, media: 2, baixa: 3 };
@@ -145,9 +145,9 @@ function filterBySearch(movements, query) {
 function ConfirmModal({ title, children, onCancel, onConfirm, loading, confirmText, disabled }) {
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={onCancel} role="dialog" aria-modal="true" aria-label={title}>
-      <div className="bg-nc-white rounded-lg max-w-md w-full p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-semibold text-nc-text-title mb-3">{title}</h3>
-        {children && <div className="text-sm text-nc-text mb-4">{children}</div>}
+      <div className="bg-[#1B1D1E] border border-gray-800 rounded-xl max-w-md w-full p-5 shadow-xl text-gray-100" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold text-white mb-3">{title}</h3>
+        {children && <div className="text-sm text-gray-300 mb-4">{children}</div>}
         <div className="flex gap-2 justify-end">
           <button onClick={onCancel} className="nc-btn text-sm" disabled={loading}>Cancelar</button>
           <button onClick={onConfirm} className="nc-btn-primary text-sm" disabled={loading || disabled} data-testid="confirm-action">
@@ -623,17 +623,17 @@ export default function ProcessTriagePanel({ movementId, profile }) {
       <div className="flex-1 flex flex-col bg-nc-gray-50 p-8 items-center justify-center">
         <div className="bg-nc-white p-6 rounded-lg shadow max-w-md text-center">
           <h2 className="text-lg font-semibold text-nc-text-title mb-2">Acesso restrito</h2>
-          <p className="text-sm text-nc-text-secondary">A Central de Triagem Processual não está disponível para estagiários.</p>
+          <p className="text-sm text-gray-300">A Central de Triagem Processual não está disponível para estagiários.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-nc-gray-50 overflow-hidden" data-testid="triage-panel">
-      <div className="bg-nc-white border-b border-nc-gray-200 p-4">
-        <h1 className="text-2xl font-bold text-nc-text-title">⏱️ Central de Triagem Processual</h1>
-        <div className="mt-2 p-3 bg-blue-50 border border-blue-100 rounded text-sm text-blue-900" role="note" data-testid="triage-disclaimer">
+    <div className="flex-1 flex flex-col bg-[#181A1B] text-gray-100 overflow-hidden" data-testid="triage-panel">
+      <div className="bg-[#1B1D1E] border-b border-gray-800 p-4">
+        <h1 className="text-2xl font-bold text-white">⏱️ Central de Triagem Processual</h1>
+        <div className="mt-2 p-3 bg-blue-950/20 border border-blue-500/20 rounded-xl text-xs md:text-sm text-blue-200/90" role="note" data-testid="triage-disclaimer">
           Esta central reúne movimentações processuais para revisão humana. Sugestões de classificação e prioridade são apenas apoio operacional; confirme sempre no processo e no sistema oficial do tribunal. Nenhum prazo ou evento é criado automaticamente.
         </div>
       </div>
@@ -645,14 +645,14 @@ export default function ProcessTriagePanel({ movementId, profile }) {
       )}
 
       {stats && (
-        <div className="bg-nc-white border-b border-nc-gray-200 p-4">
+        <div className="bg-[#1B1D1E] border-b border-gray-800 p-4">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {[
-              { key: 'total', label: 'Total', value: stats.total || 0, class: 'bg-nc-gray-50' },
-              { key: 'new', label: 'Novas', value: stats.by_status?.novo || 0, class: 'bg-yellow-50' },
-              { key: 'analyzing', label: 'Em análise', value: stats.by_status?.em_analise || 0, class: 'bg-blue-50' },
-              { key: 'urgent', label: 'Alta/Urgente', value: (stats.by_priority?.alta || 0) + (stats.by_priority?.urgente || 0), class: 'bg-red-50' },
-              { key: 'mine', label: 'Minhas pendências', value: stats.my_pendencies || 0, class: 'bg-purple-50' }
+              { key: 'total', label: 'Total', value: stats.total || 0, class: 'bg-[#1E2022] border-gray-800 text-gray-200' },
+              { key: 'new', label: 'Novas', value: stats.by_status?.novo || 0, class: 'bg-yellow-950/20 border-yellow-800/40 text-yellow-300' },
+              { key: 'analyzing', label: 'Em análise', value: stats.by_status?.em_analise || 0, class: 'bg-blue-950/20 border-blue-800/40 text-blue-300' },
+              { key: 'urgent', label: 'Alta/Urgente', value: (stats.by_priority?.alta || 0) + (stats.by_priority?.urgente || 0), class: 'bg-red-950/20 border-red-800/40 text-red-300' },
+              { key: 'mine', label: 'Minhas pendências', value: stats.my_pendencies || 0, class: 'bg-purple-950/20 border-purple-800/40 text-purple-300' }
             ].map((c) => (
               <button
                 key={c.key}
@@ -661,15 +661,15 @@ export default function ProcessTriagePanel({ movementId, profile }) {
                 data-testid={`summary-${c.key}`}
                 aria-label={`Filtrar ${c.label}`}
               >
-                <div className="text-xs text-nc-text-secondary">{c.label}</div>
-                <div className="text-2xl font-bold text-nc-text-title">{c.value}</div>
+                <div className="text-xs text-gray-400">{c.label}</div>
+                <div className="text-2xl font-bold text-white">{c.value}</div>
               </button>
             ))}
           </div>
         </div>
       )}
 
-      <div className="bg-nc-white border-b border-nc-gray-200 p-4">
+      <div className="bg-[#1B1D1E] border-b border-gray-800 p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
           <select value={filters.triage_status} onChange={(e) => handleFilterChange('triage_status', e.target.value)} className="nc-input text-sm" data-testid="filter-status" aria-label="Filtrar por status">
             <option value="">Todos os status</option>
@@ -758,8 +758,8 @@ export default function ProcessTriagePanel({ movementId, profile }) {
                 data-movement-id={mov.id}
                 onClick={() => openDetail(mov)}
                 className={cx(
-                  'bg-nc-white border rounded-lg p-4 cursor-pointer transition hover:shadow-md',
-                  isHighlighted ? 'ring-2 ring-blue-500 border-blue-500 bg-blue-50' : 'border-nc-gray-200'
+                  'bg-[#1E2022] border rounded-xl p-4 cursor-pointer transition hover:border-nc-yellow/60',
+                  isHighlighted ? 'ring-2 ring-yellow-400 border-yellow-400 bg-yellow-950/20' : 'border-[#2A2D2F]'
                 )}
               >
                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
@@ -768,19 +768,19 @@ export default function ProcessTriagePanel({ movementId, profile }) {
                       <span className={cx('text-xs font-semibold px-2 py-1 rounded border', statusClass)}>{TRIAGE_STATUS_LABELS[mov.triage_status] || mov.triage_status}</span>
                       <span className={cx('text-xs font-medium px-2 py-1 rounded border', priorityClass)}>{PRIORITY_LABELS[mov.priority] || 'Média'}</span>
                       {classificationLabel && (
-                        <span className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-100">
+                        <span className="text-xs px-2 py-1 rounded bg-blue-950/40 text-blue-300 border border-blue-800/50">
                           {isSuggestion ? `Sugestão: ${classificationLabel}` : classificationLabel}
                         </span>
                       )}
                       {mov.triage_status === 'novo' && <span className="sr-only" data-testid="new-indicator">Movimentação nova</span>}
                     </div>
-                    <div className="text-sm font-medium text-nc-text-title mb-1" data-testid="triage-case-title">{mov.case_process?.case?.title || 'Sem título'}</div>
-                    <div className="text-xs text-nc-text-secondary mb-1" data-testid="triage-court">Tribunal: {mov.case_process?.court_name || '-'}</div>
-                    <div className="text-xs text-nc-text-secondary mb-1" data-testid="triage-legal-area">{mov.case_process?.case?.legal_area || ''}</div>
-                    <div className="text-xs text-nc-text-secondary mb-2" data-testid="triage-responsible">Responsável: {assignedName}</div>
-                    <div className="text-sm text-nc-text-secondary" data-testid="triage-safe-summary">{mov.movement_summary || 'Movimentação processual'}</div>
+                    <div className="text-sm font-medium text-white mb-1" data-testid="triage-case-title">{mov.case_process?.case?.title || 'Sem título'}</div>
+                    <div className="text-xs text-gray-400 mb-1" data-testid="triage-court">Tribunal: {mov.case_process?.court_name || '-'}</div>
+                    <div className="text-xs text-gray-400 mb-1" data-testid="triage-legal-area">{mov.case_process?.case?.legal_area || ''}</div>
+                    <div className="text-xs text-gray-400 mb-2" data-testid="triage-responsible">Responsável: {assignedName}</div>
+                    <div className="text-sm text-gray-300" data-testid="triage-safe-summary">{mov.movement_summary || 'Movimentação processual'}</div>
                   </div>
-                  <div className="text-right text-xs text-nc-text-secondary whitespace-nowrap min-w-[100px]">
+                  <div className="text-right text-xs text-gray-400 whitespace-nowrap min-w-[100px]">
                     <div data-testid="triage-movement-date">Mov: {formatDate(mov.movement_date)}</div>
                     <div className="mt-1" data-testid="triage-detected-at">Detectada: {formatDate(mov.detected_at)}</div>
                   </div>
@@ -835,9 +835,9 @@ export default function ProcessTriagePanel({ movementId, profile }) {
 
       {showDetail && selectedMovement && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeDetail} role="dialog" aria-modal="true" aria-label="Detalhes da movimentação" data-testid="triage-detail-modal">
-          <div className="bg-nc-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-nc-white border-b border-nc-gray-200 p-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-nc-text-title">Detalhes da Movimentação</h2>
+          <div className="bg-[#1B1D1E] border border-gray-800 rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto text-gray-100" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-[#1E2022] border-b border-gray-800 p-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-white">Detalhes da Movimentação</h2>
               <button onClick={closeDetail} className="text-nc-text-secondary hover:text-nc-text" aria-label="Fechar" data-testid="close-detail">✕</button>
             </div>
             <div className="p-4 space-y-4">
@@ -908,7 +908,7 @@ export default function ProcessTriagePanel({ movementId, profile }) {
               <div className="bg-nc-gray-50 p-4 rounded">
                 <h3 className="font-semibold text-nc-text-title mb-3">Histórico de triagem</h3>
                 {history.length === 0 ? (
-                  <p className="text-sm text-nc-text-secondary" data-testid="history-empty">Ainda não há ações registradas para esta movimentação.</p>
+                  <p className="text-sm text-gray-300" data-testid="history-empty">Ainda não há ações registradas para esta movimentação.</p>
                 ) : (
                   <div className="space-y-2">
                     {history.map((h) => (

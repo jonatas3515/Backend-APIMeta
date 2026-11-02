@@ -21,7 +21,7 @@ async function handler(req, res) {
 
     const { data, error } = await supabaseAdmin
       .from('conversations')
-      .select('id, client_name, client_phone, client_status, legal_area, updated_at')
+      .select('id, client_name, client_phone, client_status, legal_area, updated_at, birth_or_foundation_date')
       .eq('office_id', officeId)
       .order('updated_at', { ascending: false });
 

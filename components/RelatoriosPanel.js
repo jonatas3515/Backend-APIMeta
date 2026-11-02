@@ -219,11 +219,11 @@ export default function RelatoriosPanel() {
   };
 
   return (
-    <div className="w-full h-full overflow-y-auto bg-nc-surface text-gray-900 p-4 md:p-6" data-testid="relatorios-panel">
+    <div className="w-full h-full overflow-y-auto bg-[#181A1B] text-gray-100 p-4 md:p-6" data-testid="relatorios-panel">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <span>📈</span> Relatórios e Análises
           </h1>
           <p className="text-gray-500 text-xs mt-1">
@@ -232,7 +232,7 @@ export default function RelatoriosPanel() {
         </div>
 
         {/* Seletor de 4 Sub-abas */}
-        <div className="bg-white border border-gray-200 rounded-xl p-1.5 shadow-sm">
+        <div className="bg-[#1B1D1E] border border-gray-800 rounded-2xl p-2 shadow-lg">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {abas.map((aba) => (
               <button
@@ -241,7 +241,7 @@ export default function RelatoriosPanel() {
                 className={`p-3 rounded-lg transition text-left flex items-center gap-3 ${
                   activeTab === aba.id
                     ? 'bg-nc-yellow text-nc-black shadow-sm font-bold'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800/80'
                 }`}
               >
                 <span className="text-2xl">{aba.icon}</span>
@@ -259,8 +259,8 @@ export default function RelatoriosPanel() {
         {/* 1. Sub-aba Dashboard */}
         {activeTab === 'dashboard' && (
           <div className="space-y-6">
-            <section className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-              <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <section className="bg-[#1B1D1E] border border-gray-800 rounded-2xl p-5 shadow-lg">
+              <h2 className="text-base font-bold text-white mb-4 flex items-center gap-2">
                 <span>📊</span> Distribuição Processual
               </h2>
               <ProcessAnalyticsPanel />
@@ -273,14 +273,14 @@ export default function RelatoriosPanel() {
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Por Tribunal */}
-              <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-                <h3 className="font-bold text-sm text-gray-900 mb-3 flex items-center gap-2">
+              <div className="bg-[#1B1D1E] border border-gray-800 rounded-2xl p-5 shadow-lg">
+                <h3 className="font-bold text-sm text-white mb-3 flex items-center gap-2">
                   <span>🏛️</span> Por Tribunal
                 </h3>
                 <ul className="space-y-2 text-xs">
                   {Object.entries(porTribunal).map(([t, count]) => (
-                    <li key={t} className="flex justify-between items-center p-2 rounded bg-gray-50 border border-gray-200">
-                      <span className="font-medium text-gray-700">{t}</span>
+                    <li key={t} className="flex justify-between items-center p-2 rounded bg-[#1E2022] border border-gray-800">
+                      <span className="font-medium text-gray-200">{t}</span>
                       <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-bold">{count}</span>
                     </li>
                   ))}
@@ -289,15 +289,15 @@ export default function RelatoriosPanel() {
               </div>
 
               {/* Por Área Jurídica */}
-              <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-                <h3 className="font-bold text-sm text-gray-900 mb-3 flex items-center gap-2">
+              <div className="bg-[#1B1D1E] border border-gray-800 rounded-2xl p-5 shadow-lg">
+                <h3 className="font-bold text-sm text-white mb-3 flex items-center gap-2">
                   <span>⚖️</span> Por Área Jurídica
                 </h3>
                 <ul className="space-y-2 text-xs">
                   {Object.entries(porArea).map(([a, count]) => (
-                    <li key={a} className="flex justify-between items-center p-2 rounded bg-gray-50 border border-gray-200">
-                      <span className="font-medium text-gray-700">{a}</span>
-                      <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold">{count}</span>
+                    <li key={a} className="flex justify-between items-center p-2 rounded bg-[#1E2022] border border-gray-800">
+                      <span className="font-medium text-gray-200">{a}</span>
+                      <span className="px-2 py-0.5 rounded bg-emerald-50 text-green-400 font-black border border-emerald-200 font-bold">{count}</span>
                     </li>
                   ))}
                   {Object.keys(porArea).length === 0 && <p className="text-gray-400">Nenhum dado.</p>}
@@ -305,15 +305,15 @@ export default function RelatoriosPanel() {
               </div>
 
               {/* Por Status */}
-              <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-                <h3 className="font-bold text-sm text-gray-900 mb-3 flex items-center gap-2">
+              <div className="bg-[#1B1D1E] border border-gray-800 rounded-2xl p-5 shadow-lg">
+                <h3 className="font-bold text-sm text-white mb-3 flex items-center gap-2">
                   <span>📌</span> Por Status
                 </h3>
                 <ul className="space-y-2 text-xs">
                   {Object.entries(porStatus).map(([s, count]) => (
-                    <li key={s} className="flex justify-between items-center p-2 rounded bg-gray-50 border border-gray-200">
-                      <span className="font-medium text-gray-700 capitalize">{s.replace('_', ' ')}</span>
-                      <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 font-bold">{count}</span>
+                    <li key={s} className="flex justify-between items-center p-2 rounded bg-[#1E2022] border border-gray-800">
+                      <span className="font-medium text-gray-200 capitalize">{s.replace('_', ' ')}</span>
+                      <span className="px-2 py-0.5 rounded bg-amber-50 text-yellow-400 font-bold border border-amber-200 font-bold">{count}</span>
                     </li>
                   ))}
                   {Object.keys(porStatus).length === 0 && <p className="text-gray-400">Nenhum dado.</p>}
@@ -322,8 +322,8 @@ export default function RelatoriosPanel() {
             </div>
 
             {/* Tabela de Processos */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm overflow-x-auto">
-              <h3 className="font-bold text-sm text-gray-900 mb-3">Tabela Geral de Casos & Processos ({cases.length})</h3>
+            <div className="bg-[#1B1D1E] border border-gray-800 rounded-2xl p-5 shadow-lg overflow-x-auto">
+              <h3 className="font-bold text-sm text-white mb-3">Tabela Geral de Casos & Processos ({cases.length})</h3>
               <table className="w-full text-xs text-left">
                 <thead>
                   <tr className="border-b border-gray-200 text-gray-500">
@@ -336,15 +336,15 @@ export default function RelatoriosPanel() {
                     <th className="py-2 px-3">Prazo</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-800">
                   {cases.map((c) => (
-                    <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-2.5 px-3 font-semibold text-gray-900">{c.title}</td>
+                    <tr key={c.id} className="hover:bg-gray-800/40 transition-colors">
+                      <td className="py-2.5 px-3 font-semibold text-white">{c.title}</td>
                       <td className="py-2.5 px-3 text-gray-600">{c.client_name || '-'}</td>
                       <td className="py-2.5 px-3 text-indigo-700 font-bold">{c.court || '-'}</td>
                       <td className="py-2.5 px-3 text-gray-600">{c.legal_area || '-'}</td>
                       <td className="py-2.5 px-3 text-gray-500">{c.procedural_step || '-'}</td>
-                      <td className="py-2.5 px-3 text-emerald-700 font-bold">{c.case_value ? brl(Number(c.case_value)) : '-'}</td>
+                      <td className="py-2.5 px-3 text-green-400 font-black font-bold">{c.case_value ? brl(Number(c.case_value)) : '-'}</td>
                       <td className="py-2.5 px-3 text-gray-500">{c.deadline_date ? new Date(c.deadline_date).toLocaleDateString('pt-BR') : '-'}</td>
                     </tr>
                   ))}
@@ -363,7 +363,7 @@ export default function RelatoriosPanel() {
                 className={`p-3.5 rounded-xl text-sm font-medium border shadow-xs ${
                   actionMsg.type === 'error'
                     ? 'bg-red-50 border-red-200 text-red-700'
-                    : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                    : 'bg-emerald-50 border-emerald-200 text-green-400 font-black'
                 }`}
               >
                 {actionMsg.text}
@@ -372,19 +372,19 @@ export default function RelatoriosPanel() {
 
             {/* Métricas Principais Consolidadas */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-white border border-gray-200 rounded-xl p-4 text-center shadow-xs">
+              <div className="bg-[#1E2022] border border-gray-800 rounded-xl p-4 text-center shadow-sm">
                 <p className="text-xs text-gray-500 mb-1">Volume da Causa (Patrimônio Total)</p>
-                <p className="text-xl md:text-2xl font-bold text-gray-900">{brl(totalPatrimonio)}</p>
+                <p className="text-xl md:text-2xl font-bold text-white">{brl(totalPatrimonio)}</p>
                 <p className="text-[10px] text-gray-400 mt-1">{cases.length} processos no acervo</p>
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-4 text-center shadow-xs">
+              <div className="bg-[#1E2022] border border-gray-800 rounded-xl p-4 text-center shadow-sm">
                 <p className="text-xs text-gray-500 mb-1">Honorários Estimados Ativos</p>
-                <p className="text-xl md:text-2xl font-bold text-amber-700">{brl(totalHonorariosAtivos)}</p>
+                <p className="text-xl md:text-2xl font-bold text-yellow-400 font-bold">{brl(totalHonorariosAtivos)}</p>
                 <p className="text-[10px] text-gray-400 mt-1">Conforme % e base configurada</p>
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl p-4 text-center shadow-xs">
+              <div className="bg-[#1E2022] border border-gray-800 rounded-xl p-4 text-center shadow-sm">
                 <p className="text-xs text-gray-500 mb-1">Honorários Recebidos / Liquidados</p>
-                <p className="text-xl md:text-2xl font-bold text-emerald-700">{brl(totalHonorariosEncerrados)}</p>
+                <p className="text-xl md:text-2xl font-bold text-green-400 font-black">{brl(totalHonorariosEncerrados)}</p>
                 <p className="text-[10px] text-gray-400 mt-1">Processos concluídos e liquidados</p>
               </div>
             </div>
@@ -436,10 +436,10 @@ export default function RelatoriosPanel() {
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4">
+            <div className="bg-[#1B1D1E] border border-gray-800 rounded-2xl p-5 shadow-lg space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-100">
                 <div>
-                  <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
+                  <h3 className="font-bold text-sm text-white flex items-center gap-2">
                     <span>📑</span> Extrato de Honorários e Valores da Causa
                   </h3>
                   <p className="text-xs text-gray-500">
@@ -454,12 +454,12 @@ export default function RelatoriosPanel() {
                     value={financeiroSearch}
                     onChange={(e) => setFinanceiroSearch(e.target.value)}
                     placeholder="Buscar por processo, cliente..."
-                    className="px-3 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow min-w-[200px]"
+                    className="px-3 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg text-white focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow min-w-[200px]"
                   />
                   <select
                     value={financeiroStatusFilter}
                     onChange={(e) => setFinanceiroStatusFilter(e.target.value)}
-                    className="px-3 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
+                    className="px-3 py-1.5 text-xs bg-gray-50 border border-gray-300 rounded-lg text-white focus:outline-none focus:border-nc-yellow focus:ring-1 focus:ring-nc-yellow"
                   >
                     <option value="todos">Todos os Processos</option>
                     <option value="ativos">⚡ Apenas Ativos (Em andamento)</option>
@@ -541,11 +541,11 @@ export default function RelatoriosPanel() {
                         >
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className={`text-sm font-semibold ${isClosed ? 'text-gray-600 line-through' : 'text-gray-900'}`}>
+                              <p className={`text-sm font-semibold ${isClosed ? 'text-gray-600 line-through' : 'text-white'}`}>
                                 {c.title}
                               </p>
                               {isClosed && (
-                                <span className="text-[10px] px-2 py-0.5 rounded bg-gray-200 text-gray-700 font-bold border border-gray-300">
+                                <span className="text-[10px] px-2 py-0.5 rounded bg-gray-200 text-gray-200 font-bold border border-gray-300">
                                   📁 Encerrado
                                 </span>
                               )}
@@ -570,11 +570,11 @@ export default function RelatoriosPanel() {
                             <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 mt-2">
                               <span>Valor da Causa: <strong className="font-mono">{brl(valorCausa)}</strong></span>
                               {fee.awarded_value != null && (
-                                <span className={isClosed ? 'text-gray-600 font-medium' : 'text-emerald-700 font-semibold'}>
+                                <span className={isClosed ? 'text-gray-600 font-medium' : 'text-green-400 font-black font-semibold'}>
                                   Condenação/Execução: <strong className="font-mono">{brl(fee.awarded_value)}</strong>
                                 </span>
                               )}
-                              <span className="text-[10px] bg-gray-200/80 px-2 py-0.5 rounded text-gray-700 font-medium">
+                              <span className="text-[10px] bg-gray-200/80 px-2 py-0.5 rounded text-gray-200 font-medium">
                                 Regra: {fee.fee_type === 'fixo' ? 'Valor Fixo' : `${fee.fee_percentage}% s/ ${fee.fee_basis === 'condenacao' ? 'condenação' : 'causa'}`}
                               </span>
                             </div>
@@ -582,13 +582,13 @@ export default function RelatoriosPanel() {
                           <div className="text-left sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-gray-200/60 flex flex-col sm:items-end justify-between">
                             <div>
                               <p className="text-[11px] text-gray-500">Honorários {isClosed ? 'Apurados / Liquidados' : 'Estimados'}</p>
-                              <p className={`text-base font-bold ${isClosed ? 'text-gray-700' : 'text-emerald-700'}`}>
+                              <p className={`text-base font-bold ${isClosed ? 'text-gray-200' : 'text-green-400 font-black'}`}>
                                 {brl(honorario)}
                               </p>
                               <span className={`inline-block text-[10px] px-2.5 py-0.5 rounded font-medium mt-1 ${
                                 isClosed
-                                  ? 'bg-gray-200 text-gray-700 border border-gray-300'
-                                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                  ? 'bg-gray-200 text-gray-200 border border-gray-300'
+                                  : 'bg-amber-50 text-yellow-400 font-bold border border-amber-200'
                               }`}>
                                 {isClosed ? '✓ Encerrado / Liquidado' : '⚡ Ativo / Em andamento'}
                               </span>
@@ -632,13 +632,13 @@ export default function RelatoriosPanel() {
                 <div className="text-xs text-gray-500 mt-1">Contatos / Leads</div>
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                <div className="text-3xl font-bold text-emerald-700">
+                <div className="text-3xl font-bold text-green-400 font-black">
                   {cases.filter((c) => c.status !== 'encerrado').length}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">Processos Ativos</div>
               </div>
               <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                <div className="text-3xl font-bold text-amber-700">
+                <div className="text-3xl font-bold text-yellow-400 font-bold">
                   {conversations.length > 0 ? `${Math.round((cases.length / conversations.length) * 100)}%` : '0%'}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">Taxa de Conversão</div>
@@ -651,8 +651,8 @@ export default function RelatoriosPanel() {
               </div>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-              <h3 className="font-bold text-sm text-gray-900 mb-2">⚡ Eficiência do Escritório</h3>
+            <div className="bg-[#1B1D1E] border border-gray-800 rounded-2xl p-5 shadow-lg">
+              <h3 className="font-bold text-sm text-white mb-2">⚡ Eficiência do Escritório</h3>
               <p className="text-xs text-gray-500 mb-4">
                 Indicadores calculados a partir das interações WhatsApp e movimentos processuais registrados.
               </p>
@@ -660,7 +660,7 @@ export default function RelatoriosPanel() {
                 <div>
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-gray-600">Resolução de Prazos Urgentes</span>
-                    <span className="text-emerald-700 font-bold">{totalDeadlines > 0 ? `${deadlineEfficiency}%` : '0%'}</span>
+                    <span className="text-green-400 font-black font-bold">{totalDeadlines > 0 ? `${deadlineEfficiency}%` : '0%'}</span>
                   </div>
                   <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
                     <div

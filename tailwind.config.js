@@ -11,9 +11,12 @@ module.exports = {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
       },
       colors: {
-        'nc-black': '#0D0D0D',
+        'nc-black': '#181A1B',
         'nc-dark': '#111111',
-        'nc-surface': '#FAFAFA',
+        'nc-card': '#1B1D1E',
+        'nc-inner': '#1E2022',
+        'nc-border': '#2A2D2F',
+        'nc-surface': '#1B1D1E',
         'nc-white': '#FFFFFF',
         'nc-gray': {
           50: '#F9F9F9',

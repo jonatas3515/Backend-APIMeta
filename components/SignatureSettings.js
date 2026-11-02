@@ -128,7 +128,7 @@ export default function SignatureSettings() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-nc-text">🔐 Assinatura Eletrônica</h2>
+          <h2 className="text-2xl font-bold text-white">🔐 Assinatura Eletrônica</h2>
           <p className="text-xs text-gray-400 mt-0.5">
             Conecte a conta do seu escritório na ZapSign, ClickSign ou DocuSign.
           </p>
@@ -165,7 +165,7 @@ export default function SignatureSettings() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-nc-text mb-1">
+            <label className="block text-sm font-medium text-gray-200 mb-1">
               Plataforma de Assinatura
             </label>
             <select
@@ -180,7 +180,7 @@ export default function SignatureSettings() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-nc-text mb-1">
+            <label className="block text-sm font-medium text-gray-200 mb-1">
               Chave de API (API Key da sua conta)
             </label>
             <input
@@ -197,7 +197,7 @@ export default function SignatureSettings() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-nc-text mb-1">
+            <label className="block text-sm font-medium text-gray-200 mb-1">
               API Secret (opcional)
             </label>
             <input

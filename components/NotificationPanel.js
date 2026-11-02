@@ -248,8 +248,8 @@ export default function NotificationPanel(props) {
         ref={panelRef}
         className={`
           ${isMobile
-            ? 'fixed inset-0 z-[1000] bg-white'
-            : 'fixed bg-white rounded-lg shadow-2xl border border-nc-gray-200 z-[1000]'
+            ? 'fixed inset-0 z-[1000] bg-[#1B1D1E] text-gray-100'
+            : 'fixed bg-[#1B1D1E] text-gray-100 rounded-2xl shadow-2xl border border-gray-800 z-[1000]'
           }
           flex flex-col
         `}
@@ -267,10 +267,10 @@ export default function NotificationPanel(props) {
         }}
       >
         {/* Header */}
-        <div className="flex-shrink-0 border-b border-nc-gray-200 p-4">
+        <div className="flex-shrink-0 border-b border-gray-800 p-4">
           {renderAlert()}
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-nc-text-title">
+            <h2 className="text-lg font-bold text-white">
               🔔 Notificações {countReliable && unreadCount > 0 && `(${unreadCount})`}
               {!countReliable && !rateLimited && !authExpired && !networkError && (
                 <span className="ml-1 text-xs text-yellow-500" title="Atualização parcial" aria-hidden="true">●</span>
@@ -301,8 +301,8 @@ export default function NotificationPanel(props) {
                 className={`
                   px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-colors
                   ${activeGroup === tab.key
-                    ? 'bg-nc-yellow text-white'
-                    : 'bg-nc-gray-100 text-nc-text-secondary hover:bg-nc-gray-200'
+                    ? 'bg-nc-yellow text-nc-black font-bold shadow-sm'
+                    : 'bg-[#1E2022] text-gray-400 hover:text-white border border-gray-800 hover:border-gray-700'
                   }
                 `}
               >
