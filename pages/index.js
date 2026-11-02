@@ -527,7 +527,11 @@ export default function Home() {
         {/* Conteúdo principal */}
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <header className="flex items-center px-2 sm:px-3 py-2 bg-white border-b border-gray-200 z-10 gap-1.5 sm:gap-2 relative overflow-x-auto scrollbar-none">
-            <h1 className="md:hidden text-base font-bold flex-shrink-0">N&C</h1>
+            {profile?.office?.logo_url ? (
+              <img src={profile.office.logo_url} alt={profile.office.name || 'Logo'} className="md:hidden h-7 w-auto max-w-[100px] object-contain flex-shrink-0 rounded" />
+            ) : (
+              <h1 className="md:hidden text-base font-bold flex-shrink-0">{profile?.office?.name?.slice(0, 15) || 'JusJNC'}</h1>
+            )}
             {activeTab === 'chat' && (
               <div className="flex gap-1 bg-nc-gray-100 p-1 rounded text-xs font-medium">
                 <button

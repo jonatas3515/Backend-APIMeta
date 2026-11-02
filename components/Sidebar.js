@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/useAuth';
+import { apiJson } from '../lib/apiClient';
 import { NAV_ITEMS } from '../lib/tabResolver';
 import OfficeBadge from './OfficeBadge';
 
@@ -8,6 +9,36 @@ const MOBILE_PRIMARY_KEYS = ['dashboard', 'chat', 'cases', 'monthly-calendar'];
 export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' }) {
   const { canAccess, signOut } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
+  const [officeLogo, setOfficeLogo] = useState(null);
+  const [officeName, setOfficeName] = useState('JusJNC');
+
+  useEffect(() => {
+    let mounted = true;
+    apiJson('/api/office/current')
+      .then((data) => {
+        if (mounted && data) {
+          if (data.logo_url) setOfficeLogo(data.logo_url);
+          if (data.name) setOfficeName(data.name);
+        }
+      })
+      .catch(() => {});
+
+    const handleOfficeUpdated = (e) => {
+      const office = e?.detail?.office || e?.detail;
+      if (office?.logo_url !== undefined) setOfficeLogo(office.logo_url || null);
+      if (office?.name) setOfficeName(office.name);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('nc:office-updated', handleOfficeUpdated);
+    }
+    return () => {
+      mounted = false;
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('nc:office-updated', handleOfficeUpdated);
+      }
+    };
+  }, []);
 
   const visibleItems = NAV_ITEMS.filter((item) => canAccess(item.minRole));
   const primaryItems = MOBILE_PRIMARY_KEYS.map((k) => visibleItems.find((item) => item.key === k)).filter(Boolean);
@@ -37,7 +68,17 @@ export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' })
       <div
         className={`hidden md:flex ${widthClass} bg-nc-black flex-col items-center py-4 border-r border-nc-gray-800 flex-shrink-0`}
       >
-        <img src="/JNC.png" alt="JNC Logo" className="w-9 h-9 object-contain" />
+        <div className="w-12 h-12 flex items-center justify-center p-1 rounded-xl bg-nc-gray-900/80 border border-nc-gray-800 shadow-inner group relative" title={officeName}>
+          {officeLogo ? (
+            <img
+              src={officeLogo}
+              alt={officeName}
+              className="max-w-full max-h-full object-contain rounded"
+            />
+          ) : (
+            <img src="/JNC.png" alt="JNC Logo" className="w-9 h-9 object-contain" />
+          )}
+        </div>
 
         <nav className="flex-1 flex flex-col space-y-1.5 mt-5 w-full px-2 overflow-y-auto scrollbar-thin">
           {visibleItems.map((item) => (

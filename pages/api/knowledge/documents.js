@@ -1,39 +1,33 @@
 import { supabaseServer } from '../../../lib/supabaseServer';
 import { anonymizeText } from '../../../lib/anonymize';
 import { chunkText } from '../../../lib/chunkText';
+import { withAuth, getTenantOfficeId } from '../../../lib/auth';
+import { canAccessFeature } from '../../../lib/plans';
 
-async function getUserFromToken(req) {
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.replace('Bearer ', '').trim();
-  if (!token) return null;
-  const { data, error } = await supabaseServer.auth.getUser(token);
-  if (error || !data?.user) return null;
-  return data.user;
-}
-
-async function canIngest(userId) {
-  const { data } = await supabaseServer
-    .from('users')
-    .select('role')
-    .eq('auth_user_id', userId)
-    .single();
-  return data && ['admin', 'advogado'].includes(data.role);
-}
-
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (!supabaseServer) {
     return res.status(500).json({ error: 'Servidor Supabase não configurado' });
   }
 
-  const user = await getUserFromToken(req);
-  if (!user) {
-    return res.status(401).json({ error: 'Não autenticado' });
+  const profile = req.user;
+  const office = profile?.office;
+  const isMasterOrMatriz = profile?.is_master || office?.id === '00000000-0000-0000-0000-000000000001';
+  const hasAccess = isMasterOrMatriz || canAccessFeature(office?.plan, 'rag_custom', office);
+
+  if (!hasAccess) {
+    return res.status(403).json({
+      error: 'A Base de Conhecimento e RAG Jurídico é exclusiva do Plano Enterprise.',
+      upgradeRequired: true,
+      requiredPlan: 'Enterprise'
+    });
   }
 
+  const officeId = getTenantOfficeId(req);
+
+  // POST: Cadastrar novo documento
   if (req.method === 'POST') {
-    const allowed = await canIngest(user.id);
-    if (!allowed) {
-      return res.status(403).json({ error: 'Permissão negada' });
+    if (!['admin', 'advogado'].includes(profile.role)) {
+      return res.status(403).json({ error: 'Permissão negada para cadastrar documentos' });
     }
 
     const { title, type, area, tribunal, tags, content, version = 'v1.0' } = req.body || {};
@@ -41,7 +35,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Campos obrigatórios: title, type, content' });
     }
 
-    const allowedTypes = ['modelo_peca','clausula','tese','checklist','jurisprudencia'];
+    const allowedTypes = ['modelo_peca', 'clausula', 'tese', 'checklist', 'jurisprudencia'];
     if (!allowedTypes.includes(type)) {
       return res.status(400).json({ error: 'Tipo inválido' });
     }
@@ -52,7 +46,7 @@ export default async function handler(req, res) {
     const { data: doc, error: docError } = await supabaseServer
       .from('knowledge_documents')
       .insert({
-        title,
+        title: title.trim(),
         type,
         area: area || null,
         tribunal: tribunal || null,
@@ -60,7 +54,8 @@ export default async function handler(req, res) {
         status: 'rascunho',
         version,
         content: anonContent,
-        created_by: user.id
+        created_by: profile.id,
+        office_id: officeId
       })
       .select()
       .single();
@@ -89,15 +84,22 @@ export default async function handler(req, res) {
     return res.status(200).json({ document: doc, chunks: chunks.length });
   }
 
+  // GET: Listar ou buscar documento por ID
   if (req.method === 'GET') {
     const { id, status = 'aprovado', type, area, tribunal } = req.query;
 
     if (id) {
-      const { data: doc, error } = await supabaseServer
+      let docQuery = supabaseServer
         .from('knowledge_documents')
         .select('*')
-        .eq('id', id)
-        .single();
+        .eq('id', id);
+
+      // Usuário comum só vê documentos do próprio escritório
+      if (!isMasterOrMatriz) {
+        docQuery = docQuery.eq('office_id', officeId);
+      }
+
+      const { data: doc, error } = await docQuery.single();
 
       if (error || !doc) {
         return res.status(404).json({ error: 'Documento não encontrado' });
@@ -117,8 +119,14 @@ export default async function handler(req, res) {
 
     let q = supabaseServer
       .from('knowledge_documents')
-      .select('id, title, type, area, tribunal, tags, status, version, created_at, updated_at, content')
+      .select('id, title, type, area, tribunal, tags, status, version, created_at, updated_at, content, office_id')
       .order('updated_at', { ascending: false });
+
+    if (!isMasterOrMatriz) {
+      q = q.eq('office_id', officeId);
+    } else if (req.query.office_id) {
+      q = q.eq('office_id', req.query.office_id);
+    }
 
     if (status !== 'all') q = q.eq('status', status);
     if (type) q = q.eq('type', type);
@@ -160,9 +168,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ documents });
   }
 
+  // PATCH: Alterar status do documento (rascunho / revisado / aprovado)
   if (req.method === 'PATCH') {
-    const allowed = await canIngest(user.id);
-    if (!allowed) {
+    if (!['admin', 'advogado'].includes(profile.role)) {
       return res.status(403).json({ error: 'Permissão negada' });
     }
     const { id, status: newStatus } = req.body || {};
@@ -170,17 +178,22 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'id e status obrigatórios' });
     }
 
+    let existingQuery = supabaseServer
+      .from('knowledge_documents')
+      .select('content, office_id')
+      .eq('id', id);
+
+    if (!isMasterOrMatriz) {
+      existingQuery = existingQuery.eq('office_id', officeId);
+    }
+
+    const { data: existing, error: existingError } = await existingQuery.single();
+
+    if (existingError || !existing) {
+      return res.status(404).json({ error: 'Documento não encontrado' });
+    }
+
     if (newStatus === 'aprovado') {
-      const { data: existing, error: existingError } = await supabaseServer
-        .from('knowledge_documents')
-        .select('content')
-        .eq('id', id)
-        .single();
-
-      if (existingError || !existing) {
-        return res.status(404).json({ error: 'Documento não encontrado' });
-      }
-
       const anonContent = anonymizeText(existing.content);
       const chunks = chunkText(anonContent, 1200, 120);
 
@@ -221,7 +234,7 @@ export default async function handler(req, res) {
 
     const { error } = await supabaseServer
       .from('knowledge_documents')
-      .update({ status: newStatus })
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
       .eq('id', id);
 
     if (error) {
@@ -231,9 +244,9 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true });
   }
 
+  // PUT: Editar documento
   if (req.method === 'PUT') {
-    const allowed = await canIngest(user.id);
-    if (!allowed) {
+    if (!['admin', 'advogado'].includes(profile.role)) {
       return res.status(403).json({ error: 'Permissão negada' });
     }
 
@@ -242,11 +255,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'id obrigatório' });
     }
 
-    const existing = await supabaseServer
+    let existingQuery = supabaseServer
       .from('knowledge_documents')
-      .select('id')
-      .eq('id', id)
-      .single();
+      .select('id, office_id')
+      .eq('id', id);
+
+    if (!isMasterOrMatriz) {
+      existingQuery = existingQuery.eq('office_id', officeId);
+    }
+
+    const existing = await existingQuery.single();
     if (!existing.data) {
       return res.status(404).json({ error: 'Documento não encontrado' });
     }
@@ -305,3 +323,5 @@ export default async function handler(req, res) {
   res.setHeader('Allow', 'GET, POST, PATCH, PUT');
   return res.status(405).json({ error: 'Método não permitido' });
 }
+
+export default withAuth(handler, { minRole: 'estagiario' });

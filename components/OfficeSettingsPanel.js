@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { apiJson } from '../lib/apiClient';
 import { supabase } from '../lib/supabaseClient';
-import { getDefaultOfficeId } from '../lib/officeContext';
 import { safeError } from '../lib/safeLogger';
 import { useAuth } from '../lib/useAuth';
 
@@ -23,11 +22,10 @@ export default function OfficeSettingsPanel() {
   const fileRef = useRef(null);
 
   useEffect(() => {
-    if (!supabase || !officeId) return;
     let mounted = true;
-    supabase.from('offices').select('*').eq('id', officeId).single()
-      .then(({ data, error }) => {
-        if (!mounted || error || !data) return;
+    apiJson('/api/office/current')
+      .then((data) => {
+        if (!mounted || !data) return;
         setForm({
           logo_url: data.logo_url || '',
           birthday_message: data.birthday_message || BIRTHDAY_DEFAULT,
@@ -35,22 +33,54 @@ export default function OfficeSettingsPanel() {
           notify_hour: data.notify_hour ?? 9,
           notify_timezone: data.notify_timezone || 'America/Bahia'
         });
+      })
+      .catch(() => {
+        if (!supabase || !officeId) return;
+        supabase.from('offices').select('*').eq('id', officeId).single()
+          .then(({ data }) => {
+            if (!mounted || !data) return;
+            setForm({
+              logo_url: data.logo_url || '',
+              birthday_message: data.birthday_message || BIRTHDAY_DEFAULT,
+              birthday_message_weekly: data.birthday_message_weekly || BIRTHDAY_WEEKLY_DEFAULT,
+              notify_hour: data.notify_hour ?? 9,
+              notify_timezone: data.notify_timezone || 'America/Bahia'
+            });
+          });
       });
     return () => { mounted = false; };
   }, [officeId]);
 
   const save = async (fields, key) => {
-    if (!supabase) { setMsg({ type: 'error', text: 'Supabase indisponível.' }); return; }
-    if (!officeId) { setMsg({ type: 'error', text: 'Escritório não identificado.' }); return; }
     setSaving(key);
     setMsg(null);
-    const { error } = await supabase.from('offices').update({ ...fields, updated_at: new Date().toISOString() }).eq('id', officeId);
-    setSaving(null);
-    if (error) {
-      safeError('office_settings_save_error', error, { component: 'OfficeSettingsPanel' });
-      setMsg({ type: 'error', text: 'Erro ao salvar. Verifique a migration 068.' });
-    } else {
-      setMsg({ type: 'success', text: 'Salvo com sucesso.' });
+    try {
+      const res = await apiJson('/api/office/current', {
+        method: 'PUT',
+        body: JSON.stringify(fields)
+      });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('nc:office-updated', { detail: res?.office || fields }));
+      }
+      setMsg({ type: 'success', text: 'Configurações salvas com sucesso!' });
+    } catch (err) {
+      if (supabase && officeId) {
+        const { error } = await supabase.from('offices').update({ ...fields, updated_at: new Date().toISOString() }).eq('id', officeId);
+        if (error) {
+          safeError('office_settings_save_error', error, { component: 'OfficeSettingsPanel' });
+          setMsg({ type: 'error', text: 'Erro ao salvar. Verifique suas permissões.' });
+        } else {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('nc:office-updated', { detail: fields }));
+          }
+          setMsg({ type: 'success', text: 'Configurações salvas com sucesso!' });
+        }
+      } else {
+        safeError('office_settings_save_error', err, { component: 'OfficeSettingsPanel' });
+        setMsg({ type: 'error', text: err?.message || 'Erro ao salvar configurações do escritório.' });
+      }
+    } finally {
+      setSaving(null);
     }
   };
 
@@ -64,24 +94,30 @@ export default function OfficeSettingsPanel() {
       const url = data.url || data.publicUrl || data.file_url;
       if (url) {
         setForm((f) => ({ ...f, logo_url: url }));
+        await save({ logo_url: url }, 'logo');
       } else {
         const reader = new FileReader();
-        reader.onload = () => setForm((f) => ({ ...f, logo_url: reader.result }));
+        reader.onload = async () => {
+          setForm((f) => ({ ...f, logo_url: reader.result }));
+          await save({ logo_url: reader.result }, 'logo');
+        };
         reader.readAsDataURL(file);
       }
     } catch {
       const reader = new FileReader();
-      reader.onload = () => setForm((f) => ({ ...f, logo_url: reader.result }));
+      reader.onload = async () => {
+        setForm((f) => ({ ...f, logo_url: reader.result }));
+        await save({ logo_url: reader.result }, 'logo');
+      };
       reader.readAsDataURL(file);
     }
   };
 
   const exportBackup = async () => {
-    if (!supabase) { setMsg({ type: 'error', text: 'Supabase indisponível.' }); return; }
     if (!officeId) { setMsg({ type: 'error', text: 'Escritório não identificado.' }); return; }
     try {
       const [{ data: tasks }, casesRes] = await Promise.all([
-        supabase.from('tasks').select('*'),
+        supabase ? supabase.from('tasks').select('*') : { data: [] },
         apiJson('/api/cases')
       ]);
       const backup = { exported_at: new Date().toISOString(), office_id: officeId, tasks: tasks || [], cases: casesRes || [] };
@@ -90,7 +126,7 @@ export default function OfficeSettingsPanel() {
       a.href = URL.createObjectURL(blob);
       a.download = `backup-escritorio-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
-      setMsg({ type: 'success', text: 'Backup exportado.' });
+      setMsg({ type: 'success', text: 'Backup exportado com sucesso.' });
     } catch (err) {
       safeError('backup_export_error', err, { component: 'OfficeSettingsPanel' });
       setMsg({ type: 'error', text: 'Erro ao exportar backup.' });
@@ -98,8 +134,7 @@ export default function OfficeSettingsPanel() {
   };
 
   const importBackup = async (file) => {
-    if (!supabase) { setMsg({ type: 'error', text: 'Supabase indisponível.' }); return; }
-    if (!officeId) { setMsg({ type: 'error', text: 'Escritório não identificado.' }); return; }
+    if (!supabase || !officeId) { setMsg({ type: 'error', text: 'Supabase indisponível.' }); return; }
     try {
       const parsed = JSON.parse(await file.text());
       const tasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
@@ -125,35 +160,48 @@ export default function OfficeSettingsPanel() {
 
       {/* Logo */}
       <section className="bg-white rounded-lg shadow p-4">
-        <h3 className="font-bold text-sm text-gray-800 mb-3">🖼️ Logo do Escritório</h3>
+        <h3 className="font-bold text-sm text-gray-800 mb-1">🖼️ Logo do Escritório</h3>
+        <p className="text-xs text-gray-500 mb-3">
+          A logo definida aqui aparecerá na barra lateral (menu superior esquerdo), no cabeçalho do Dashboard e nos relatórios/documentos emitidos pelo escritório.
+        </p>
         <div className="flex flex-wrap items-start gap-4">
-          <div className="w-64 h-64 border rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden" style={{ maxWidth: 256, maxHeight: 256 }}>
+          <div className="w-64 h-48 border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 flex items-center justify-center overflow-hidden p-2">
             {form.logo_url ? (
-              <img src={form.logo_url} alt="Logo do escritório" className="w-full h-full object-contain" />
+              <img src={form.logo_url} alt="Logo do escritório" className="max-w-full max-h-full object-contain rounded" />
             ) : (
-              <span className="text-xs text-gray-400 text-center px-4">Sem logo</span>
+              <div className="text-center p-4">
+                <span className="text-2xl block mb-1">🏢</span>
+                <span className="text-xs text-gray-400">Nenhuma logo personalizada</span>
+              </div>
             )}
           </div>
           <div className="flex-1 min-w-[220px] space-y-2">
             <input
               type="url"
-              placeholder="URL da imagem da logo"
+              placeholder="URL da imagem da logo (https://...)"
               value={form.logo_url}
               onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
               className="w-full px-3 py-2 border rounded text-sm"
             />
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleUpload(e.target.files?.[0])} />
-            <button onClick={() => fileRef.current?.click()} className="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200 text-sm font-medium">
-              📤 Enviar imagem do dispositivo
-            </button>
-            <button
-              onClick={() => save({ logo_url: form.logo_url }, 'logo')}
-              disabled={saving === 'logo'}
-              className="block px-4 py-2 rounded bg-nc-black text-white text-sm font-medium hover:opacity-90 disabled:opacity-60"
-              data-testid="save-logo"
-            >
-              {saving === 'logo' ? 'Salvando...' : 'Salvar Logo'}
-            </button>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200 text-sm font-medium transition"
+              >
+                📤 Enviar imagem do dispositivo
+              </button>
+              <button
+                type="button"
+                onClick={() => save({ logo_url: form.logo_url }, 'logo')}
+                disabled={saving === 'logo'}
+                className="px-4 py-2 rounded bg-nc-black text-white text-sm font-medium hover:opacity-90 disabled:opacity-60 transition"
+                data-testid="save-logo"
+              >
+                {saving === 'logo' ? 'Salvando...' : 'Salvar Logo'}
+              </button>
+            </div>
           </div>
         </div>
       </section>

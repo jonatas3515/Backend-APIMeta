@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { withAuth } from '@/lib/auth';
+import { withAuth, getTenantOfficeId } from '@/lib/auth';
 import { searchDocuments, createDocument } from '@/lib/knowledge';
+import { canAccessFeature } from '@/lib/plans';
 import logger from '@/lib/logger';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,6 +14,19 @@ const supabase = SUPABASE_URL && SUPABASE_SERVICE_KEY
 async function handler(req, res) {
   if (!supabase) {
     return res.status(500).json({ error: 'Serviço indisponível' });
+  }
+
+  const user = req.user;
+  const office = user?.office;
+  const isMasterOrMatriz = user?.is_master || office?.id === '00000000-0000-0000-0000-000000000001';
+  const hasAccess = isMasterOrMatriz || canAccessFeature(office?.plan, 'rag_custom', office);
+
+  if (!hasAccess) {
+    return res.status(403).json({
+      error: 'A Base de Conhecimento e RAG Jurídico é exclusiva do Plano Enterprise.',
+      upgradeRequired: true,
+      requiredPlan: 'Enterprise'
+    });
   }
 
   if (req.method === 'GET') {
@@ -29,13 +43,16 @@ async function handler(req, res) {
 
 async function handleGet(req, res) {
   const user = req.user;
+  const officeId = getTenantOfficeId(req);
   const { query = '', type = null, status = 'aprovado', page = '1', limit = '20' } = req.query;
 
   try {
+    const isMasterOrMatriz = user?.is_master || user?.office_id === '00000000-0000-0000-0000-000000000001';
     const result = await searchDocuments(supabase, {
       query,
       type,
       status,
+      office_id: isMasterOrMatriz && !officeId ? null : officeId,
       page: parseInt(page, 10) || 1,
       limit: Math.min(parseInt(limit, 10) || 20, 100)
     });
@@ -56,9 +73,14 @@ async function handleGet(req, res) {
 
 async function handlePost(req, res) {
   const user = req.user;
+  const officeId = getTenantOfficeId(req);
 
   try {
-    const doc = await createDocument(supabase, req.body, user.id);
+    const payload = {
+      ...req.body,
+      office_id: officeId
+    };
+    const doc = await createDocument(supabase, payload, user.id);
     logger('info', 'KNOWLEDGE_CREATE_SUCCESS', { httpStatus: 201, userId: user.id, documentId: doc.id });
     return res.status(201).json(doc);
   } catch (error) {

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { withAuth } from '@/lib/auth';
+import { withAuth, getTenantOfficeId } from '@/lib/auth';
 import { semanticSearch } from '@/lib/knowledge-embeddings';
+import { canAccessFeature } from '@/lib/plans';
 import logger from '@/lib/logger';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -21,6 +22,19 @@ async function handler(req, res) {
   }
 
   const user = req.user;
+  const office = user?.office;
+  const isMasterOrMatriz = user?.is_master || office?.id === '00000000-0000-0000-0000-000000000001';
+  const hasAccess = isMasterOrMatriz || canAccessFeature(office?.plan, 'rag_custom', office);
+
+  if (!hasAccess) {
+    return res.status(403).json({
+      error: 'A Base de Conhecimento e RAG Jurídico é exclusiva do Plano Enterprise.',
+      upgradeRequired: true,
+      requiredPlan: 'Enterprise'
+    });
+  }
+
+  const officeId = getTenantOfficeId(req);
   const { query, topK = 5, area = null, tribunal = null, type = null } = req.body || {};
 
   if (!query || query.trim().length < 3) {
@@ -29,7 +43,14 @@ async function handler(req, res) {
   }
 
   try {
-    const results = await semanticSearch(supabase, { query, topK, area, tribunal, type });
+    const results = await semanticSearch(supabase, {
+      query,
+      topK,
+      area,
+      tribunal,
+      type,
+      officeId: isMasterOrMatriz && !officeId ? null : officeId
+    });
 
     logger('info', 'KNOWLEDGE_SEARCH_SUCCESS', {
       httpStatus: 200,
