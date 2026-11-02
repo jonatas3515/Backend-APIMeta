@@ -5,7 +5,7 @@ import { safeError } from '../lib/safeLogger';
 import { isTrialActive, calculateTrialDaysRemaining } from '../lib/plans';
 import SubscriptionModal from './SubscriptionModal';
 
-const FALLBACK_OFFICE = { name: 'Neves & Costa Advogados', plan: 'pro', status: 'active' };
+const FALLBACK_OFFICE = { name: 'Neves & Costa Advogados', plan: 'enterprise', status: 'active' };
 
 const PLAN_LABELS = {
   trial: 'TRIAL',

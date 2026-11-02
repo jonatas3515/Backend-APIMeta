@@ -40,8 +40,11 @@ async function handler(req, res) {
     const active_count = all.filter((o) => o.status === 'active').length;
     const blocked_count = all.filter((o) => o.status === 'blocked' || o.status === 'suspended').length;
 
+    const MATRIZ_ID = '00000000-0000-0000-0000-000000000001';
+
     const mrr = all.reduce((sum, o) => {
-      if (o.status !== 'active') return sum;
+      // Exclui a matriz Neves & Costa (escritório proprietário) das métricas de receita
+      if (o.status !== 'active' || o.id === MATRIZ_ID) return sum;
       const sub = activeSubByOffice[o.id];
       const plan = sub?.plan || o.plan;
       return sum + (PRICE_BY_PLAN[plan] || 0);

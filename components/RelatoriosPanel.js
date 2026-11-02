@@ -40,11 +40,6 @@ export default function RelatoriosPanel() {
         if (casesR.status === 'fulfilled' && Array.isArray(casesR.value)) {
           loadedCases = casesR.value;
         }
-        // Fallback para buscar direto do supabase caso a rota retorne vazio
-        if (loadedCases.length === 0) {
-          const { data: dbCases } = await supabase.from('cases').select('*');
-          if (dbCases && dbCases.length > 0) loadedCases = dbCases;
-        }
         setCases(loadedCases);
         if (metricsR.status === 'fulfilled' && metricsR.value && typeof metricsR.value === 'object') setMetrics(metricsR.value);
         if (convsR.status === 'fulfilled' && Array.isArray(convsR.value)) setConversations(convsR.value);
@@ -98,6 +93,24 @@ export default function RelatoriosPanel() {
   const totalPatrimonio = useMemo(() => {
     return cases.reduce((acc, c) => acc + (Number(c.case_value) || 0), 0);
   }, [cases]);
+
+  const totalDeadlines = useMemo(() => cases.filter((c) => c.deadline_date).length, [cases]);
+  const overdueDeadlines = useMemo(() => cases.filter(
+    (c) => c.deadline_date && new Date(c.deadline_date) < new Date() && c.status !== 'encerrado'
+  ).length, [cases]);
+  const deadlineEfficiency = useMemo(() => {
+    if (totalDeadlines === 0) return 0;
+    return Math.max(0, Math.round(((totalDeadlines - overdueDeadlines) / totalDeadlines) * 100));
+  }, [totalDeadlines, overdueDeadlines]);
+
+  const totalConversations = useMemo(() => conversations.length, [conversations]);
+  const activeConversations = useMemo(() => conversations.filter(
+    (c) => c.status !== 'closed' && c.client_status !== 'inativo'
+  ).length, [conversations]);
+  const whatsappCoverage = useMemo(() => {
+    if (totalConversations === 0) return 0;
+    return Math.max(0, Math.round((activeConversations / totalConversations) * 100));
+  }, [totalConversations, activeConversations]);
 
   const totalHonorariosAtivos = useMemo(() => {
     return cases
@@ -647,19 +660,25 @@ export default function RelatoriosPanel() {
                 <div>
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-gray-600">Resolução de Prazos Urgentes</span>
-                    <span className="text-emerald-700 font-bold">100%</span>
+                    <span className="text-emerald-700 font-bold">{totalDeadlines > 0 ? `${deadlineEfficiency}%` : '0%'}</span>
                   </div>
                   <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                    <div className="bg-emerald-500 h-full w-full" />
+                    <div
+                      className="bg-emerald-500 h-full transition-all duration-500"
+                      style={{ width: `${totalDeadlines > 0 ? deadlineEfficiency : 0}%` }}
+                    />
                   </div>
                 </div>
                 <div>
                   <div className="flex justify-between text-xs mb-1">
                     <span className="text-gray-600">Cobertura de Atendimento WhatsApp</span>
-                    <span className="text-blue-700 font-bold">98%</span>
+                    <span className="text-blue-700 font-bold">{totalConversations > 0 ? `${whatsappCoverage}%` : '0%'}</span>
                   </div>
                   <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                    <div className="bg-blue-500 h-full w-[98%]" />
+                    <div
+                      className="bg-blue-500 h-full transition-all duration-500"
+                      style={{ width: `${totalConversations > 0 ? whatsappCoverage : 0}%` }}
+                    />
                   </div>
                 </div>
               </div>

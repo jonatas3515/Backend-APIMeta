@@ -40,11 +40,14 @@ async function handleGet(req, res, profile) {
     return res.status(403).json({ error: 'Acesso negado' });
   }
 
+  const officeId = (profile.is_master && req.query.office_id)
+    ? req.query.office_id
+    : (profile.office_id || profile.office?.id || '00000000-0000-0000-0000-000000000001');
+
   let query = supabase.from('users').select('id, name, email, role, is_active, created_at, auth_user_id, office_id');
 
-  if (!profile.is_master && profile.office_id) {
-    query = query.eq('office_id', profile.office_id);
-  }
+  // Cada admin/advogado vê ESTRITAMENTE os integrantes do seu próprio escritório
+  query = query.eq('office_id', officeId);
 
   if (profile.role === 'advogado') {
     // Advogado vê apenas estagiários
@@ -164,20 +167,32 @@ async function handlePatch(req, res, profile) {
     return res.status(400).json({ error: 'ID do usuário é obrigatório' });
   }
 
-  // Admin pode tudo; advogado só pode editar estagiários
+  // Admin pode gerenciar membros do seu escritório; advogado só pode gerenciar estagiários
   if (profile.role === 'estagiario') {
     return res.status(403).json({ error: 'Acesso negado' });
   }
 
+  const officeId = profile.office_id || profile.office?.id || '00000000-0000-0000-0000-000000000001';
+
+  // Verifica se alvo existe e pertence ao mesmo escritório
+  const { data: target } = await supabase
+    .from('users')
+    .select('id, role, office_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!target) {
+    return res.status(404).json({ error: 'Usuário não encontrado' });
+  }
+
+  // Isolamento estrito por escritório
+  if (!profile.is_master && target.office_id !== officeId) {
+    return res.status(403).json({ error: 'Acesso negado: usuário pertence a outro escritório' });
+  }
+
   // Verifica se alvo é estagiário (para advogado)
   if (profile.role === 'advogado') {
-    const { data: target } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', id)
-      .single();
-
-    if (!target || target.role !== 'estagiario') {
+    if (target.role !== 'estagiario') {
       return res.status(403).json({ error: 'Advogado só pode editar estagiários' });
     }
   }
@@ -229,6 +244,23 @@ async function handleDelete(req, res, profile) {
   // Apenas admin pode desativar (não exclui de verdade)
   if (profile.role !== 'admin') {
     return res.status(403).json({ error: 'Acesso negado' });
+  }
+
+  const officeId = profile.office_id || profile.office?.id || '00000000-0000-0000-0000-000000000001';
+
+  // Verifica se alvo pertence ao escritório do admin
+  const { data: target } = await supabase
+    .from('users')
+    .select('id, role, office_id')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (!target) {
+    return res.status(404).json({ error: 'Usuário não encontrado' });
+  }
+
+  if (!profile.is_master && target.office_id !== officeId) {
+    return res.status(403).json({ error: 'Acesso negado: usuário pertence a outro escritório' });
   }
 
   try {

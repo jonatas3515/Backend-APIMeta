@@ -3,7 +3,19 @@ import { useToast } from '../lib/useToast';
 import { getErrorMessage } from '../lib/errorMessage';
 import { apiCall } from '../lib/apiClient';
 
-const ACTIVE_CLIENT_STATUSES = ['ativo', 'active', ''];
+const ACTIVE_CLIENT_STATUSES = [
+  'ativo',
+  'active',
+  'cliente_ativo',
+  'lead',
+  'contato',
+  'em_atendimento',
+  'qualificado',
+  'novo_lead',
+  'interessado',
+  'prospect',
+  ''
+];
 
 export default function ConversationSelectorModal({ caseItem, onSelect, onClose }) {
   const { addToast } = useToast();

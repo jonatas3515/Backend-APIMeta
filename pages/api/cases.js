@@ -5,7 +5,21 @@ import logger from '@/lib/logger';
 import { incrementMetric } from '@/lib/metrics';
 import { getCache, setCache, deleteCache, clearCacheByPrefix } from '@/lib/cache';
 
-const ACTIVE_CLIENT_STATUSES = ['ativo', 'active', ''];
+const ACTIVE_CLIENT_STATUSES = [
+  'ativo',
+  'active',
+  'cliente_ativo',
+  'lead',
+  'contato',
+  'em_atendimento',
+  'qualificado',
+  'novo_lead',
+  'interessado',
+  'prospect',
+  ''
+];
+
+const INACTIVE_CLIENT_STATUSES = ['inativo', 'inactive', 'bloqueado', 'spam'];
 
 const PROCESS_STRING_FIELDS = [
   'process_number',
@@ -115,8 +129,8 @@ async function validateConversation(conversationId) {
     return { valid: false, status: 404, error: 'Conversa nao encontrada' };
   }
 
-  const status = (data.client_status || '').toLowerCase();
-  if (!ACTIVE_CLIENT_STATUSES.includes(status)) {
+  const status = (data.client_status || '').toLowerCase().trim();
+  if (INACTIVE_CLIENT_STATUSES.includes(status) || !ACTIVE_CLIENT_STATUSES.includes(status)) {
     return { valid: false, status: 400, error: 'Conversa nao esta ativa' };
   }
 
@@ -434,11 +448,18 @@ async function handlePatch(req, res) {
       return res.status(400).json({ error: 'Nenhum campo válido para atualizar' });
     }
 
-    const { data, error } = await supabase
+    const tenantOfficeId = typeof getTenantOfficeId === 'function' ? getTenantOfficeId(req) : (req.user?.office_id || null);
+
+    let updateQuery = supabase
       .from('cases')
       .update(sanitizedUpdates)
-      .eq('id', id)
-      .eq('office_id', getTenantOfficeId(req))
+      .eq('id', id);
+
+    if (tenantOfficeId && !req.user?.is_master) {
+      updateQuery = updateQuery.eq('office_id', tenantOfficeId);
+    }
+
+    const { data, error } = await updateQuery
       .select()
       .single();
 
