@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { withAuth, requireRole, hasMinimumRole } from '@/lib/auth';
+import { withAuth, requireRole, hasMinimumRole, getTenantOfficeId } from '@/lib/auth';
 import logger from '@/lib/logger';
 import { incrementMetric } from '@/lib/metrics';
 
@@ -24,12 +24,14 @@ async function handler(req, res) {
     const { method } = req;
     const { id, case_id, status } = req.query;
     const user = req.user;
+    const officeId = getTenantOfficeId(req);
     const isAdminOrLawyer = hasMinimumRole(user, 'advogado');
 
     if (method === 'GET') {
       let query = supabaseAdmin
         .from('fee_simulations')
-        .select('*, fee_service_catalog(name, legal_area, case_type), cases(id, title)');
+        .select('*, fee_service_catalog(name, legal_area, case_type), cases(id, title)')
+        .eq('office_id', officeId);
       if (id) query = query.eq('id', id).single();
       if (case_id && case_id !== 'undefined' && case_id !== 'null') query = query.eq('case_id', case_id);
       if (status) query = query.eq('status', status);
@@ -52,7 +54,7 @@ async function handler(req, res) {
         return res.status(400).json({ error: 'case_id é obrigatório' });
       }
 
-      const { simulation, calculated } = await buildSimulation(req, user);
+      const { simulation, calculated } = await buildSimulation(req, user, officeId);
       const { data, error } = await supabaseAdmin
         .from('fee_simulations')
         .insert(simulation)
@@ -161,7 +163,7 @@ async function calculate(req, res) {
   });
 }
 
-async function buildSimulation(req, user) {
+async function buildSimulation(req, user, officeId) {
   const { case_id, service_id, complexity, urgency, service_stage, document_volume, estimated_economic_value, internal_notes } = req.body;
 
   const { data: service } = await supabaseAdmin
@@ -176,6 +178,7 @@ async function buildSimulation(req, user) {
   const calc = await calculateForParams(supabaseAdmin, service, { complexity, urgency, service_stage, document_volume, estimated_economic_value });
 
   const simulation = {
+    office_id: officeId,
     case_id,
     service_id,
     status: 'rascunho',

@@ -10,7 +10,7 @@ const BIRTHDAY_WEEKLY_DEFAULT = 'Olá {nome}! Seu aniversário está chegando! �
 
 export default function OfficeSettingsPanel() {
   const { profile } = useAuth();
-  const officeId = profile?.office_id || getDefaultOfficeId();
+  const officeId = profile?.office_id;
   const [form, setForm] = useState({
     logo_url: '',
     birthday_message: '',
@@ -23,7 +23,7 @@ export default function OfficeSettingsPanel() {
   const fileRef = useRef(null);
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase || !officeId) return;
     let mounted = true;
     supabase.from('offices').select('*').eq('id', officeId).single()
       .then(({ data, error }) => {
@@ -41,6 +41,7 @@ export default function OfficeSettingsPanel() {
 
   const save = async (fields, key) => {
     if (!supabase) { setMsg({ type: 'error', text: 'Supabase indisponível.' }); return; }
+    if (!officeId) { setMsg({ type: 'error', text: 'Escritório não identificado.' }); return; }
     setSaving(key);
     setMsg(null);
     const { error } = await supabase.from('offices').update({ ...fields, updated_at: new Date().toISOString() }).eq('id', officeId);
@@ -77,6 +78,7 @@ export default function OfficeSettingsPanel() {
 
   const exportBackup = async () => {
     if (!supabase) { setMsg({ type: 'error', text: 'Supabase indisponível.' }); return; }
+    if (!officeId) { setMsg({ type: 'error', text: 'Escritório não identificado.' }); return; }
     try {
       const [{ data: tasks }, casesRes] = await Promise.all([
         supabase.from('tasks').select('*'),
@@ -97,6 +99,7 @@ export default function OfficeSettingsPanel() {
 
   const importBackup = async (file) => {
     if (!supabase) { setMsg({ type: 'error', text: 'Supabase indisponível.' }); return; }
+    if (!officeId) { setMsg({ type: 'error', text: 'Escritório não identificado.' }); return; }
     try {
       const parsed = JSON.parse(await file.text());
       const tasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];

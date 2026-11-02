@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { withAuth, requireRole } from '@/lib/auth';
+import { withAuth, requireRole, getTenantOfficeId } from '@/lib/auth';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -16,11 +16,18 @@ async function handler(req, res) {
   try {
     const { method } = req;
     const { id, table_type, active } = req.query;
+    const officeId = getTenantOfficeId(req);
 
     if (method === 'GET') {
       let query = supabaseAdmin.from('fee_uploaded_tables').select('*');
       if (id) query = query.eq('id', id).single();
-      if (table_type) query = query.eq('table_type', table_type);
+      if (table_type === 'escritorio') {
+        query = query.eq('table_type', 'escritorio').eq('office_id', officeId);
+      } else if (table_type) {
+        query = query.eq('table_type', table_type);
+      } else {
+        query = query.or(`office_id.eq.${officeId},office_id.is.null,table_type.eq.oab`);
+      }
       if (active === 'true') query = query.eq('is_active', true);
 
       const { data, error } = await query.order('created_at', { ascending: false });
@@ -47,7 +54,8 @@ async function handler(req, res) {
         table_data: Array.isArray(table_data) ? table_data : [],
         is_active: is_active !== undefined ? is_active : true,
         effective_from: effective_from || new Date().toISOString().split('T')[0],
-        created_by: req.user.id
+        created_by: req.user.id,
+        office_id: officeId
       };
 
       const { data, error } = await supabaseAdmin

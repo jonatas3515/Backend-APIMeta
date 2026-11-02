@@ -35,12 +35,16 @@ export default async function handler(req, res) {
 }
 
 async function handleGet(req, res, profile) {
-  // Admin vê todos; advogado vê estagiários; estagiário não vê nada
+  // Admin vê os usuários do seu escritório; advogado vê estagiários do seu escritório; estagiário não vê nada
   if (profile.role === 'estagiario') {
     return res.status(403).json({ error: 'Acesso negado' });
   }
 
-  let query = supabase.from('users').select('id, name, email, role, is_active, created_at, auth_user_id');
+  let query = supabase.from('users').select('id, name, email, role, is_active, created_at, auth_user_id, office_id');
+
+  if (!profile.is_master && profile.office_id) {
+    query = query.eq('office_id', profile.office_id);
+  }
 
   if (profile.role === 'advogado') {
     // Advogado vê apenas estagiários
@@ -104,7 +108,7 @@ async function handlePost(req, res, profile) {
     if (existing) {
       const { data: updated, error: updateError } = await supabase
         .from('users')
-        .update({ name, role, is_active: true, auth_user_id: authUserId })
+        .update({ name, role, is_active: true, auth_user_id: authUserId, office_id: profile.office_id })
         .eq('id', existing.id)
         .select('id')
         .single();
@@ -114,7 +118,7 @@ async function handlePost(req, res, profile) {
     } else {
       const { data: inserted, error: insertError } = await supabase
         .from('users')
-        .insert({ name, email, role, is_active: true, auth_user_id: authUserId })
+        .insert({ name, email, role, is_active: true, auth_user_id: authUserId, office_id: profile.office_id, is_master: false })
         .select('id')
         .single();
 

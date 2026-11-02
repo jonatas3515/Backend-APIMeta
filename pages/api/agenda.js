@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { askGemini } from '@/lib/ai';
-import { withAuth } from '@/lib/auth';
+import { withAuth, getTenantOfficeId } from '@/lib/auth';
 import { safeLog, safeError } from '@/lib/safeLogger';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -115,6 +115,7 @@ async function enrichAgendaItems(items, startDate, endDate) {
 
 async function handleGet(req, res) {
   const requestId = generateRequestId(req);
+  const officeId = getTenantOfficeId(req);
   const { range = 'today', start_date, end_date, legal_area, municipality, agency, priority } = req.query;
 
   try {
@@ -162,7 +163,8 @@ async function handleGet(req, res) {
         p_legal_area: legal_area ? legal_area.toLowerCase() : null,
         p_municipality: municipality ? municipality.toLowerCase() : null,
         p_agency: agency ? agency.toLowerCase() : null,
-        p_priority: priority ? priority.toLowerCase() : null
+        p_priority: priority ? priority.toLowerCase() : null,
+        p_office_id: officeId
       });
       if (result.error) throw result.error;
       items = result.data;
@@ -177,6 +179,7 @@ async function handleGet(req, res) {
         const { data, error } = await supabase
           .from('agenda_consolidada')
           .select('*')
+          .eq('office_id', officeId)
           .gte('event_date', startDate)
           .lte('event_date', endDate);
 
@@ -281,13 +284,15 @@ async function handlePost(req, res) {
         return res.status(400).json({ error: 'Intervalo inválido' });
       }
 
+      const officeId = getTenantOfficeId(req);
       const { data: items, error } = await supabase.rpc('get_agenda', {
         p_start_date: startDate,
         p_end_date: endDate,
         p_legal_area: legal_area || null,
         p_municipality: null,
         p_agency: null,
-        p_priority: null
+        p_priority: null,
+        p_office_id: officeId
       });
 
       if (error) throw error;

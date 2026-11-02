@@ -1,4 +1,4 @@
-import { withAuth, supabaseAdmin } from '@/lib/auth';
+import { withAuth, supabaseAdmin, getTenantOfficeId } from '@/lib/auth';
 import logger from '@/lib/logger';
 
 const COURTS = ['TRT', 'TRF', 'TJ', 'STJ', 'STF', 'Outro'];
@@ -6,6 +6,7 @@ const STEPS = ['conciliacao', 'instrucao', 'sentenca', 'recurso', 'execucao', 'a
 
 async function handler(req, res) {
   const userId = req.user?.id;
+  const officeId = getTenantOfficeId(req);
 
   if (!supabaseAdmin) {
     return res.status(500).json({ error: 'Supabase não configurado' });
@@ -19,11 +20,8 @@ async function handler(req, res) {
     let query = supabaseAdmin
       .from('cases')
       .select('court, procedural_step, case_value, status')
+      .eq('office_id', officeId)
       .neq('status', 'encerrado');
-
-    if (req.query.office_id) {
-      query = query.eq('office_id', req.query.office_id);
-    }
 
     const { data, error } = await query;
     if (error) throw error;

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { withAuth, requireRole } from '@/lib/auth';
+import { withAuth, requireRole, getTenantOfficeId } from '@/lib/auth';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -16,9 +16,10 @@ async function handler(req, res) {
   try {
     const { method } = req;
     const { id, legal_area, case_type, active } = req.query;
+    const officeId = getTenantOfficeId(req);
 
     if (method === 'GET') {
-      let query = supabaseAdmin.from('fee_service_catalog').select('*');
+      let query = supabaseAdmin.from('fee_service_catalog').select('*').eq('office_id', officeId);
       if (id) query = query.eq('id', id).single();
       if (legal_area) query = query.ilike('legal_area', `%${legal_area}%`);
       if (case_type) query = query.ilike('case_type', `%${case_type}%`);
@@ -33,6 +34,7 @@ async function handler(req, res) {
       requireRole(req.user, ['admin']);
       const body = {
         ...req.body,
+        office_id: officeId,
         created_by: req.user.id,
         is_active: req.body.is_active !== undefined ? req.body.is_active : true,
       };
@@ -50,11 +52,12 @@ async function handler(req, res) {
     if (method === 'PATCH') {
       requireRole(req.user, ['admin']);
       if (!id) return res.status(400).json({ error: 'ID obrigatório' });
-      const { data: old } = await supabaseAdmin.from('fee_service_catalog').select('*').eq('id', id).single();
+      const { data: old } = await supabaseAdmin.from('fee_service_catalog').select('*').eq('id', id).eq('office_id', officeId).single();
       const { data, error } = await supabaseAdmin
         .from('fee_service_catalog')
         .update(req.body)
         .eq('id', id)
+        .eq('office_id', officeId)
         .select()
         .single();
       if (error) throw error;
@@ -66,8 +69,8 @@ async function handler(req, res) {
     if (method === 'DELETE') {
       requireRole(req.user, ['admin']);
       if (!id) return res.status(400).json({ error: 'ID obrigatório' });
-      const { data: old } = await supabaseAdmin.from('fee_service_catalog').select('*').eq('id', id).single();
-      const { error } = await supabaseAdmin.from('fee_service_catalog').delete().eq('id', id);
+      const { data: old } = await supabaseAdmin.from('fee_service_catalog').select('*').eq('id', id).eq('office_id', officeId).single();
+      const { error } = await supabaseAdmin.from('fee_service_catalog').delete().eq('id', id).eq('office_id', officeId);
       if (error) throw error;
 
       await logAudit(req.user.id, 'fee_service_catalog', id, 'delete', old, null);
