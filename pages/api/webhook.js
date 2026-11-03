@@ -28,7 +28,7 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const NEVES_COSTA_IMAGE_URL = process.env.NEVES_COSTA_IMAGE_URL || 'https://backend-apimeta.vercel.app/Aviso.jpg';
 
 const WHATSAPP_API_URL = `https://graph.facebook.com/v20.0/${PHONE_NUMBER_ID}/messages`;
-const GEMINI_API_URL_PRIMARY = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_API_URL_PRIMARY = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
 const GEMINI_API_URL_FALLBACK = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
 
 // Cliente Supabase com service role key para bypass RLS
@@ -1824,7 +1824,8 @@ function getSpecialReply(text, clientName, history = '', log = () => {}) {
 // pergunta de encerramento aqui duplicaria a saudação do assistente.
 const LGPD_NOTICE = `Olá! Seja bem-vindo(a) à Neves & Costa Advocacia e Consultoria. Meu nome é Jhon, assistente virtual do escritório.
 
-Em conformidade com a LGPD, os dados fornecidos nesta conversa serão tratados com sigilo e utilizados exclusivamente para o atendimento solicitado. Ao continuar a conversa, você concorda com esse tratamento. Consulte nossa Política de Privacidade: https://chatnevesecosta.vercel.app/politica-de-privacidade`;
+Em conformidade com a LGPD, os dados fornecidos nesta conversa serão tratados com sigilo e utilizados exclusivamente para o atendimento solicitado. Ao continuar a conversa, você concorda com esse tratamento. Consulte nossa Política de Privacidade:
+https://chatnevesecosta.vercel.app/politica-de-privacidade`;
 
 const PRIVACY_REPLY = 'Seu pedido de retirada do consentimento foi registrado. A retirada não invalida os tratamentos realizados anteriormente, e alguns dados poderão ser mantidos quando houver obrigação legal.';
 
@@ -1987,7 +1988,7 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
   const lastQuestion = conversation?.intake_data?.lastQuestion || null;
 
   try {
-    console.log('[GEMINI] Tentando Gemini 2.5 Flash-Lite...');
+    console.log('[GEMINI] Tentando Gemini 3.5 Flash-Lite...');
     console.log('[GEMINI] API Key presente?', GEMINI_API_KEY ? 'Sim' : 'NÃO');
 
     if (wantsKnowledge) {
@@ -2054,13 +2055,13 @@ async function askGemini(prompt, conversationHistory = '', conversation = null, 
     if (response.ok) {
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      console.log('[GEMINI] ✅ Resposta do Gemini 2.5, comprimento:', text?.length || 0);
+      console.log('[GEMINI] ✅ Resposta do Gemini 3.5, comprimento:', text?.length || 0);
       return text || 'Desculpe, não consegui gerar uma resposta.';
     }
 
-    console.warn(`[GEMINI] ⚠️ Gemini 2.5 falhou (${response.status}), tentando fallback 1.5...`);
+    console.warn(`[GEMINI] ⚠️ Gemini 3.5 falhou (${response.status}), tentando fallback...`);
   } catch (error) {
-    console.warn(`[GEMINI] ⚠️ Erro ao tentar Gemini 2.5: ${error.message}`);
+    console.warn(`[GEMINI] ⚠️ Erro ao tentar Gemini 3.5: ${error.message}`);
   }
 
   try {

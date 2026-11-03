@@ -381,7 +381,7 @@ async function generateBriefSummary(transcript) {
     return null;
   }
 
-  const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`;
+  const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key=${process.env.GOOGLE_AI_API_KEY}`;
 
   try {
     const prompt = `Resuma o conteúdo desta transcrição de um atendimento jurídico em 1 a 2 frases curtas e objetivas. Foque no problema jurídico mencionado.\n\nTranscrição: ${transcript.substring(0, 4000)}`;

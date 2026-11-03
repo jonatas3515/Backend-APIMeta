@@ -13,7 +13,7 @@ Meta Webhook (POST /webhook)
     ↓
 Next.js API Routes em ambiente Node.js serverless
     ├─→ Salva em Supabase (conversations + messages)
-    ├─→ Se modo='bot': chama Gemini 2.5 Flash-Lite
+    ├─→ Se modo='bot': chama Gemini 3.5 Flash-Lite
     └─→ Envia resposta via WhatsApp Cloud API
     
 Frontend Next.js (React)
@@ -130,7 +130,7 @@ Você verá:
 5. Backend registra mensagem em Supabase (messages)
    ↓
 6. SE modo='bot':
-   - Chama Gemini 2.5 Flash-Lite (com fallback 3.1)
+   - Chama Gemini 3.5 Flash-Lite (com fallback 3.1)
    - Envia resposta via WhatsApp Cloud API
    - Registra resposta em Supabase
    

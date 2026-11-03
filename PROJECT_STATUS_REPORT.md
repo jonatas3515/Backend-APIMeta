@@ -29,7 +29,7 @@
 | Backend | Next.js API Routes (`pages/api/**/*.js`) | 52 endpoints aproximadamente |
 | Banco | Supabase (PostgreSQL) | 52 migrations aplicáveis, RLS e funções SQL |
 | Autenticação | Supabase Auth JWT + tabela `users` | Hash de senha em `users` |
-| IA | Google Gemini API (`lib/ai.js`, `lib/aiRag.js`) | Modelos `gemini-2.5-flash-lite` e fallback `gemini-3.1-flash-lite` |
+| IA | Google Gemini API (`lib/ai.js`, `lib/aiRag.js`) | Modelos `gemini-3.5-flash-lite` e fallback `gemini-3.1-flash-lite` |
 | WhatsApp | Meta Cloud API (`lib/whatsapp.js`) | Envio/recebimento de mensagens e mídia |
 | Hospedagem | Vercel Pro/Hobby | Deploy via CLI; alias `chatnevesecosta.vercel.app` confirmado em deploys recentes |
 | CI/CD | GitHub + Vercel | `git push` dispara build |

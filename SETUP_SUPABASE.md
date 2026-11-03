@@ -87,7 +87,7 @@ Backend API Meta/
 4. Backend busca/cria conversa em `conversations` pelo `client_phone`.
 5. Backend registra mensagem em `messages` com `direction='inbound'` e `sender_type='client'`.
 6. **Se modo = 'bot':**
-   - Backend chama `askGemini()` (Gemini 2.5 Flash-Lite com fallback 3.1 Flash-Lite).
+   - Backend chama `askGemini()` (Gemini 3.5 Flash-Lite com fallback 3.1 Flash-Lite).
    - Backend envia resposta via WhatsApp Cloud API.
    - Backend registra resposta em `messages` com `sender_type='bot'`.
 7. **Se modo = 'human':**
