@@ -179,11 +179,11 @@ export default function CaseCalendarSync({
     }
 
     return (
-      <div className="text-xs text-gray-400" data-testid="sync-status">
-        <div>
+      <div className="text-xs text-gray-400 break-words" data-testid="sync-status">
+        <div className="break-words">
           Última sincronização com o Google Calendar: {formatSyncDate(status.synced_at)}
         </div>
-        <div className="text-gray-500 mt-0.5">
+        <div className="text-gray-500 mt-0.5 break-words">
           Alterações feitas no sistema não são enviadas automaticamente ao Google Calendar.
         </div>
       </div>
@@ -191,7 +191,7 @@ export default function CaseCalendarSync({
   };
 
   return (
-    <div className="inline-flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+    <div className="w-full min-w-0 flex flex-col gap-1 text-left md:text-right" onClick={(e) => e.stopPropagation()}>
       {renderStatus()}
 
       {!connected ? (
@@ -199,30 +199,30 @@ export default function CaseCalendarSync({
           type="button"
           onClick={(e) => { e.stopPropagation(); handleConnect(e); }}
           disabled={loading}
-          className="text-left text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
+          className="text-left md:text-right text-xs text-blue-500 hover:text-blue-400 font-medium disabled:opacity-50 break-words"
           title="Conectar Google Calendar para sincronizar"
           data-testid="connect-button"
         >
           Conectar Google Calendar
         </button>
       ) : status?.synced ? (
-        <div className="flex items-center gap-2 text-xs" onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-wrap items-center justify-start md:justify-end gap-2 text-xs" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); handleSync(e); }}
             disabled={loading}
-            className="text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
+            className="text-blue-500 hover:text-blue-400 font-medium disabled:opacity-50"
             title="Atualizar no Google Calendar"
             data-testid="sync-button"
           >
             {loading ? 'Sincronizando...' : isOutdated ? 'Atualizar no Google Calendar' : 'Atualizar'}
           </button>
-          <span className="text-gray-300">|</span>
+          <span className="text-gray-600">|</span>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); handleDelete(e); }}
             disabled={loading}
-            className="text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
+            className="text-red-500 hover:text-red-400 font-medium disabled:opacity-50"
             data-testid="delete-button"
           >
             Remover
@@ -233,7 +233,7 @@ export default function CaseCalendarSync({
           type="button"
           onClick={(e) => { e.stopPropagation(); handleSync(e); }}
           disabled={loading || !deadlineDate}
-          className="text-left text-xs text-blue-600 hover:text-blue-800 font-medium disabled:opacity-50"
+          className="text-left md:text-right text-xs text-blue-500 hover:text-blue-400 font-medium disabled:opacity-50 break-words"
           title={!deadlineDate ? 'Prazo sem data definida' : 'Sincronizar prazo com Google Calendar'}
           data-testid="sync-button"
         >

@@ -505,68 +505,79 @@ export default function AgendaPanel() {
             {Object.entries(agenda.by_day || {})
               .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
               .map(([date, items]) => (
-                <div key={date} className="border border-gray-800 rounded-xl p-4 bg-[#181A1B]">
-                  <h3 className="font-bold text-lg mb-3 text-white">
-                    {formatDate(date)}
-                    <span className="text-sm text-gray-400 ml-2">({items.length} item{items.length !== 1 ? 'ns' : ''})</span>
+                <div key={date} className="border border-gray-800 rounded-xl p-3 sm:p-4 bg-[#181A1B]">
+                  <h3 className="font-bold text-base sm:text-lg mb-3 text-white flex items-center justify-between flex-wrap gap-2">
+                    <span>{formatDate(date)}</span>
+                    <span className="text-xs sm:text-sm text-gray-400 font-normal">
+                      ({items.length} {items.length === 1 ? 'item' : 'itens'})
+                    </span>
                   </h3>
 
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {items.map((item, idx) => (
                       <div
                         key={idx}
-                        className={`p-3 border-l-4 rounded flex justify-between items-start ${getPriorityColor(item.priority)}`}
+                        className={`p-3 sm:p-4 rounded-lg flex flex-col md:flex-row justify-between items-start gap-3 w-full ${getPriorityColor(item.priority)}`}
                       >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1" data-testid="agenda-item" data-item-type={item.item_type} data-item-id={item.case_id || item.event_id || item.conversation_id || item.id}>
-                            <span>{getItemTypeIcon(item.item_type)}</span>
+                        <div className="w-full flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1.5" data-testid="agenda-item" data-item-type={item.item_type} data-item-id={item.case_id || item.event_id || item.conversation_id || item.id}>
+                            <span className="text-base flex-shrink-0">{getItemTypeIcon(item.item_type)}</span>
                             <span
-                              className="font-semibold cursor-pointer hover:underline"
+                              className="font-semibold cursor-pointer hover:underline text-white text-sm sm:text-base break-words"
                               onClick={() => handleItemClick(item)}
                               data-testid="agenda-item-title"
                             >
                               {item.title}
                             </span>
-                            <span className="text-xs bg-gray-800/80 border border-gray-700 text-gray-300 px-2 py-0.5 rounded">
-                              {item.event_type}
-                            </span>
+                            {item.event_type && (
+                              <span className="text-xs bg-gray-800/80 border border-gray-700 text-gray-300 px-2 py-0.5 rounded break-words">
+                                {item.event_type}
+                              </span>
+                            )}
                           </div>
 
-                          <div className="text-xs space-y-1">
+                          <div className="text-xs space-y-1 text-gray-400 mt-2">
                             {item.legal_area && (
-                              <p className="text-gray-400">
-                                <strong>Área:</strong> {item.legal_area}
+                              <p>
+                                <strong className="text-gray-300">Área:</strong> {item.legal_area}
                               </p>
                             )}
                             {item.case_type && (
-                              <p className="text-gray-400">
-                                <strong>Tipo:</strong> {item.case_type}
+                              <p>
+                                <strong className="text-gray-300">Tipo:</strong> {item.case_type}
                               </p>
                             )}
                             {item.municipality && (
-                              <p className="text-gray-400">
-                                <strong>Município:</strong> {item.municipality}
+                              <p>
+                                <strong className="text-gray-300">Município:</strong> {item.municipality}
                               </p>
                             )}
                             {item.event_time && (
-                              <p className="text-gray-400">
-                                <strong>Horário:</strong> {item.event_time}
+                              <p>
+                                <strong className="text-gray-300">Horário:</strong> {item.event_time}
                               </p>
                             )}
                           </div>
                         </div>
 
-                        <div className="text-right ml-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedItems.has(`${item.item_type}:${item.case_id}`)}
-                            onChange={() => toggleSelectedItem(item)}
-                            className="h-4 w-4 rounded border-[#2A2D2F] text-blue-600 focus:ring-blue-500 mb-2"
-                            title="Selecionar para sincronização em lote"
-                          />
-                          <div className="text-lg">{getPriorityIcon(item.priority)}</div>
-                          <span className="text-xs font-semibold capitalize">{item.priority}</span>
-                          <div className="mt-2">
+                        <div className="w-full md:w-auto md:min-w-[220px] md:max-w-xs flex flex-col md:items-end justify-between pt-2.5 md:pt-0 border-t md:border-t-0 border-gray-800/80 text-left md:text-right">
+                          <div className="flex items-center justify-between md:justify-end gap-2 w-full mb-1">
+                            <label className="inline-flex items-center gap-1.5 cursor-pointer text-xs text-gray-400 hover:text-gray-200">
+                              <input
+                                type="checkbox"
+                                checked={selectedItems.has(`${item.item_type}:${item.case_id}`)}
+                                onChange={() => toggleSelectedItem(item)}
+                                className="h-4 w-4 rounded border-[#2A2D2F] text-blue-600 focus:ring-blue-500"
+                                title="Selecionar para sincronização em lote"
+                              />
+                              <span className="md:hidden">Selecionar</span>
+                            </label>
+                            <div className="flex items-center gap-1">
+                              <span className="text-sm md:text-base">{getPriorityIcon(item.priority)}</span>
+                              <span className="text-xs font-semibold capitalize text-gray-300">{item.priority}</span>
+                            </div>
+                          </div>
+                          <div className="w-full mt-1.5">
                             <CaseCalendarSync
                               eventId={item.internal_id || item.case_id}
                               table={
@@ -595,7 +606,7 @@ export default function AgendaPanel() {
       {agenda.total_items > 0 && (
         <div className="p-4 border-t border-gray-800 bg-[#181A1B]">
           <p className="text-sm text-gray-400">
-            <strong>Total:</strong> {agenda.total_items} item{agenda.total_items !== 1 ? 'ns' : ''} no período
+            <strong>Total:</strong> {agenda.total_items} {agenda.total_items === 1 ? 'item' : 'itens'} no período
           </p>
         </div>
       )}

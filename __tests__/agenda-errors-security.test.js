@@ -5,7 +5,8 @@
 const { createMocks } = require('node-mocks-http');
 
 jest.mock('@/lib/auth', () => ({
-  withAuth: (handler) => (req, res) => handler(req, res)
+  withAuth: (handler) => (req, res) => handler(req, res),
+  getTenantOfficeId: (req) => req?.user?.office_id || null
 }));
 
 jest.mock('@/lib/ai', () => ({
