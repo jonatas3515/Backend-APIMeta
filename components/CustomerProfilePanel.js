@@ -33,10 +33,10 @@ const STATUS_BADGES = {
 };
 
 const getConsentStatus = (consents) => {
-  if (!consents || consents.length === 0) return { text: 'Pendente', class: 'bg-yellow-100 text-yellow-800 border-yellow-200' };
+  if (!consents || consents.length === 0) return { text: 'Pendente', class: 'bg-yellow-950/50 text-yellow-300 border border-yellow-800/60' };
   const latest = consents[0];
-  if (latest.value) return { text: 'Ativo', class: 'bg-green-100 text-green-800 border-green-200' };
-  return { text: 'Revogado', class: 'bg-red-100 text-red-800 border-red-200' };
+  if (latest.value) return { text: 'Ativo', class: 'bg-emerald-950/50 text-emerald-300 border border-emerald-800/60' };
+  return { text: 'Revogado', class: 'bg-red-950/50 text-red-300 border border-red-800/60' };
 };
 
 function formatDate(value) {
@@ -248,7 +248,7 @@ export default function CustomerProfilePanel({ conversation, isOpen, onClose, on
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 rounded p-3 text-sm">
+            <div className="bg-red-950/60 border border-red-800/80 text-red-300 rounded-lg p-3 text-sm">
               {error}
             </div>
           )}

@@ -167,7 +167,7 @@ export default function CalendarSettings() {
         </p>
 
         <div className="space-y-3">
-          <div className="p-4 border rounded-lg bg-[#1B1D1E] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="p-4 border border-gray-800 rounded-xl bg-[#1B1D1E] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h4 className="font-medium text-white">Google Calendar</h4>
               <p className="text-xs text-gray-500">
@@ -176,12 +176,12 @@ export default function CalendarSettings() {
             </div>
             {isConnected('google') ? (
               <div className="flex flex-col sm:flex-row gap-2">
-                <span className="text-sm text-green-700 bg-green-50 px-2 py-1 rounded border border-green-200">
+                <span className="text-sm text-emerald-300 bg-emerald-950/60 px-2 py-1 rounded border border-emerald-800/60">
                   ✅ Conectado{isConnected('google').email ? ` - ${isConnected('google').email}` : ''}
                 </span>
                 <button
                   onClick={() => handleDisconnect('google')}
-                  className="px-3 py-1.5 text-sm bg-red-50 text-red-700 rounded border border-red-200 hover:bg-red-100"
+                  className="px-3 py-1.5 text-sm bg-red-950/50 text-red-300 rounded border border-red-800/60 hover:bg-red-900/40"
                 >
                   Desconectar
                 </button>
@@ -197,7 +197,7 @@ export default function CalendarSettings() {
             )}
           </div>
 
-          <div className="p-4 border rounded-lg bg-[#1B1D1E] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="p-4 border border-gray-800 rounded-xl bg-[#1B1D1E] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h4 className="font-medium text-white">Outlook Calendar</h4>
               <p className="text-xs text-gray-500">
@@ -207,7 +207,7 @@ export default function CalendarSettings() {
             {isConnected('outlook') ? (
               <button
                 onClick={() => handleDisconnect('outlook')}
-                className="px-3 py-1.5 text-sm bg-red-50 text-red-700 rounded border border-red-200 hover:bg-red-100"
+                className="px-3 py-1.5 text-sm bg-red-950/50 text-red-300 rounded border border-red-800/60 hover:bg-red-900/40"
               >
                 Desconectar
               </button>
@@ -225,17 +225,17 @@ export default function CalendarSettings() {
       </div>
 
       {syncMessage && (
-        <div className={`p-3 rounded border text-sm ${
+        <div className={`p-3 rounded-lg border text-sm ${
           syncMessage.type === 'success'
-            ? 'bg-green-50 border-green-200 text-green-800'
-            : 'bg-red-50 border-red-200 text-red-800'
+            ? 'bg-emerald-950/60 border-emerald-800/60 text-emerald-300'
+            : 'bg-red-950/60 border-red-800/60 text-red-300'
         }`}>
           {syncMessage.message}
         </div>
       )}
 
       {isConnected('google') && (
-        <div className="p-4 border rounded-lg bg-[#1B1D1E] space-y-2">
+        <div className="p-4 border border-gray-800 rounded-xl bg-[#1B1D1E] space-y-2">
           <h4 className="font-medium text-white">🔄 Sincronização manual</h4>
           <p className="text-xs text-gray-500">
             Envia todos os prazos, eventos e lembretes dos próximos 60 dias para o Google Calendar.
@@ -251,14 +251,14 @@ export default function CalendarSettings() {
         </div>
       )}
 
-      <div className="border-t pt-6">
+      <div className="border-t border-gray-800 pt-6">
         <h3 className="text-lg font-semibold text-white mb-2">🔗 Assinatura iCal</h3>
         <p className="text-sm text-gray-400 mb-4">
           Assine a agenda em qualquer aplicativo de calendário (Google, Outlook, Apple) sem OAuth.
         </p>
 
         {icalUrl ? (
-          <div className="p-4 border rounded-lg bg-[#1B1D1E] space-y-3">
+          <div className="p-4 border border-gray-800 rounded-xl bg-[#1B1D1E] space-y-3">
             <div className="text-sm text-gray-300 break-all bg-[#181A1B] p-2 rounded border border-gray-800">
               {icalUrl}
             </div>

@@ -82,10 +82,10 @@ export default function NotificationSettings() {
   };
 
   const PERMISSION_BADGES = {
-    granted: { label: '✅ Notificações permitidas no navegador', class: 'bg-green-50 text-green-800 border-green-200' },
-    denied: { label: '❌ Notificações bloqueadas no navegador', class: 'bg-red-50 text-red-700 border-red-200' },
-    default: { label: '⚠️ Permissão pendente', class: 'bg-amber-50 text-amber-800 border-amber-200' },
-    unsupported: { label: '➖ Não suportado neste navegador', class: 'bg-[#1E2022] text-gray-400 border-gray-800' }
+    granted: { label: '✅ Notificações permitidas no navegador', class: 'bg-green-50 bg-emerald-950/60 text-emerald-300 border border-emerald-800/60' },
+    denied: { label: '❌ Notificações bloqueadas no navegador', class: 'bg-red-950/60 text-red-300 border border-red-800/60' },
+    default: { label: '⚠️ Permissão pendente', class: 'bg-amber-950/60 text-amber-300 border border-amber-800/60' },
+    unsupported: { label: '➖ Não suportado neste navegador', class: 'bg-[#1E2022] text-gray-400 border border-gray-800' }
   };
 
   const permissionKey = isSupported() ? (browserPermission || 'default') : 'unsupported';
@@ -96,12 +96,12 @@ export default function NotificationSettings() {
   return (
     <div className="space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="bg-red-950/60 border border-red-800/80 text-red-300 px-4 py-3 rounded-lg">
           {error}
         </div>
       )}
 
-      <div className="border rounded p-4 space-y-3">
+      <div className="border border-gray-800 rounded-xl p-4 space-y-3 bg-[#181A1B]">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h3 className="font-semibold text-white">Notificações do navegador</h3>
@@ -133,7 +133,7 @@ export default function NotificationSettings() {
           </div>
         </div>
         {browserPermission === 'denied' && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+          <p className="text-xs text-amber-300 bg-amber-950/60 border border-amber-800/60 rounded-lg px-3 py-2">
             As notificações foram bloqueadas. Para reativar, clique no ícone do cadeado na barra de
             endereço do navegador, localize "Notificações" e altere para "Permitir". Depois recarregue a página.
           </p>
@@ -149,7 +149,7 @@ export default function NotificationSettings() {
           onClick={toggleGlobal}
           disabled={saving}
           className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-            prefs.enabled ? 'bg-nc-yellow' : 'bg-nc-gray-300'
+            prefs.enabled ? 'bg-nc-yellow' : 'bg-gray-700'
           }`}
         >
           <span
@@ -162,7 +162,7 @@ export default function NotificationSettings() {
 
       <div className="grid grid-cols-1 gap-3">
         {TYPES.map(({ key, label }) => (
-          <label key={key} className="flex items-center justify-between p-3 border rounded">
+          <label key={key} className="flex items-center justify-between p-3 border border-gray-800 rounded-lg bg-[#181A1B]">
             <span className="text-sm text-gray-100">{label}</span>
             <input
               type="checkbox"

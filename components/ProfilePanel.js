@@ -180,7 +180,7 @@ export default function ProfilePanel() {
         <div className="mt-8 flex gap-3">
           <button
             onClick={signOut}
-            className="nc-btn text-red-600 border-red-200 hover:bg-red-50"
+            className="nc-btn text-red-400 border-red-800/60 hover:bg-red-950/40"
           >
             Sair
           </button>

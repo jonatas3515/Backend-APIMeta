@@ -419,8 +419,8 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
             Quando ativo, o valor sugerido será calculado com base na tabela da OAB, com desconto regional de 20–30%.
           </p>
           {selectedService && oabAmbiguous && oabCandidates.length > 1 && (
-            <div className="ml-6 p-3 bg-yellow-50 border border-yellow-200 rounded space-y-2">
-              <p className="text-xs font-semibold text-yellow-800">
+            <div className="ml-6 p-3 bg-yellow-950/40 border border-yellow-800/60 rounded-xl space-y-2">
+              <p className="text-xs font-semibold text-yellow-300">
                 Foram encontradas várias referências OAB. Selecione a que corresponde ao caso:
               </p>
               <div className="space-y-1">
@@ -428,7 +428,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
                   const key = oabCandidateKey(c);
                   const checked = oabReference && oabCandidateKey(oabReference) === key;
                   return (
-                    <label key={key} className={`flex items-start gap-2 p-2 rounded border text-xs cursor-pointer ${checked ? 'bg-green-50 border-green-300' : 'bg-[#1B1D1E] border-gray-800 hover:bg-[#181A1B]'}`}>
+                    <label key={key} className={`flex items-start gap-2 p-2 rounded-lg border text-xs cursor-pointer ${checked ? 'bg-emerald-950/60 border-emerald-700 text-white' : 'bg-[#1B1D1E] border-gray-800 hover:bg-[#181A1B]'}`}>
                       <input
                         type="radio"
                         name="oab-candidate"
@@ -454,32 +454,32 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
                 })}
               </div>
               {!oabReference && (
-                <p className="text-xs text-yellow-700">
+                <p className="text-xs text-yellow-400">
                   Nenhuma referência selecionada — o cálculo pela OAB ficará indisponível até escolher uma opção ou desmarcar "Usar tabela OAB".
                 </p>
               )}
             </div>
           )}
           {selectedService && !oabReference && !oabAmbiguous && (
-            <p className="text-xs text-yellow-700 pl-6">
+            <p className="text-xs text-yellow-400 pl-6">
               Nenhuma referência OAB foi encontrada para este serviço. O cálculo está usando o catálogo interno.
             </p>
           )}
         </div>
 
         {oabReference && (
-          <div className="p-3 bg-green-50 border border-green-200 rounded space-y-1">
-            <p className="text-xs font-semibold text-green-700 uppercase flex items-center gap-1">
-              <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+          <div className="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl space-y-1">
+            <p className="text-xs font-semibold text-emerald-400 uppercase flex items-center gap-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500" />
               Referência OAB
             </p>
             <p className="text-sm"><strong>Serviço:</strong> {oabReference.service}</p>
             <p className="text-sm text-gray-300">
-              <span className="font-medium text-green-800">Mínimo (OAB):</span> R$ {Number(oabReference.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}&nbsp;|&nbsp;
-              <span className="font-medium text-green-800">Sugerido (OAB):</span> R$ {Number(oabReference.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}&nbsp;|&nbsp;
-              <span className="font-medium text-green-800">Máximo (OAB):</span> R$ {Number(oabReference.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              <span className="font-medium text-emerald-300">Mínimo (OAB):</span> R$ {Number(oabReference.min_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}&nbsp;|&nbsp;
+              <span className="font-medium text-emerald-300">Sugerido (OAB):</span> R$ {Number(oabReference.suggested_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}&nbsp;|&nbsp;
+              <span className="font-medium text-emerald-300">Máximo (OAB):</span> R$ {Number(oabReference.max_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
-            <p className="text-sm font-semibold text-green-700">
+            <p className="text-sm font-semibold text-emerald-400">
               Sugestão regional (70-80% OAB): R$ {Number(oabReference.regional_suggestion || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
@@ -680,7 +680,7 @@ export default function FeeSimulator({ caseId, caseData, userRole, isAdminOrLawy
         </div>
       )}
 
-      <div className="pt-4 border-t">
+      <div className="pt-4 border-t border-gray-800">
         <div className="flex items-center justify-between mb-2">
           <h4 className="font-semibold text-sm">Histórico de simulações</h4>
           {isAdminOrLawyerFinal && (

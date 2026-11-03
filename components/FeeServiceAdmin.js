@@ -166,87 +166,87 @@ export default function FeeServiceAdmin({ viewMode = null }) {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="border rounded p-3 bg-[#181A1B]">
+        <div className="border border-gray-800 rounded-xl p-3 bg-[#181A1B]">
           <div className="flex justify-between items-center mb-2">
-            <h3 className="font-semibold text-sm">Serviços</h3>
-            <button onClick={() => { setSelected(null); resetForm(); setRules([]); }} className="text-xs text-blue-600 hover:underline">+ Novo</button>
+            <h3 className="font-semibold text-sm text-white">Serviços</h3>
+            <button onClick={() => { setSelected(null); resetForm(); setRules([]); }} className="text-xs text-nc-yellow hover:underline font-bold">+ Novo</button>
           </div>
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {services.map((s) => (
               <div
                 key={s.id}
                 onClick={() => handleSelect(s)}
-                className={`p-2 rounded cursor-pointer text-sm transition ${selected?.id === s.id ? 'bg-[#1E2022] border border-yellow-500/60 ring-1 ring-yellow-500/40 text-white' : 'bg-[#181A1B] border border-gray-800 hover:border-gray-700'}`}
+                className={`p-2.5 rounded-lg cursor-pointer text-sm transition ${selected?.id === s.id ? 'bg-[#1E2022] border border-nc-yellow/80 ring-1 ring-nc-yellow/40 text-white' : 'bg-[#1B1D1E] border border-gray-800 hover:border-gray-700'}`}
               >
                 <p className="font-medium">{s.name}</p>
                 <p className="text-xs text-gray-400">{s.legal_area} {s.case_type ? `— ${s.case_type}` : ''}</p>
                 <p className="text-xs text-gray-400">R$ {Number(s.base_amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                {!s.is_active && <span className="text-xs text-red-600">Inativo</span>}
+                {!s.is_active && <span className="text-xs text-red-400 font-semibold">Inativo</span>}
               </div>
             ))}
           </div>
         </div>
 
-        <div className="lg:col-span-2 border rounded p-4 bg-[#1B1D1E] space-y-4">
-          <h3 className="font-semibold text-sm">{selected ? 'Editar serviço' : 'Novo serviço'}</h3>
+        <div className="lg:col-span-2 border border-gray-800 rounded-xl p-4 bg-[#1B1D1E] space-y-4">
+          <h3 className="font-semibold text-sm text-white">{selected ? 'Editar serviço' : 'Novo serviço'}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="border rounded p-2 text-sm" />
-            <input placeholder="Área jurídica" value={form.legal_area} onChange={(e) => setForm({ ...form, legal_area: e.target.value })} className="border rounded p-2 text-sm" />
-            <input placeholder="Tipo de caso (opcional)" value={form.case_type} onChange={(e) => setForm({ ...form, case_type: e.target.value })} className="border rounded p-2 text-sm" />
-            <select value={form.billing_model} onChange={(e) => setForm({ ...form, billing_model: e.target.value })} className="border rounded p-2 text-sm">
+            <input placeholder="Nome" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none" />
+            <input placeholder="Área jurídica" value={form.legal_area} onChange={(e) => setForm({ ...form, legal_area: e.target.value })} className="bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none" />
+            <input placeholder="Tipo de caso (opcional)" value={form.case_type} onChange={(e) => setForm({ ...form, case_type: e.target.value })} className="bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none" />
+            <select value={form.billing_model} onChange={(e) => setForm({ ...form, billing_model: e.target.value })} className="bg-[#181A1B] border border-gray-800 text-gray-100 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none">
               {BILLING_MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
             </select>
-            <input type="number" placeholder="Valor-base" value={form.base_amount} onChange={(e) => setForm({ ...form, base_amount: e.target.value })} className="border rounded p-2 text-sm" />
-            <input type="number" placeholder="Mínimo" value={form.min_amount} onChange={(e) => setForm({ ...form, min_amount: e.target.value })} className="border rounded p-2 text-sm" />
-            <input type="number" placeholder="Máximo" value={form.max_amount} onChange={(e) => setForm({ ...form, max_amount: e.target.value })} className="border rounded p-2 text-sm" />
-            <input type="number" placeholder="% êxito" value={form.success_fee_percent} onChange={(e) => setForm({ ...form, success_fee_percent: e.target.value })} className="border rounded p-2 text-sm" />
-            <input type="number" placeholder="Parcelas padrão" value={form.default_installments} onChange={(e) => setForm({ ...form, default_installments: e.target.value })} className="border rounded p-2 text-sm" />
-            <input type="date" placeholder="Vigência" value={form.effective_from} onChange={(e) => setForm({ ...form, effective_from: e.target.value })} className="border rounded p-2 text-sm" />
-            <select value={form.reference_source} onChange={(e) => setForm({ ...form, reference_source: e.target.value })} className="border rounded p-2 text-sm">
+            <input type="number" placeholder="Valor-base" value={form.base_amount} onChange={(e) => setForm({ ...form, base_amount: e.target.value })} className="bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none" />
+            <input type="number" placeholder="Mínimo" value={form.min_amount} onChange={(e) => setForm({ ...form, min_amount: e.target.value })} className="bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none" />
+            <input type="number" placeholder="Máximo" value={form.max_amount} onChange={(e) => setForm({ ...form, max_amount: e.target.value })} className="bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none" />
+            <input type="number" placeholder="% êxito" value={form.success_fee_percent} onChange={(e) => setForm({ ...form, success_fee_percent: e.target.value })} className="bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none" />
+            <input type="number" placeholder="Parcelas padrão" value={form.default_installments} onChange={(e) => setForm({ ...form, default_installments: e.target.value })} className="bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none" />
+            <input type="date" placeholder="Vigência" value={form.effective_from} onChange={(e) => setForm({ ...form, effective_from: e.target.value })} className="bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none" />
+            <select value={form.reference_source} onChange={(e) => setForm({ ...form, reference_source: e.target.value })} className="bg-[#181A1B] border border-gray-800 text-gray-100 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none">
               <option value="tabela_interna">Tabela interna</option>
               <option value="tabela_oab">Tabela da OAB</option>
               <option value="pratica_consolidada">Prática consolidada</option>
             </select>
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
+            <label className="flex items-center gap-2 text-sm text-gray-300">
+              <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} className="rounded border-gray-700 bg-gray-900 text-nc-yellow focus:ring-nc-yellow" />
               Ativo
             </label>
           </div>
-          <textarea placeholder="Descrição interna" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full border rounded p-2 text-sm" rows={2} />
-          <textarea placeholder="Observações" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full border rounded p-2 text-sm" rows={2} />
+          <textarea placeholder="Descrição interna" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none" rows={2} />
+          <textarea placeholder="Observações" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none" rows={2} />
 
           <div className="flex gap-2">
-            <button onClick={handleSaveService} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm">
+            <button onClick={handleSaveService} disabled={loading} className="px-4 py-2 bg-nc-yellow text-nc-black font-bold rounded-lg hover:bg-yellow-500 disabled:opacity-50 text-sm transition">
               {loading ? 'Salvando...' : 'Salvar serviço'}
             </button>
             {selected && (
-              <button onClick={() => handleDeleteService(selected.id)} className="px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm">
+              <button onClick={() => handleDeleteService(selected.id)} className="px-4 py-2 bg-red-950/60 text-red-300 border border-red-800/60 rounded-lg hover:bg-red-900/50 text-sm transition">
                 Remover
               </button>
             )}
           </div>
 
           {selected && (
-            <div className="pt-4 border-t">
-              <h4 className="font-semibold text-sm mb-2">Regras de ajuste</h4>
+            <div className="pt-4 border-t border-gray-800">
+              <h4 className="font-semibold text-sm mb-2 text-white">Regras de ajuste</h4>
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-2">
-                <select value={ruleForm.rule_type} onChange={(e) => setRuleForm({ ...ruleForm, rule_type: e.target.value })} className="border rounded p-2 text-sm">
+                <select value={ruleForm.rule_type} onChange={(e) => setRuleForm({ ...ruleForm, rule_type: e.target.value })} className="bg-[#181A1B] border border-gray-800 text-gray-100 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none">
                   {RULE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
-                <input placeholder="Valor (ex: alta)" value={ruleForm.rule_value} onChange={(e) => setRuleForm({ ...ruleForm, rule_value: e.target.value })} className="border rounded p-2 text-sm" />
-                <select value={ruleForm.adjustment_kind} onChange={(e) => setRuleForm({ ...ruleForm, adjustment_kind: e.target.value })} className="border rounded p-2 text-sm">
+                <input placeholder="Valor (ex: alta)" value={ruleForm.rule_value} onChange={(e) => setRuleForm({ ...ruleForm, rule_value: e.target.value })} className="bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none" />
+                <select value={ruleForm.adjustment_kind} onChange={(e) => setRuleForm({ ...ruleForm, adjustment_kind: e.target.value })} className="bg-[#181A1B] border border-gray-800 text-gray-100 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none">
                   {ADJUSTMENT_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
                 </select>
                 <div className="flex gap-2">
-                  <input type="number" placeholder="Valor" value={ruleForm.adjustment_value} onChange={(e) => setRuleForm({ ...ruleForm, adjustment_value: e.target.value })} className="flex-1 min-w-0 border rounded p-2 text-sm" />
-                  <button onClick={handleSaveRule} className="px-3 py-2 bg-green-600 text-white rounded text-sm flex-shrink-0">+</button>
+                  <input type="number" placeholder="Valor" value={ruleForm.adjustment_value} onChange={(e) => setRuleForm({ ...ruleForm, adjustment_value: e.target.value })} className="flex-1 min-w-0 bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none" />
+                  <button onClick={handleSaveRule} className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-sm font-bold flex-shrink-0 transition">+</button>
                 </div>
               </div>
               <div className="space-y-1">
                 {rules.map((r) => (
-                  <div key={r.id} className="flex justify-between items-center p-2 bg-[#181A1B] rounded text-sm">
-                    <span>{r.rule_type}={r.rule_value} ({r.adjustment_kind} {r.adjustment_value})</span>
-                    <button onClick={() => handleDeleteRule(r.id)} className="text-red-600 text-xs hover:underline">Remover</button>
+                  <div key={r.id} className="flex justify-between items-center p-2.5 bg-[#181A1B] border border-gray-800 rounded-lg text-sm">
+                    <span className="text-gray-200">{r.rule_type}={r.rule_value} ({r.adjustment_kind} {r.adjustment_value})</span>
+                    <button onClick={() => handleDeleteRule(r.id)} className="text-red-400 text-xs hover:underline font-semibold">Remover</button>
                   </div>
                 ))}
               </div>

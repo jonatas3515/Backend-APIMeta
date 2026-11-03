@@ -226,21 +226,21 @@ export default function FeeTablesManager({ viewMode = null }) {
           <p className="text-sm text-gray-500">Nenhuma tabela enviada.</p>
         ) : (
           items.map((item) => (
-            <div key={item.id} className="p-2 bg-[#1B1D1E] border rounded text-sm flex justify-between items-center">
+            <div key={item.id} className="p-2.5 bg-[#1B1D1E] border border-gray-800 rounded-lg text-sm flex justify-between items-center">
               <div>
-                <p className="font-medium">{item.name}</p>
+                <p className="font-medium text-gray-200">{item.name}</p>
                 <p className="text-xs text-gray-500">
                   {item.source_file_name} • {item.file_url ? 'PDF' : `${Array.isArray(item.table_data) ? item.table_data.length : 0} linhas`} • {new Date(item.created_at).toLocaleDateString('pt-BR')}
                 </p>
                 {item.file_url && (
-                  <a href={item.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 text-xs hover:underline">
+                  <a href={item.file_url} target="_blank" rel="noopener noreferrer" className="text-nc-yellow text-xs hover:underline">
                     Ver PDF
                   </a>
                 )}
               </div>
               <button
                 onClick={() => handleDelete(item.id)}
-                className="text-red-600 text-xs hover:underline"
+                className="text-red-400 text-xs hover:underline font-semibold"
               >
                 Remover
               </button>
@@ -252,53 +252,53 @@ export default function FeeTablesManager({ viewMode = null }) {
   };
 
   return (
-    <div className="p-4 border rounded bg-[#1B1D1E] space-y-4">
-      <h3 className="font-bold text-base sm:text-lg">📤 Tabelas de referência</h3>
-      <p className="text-xs text-gray-500">
+    <div className="p-4 border border-gray-800 rounded-xl bg-[#1B1D1E] space-y-4">
+      <h3 className="font-bold text-base sm:text-lg text-white">📤 Tabelas de referência</h3>
+      <p className="text-xs text-gray-400">
         Envie a tabela da OAB ou os valores cobrados pelo escritório. Os dados ficam salvos para consulta futura.
       </p>
 
       {message && (
-        <div className={`p-3 rounded text-sm ${message.type === 'error' ? 'bg-red-950/60 text-red-300 border border-red-800/60' : 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60'}`}>
+        <div className={`p-3 rounded-lg text-sm ${message.type === 'error' ? 'bg-red-950/60 text-red-300 border border-red-800/60' : 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60'}`}>
           {message.text}
         </div>
       )}
 
       <div className="space-y-3">
-        <h4 className="font-semibold text-sm">🔍 Itens da Tabela da OAB</h4>
+        <h4 className="font-semibold text-sm text-white">🔍 Itens da Tabela da OAB</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <input
             placeholder="Área jurídica"
             value={filters.legal_area}
             onChange={(e) => setFilters({ ...filters, legal_area: e.target.value })}
-            className="border rounded p-2 text-sm"
+            className="bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none"
           />
           <input
             placeholder="Tipo de caso"
             value={filters.case_type}
             onChange={(e) => setFilters({ ...filters, case_type: e.target.value })}
-            className="border rounded p-2 text-sm"
+            className="bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none"
           />
           <input
             placeholder="Serviço"
             value={filters.service}
             onChange={(e) => setFilters({ ...filters, service: e.target.value })}
-            className="border rounded p-2 text-sm"
+            className="bg-[#181A1B] border border-gray-800 text-gray-100 placeholder-gray-500 rounded-lg p-2 text-sm focus:border-nc-yellow focus:outline-none"
           />
         </div>
 
-        <div className="border rounded bg-[#1B1D1E] p-2 overflow-x-auto">
+        <div className="border border-gray-800 rounded-xl bg-[#181A1B] p-2 overflow-x-auto">
           {referenceLoading ? (
             <p className="text-sm text-gray-500 p-2">Carregando referências...</p>
           ) : referenceItems.length === 0 ? (
-            <div className="p-4 bg-[#181A1B] border rounded text-center space-y-2">
+            <div className="p-4 bg-[#1B1D1E] border border-gray-800 rounded-lg text-center space-y-2">
               <p className="text-sm text-gray-400">Nenhuma tabela da OAB encontrada.</p>
               <button
                 onClick={() => {
                   const uploadSection = document.getElementById('fee-table-upload');
                   uploadSection?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="text-xs px-3 py-1.5 bg-nc-yellow text-nc-black font-bold rounded-lg hover:bg-yellow-500 transition"
               >
                 Enviar tabela da OAB
               </button>
@@ -373,8 +373,8 @@ export default function FeeTablesManager({ viewMode = null }) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div id="fee-table-upload" className="border rounded p-3 bg-[#181A1B] space-y-3">
-          <h4 className="font-semibold text-sm">⬆️ Enviar nova tabela</h4>
+        <div id="fee-table-upload" className="border border-gray-800 rounded-xl p-3.5 bg-[#181A1B] space-y-3">
+          <h4 className="font-semibold text-sm text-white">⬆️ Enviar nova tabela</h4>
 
           <div>
             <label className="block text-sm font-medium text-gray-300">Tipo</label>
@@ -406,24 +406,24 @@ export default function FeeTablesManager({ viewMode = null }) {
               type="file"
               accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, .pdf, application/pdf"
               onChange={handleFileChange}
-              className="w-full mt-1 text-sm"
+              className="w-full mt-1 text-sm text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-[#1E2022] file:text-gray-200 hover:file:bg-[#2A2D2F]"
             />
           </div>
 
           {preview.length > 0 && previewValidation && (
-            <div className="border rounded bg-[#1B1D1E] p-2 text-xs space-y-2">
+            <div className="border border-gray-800 rounded-lg bg-[#1B1D1E] p-2 text-xs space-y-2">
               <div className="flex gap-2 flex-wrap">
-                <span className="font-semibold">Linhas: {previewValidation.rowCount}</span>
+                <span className="font-semibold text-white">Linhas: {previewValidation.rowCount}</span>
                 <span className={`px-2 py-0.5 rounded text-xs ${previewValidation.valid ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/50' : 'bg-red-950/60 text-red-300 border border-red-800/50'}`}>
                   {previewValidation.valid ? 'Colunas válidas' : 'Colunas inválidas'}
                 </span>
               </div>
               <p className="text-gray-300">
-                <span className="font-semibold">Reconhecidas:</span>{' '}
+                <span className="font-semibold text-white">Reconhecidas:</span>{' '}
                 {Object.entries(previewValidation.recognized).filter(([, v]) => v).map(([k, v]) => `${k} (${v})`).join(', ') || 'nenhuma'}
               </p>
               {previewValidation.missing.length > 0 && (
-                <p className="text-red-700">
+                <p className="text-red-400">
                   <span className="font-semibold">Ausentes:</span>{' '}
                   {previewValidation.missing.join(', ')}
                 </p>
@@ -433,7 +433,7 @@ export default function FeeTablesManager({ viewMode = null }) {
                   <thead>
                     <tr className="bg-[#1E2022] text-gray-200">
                       {(Array.isArray(preview[0]) ? preview[0] : Object.keys(preview[0])).map((k, idx) => (
-                        <th key={idx} className="p-1 border text-left">{String(k)}</th>
+                        <th key={idx} className="p-1 border border-gray-800 text-left">{String(k)}</th>
                       ))}
                     </tr>
                   </thead>
@@ -441,7 +441,7 @@ export default function FeeTablesManager({ viewMode = null }) {
                   {preview.map((row, i) => (
                     <tr key={i}>
                       {(Array.isArray(row) ? row : Object.values(row)).map((v, j) => (
-                        <td key={j} className="p-1 border">{String(v)}</td>
+                        <td key={j} className="p-1 border border-gray-800">{String(v)}</td>
                       ))}
                     </tr>
                   ))}
@@ -454,17 +454,17 @@ export default function FeeTablesManager({ viewMode = null }) {
           <button
             onClick={handleUpload}
             disabled={uploading}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 text-sm"
+            className="px-4 py-2 bg-nc-yellow text-nc-black font-bold rounded-lg hover:bg-yellow-500 disabled:opacity-50 text-sm transition"
           >
             {uploading ? 'Salvando...' : 'Salvar tabela'}
           </button>
         </div>
 
-        <div className="border rounded p-3 bg-[#181A1B] space-y-3">
-          <h4 className="font-semibold text-sm">📂 Tabelas salvas</h4>
+        <div className="border border-gray-800 rounded-xl p-3.5 bg-[#181A1B] space-y-3">
+          <h4 className="font-semibold text-sm text-white">📂 Tabelas salvas</h4>
           {TABLE_TYPES.map((t) => (
             <div key={t.key}>
-              <h5 className="font-medium text-sm mb-1">{t.label}</h5>
+              <h5 className="font-medium text-sm mb-1 text-gray-300">{t.label}</h5>
               {renderList(t.key)}
             </div>
           ))}

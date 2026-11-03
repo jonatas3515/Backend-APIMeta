@@ -179,20 +179,20 @@ export default function UserManagement() {
       </div>
 
       {message && (
-        <div className="mb-4 p-3 bg-green-100 border border-green-300 text-green-800 rounded">
+        <div className="mb-4 p-3 bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 rounded-lg text-sm">
           {message}
         </div>
       )}
 
       {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-800 rounded">
+        <div className="mb-4 p-3 bg-red-950/60 border border-red-800/60 text-red-300 rounded-lg text-sm">
           {error}
         </div>
       )}
 
       {showPasswordForm && (
         <form onSubmit={handlePasswordSubmit} className="mb-6 p-4 border border-gray-800 rounded-xl bg-[#181A1B]">
-          <h3 className="font-semibold mb-3">🔐 Alterar minha senha</h3>
+          <h3 className="font-semibold mb-3 text-white">🔐 Alterar minha senha</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Senha atual</label>
@@ -200,7 +200,7 @@ export default function UserManagement() {
                 type="password"
                 value={passwordData.currentPassword}
                 onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                className="w-full px-3 py-2 border border-[#2A2D2F] rounded text-sm"
+                className="w-full px-3 py-2 bg-[#1B1D1E] border border-gray-800 rounded-lg text-sm text-gray-100 focus:border-nc-yellow focus:outline-none"
                 required
               />
             </div>
@@ -210,7 +210,7 @@ export default function UserManagement() {
                 type="password"
                 value={passwordData.newPassword}
                 onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                className="w-full px-3 py-2 border border-[#2A2D2F] rounded text-sm"
+                className="w-full px-3 py-2 bg-[#1B1D1E] border border-gray-800 rounded-lg text-sm text-gray-100 focus:border-nc-yellow focus:outline-none"
                 required
                 minLength={6}
               />
@@ -221,7 +221,7 @@ export default function UserManagement() {
                 type="password"
                 value={passwordData.confirmPassword}
                 onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                className="w-full px-3 py-2 border border-[#2A2D2F] rounded text-sm"
+                className="w-full px-3 py-2 bg-[#1B1D1E] border border-gray-800 rounded-lg text-sm text-gray-100 focus:border-nc-yellow focus:outline-none"
                 required
                 minLength={6}
               />
@@ -230,7 +230,7 @@ export default function UserManagement() {
           <button
             type="submit"
             disabled={passwordLoading}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+            className="px-4 py-2 bg-nc-yellow text-nc-black font-bold rounded-lg text-sm hover:bg-yellow-500 disabled:opacity-50 transition"
           >
             {passwordLoading ? 'Salvando...' : 'Salvar nova senha'}
           </button>
@@ -239,7 +239,7 @@ export default function UserManagement() {
 
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-6 p-4 border border-gray-800 rounded-xl bg-[#181A1B]">
-          <h3 className="font-semibold mb-3">Criar novo usuário</h3>
+          <h3 className="font-semibold mb-3 text-white">Criar novo usuário</h3>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Nome</label>
@@ -247,7 +247,7 @@ export default function UserManagement() {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-3 py-2 border border-[#2A2D2F] rounded text-sm"
+                className="w-full px-3 py-2 bg-[#1B1D1E] border border-gray-800 rounded-lg text-sm text-gray-100 focus:border-nc-yellow focus:outline-none"
                 required
               />
             </div>
@@ -257,7 +257,7 @@ export default function UserManagement() {
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-3 py-2 border border-[#2A2D2F] rounded text-sm"
+                className="w-full px-3 py-2 bg-[#1B1D1E] border border-gray-800 rounded-lg text-sm text-gray-100 focus:border-nc-yellow focus:outline-none"
                 required
               />
             </div>
@@ -266,7 +266,7 @@ export default function UserManagement() {
               <select
                 value={formData.role}
                 onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="w-full px-3 py-2 border border-[#2A2D2F] rounded text-sm"
+                className="w-full px-3 py-2 bg-[#1B1D1E] border border-gray-800 rounded-lg text-sm text-gray-100 focus:border-nc-yellow focus:outline-none"
               >
                 {profile?.is_master && <option value="admin">👑 Admin</option>}
                 {isAdmin && <option value="advogado">⚖️ Advogado</option>}
@@ -279,14 +279,14 @@ export default function UserManagement() {
                 type="text"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                className="w-full px-3 py-2 border border-[#2A2D2F] rounded text-sm"
+                className="w-full px-3 py-2 bg-[#1B1D1E] border border-gray-800 rounded-lg text-sm text-gray-100 focus:border-nc-yellow focus:outline-none"
                 required
               />
             </div>
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
+            className="px-4 py-2 bg-nc-yellow text-nc-black font-bold rounded-lg text-sm hover:bg-yellow-500 transition"
           >
             Criar Usuário
           </button>
@@ -294,7 +294,7 @@ export default function UserManagement() {
       )}
 
       {isEstagiario ? (
-        <div className="p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg text-sm">
+        <div className="p-4 bg-blue-950/40 border border-blue-800/60 text-blue-300 rounded-xl text-sm">
           🎓 Seu acesso como <strong>Estagiário</strong> permite visualizar e atuar nos casos atribuídos a você. Apenas administradores e advogados têm permissão para cadastrar e gerenciar membros da equipe.
         </div>
       ) : loading ? (
