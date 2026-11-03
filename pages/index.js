@@ -344,6 +344,7 @@ export default function Home() {
       const { data, error } = await supabase
         .from('conversations')
         .select('*, messages(created_at, text)')
+        .order('unread', { ascending: false })
         .order('updated_at', { ascending: false });
 
       if (error) {

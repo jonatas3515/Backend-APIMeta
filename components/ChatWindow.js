@@ -1341,7 +1341,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
 
       {/* Banner de Sugestão de Caso */}
       {userRole && !isSpam && (
-        <div className="px-4 pt-4">
+        <div className="px-4 pt-2">
           <CaseSuggestionBanner
             conversation={conversation}
             activeCase={activeCase}
@@ -1503,7 +1503,7 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
               )}
               
               {msg.text && msg.content_type !== 'document' && !(msg.content_type === 'image' && (msg.text.startsWith('[') || msg.text === 'Imagem enviada')) && (
-                <p className="text-sm text-gray-100 leading-relaxed">{msg.text}</p>
+                <p className="text-sm text-gray-100 leading-relaxed whitespace-pre-wrap">{msg.text}</p>
               )}
 
               {/* Status e resumo de mídia (apenas para mídias recebidas) */}

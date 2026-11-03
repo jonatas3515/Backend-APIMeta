@@ -79,6 +79,14 @@ export default function ChatList({ conversations, selectedConversation, onSelect
         conv.legal_area?.toLowerCase().includes(search) ||
         conv.case_type?.toLowerCase().includes(search)
       );
+    })
+    .sort((a, b) => {
+      const aUnread = a.unread ? 1 : 0;
+      const bUnread = b.unread ? 1 : 0;
+      if (bUnread !== aUnread) return bUnread - aUnread;
+      const aDate = new Date(a.updated_at || a.created_at || 0).getTime();
+      const bDate = new Date(b.updated_at || b.created_at || 0).getTime();
+      return bDate - aDate;
     });
 
   return (

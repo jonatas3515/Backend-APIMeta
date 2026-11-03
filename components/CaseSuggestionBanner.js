@@ -70,12 +70,12 @@ export default function CaseSuggestionBanner({
         ? '✨ Conversa pronta para virar caso'
         : '⚠️ Conversa sem caso vinculado';
     const collapsedColor = activeCase
-      ? 'bg-blue-50 border-blue-200 text-blue-800'
+      ? 'bg-[#1E2229] border-blue-500/30 text-blue-300'
       : isEligible
-        ? 'bg-green-50 border-green-200 text-green-800'
-        : 'bg-yellow-50 border-yellow-200 text-yellow-800';
+        ? 'bg-[#1B2421] border-emerald-500/30 text-emerald-300'
+        : 'bg-[#26211B] border-amber-500/30 text-amber-300';
     return (
-      <div className={`border rounded-lg px-3 py-1.5 mb-4 flex items-center justify-between gap-2 ${collapsedColor}`}>
+      <div className={`border rounded-lg px-3 py-1 mb-2 flex items-center justify-between gap-2 shadow-sm ${collapsedColor}`}>
         <span className="text-xs font-medium truncate">{collapsedText}</span>
         <div className="flex items-center gap-1 flex-shrink-0">
           {activeCase && (
@@ -109,15 +109,15 @@ export default function CaseSuggestionBanner({
   // Caso ativo existe - mostrar botão para abrir
   if (activeCase) {
     return (
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-2.5 md:p-4 mb-4">
+      <div className="bg-[#1E2229] border border-blue-500/30 rounded-lg px-3 py-1.5 md:px-3.5 md:py-2 mb-2 shadow-sm">
         <div className="flex items-center justify-between gap-2">
           <div className="flex-1 min-w-0 flex items-center gap-2">
-            <span className="text-blue-600 font-medium text-sm truncate">📋 {activeCase.title}</span>
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded flex-shrink-0">
+            <span className="text-blue-300 font-medium text-xs md:text-sm truncate">📋 {activeCase.title}</span>
+            <span className="text-[11px] bg-blue-500/15 text-blue-300 border border-blue-500/20 px-1.5 py-0.5 rounded font-mono flex-shrink-0">
               {activeCase.status}
             </span>
             {activeCase.legal_area && (
-              <span className="hidden md:inline text-xs text-gray-500">
+              <span className="hidden md:inline text-xs text-gray-400 truncate">
                 {activeCase.legal_area} {activeCase.case_type && `• ${activeCase.case_type}`}
               </span>
             )}
@@ -125,13 +125,13 @@ export default function CaseSuggestionBanner({
           <div className="flex items-center gap-1 flex-shrink-0">
             <button
               onClick={onOpenCase}
-              className="px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded transition-colors shadow-sm"
             >
               Abrir Caso
             </button>
             <button
               onClick={() => setIsCollapsed(true)}
-              className="p-1.5 text-blue-400 hover:text-blue-600 transition"
+              className="p-1 text-gray-400 hover:text-gray-200 transition text-xs"
               title="Minimizar"
             >
               ▲
@@ -145,10 +145,10 @@ export default function CaseSuggestionBanner({
   // Sugestão para criar/vincular caso
   if (isEligible && canEdit) {
     return (
-      <div className="bg-green-50 border border-green-200 rounded-lg p-2.5 md:p-4 mb-4">
+      <div className="bg-[#1B2421] border border-emerald-500/30 rounded-lg p-2.5 md:p-3 mb-2 shadow-sm">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-green-800 font-medium">✨ Pronto para criar caso jurídico</p>
+            <p className="text-emerald-300 font-medium text-xs md:text-sm">✨ Pronto para criar caso jurídico</p>
             <p className="text-sm text-gray-400 mt-1">
               Esta conversa está em <strong>{conversation.funnel_stage}</strong> e pode ser convertida em caso.
             </p>
@@ -182,10 +182,10 @@ export default function CaseSuggestionBanner({
   // Aviso de inconsistência (estágio avançado sem caso)
   if (showInconsistencyWarning) {
     return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2.5 md:p-4 mb-4">
+      <div className="bg-[#26211B] border border-amber-500/30 rounded-lg p-2.5 md:p-3 mb-2 shadow-sm">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <p className="text-yellow-800 font-medium">⚠️ Atenção</p>
+            <p className="text-amber-300 font-medium text-xs md:text-sm">⚠️ Atenção</p>
             <p className="text-sm text-gray-400 mt-1">
               Esta conversa está em <strong>{conversation.funnel_stage}</strong> mas não possui caso ativo vinculado.
             </p>
