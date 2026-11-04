@@ -298,6 +298,7 @@ export default async function handler(req, res) {
       // Um modo 'human' só silencia o bot quando um humano realmente assumiu
       // (mensagem com sender_type='human' dentro da janela de 30 minutos).
       // Handoff automático antigo sem humano ativo não deve silenciar o cliente.
+      let isHumanActive = false;
       if (conversation.mode === 'human') {
         const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
         const { data: recentHumanMsgs } = await supabase
@@ -320,29 +321,10 @@ export default async function handler(req, res) {
 
           conversation.mode = 'bot'; // Atualiza localmente para continuar processamento
         } else {
+          isHumanActive = true;
           const lastUpdate = new Date(conversation.updated_at);
           const diffMinutes = (Date.now() - lastUpdate.getTime()) / (1000 * 60);
           log('bot_human_mode', { diffMinutes: Math.round(diffMinutes) });
-          
-          // Salvar mensagem do cliente mesmo com bot pausado
-          if (conversation) {
-            await saveMessage(conversation.id, textBody, 'client', messageType, '', '', inboundExtra, waMessageId);
-          }
-
-          // Verifica pedido de privacidade ou aceite de LGPD
-          if (conversation && messageType === 'text') {
-            const { handled: privacyHandled } = await handlePrivacyRequest(conversation, textBody, from, req, outMeta());
-            if (privacyHandled) {
-              return res.status(200).json({ success: true, privacy: true });
-            }
-            const { handled } = await handleConsent(conversation, textBody, from, req, outMeta());
-            if (handled) {
-              return res.status(200).json({ success: true, consent: true });
-            }
-          }
-
-          // Retorna sem responder
-          return res.status(200).json({ success: true, bot_paused: true });
         }
       }
       
@@ -452,6 +434,32 @@ export default async function handler(req, res) {
             }
           });
         }
+      }
+
+      // Se o bot estiver pausado (atendimento humano ativo):
+      if (isHumanActive) {
+        // Se for áudio/vídeo, transcreve em segundo plano para o atendente humano ler na interface, sem resposta automática do bot
+        if (publicUrl && (messageType === 'audio' || messageType === 'video')) {
+          const sendDeadline = __invocationStart + invocationBudgetMs() - sendReserveMs();
+          waitUntil(transcribeAudioAsync(conversation.id, publicUrl, messageType, inboundMessageId, sendDeadline, { skipReply: true }).catch(err => {
+            console.error('[WEBHOOK] Erro ao transcrever áudio em background (modo humano):', err.message);
+          }));
+        }
+
+        // Verifica pedido de privacidade ou aceite de LGPD
+        if (conversation && messageType === 'text') {
+          const { handled: privacyHandled } = await handlePrivacyRequest(conversation, textBody, from, req, outMeta());
+          if (privacyHandled) {
+            return res.status(200).json({ success: true, privacy: true });
+          }
+          const { handled } = await handleConsent(conversation, textBody, from, req, outMeta());
+          if (handled) {
+            return res.status(200).json({ success: true, consent: true });
+          }
+        }
+
+        // Retorna sem responder pelo bot
+        return res.status(200).json({ success: true, bot_paused: true });
       }
 
       // Carregar histórico da conversa para o contexto (máximo 4h)
@@ -2176,7 +2184,7 @@ const sendReserveMs = () => {
   return Number.isFinite(n) && n > 0 ? n : 5000;
 };
 
-async function transcribeAudioAsync(conversationId, mediaUrl, mediaType, messageId = null, sendDeadline = null) {
+async function transcribeAudioAsync(conversationId, mediaUrl, mediaType, messageId = null, sendDeadline = null, options = {}) {
   // Reivindicação atômica: só quem mudar pending->processing continua.
   // Evita corrida com o sweeper /api/process-media sobre o mesmo áudio.
   // Transição final condicional à posse: só grava se o áudio ainda está em
@@ -2239,6 +2247,21 @@ async function transcribeAudioAsync(conversationId, mediaUrl, mediaType, message
     await setAudioStatus('processing', { media_transcript: transcript });
 
     console.log('[WEBHOOK] ✅ Áudio transcrito, comprimento:', transcript?.length || 0);
+
+    // Se options.skipReply for verdadeiro (modo humano ativo):
+    // gera resumo se possível e fecha como 'processed' sem enviar resposta automática pelo bot.
+    if (options && options.skipReply) {
+      let summary = null;
+      try {
+        summary = await summarizeMedia(mediaUrl, mimeType);
+      } catch (_) {}
+      await setAudioStatus('processed', {
+        media_transcript: transcript,
+        media_summary: summary || null
+      });
+      console.log('[WEBHOOK] ✅ Áudio processado em modo humano (sem resposta do bot)');
+      return;
+    }
 
     // Busca a conversa e histórico para gerar resposta
     const { data: conversation, error: convError } = await supabase

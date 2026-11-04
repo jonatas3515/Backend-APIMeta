@@ -1398,6 +1398,14 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                   : 'bg-[#2D2814] text-gray-100 border border-yellow-500/40'
               }`}
             >
+              {/* Se for áudio sem media_url */}
+              {!msg.media_url && (msg.content_type === 'audio' || msg.media_type?.startsWith('audio/')) && (
+                <div className="mb-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400 flex items-center gap-1.5">
+                  <span>⚠️</span>
+                  <span>Áudio não disponível para reprodução</span>
+                </div>
+              )}
+
               {/* Renderizar mídia se existir */}
               {msg.media_url && (
                 <div className="mb-2">
@@ -1410,22 +1418,31 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                     />
                   ) : msg.content_type === 'audio' || msg.media_type?.startsWith('audio/') ? (
                     msg.status === 'failed' || msg.media_status === 'failed' ? (
-                      <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                        ❌ Áudio não disponível (falha no envio)
+                      <div className="p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
+                        ❌ Áudio não disponível (falha no envio/download)
                       </div>
                     ) : (
-                      <audio 
-                        controls 
-                        className="w-full" 
-                        src={msg.media_url}
-                        onError={(e) => {
-                          console.warn('[CHAT] Erro ao carregar áudio:', msg.media_url);
-                          e.target.style.display = 'none';
-                          e.target.parentElement.innerHTML = '<div class="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">⚠️ Erro ao carregar áudio</div>';
-                        }}
-                      >
-                        Seu navegador não suporta áudio.
-                      </audio>
+                      <div className="w-full min-w-[240px]">
+                        <audio 
+                          controls 
+                          className="w-full h-10 rounded" 
+                          src={msg.media_url}
+                          preload="metadata"
+                        >
+                          Seu navegador não suporta áudio.
+                        </audio>
+                        <div className="flex items-center justify-end mt-1">
+                          <a
+                            href={msg.media_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="text-[11px] text-gray-400 hover:text-nc-yellow transition inline-flex items-center gap-1"
+                          >
+                            ⬇ Baixar áudio
+                          </a>
+                        </div>
+                      </div>
                     )
                   ) : msg.content_type === 'video' || msg.media_type?.startsWith('video/') ? (
                     msg.status === 'failed' || msg.media_status === 'failed' ? (
@@ -1502,14 +1519,14 @@ export default function ChatWindow({ conversation, onConversationUpdate, onBack 
                 </div>
               )}
               
-              {msg.text && msg.content_type !== 'document' && !(msg.content_type === 'image' && (msg.text.startsWith('[') || msg.text === 'Imagem enviada')) && (
+              {msg.text && msg.content_type !== 'document' && !(msg.content_type === 'image' && (msg.text.startsWith('[') || msg.text === 'Imagem enviada')) && !(msg.content_type === 'audio' && msg.media_url && (msg.text === '[Áudio enviado]' || msg.text?.startsWith('[Áudio/vídeo enviado'))) && (
                 <p className="text-sm text-gray-100 leading-relaxed whitespace-pre-wrap">{msg.text}</p>
               )}
 
               {/* Status e resumo de mídia (apenas para mídias recebidas) */}
               {(msg.direction === 'inbound') && (msg.content_type === 'audio' || msg.content_type === 'video' || msg.content_type === 'image' || msg.content_type === 'document') && (
                 <div className="mt-2 pt-2 border-t border-gray-800/50">
-                  {(msg.media_status === 'pending' || msg.media_status === 'processing') && (
+                  {msg.media_url && (msg.media_status === 'pending' || msg.media_status === 'processing') && (
                     <span className="text-xs text-gray-400 flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-nc-yellow animate-pulse"></span>
                       Processando {msg.content_type === 'audio' ? 'áudio' : msg.content_type === 'video' ? 'vídeo' : 'mídia'}...

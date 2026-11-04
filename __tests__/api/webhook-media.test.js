@@ -172,6 +172,33 @@ function buildDocumentPayload() {
   };
 }
 
+function buildAudioPayload(mediaId = 'MEDIA-ID-AUDIO-001') {
+  return {
+    object: 'whatsapp_business_account',
+    entry: [{
+      id: 'entry-synthetic-audio',
+      changes: [{
+        value: {
+          messaging_product: 'whatsapp',
+          metadata: {
+            display_phone_number: '5511999999999',
+            phone_number_id: 'MOCK-PHONE-ID-FOR-TESTING',
+          },
+          contacts: [{ profile: { name: 'Patrícya Brito' } }],
+          messages: [{
+            from: '5573999998888',
+            id: 'msg-synthetic-audio-001',
+            timestamp: '1234567890',
+            type: 'audio',
+            audio: { id: mediaId, mime_type: 'audio/ogg' }
+          }],
+        },
+        field: 'messages',
+      }],
+    }],
+  };
+}
+
 describe('Webhook media real path', () => {
   let fetchSpy;
 
@@ -184,6 +211,15 @@ describe('Webhook media real path', () => {
     fetchSpy = jest.spyOn(global, 'fetch').mockImplementation((url) => {
       const u = String(url);
       const baseResponse = (extra) => Promise.resolve({ text: async () => 'error', ...extra });
+      if (u.includes('graph.facebook.com/v20.0/MEDIA-ID-AUDIO')) {
+        return baseResponse({
+          ok: true,
+          json: async () => ({
+            url: 'https://example.com/media-content.ogg',
+            mime_type: 'audio/ogg'
+          })
+        });
+      }
       if (u.includes('graph.facebook.com/v20.0/MEDIA-ID-DOC')) {
         return baseResponse({
           ok: true,
@@ -206,6 +242,12 @@ describe('Webhook media real path', () => {
         return baseResponse({
           ok: true,
           arrayBuffer: async () => new ArrayBuffer(16)
+        });
+      }
+      if (u === 'https://example.com/media-content.ogg') {
+        return baseResponse({
+          ok: true,
+          arrayBuffer: async () => new ArrayBuffer(24)
         });
       }
       if (u === 'https://example.com/media-content.jpg') {
@@ -349,5 +391,44 @@ describe('Webhook media real path', () => {
     expect(envUrl).not.toMatch(/MEDIA-ID/);
     // A imagem institucional é enviada por função separada, não pelo fluxo de vision do cliente
     expect(fetchSpy).not.toHaveBeenCalledWith(envUrl, expect.anything());
+  });
+
+  test('áudio recebido em modo humano com atendente ativo é salvo com URL no storage e não dispara resposta do bot', async () => {
+    global.__testConversation = {
+      client_name: 'Patrícya Brito',
+      mode: 'human',
+      updated_at: new Date().toISOString(),
+      intake_data: {}
+    };
+    global.__testMessages = [{
+      conversation_id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      text: 'Boa tarde Sr.ª Patrícya, sou Jonatas, em que posso ajudar?',
+      sender_type: 'human',
+      created_at: new Date(Date.now() - 2 * 60 * 1000).toISOString()
+    }];
+
+    const { req, res } = createMocks({
+      method: 'POST',
+      body: buildAudioPayload('MEDIA-ID-AUDIO-001'),
+    });
+
+    await webhookHandler(req, res);
+
+    const statusCode = res._getStatusCode();
+    expect(statusCode).toBe(200);
+    const data = typeof res._getData() === 'string' ? JSON.parse(res._getData()) : res._getData();
+    expect(data).toMatchObject({ success: true, bot_paused: true });
+
+    // Bot não enviou mensagem automática via WhatsApp ao cliente
+    const whatsappMessagesCalls = fetchSpy.mock.calls.filter(([u]) =>
+      String(u).includes('/messages')
+    );
+    expect(whatsappMessagesCalls.length).toBe(0);
+
+    // Mídia foi baixada da Meta e URL salva
+    const metaMediaCalls = fetchSpy.mock.calls.filter(([u]) =>
+      String(u).includes('MEDIA-ID-AUDIO-001')
+    );
+    expect(metaMediaCalls.length).toBeGreaterThan(0);
   });
 });
