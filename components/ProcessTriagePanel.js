@@ -217,7 +217,7 @@ export default function ProcessTriagePanel({ movementId, profile }) {
   }, []);
 
   const buildParams = (pageNum = 1) => {
-    const params = new URLSearchParams({ action: 'list', page: String(pageNum), limit: '20' });
+    const params = new URLSearchParams({ action: 'list', page: String(pageNum), limit: '25' });
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
         if (key === 'assigned_user_id') {
@@ -630,7 +630,7 @@ export default function ProcessTriagePanel({ movementId, profile }) {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#181A1B] text-gray-100 overflow-hidden" data-testid="triage-panel">
+    <div className="w-full flex-1 flex flex-col bg-[#181A1B] text-gray-100" data-testid="triage-panel">
       <div className="bg-[#1B1D1E] border-b border-gray-800 p-4">
         <h1 className="text-2xl font-bold text-white">⏱️ Central de Triagem Processual</h1>
         <div className="mt-2 p-3 bg-blue-950/20 border border-blue-500/20 rounded-xl text-xs md:text-sm text-blue-200/90" role="note" data-testid="triage-disclaimer">
@@ -714,7 +714,7 @@ export default function ProcessTriagePanel({ movementId, profile }) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4" data-testid="triage-list">
+      <div className="w-full p-4" data-testid="triage-list">
         {loading && movements.length === 0 && (
           <div className="text-center py-12 text-gray-400" data-testid="triage-loading">Carregando movimentações...</div>
         )}
@@ -824,11 +824,62 @@ export default function ProcessTriagePanel({ movementId, profile }) {
           </div>
         )}
 
-        {!loading && !error && page < totalPages && (
-          <div className="py-4 text-center">
-            <button onClick={() => fetchMovements(page + 1, true)} disabled={loadingMore} className="nc-btn text-sm" data-testid="load-more">
-              {loadingMore ? 'Carregando...' : 'Carregar mais'}
-            </button>
+        {!loading && !error && totalPages > 1 && (
+          <div className="py-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-800/80 mt-6 px-2">
+            <div className="text-xs text-gray-400">
+              Página <strong className="text-white">{page}</strong> de <strong className="text-white">{totalPages}</strong> (25 por página)
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              <button
+                onClick={() => fetchMovements(page - 1, false)}
+                disabled={page <= 1 || loadingMore}
+                className="px-3 py-1.5 text-xs rounded-lg border border-gray-800 bg-[#1E2022] hover:bg-[#2A2D2F] text-gray-200 disabled:opacity-40 transition font-medium"
+              >
+                ◀ Anterior
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                .map((p, idx, arr) => {
+                  const prev = arr[idx - 1];
+                  const hasGap = prev && p - prev > 1;
+                  return (
+                    <span key={p} className="flex items-center gap-1">
+                      {hasGap && <span className="text-gray-500 px-1 text-xs">...</span>}
+                      <button
+                        onClick={() => fetchMovements(p, false)}
+                        disabled={page === p || loadingMore}
+                        className={`min-w-[32px] h-8 px-2.5 text-xs font-semibold rounded-lg transition ${
+                          page === p
+                            ? 'bg-nc-yellow text-nc-black font-bold shadow-sm'
+                            : 'bg-[#1E2022] border border-gray-800 text-gray-200 hover:bg-[#2A2D2F]'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    </span>
+                  );
+                })}
+
+              <button
+                onClick={() => fetchMovements(page + 1, false)}
+                disabled={page >= totalPages || loadingMore}
+                className="px-3 py-1.5 text-xs rounded-lg border border-gray-800 bg-[#1E2022] hover:bg-[#2A2D2F] text-gray-200 disabled:opacity-40 transition font-medium"
+              >
+                Próxima ▶
+              </button>
+
+              {page < totalPages && (
+                <button
+                  onClick={() => fetchMovements(page + 1, true)}
+                  disabled={loadingMore}
+                  className="ml-2 px-3 py-1.5 text-xs rounded-lg border border-nc-yellow/40 bg-nc-yellow/10 text-nc-yellow hover:bg-nc-yellow/20 font-medium transition"
+                  data-testid="load-more"
+                >
+                  {loadingMore ? 'Carregando...' : '+ Carregar mais'}
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

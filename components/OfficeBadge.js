@@ -70,7 +70,7 @@ export default function OfficeBadge() {
         ) : (
           <div className="w-full flex flex-col items-center gap-1">
             <span
-              className={`text-[9px] px-2 py-0.5 rounded font-bold ${
+              className={`text-[8px] px-1.5 py-0.5 rounded font-bold inline-flex items-center justify-center gap-1 whitespace-nowrap max-w-full ${
                 isEnterprise
                   ? 'bg-purple-900/60 text-purple-300 border border-purple-500/40'
                   : planLabel === 'PRO'
@@ -79,7 +79,14 @@ export default function OfficeBadge() {
               }`}
               data-testid="office-plan-badge"
             >
-              {isEnterprise ? '👑 ENTERPRISE' : planLabel}
+              {isEnterprise ? (
+                <>
+                  <span className="text-[9px] leading-none">👑</span>
+                  <span className="tracking-tight">ENTERPRISE</span>
+                </>
+              ) : (
+                planLabel
+              )}
             </span>
             {!isEnterprise && canUpgrade && (
               <button

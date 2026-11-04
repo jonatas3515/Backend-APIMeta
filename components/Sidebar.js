@@ -93,23 +93,25 @@ export default function Sidebar({ activeTab, onChangeTab, widthClass = 'w-24' })
               }`}
               title={item.label}
             >
-              <span className="text-xl leading-none">{item.icon}</span>
+              <span className="text-[17px] leading-none">{item.icon}</span>
               <span className="text-[10px] w-full text-center leading-tight truncate px-0.5 font-medium">{item.label}</span>
             </button>
           ))}
         </nav>
 
         <div className="w-full px-2 pb-2 mt-2 border-t border-nc-gray-800 pt-2 flex flex-col items-center">
-          <div className="mb-1">
-            <UserRoleBadge role={profile?.role} isMaster={profile?.is_master} className="text-[9px] px-1.5 py-0.5" />
-          </div>
+          {!profile?.is_master && (
+            <div className="mb-1">
+              <UserRoleBadge role={profile?.role} isMaster={false} className="text-[9px] px-1.5 py-0.5" />
+            </div>
+          )}
           <OfficeBadge />
           <button
             onClick={handleSignOut}
             className="w-full h-14 min-h-[56px] rounded-lg transition text-nc-gray-500 hover:text-red-400 hover:bg-nc-gray-800/50 flex flex-col items-center justify-center gap-1 p-1"
             title="Sair"
           >
-            <span className="text-xl leading-none">🚪</span>
+            <span className="text-[17px] leading-none">🚪</span>
             <span className="text-[10px] font-medium">Sair</span>
           </button>
         </div>

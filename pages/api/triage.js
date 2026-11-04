@@ -77,7 +77,7 @@ async function listMovements(req, res) {
     end_date,
     assigned_user_id,
     page = 1,
-    limit = 20
+    limit = 25
   } = req.query;
 
   const officeId = getTenantOfficeId(req);
