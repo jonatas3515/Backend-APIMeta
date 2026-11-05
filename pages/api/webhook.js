@@ -1292,6 +1292,12 @@ async function saveMessage(conversationId, text, sender, messageType = 'text', m
       wa_message_id: waMessageId || undefined
     };
 
+    if (extraData.status) {
+      insertData.status = extraData.status;
+    } else if (waMessageId && direction === 'outbound') {
+      insertData.status = 'sent';
+    }
+
     if (mediaUrl) insertData.media_url = mediaUrl;
     if (mediaSummary) insertData.media_summary = mediaSummary;
     if (extraData.media_type) insertData.media_type = extraData.media_type;
@@ -1764,9 +1770,9 @@ async function sendNevesCostaImage(to, conversationId, imageUrl = NEVES_COSTA_IM
     if (!mediaId) throw new Error('Media ID não retornado');
 
     const caption = 'Aviso importante: o escritório Neves & Costa não possui relação com a entidade "Neves Costa".';
-    await sendWhatsAppMediaMessage(to, mediaId, 'image', caption);
+    const waMessageId = await sendWhatsAppMediaMessage(to, mediaId, 'image', caption);
 
-    await saveMessage(conversationId, caption, 'ai', 'image', imageUrl, '', { ...extraData, media_type: 'image/jpeg' });
+    await saveMessage(conversationId, caption, 'ai', 'image', imageUrl, '', { ...extraData, media_type: 'image/jpeg', status: 'sent' }, waMessageId);
 
     console.log('[WEBHOOK] ✅ Imagem Neves Costa enviada');
     return true;

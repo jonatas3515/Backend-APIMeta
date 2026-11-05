@@ -295,6 +295,10 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
 
         // Atualiza campo Notas com resumo sucinto da análise do ato judicial
         let currentNotes = (targetCase?.notes || '').trim();
+        // Se a nota contiver apenas o placeholder legado do sistema antigo, limpa para dar lugar ao resumo real
+        if (/^Importado do Sistema JNC/i.test(currentNotes)) {
+          currentNotes = '';
+        }
         if (analysis.resumo) {
           const todayFormatted = new Date().toLocaleDateString('pt-BR');
           const atoLabel = analysis.tipo_ato || 'Decisão/Despacho';
@@ -347,8 +351,15 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
             updates.agency = orgaoIdentificado;
           }
           const tipoCasoIdentificado = (dp.tipo_caso || dp.classe || '').trim();
-          if (tipoCasoIdentificado && (!targetCase?.case_type || targetCase?.case_type.trim() === '')) {
+          if (tipoCasoIdentificado && (!targetCase?.case_type || targetCase?.case_type.trim() === '' || targetCase?.case_type === 'audiencia' || targetCase?.case_type === 'outro')) {
             updates.case_type = tipoCasoIdentificado;
+          }
+          if (dp.titulo_sugerido && (
+            !targetCase?.title ||
+            targetCase?.title.toLowerCase().startsWith('conciliação') ||
+            targetCase?.title.toLowerCase().startsWith('audiência de conciliação')
+          )) {
+            updates.title = dp.titulo_sugerido.trim();
           }
           if (!targetCase?.client_role) {
             const isAuthor = !dp.cliente_provavel || dp.cliente_provavel === dp.autor || (dp.autor && dp.autor.toLowerCase().includes(dp.cliente_provavel?.toLowerCase()));

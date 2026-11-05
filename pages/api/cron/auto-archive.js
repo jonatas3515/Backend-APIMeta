@@ -41,6 +41,35 @@ export default async function handler(req, res) {
     if (error) throw error;
 
     const archived = (data || []).length;
+    const archivedIds = (data || []).map(c => c.id);
+
+    // REGRA DO FUNIL: se tem caso vinculado ativo (status != 'encerrado'), NÃO move para a etapa 'encerrado' do Funil.
+    // Se NÃO tiver caso vinculado, move automaticamente para funnel_stage = 'encerrado'.
+    if (archivedIds.length > 0) {
+      try {
+        const { data: linkedCases } = await supabase
+          .from('cases')
+          .select('conversation_id')
+          .in('conversation_id', archivedIds)
+          .neq('status', 'encerrado');
+
+        const linkedSet = new Set((linkedCases || []).map(c => c.conversation_id));
+        const toEncerrarIds = archivedIds.filter(id => !linkedSet.has(id));
+
+        if (toEncerrarIds.length > 0) {
+          for (let i = 0; i < toEncerrarIds.length; i += 100) {
+            const batch = toEncerrarIds.slice(i, i + 100);
+            await supabase
+              .from('conversations')
+              .update({ funnel_stage: 'encerrado' })
+              .in('id', batch);
+          }
+        }
+      } catch (funnelSyncErr) {
+        console.warn('[CRON] Aviso ao sincronizar funil com conversas arquivadas:', funnelSyncErr?.message);
+      }
+    }
+
     console.log(`[CRON] Auto-arquivamento concluído: ${archived} conversa(s) arquivada(s)`);
 
     return res.status(200).json({

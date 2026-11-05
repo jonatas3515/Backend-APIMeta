@@ -117,13 +117,28 @@ export default function LegalClassification({ conversation, onUpdate }) {
     }
 
     try {
+      // Verificar se possui caso vinculado ativo
+      const { data: linkedCases } = await supabase
+        .from('cases')
+        .select('id')
+        .eq('conversation_id', conversation.id)
+        .neq('status', 'encerrado')
+        .limit(1);
+
+      const hasLinkedCase = linkedCases && linkedCases.length > 0;
+      const updateData = {
+        archived: true,
+        archived_at: new Date().toISOString(),
+        status: 'closed'
+      };
+
+      if (!hasLinkedCase) {
+        updateData.funnel_stage = 'encerrado';
+      }
+
       const { error } = await supabase
         .from('conversations')
-        .update({
-          archived: true,
-          archived_at: new Date().toISOString(),
-          status: 'closed'
-        })
+        .update(updateData)
         .eq('id', conversation.id);
 
       if (error) throw error;

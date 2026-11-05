@@ -122,9 +122,13 @@ Regras Cruciais:
      * Use: "Apresentar [tipo da peça] até [data limite ou prazo]".
    - Se houver prazo aberto para a parte contrária:
      * Use: "Aguardar manifestação / prazo recursal da parte ré".
-6. REGRAS PARA 'tipo_de_prazo' E 'audiencia':
-   - Se o ato processual marcar ou mencionar Audiência de Instrução e Julgamento (AIJ) ou Conciliação, preencha 'prazo.tipo' com "Audiência de Instrução e Julgamento" (ou Conciliação), mesmo que a data exata ainda esteja pendente de pauta no cartório.
-   - Preencha 'fase_sugerida' como "instrucao" se houver AIJ em andamento.
+6. REGRAS CRÍTICAS PARA 'tipo_de_prazo', 'audiencia' E EVENTOS PASSADOS:
+   - ATENÇÃO MÁXIMA A HISTÓRICO PROCESSUAL: Em extratos de sistemas judiciais (Projudi, PJe, e-SAJ), os eventos mais recentes aparecem no topo com numeração maior (ex: evento 103, 102... ou evento 227, 226...). Dê prioridade total aos eventos mais recentes do topo!
+   - NUNCA identifique audiências que já foram REALIZADAS, REDESIGNADAS NO PASSADO ou CANCELADAS como audiência futura! Se no histórico constar "Audiência de Conciliação Realizada" em datas passadas (2025, início de 2026, etc.), a 'audiencia.identificada' DEVE SER FALSE.
+   - Só marque 'audiencia.identificada = true' se houver uma AUDIÊNCIA FUTURA efetivamente agendada/pautada e pendente.
+   - 'titulo_sugerido' e 'tipo_caso': JAMAIS dê nome de "Conciliação" ou "Audiência de Conciliação" ao processo por causa de conciliações passadas. Use a fase ou matéria principal (ex: "Cumprimento de Sentença — [Cliente]" ou "Recurso Inominado — [Cliente]" ou o assunto "Dano Moral / Consumidor").
+   - Se o ato processual recente marcar ou mencionar Audiência de Instrução e Julgamento (AIJ) futura, preencha 'prazo.tipo' com "Audiência de Instrução e Julgamento".
+   - Preencha 'fase_sugerida' como "instrucao" se houver AIJ futura, "execucao" se for cumprimento de sentença/penhora/bloqueio, e "recurso" se estiver na Turma Recursal ou Tribunal.
 7. Seja estrito: não invente datas ou valores ausentes no texto.`;
 }
 
