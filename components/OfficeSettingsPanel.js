@@ -4,7 +4,17 @@ import { supabase } from '../lib/supabaseClient';
 import { safeError } from '../lib/safeLogger';
 import { useAuth } from '../lib/useAuth';
 
-const BIRTHDAY_DEFAULT = 'Feliz aniversário, {nome}! 🎂 Que seu dia seja repleto de alegria. Equipe {escritorio}.';
+const BIRTHDAY_DEFAULT = `Prezado(a) {nome},
+
+Em nome de toda a equipe Neves & Costa Advocacia e Consultoria, gostaríamos de lhe desejar um *Feliz Aniversário!*
+Que este novo ciclo que se inicia seja repleto de realizações, saúde, paz e muitas conquistas, tanto na vida pessoal quanto na profissional. É uma imensa honra contar com sua confiança e tê-lo(a) como parte da nossa trajetória.
+Tenha um excelente dia ao lado de seus familiares e amigos.
+
+Atenciosamente,
+
+⚖️ Equipe Neves & Costa
+📱 (73) 99934-8552
+🌐 www.nevesecosta.com.br`;
 const BIRTHDAY_WEEKLY_DEFAULT = 'Olá {nome}! Seu aniversário está chegando! 🎉 Desejamos uma semana maravilhosa. Equipe {escritorio}.';
 
 export default function OfficeSettingsPanel() {
@@ -19,7 +29,25 @@ export default function OfficeSettingsPanel() {
   });
   const [msg, setMsg] = useState(null);
   const [saving, setSaving] = useState(null);
+  const [testingNotif, setTestingNotif] = useState(false);
   const fileRef = useRef(null);
+
+  const handleTestNotification = async (trigger) => {
+    setTestingNotif(true);
+    setMsg(null);
+    try {
+      const res = await apiJson(`/api/cron/daily-notifications?trigger=${trigger}&force=true`);
+      if (res.success) {
+        setMsg({ type: 'success', text: `✓ Teste de alerta (${trigger}) disparado para o WhatsApp (73) 99934-8552!` });
+      } else {
+        setMsg({ type: 'error', text: res.error || 'Erro ao enviar alerta de teste.' });
+      }
+    } catch (err) {
+      setMsg({ type: 'error', text: err?.message || 'Erro ao disparar teste de notificação.' });
+    } finally {
+      setTestingNotif(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -223,10 +251,10 @@ export default function OfficeSettingsPanel() {
       <section className="bg-[#1B1D1E] rounded-lg shadow p-4">
         <h3 className="font-bold text-sm text-gray-100 mb-3">🎂 Mensagem de Aniversário</h3>
         <textarea
-          rows={3}
+          rows={9}
           value={form.birthday_message}
           onChange={(e) => setForm({ ...form, birthday_message: e.target.value })}
-          className="w-full px-3 py-2 bg-[#181A1B] border border-[#2A2D2F] rounded text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow"
+          className="w-full min-h-[220px] px-3 py-2.5 bg-[#181A1B] border border-[#2A2D2F] rounded-lg text-sm text-gray-100 placeholder-gray-500 focus:outline-none focus:border-nc-yellow leading-relaxed resize-y"
           placeholder="Use {nome} e {escritorio} como variáveis"
         />
         <div className="flex gap-2 mt-2">
@@ -293,6 +321,53 @@ export default function OfficeSettingsPanel() {
             className="px-4 py-2 rounded bg-blue-950/60 text-blue-300 border border-blue-800/60 text-sm font-medium hover:bg-blue-900/60 transition"
           >
             🔔 Testar Notificação
+          </button>
+        </div>
+      </section>
+
+      {/* Alertas Automaticos no WhatsApp do Advogado */}
+      <section className="bg-[#1B1D1E] rounded-lg shadow p-4 border border-[#2A2D2F]">
+        <h3 className="font-bold text-sm text-gray-100 mb-2 flex items-center gap-2">
+          <span>📱</span> Alertas Automáticos no WhatsApp Forense (73 99934-8552)
+        </h3>
+        <p className="text-xs text-gray-400 mb-3">
+          O assistente dispara resumos automáticos para o seu número pessoal nos seguintes horários:
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 text-xs">
+          <div className="p-3 bg-[#181A1B] border border-gray-800 rounded-lg">
+            <span className="font-bold text-nc-yellow block mb-1">⏰ 12:00 — Véspera (D-1)</span>
+            <span className="text-gray-300">Resumo dos compromissos, audiências e prazos fatais de amanhã.</span>
+          </div>
+          <div className="p-3 bg-[#181A1B] border border-gray-800 rounded-lg">
+            <span className="font-bold text-blue-400 block mb-1">☀️ 07:00 — No Dia (D)</span>
+            <span className="text-gray-300">Agenda matinal com todos os prazos e audiências previstos para hoje.</span>
+          </div>
+          <div className="p-3 bg-[#181A1B] border border-gray-800 rounded-lg">
+            <span className="font-bold text-emerald-400 block mb-1">🎂 09:00 — Aniversários</span>
+            <span className="text-gray-300">Aviso dos clientes que completam aniversário na data de hoje.</span>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => handleTestNotification('eve')}
+            disabled={testingNotif}
+            className="px-3 py-2 rounded bg-[#181A1B] hover:bg-[#2A2D2F] text-gray-200 border border-gray-700 text-xs font-medium transition flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <span>⏰</span> {testingNotif ? 'Enviando...' : 'Testar Véspera (12h)'}
+          </button>
+          <button
+            onClick={() => handleTestNotification('day')}
+            disabled={testingNotif}
+            className="px-3 py-2 rounded bg-[#181A1B] hover:bg-[#2A2D2F] text-gray-200 border border-gray-700 text-xs font-medium transition flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <span>☀️</span> {testingNotif ? 'Enviando...' : 'Testar No Dia (7h)'}
+          </button>
+          <button
+            onClick={() => handleTestNotification('bday')}
+            disabled={testingNotif}
+            className="px-3 py-2 rounded bg-[#181A1B] hover:bg-[#2A2D2F] text-gray-200 border border-gray-700 text-xs font-medium transition flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <span>🎂</span> {testingNotif ? 'Enviando...' : 'Testar Aniversários (9h)'}
           </button>
         </div>
       </section>
