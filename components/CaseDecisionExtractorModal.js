@@ -320,10 +320,6 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
             fee_final_value: finalEst
           };
           currentNotes = serializeFeeIntoNotes(currentNotes, feeData);
-          updates.awarded_value = valCond;
-          updates.fee_percentage = pct;
-          updates.fee_basis = 'condenacao';
-          updates.fee_final_value = finalEst;
         }
 
         if (currentNotes !== (targetCase?.notes || '').trim()) {
