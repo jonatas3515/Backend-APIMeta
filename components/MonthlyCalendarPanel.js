@@ -93,6 +93,13 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
   const [birthdayTemplate, setBirthdayTemplate] = useState(BIRTHDAY_DEFAULT);
   const [selectedDay, setSelectedDay] = useState(() => new Date());
   const [feedbackMsg, setFeedbackMsg] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined') {
+      setIsMobile(/Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -309,7 +316,9 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
                 </div>
 
                 <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-bold text-gray-400 mb-2 uppercase">
-                  {WEEK_DAYS.map((d) => <div key={d}>{d}</div>)}
+                  {WEEK_DAYS.map((d, i) => (
+                    <div key={d} className={i === 0 ? 'text-red-400 font-bold' : ''}>{d}</div>
+                  ))}
                 </div>
 
                 <div className="grid grid-cols-7 gap-1.5">
@@ -322,6 +331,7 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
                     const dayBdays = birthdaysByDay[bdayKey] || [];
                     const isToday = key === todayKey;
                     const isSelected = key === selectedKey;
+                    const isSunday = day.getDay() === 0;
 
                     return (
                       <div
@@ -332,6 +342,8 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
                             ? 'border-yellow-500 bg-yellow-950/40 ring-1 ring-yellow-400'
                             : isToday
                             ? 'border-yellow-500/80 bg-yellow-950/20'
+                            : isSunday
+                            ? 'border-red-500 bg-[#1E2022] hover:border-red-400'
                             : feriado
                             ? 'border-red-900/50 bg-red-950/20'
                             : 'border-[#2A2D2F] bg-[#1E2022] hover:border-gray-700'
@@ -339,7 +351,15 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
                         data-testid={isToday ? 'calendar-today' : undefined}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className={`text-[11px] font-bold ${isToday ? 'text-yellow-400 font-extrabold' : feriado ? 'text-red-400 font-extrabold' : 'text-gray-300 font-bold'}`}>
+                          <span className={`text-[11px] font-bold ${
+                            isToday
+                              ? 'text-yellow-400 font-extrabold'
+                              : isSunday
+                              ? 'text-red-400 font-bold'
+                              : feriado
+                              ? 'text-red-400 font-extrabold'
+                              : 'text-gray-300 font-bold'
+                          }`}>
                             {day.getDate()}
                           </span>
                           {dayBdays.length > 0 && (
@@ -408,28 +428,45 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
                   ) : (
                     <ul className="space-y-2.5">
                       {selectedBirthdays.map((b) => {
-                        const phone = (b.phone || '').replace(/\D/g, '');
+                        const cleanPhone = (b.phone || '').replace(/\D/g, '');
                         const salutationName = formatSalutationName(b.client_name);
                         const formattedText = (birthdayTemplate || BIRTHDAY_DEFAULT)
                           .replace(/\{nome\}/g, salutationName)
                           .replace(/\{escritorio\}/g, 'Neves & Costa Advocacia');
-                        const waUrl = getWhatsAppSendUrl(phone, formattedText);
+                        const msg = encodeURIComponent(formattedText);
+                        const appUrl = isMobile
+                          ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`
+                          : `whatsapp://send?phone=${cleanPhone}&text=${msg}`;
+                        const webUrl = `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${msg}`;
                         return (
                           <li key={b.id} className="text-xs text-gray-200 bg-[#1E2022] p-2.5 rounded-lg border border-[#2A2D2F] space-y-2">
                             <div className="flex items-center justify-between">
                               <span className="font-semibold text-white">{b.client_name || 'Cliente'}</span>
                               <span className="text-[10px] text-amber-400 font-bold bg-amber-950/40 px-1.5 py-0.5 rounded border border-amber-800/50">🎂 Aniversário</span>
                             </div>
-                            {phone && (
-                              <a
-                                href={waUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="w-full text-center block text-[11px] px-2.5 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-sm"
-                                data-testid={`whatsapp-btn-${b.id}`}
-                              >
-                                Enviar Parabéns via WhatsApp
-                              </a>
+                            {cleanPhone && (
+                              <div className="space-y-1.5 pt-1">
+                                <a
+                                  href={appUrl}
+                                  target={isMobile ? '_blank' : undefined}
+                                  rel="noopener noreferrer"
+                                  className="w-full text-center flex items-center justify-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-sm"
+                                  data-testid={`whatsapp-btn-${b.id}`}
+                                >
+                                  <span>💬</span> Enviar no WhatsApp ({isMobile ? 'WhatsApp' : 'App'})
+                                </a>
+                                {!isMobile && (
+                                  <a
+                                    href={webUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full text-center block text-[10px] text-gray-400 hover:text-emerald-400 hover:underline transition py-0.5"
+                                    data-testid={`whatsapp-web-btn-${b.id}`}
+                                  >
+                                    ou abrir via WhatsApp Web
+                                  </a>
+                                )}
+                              </div>
                             )}
                           </li>
                         );
