@@ -31,6 +31,54 @@ Atenciosamente,
 📱 (73) 99934-8552
 🌐 www.nevesecosta.com.br`;
 
+export function formatSalutationName(fullName) {
+  if (!fullName || typeof fullName !== 'string') return 'Cliente';
+  const rawWords = fullName.trim().split(/\s+/).filter(Boolean);
+  if (rawWords.length === 0) return 'Cliente';
+
+  const toTitleCase = (str) => {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  };
+
+  const words = rawWords.map(toTitleCase);
+  if (words.length === 1) return words[0];
+
+  const firstNormalized = words[0]
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  // Prefixos comuns no Brasil que formam nomes compostos (ex.: João Pedro, João Lucas, Antonio Miguel, Ana Maria)
+  const compoundStarters = new Set([
+    'joao', 'jose', 'ana', 'maria', 'antonio', 'pedro',
+    'luiz', 'luis', 'carlos', 'vitor', 'victor', 'paulo',
+    'marcos', 'davi', 'david', 'lucas', 'arthur', 'artur', 'enzo'
+  ]);
+
+  const prepositions = new Set(['da', 'de', 'do', 'das', 'dos', 'e']);
+
+  if (compoundStarters.has(firstNormalized) && words.length > 1) {
+    const secondLower = words[1].toLowerCase();
+    if (!prepositions.has(secondLower)) {
+      return `${words[0]} ${words[1]}`;
+    }
+  }
+
+  return words[0];
+}
+
+export function getWhatsAppSendUrl(phone, text) {
+  const cleanPhone = (phone || '').replace(/\D/g, '');
+  const encoded = encodeURIComponent(text);
+  // No mobile, api.whatsapp.com dispara o app nativo diretamente.
+  // No desktop, web.whatsapp.com evita o redirecionador do wa.me que corrompe emojis UTF-8 em .
+  if (typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+    return `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encoded}`;
+  }
+  return `https://web.whatsapp.com/send?phone=${cleanPhone}&text=${encoded}`;
+}
+
 export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
   // Modo de exibição: 'unificado' (ambos na mesma tela), 'calendar' (só grade), 'agenda' (só lista)
   const [viewMode, setViewMode] = useState(() => {
@@ -361,10 +409,11 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
                     <ul className="space-y-2.5">
                       {selectedBirthdays.map((b) => {
                         const phone = (b.phone || '').replace(/\D/g, '');
+                        const salutationName = formatSalutationName(b.client_name);
                         const formattedText = (birthdayTemplate || BIRTHDAY_DEFAULT)
-                          .replace(/\{nome\}/g, b.client_name || 'Cliente')
+                          .replace(/\{nome\}/g, salutationName)
                           .replace(/\{escritorio\}/g, 'Neves & Costa Advocacia');
-                        const msg = encodeURIComponent(formattedText);
+                        const waUrl = getWhatsAppSendUrl(phone, formattedText);
                         return (
                           <li key={b.id} className="text-xs text-gray-200 bg-[#1E2022] p-2.5 rounded-lg border border-[#2A2D2F] space-y-2">
                             <div className="flex items-center justify-between">
@@ -373,7 +422,7 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
                             </div>
                             {phone && (
                               <a
-                                href={`https://wa.me/${phone}?text=${msg}`}
+                                href={waUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="w-full text-center block text-[11px] px-2.5 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shadow-sm"

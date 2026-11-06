@@ -249,7 +249,10 @@ export default function OfficeSettingsPanel() {
 
       {/* Mensagem de aniversario */}
       <section className="bg-[#1B1D1E] rounded-lg shadow p-4">
-        <h3 className="font-bold text-sm text-gray-100 mb-3">🎂 Mensagem de Aniversário</h3>
+        <h3 className="font-bold text-sm text-gray-100 mb-2">🎂 Mensagem de Aniversário</h3>
+        <p className="text-xs text-gray-400 mb-3">
+          Variáveis disponíveis: <code className="text-amber-400 font-mono">{"{nome}"}</code> (preenche com o primeiro nome ou nome composto, ex.: <em>Rogerio</em>, <em>João Pedro</em>, <em>Ana Maria</em>) e <code className="text-amber-400 font-mono">{"{escritorio}"}</code>.
+        </p>
         <textarea
           rows={9}
           value={form.birthday_message}
