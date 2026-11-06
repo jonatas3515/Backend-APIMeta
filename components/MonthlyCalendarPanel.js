@@ -19,6 +19,18 @@ const FERIADOS = {
 const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const WEEK_DAYS = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'];
 
+const BIRTHDAY_DEFAULT = `Prezado(a) {nome},
+
+Em nome de toda a equipe Neves & Costa Advocacia e Consultoria, gostaríamos de lhe desejar um *Feliz Aniversário!*
+Que este novo ciclo que se inicia seja repleto de realizações, saúde, paz e muitas conquistas, tanto na vida pessoal quanto na profissional. É uma imensa honra contar com sua confiança e tê-lo(a) como parte da nossa trajetória.
+Tenha um excelente dia ao lado de seus familiares e amigos.
+
+Atenciosamente,
+
+⚖️ Equipe Neves & Costa
+📱 (73) 99934-8552
+🌐 www.nevesecosta.com.br`;
+
 export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
   // Modo de exibição: 'unificado' (ambos na mesma tela), 'calendar' (só grade), 'agenda' (só lista)
   const [viewMode, setViewMode] = useState(() => {
@@ -30,7 +42,7 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
   const [cursor, setCursor] = useState(() => new Date());
   const [cases, setCases] = useState([]);
   const [birthdays, setBirthdays] = useState([]);
-  const [birthdayTemplate, setBirthdayTemplate] = useState('Feliz aniversário, {nome}! 🎂');
+  const [birthdayTemplate, setBirthdayTemplate] = useState(BIRTHDAY_DEFAULT);
   const [selectedDay, setSelectedDay] = useState(() => new Date());
   const [feedbackMsg, setFeedbackMsg] = useState(null);
 
@@ -60,8 +72,9 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
         uniqueBdays.push(b);
       }
       setBirthdays(uniqueBdays);
-      if (officeR.status === 'fulfilled' && officeR.value?.data) {
-        const tpl = officeR.value.data.birthday_message || officeR.value.data.birthday_message_template;
+      const officeData = officeR.status === 'fulfilled' ? (officeR.value?.data || officeR.value) : null;
+      if (officeData) {
+        const tpl = officeData.birthday_message || officeData.birthday_message_template;
         if (tpl) setBirthdayTemplate(tpl);
       }
       [casesR, convsR, officeR].filter((r) => r.status === 'rejected')
@@ -348,7 +361,10 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
                     <ul className="space-y-2.5">
                       {selectedBirthdays.map((b) => {
                         const phone = (b.phone || '').replace(/\D/g, '');
-                        const msg = encodeURIComponent(birthdayTemplate.replace(/\{nome\}/g, b.client_name || 'Cliente'));
+                        const formattedText = (birthdayTemplate || BIRTHDAY_DEFAULT)
+                          .replace(/\{nome\}/g, b.client_name || 'Cliente')
+                          .replace(/\{escritorio\}/g, 'Neves & Costa Advocacia');
+                        const msg = encodeURIComponent(formattedText);
                         return (
                           <li key={b.id} className="text-xs text-gray-200 bg-[#1E2022] p-2.5 rounded-lg border border-[#2A2D2F] space-y-2">
                             <div className="flex items-center justify-between">

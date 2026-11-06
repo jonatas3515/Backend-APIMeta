@@ -203,7 +203,7 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
           return;
         }
 
-        let newNotes = `Cadastrado automaticamente via IA através de ato judicial (${analysis.tipo_ato || 'Decisão'}).\nResumo: ${analysis.resumo || ''}`;
+        let newNotes = analysis.resumo ? analysis.resumo.trim() : '';
 
         if (applyFees && (editableCondenacao || editableHonorariosPercentual)) {
           const valCond = Number(editableCondenacao) || null;
@@ -299,10 +299,11 @@ export default function CaseDecisionExtractorModal({ caseItem, allCases = [], on
         if (/^Importado do Sistema JNC/i.test(currentNotes)) {
           currentNotes = '';
         }
+        currentNotes = currentNotes.replace(/Cadastrado automaticamente via IA através de ato judicial \([^)]+\)\.?\s*\n*(Resumo:\s*)?/gi, '').trim();
         if (analysis.resumo) {
           const todayFormatted = new Date().toLocaleDateString('pt-BR');
           const atoLabel = analysis.tipo_ato || 'Decisão/Despacho';
-          const summaryNote = `[${todayFormatted} - IA ${atoLabel}]: ${analysis.resumo.trim()}`;
+          const summaryNote = `[${todayFormatted} - ${atoLabel}]: ${analysis.resumo.trim()}`;
           if (!currentNotes.includes(summaryNote)) {
             currentNotes = currentNotes ? `${currentNotes}\n\n${summaryNote}` : summaryNote;
           }
