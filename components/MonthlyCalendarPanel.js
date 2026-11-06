@@ -316,9 +316,7 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
                 </div>
 
                 <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] font-bold text-gray-400 mb-2 uppercase">
-                  {WEEK_DAYS.map((d, i) => (
-                    <div key={d} className={i === 0 ? 'text-red-400 font-bold' : ''}>{d}</div>
-                  ))}
+                  {WEEK_DAYS.map((d) => <div key={d}>{d}</div>)}
                 </div>
 
                 <div className="grid grid-cols-7 gap-1.5">
@@ -342,10 +340,10 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
                             ? 'border-yellow-500 bg-yellow-950/40 ring-1 ring-yellow-400'
                             : isToday
                             ? 'border-yellow-500/80 bg-yellow-950/20'
-                            : isSunday
-                            ? 'border-red-500 bg-[#1E2022] hover:border-red-400'
                             : feriado
                             ? 'border-red-900/50 bg-red-950/20'
+                            : isSunday
+                            ? 'border-red-900/50 bg-[#1E2022] hover:border-red-800/80'
                             : 'border-[#2A2D2F] bg-[#1E2022] hover:border-gray-700'
                         }`}
                         data-testid={isToday ? 'calendar-today' : undefined}
@@ -354,8 +352,6 @@ export default function MonthlyCalendarPanel({ initialView = 'unificado' }) {
                           <span className={`text-[11px] font-bold ${
                             isToday
                               ? 'text-yellow-400 font-extrabold'
-                              : isSunday
-                              ? 'text-red-400 font-bold'
                               : feriado
                               ? 'text-red-400 font-extrabold'
                               : 'text-gray-300 font-bold'
