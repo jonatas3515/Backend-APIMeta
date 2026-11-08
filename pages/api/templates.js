@@ -99,16 +99,34 @@ async function handleGet(req, res) {
 
       // Substitui placeholders
       let content = template.template_text;
+      const intake = conversation.intake_data || {};
+      const formattedDate = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+
       const placeholders = {
         client_name: conversation.client_name || '[Nome do Cliente]',
         client_phone: conversation.client_phone || '[Telefone]',
-        municipality: conversation.municipality || '[Município]',
-        agency: conversation.agency || '[Órgão/Entidade]',
+        municipality: conversation.municipality || intake.municipality || 'Itamaraju',
+        agency: conversation.agency || intake.agency || '[Órgão/Entidade]',
         client_role: conversation.client_role || '[Papel do Cliente]',
-        case_type: conversation.case_type || '[Tipo de Caso]',
-        legal_area: conversation.legal_area || '[Área Jurídica]',
-        case_summary: conversation.case_summary || '[Resumo do Caso]',
-        date: new Date().toLocaleDateString('pt-BR'),
+        case_type: conversation.case_type || template.case_type || '[Tipo de Caso]',
+        legal_area: conversation.legal_area || template.legal_area || '[Área Jurídica]',
+        case_summary: conversation.case_summary || intake.case_summary || '[Resumo do Caso]',
+        cpf: conversation.document_number || intake.cpf || '[CPF]',
+        rg: intake.rg || '[RG]',
+        rg_expeditor: intake.rg_expeditor || 'SSP/BA',
+        marital_status: intake.marital_status || 'solteiro(a)',
+        profession: intake.profession || '[Profissão]',
+        birth_date: conversation.birth_or_foundation_date || intake.birth_date || '[Data de Nascimento]',
+        mother_name: intake.mother_name || '[Nome da Mãe]',
+        father_name: intake.father_name || '[Nome do Pai]',
+        address: intake.address || '[Endereço]',
+        neighborhood: intake.neighborhood || '[Bairro]',
+        state: intake.state || 'BA',
+        cep: intake.cep || '45.836-000',
+        promovido: intake.promovido || intake.empresa_re || '[Parte Ré]',
+        lawyer_name: 'JONATAS DO NASCIMENTO COSTA',
+        lawyer_oab: 'OAB/BA n.º 69.148',
+        date: formattedDate,
         year: new Date().getFullYear().toString()
       };
 
